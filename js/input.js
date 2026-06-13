@@ -4,6 +4,7 @@ import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
 import {storyInteract,advanceCine} from './story.js';
 import {gymTrain} from './gym.js';
+import {startOverkill} from './overkill.js';
 import {setMissionHUD} from './missions.js';
 import {message} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon} from './weapons.js';
@@ -81,6 +82,7 @@ export function performInteract(){
   if(state.mode==='foot'){
     if(canPickWeapon()){pickupWeapon();return;}
     if(gymTrain())return; // treino na academia (perto do supino)
+    if(startOverkill())return; // liga o modo overkill (perto do totem)
     if(storyInteract())return;
     enterCar();
   }else if(state.mode==='car'&&Math.abs(cur?.speed||0)<6){

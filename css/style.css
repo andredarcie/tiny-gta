@@ -205,6 +205,16 @@ body.cine #cine-top,body.cine #cine-bottom{transform:none}
 body.cine #cine-sub{opacity:1}
 body.cine #hud,body.cine #touch-controls{display:none!important}
 
+/* Faixa do modo OVERKILL: aparece no topo enquanto o modo está ligado */
+#overkill{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:40;
+  display:none;white-space:nowrap;padding:6px 16px;border-radius:8px;
+  font:800 clamp(15px,2.3vw,24px)/1 'IBM Plex Mono',monospace;color:#fff;
+  letter-spacing:.05em;background:rgba(176,20,42,.85);border:2px solid #ff5a72;
+  text-shadow:1px 1px 2px #000;box-shadow:0 0 18px rgba(255,46,80,.6)}
+#overkill.show{display:block;animation:okPulse 1s ease-in-out infinite}
+@keyframes okPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.05)}}
+body.cine #overkill{display:none!important}
+
 /* Dica "continuar" da cut-scene: aparece quando a fala acabou e o jogo espera
    a interação do jogador (o diálogo não passa mais sozinho) */
 #cine-hint{position:fixed;right:24px;bottom:calc(13vh + 18px);z-index:61;

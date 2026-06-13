@@ -162,7 +162,8 @@ function completeEnter(f){
   setDrivePose(true);
   hudCar.textContent=cur.name;hudCar.style.display='block';
   blip([330,440],0.07,'triangle',.12);
-  radioRandom();radioOn();
+  if(refs.getOverkillState?.()?.active)radioOff();
+  else{radioRandom();radioOn();}
 }
 
 // Sair também abre e fecha a porta (avião não tem porta: sai direto)
@@ -226,6 +227,7 @@ export function startCut(text,col,fn){
 
 export function getBusted(){
   if(dying)return; // morrendo não é preso
+  refs.endOverkill?.(); // prisão também encerra o modo overkill na hora
   cancelEntering();
   startCut('BUSTED','#3e7bff',()=>{
     state.onRoof=null;roofFall=null; // delegacia fica no chão, não no telhado
@@ -260,6 +262,7 @@ function wastedCut(){
 let dying=null;
 export function getWasted(){
   if(dying)return;
+  refs.endOverkill?.(); // morrer encerra o modo overkill (banca o resumo)
   cancelEntering();
   if(state.mode==='car'||cur)return wastedCut(); // dentro de veículo: corte direto
   dying={t:0,puddle:false};

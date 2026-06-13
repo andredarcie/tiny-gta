@@ -45,6 +45,8 @@ export function getInteractAction(){
   if(state.mode==='foot'){
     const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
     if(gym)return gym;
+    const ov=refs.overkillNear?.(); // perto do totem do modo overkill
+    if(ov)return{label:'OVERKILL',prompt:ov,enabled:true};
   }
   if(state.mode==='foot'){
     const sn=refs.storyNear?.();

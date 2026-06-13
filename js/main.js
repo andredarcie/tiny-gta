@@ -19,6 +19,7 @@ import {canPickWeapon,updateWeapons,isWeaponHeld,confiscateWeapon} from './weapo
 import {updateDayNight} from './daynight.js';
 import {updateInteriors} from './interior.js';
 import {updateSpeech,updateStreetChatter} from './speech.js';
+import {updateOverkill,overkillNear,endOverkill,getOverkillState} from './overkill.js';
 import './club.js'; // efeito de registro: instancia a boate em interiors[]
 import {gymTrainState} from './gym.js';
 import {hospitalAdmit} from './hospital.js';
@@ -51,6 +52,9 @@ refs.isWeaponHeld=isWeaponHeld;
 refs.confiscateWeapon=confiscateWeapon;
 refs.gymTrainState=gymTrainState; // HUD mostra o botão TRAIN dentro da academia
 refs.hospitalAdmit=hospitalAdmit; // morrer leva o jogador pra dentro do hospital
+refs.overkillNear=overkillNear;   // HUD/interact mostram a ação no totem
+refs.endOverkill=endOverkill;     // a morte do jogador encerra o modo overkill
+refs.getOverkillState=getOverkillState;
 
 // First delivery spawned here, after refs are set (spawnDelivery needs playerPos)
 spawnDelivery();
@@ -104,6 +108,7 @@ function step(dt){
   updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
   updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
   updateSpeech(dt);    // segue/fade dos balões de diálogo (rua e interiores)
+  updateOverkill(dt);  // modo overkill: multiplicador de heat + renda
   updateDoors(); // portas por toque: interiores e telhados dos prédios
   if(input.shootHeld)performShoot();
 
@@ -148,6 +153,7 @@ window.render_game_to_text=()=>{
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,
     taxi:refs.getTaxiState?.()||null,
+    overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     storyBlips:refs.storyBlips?.()||[],
   });

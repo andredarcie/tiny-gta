@@ -1,5 +1,5 @@
 import {AC,master} from './audio.js';
-import {state} from './state.js';
+import {state,refs} from './state.js';
 
 export const STATIONS=[
   {name:'BOOMBEAT RADIO 98.3', tag:'FUNK PARTY',        col:'#ff2e88', id:'batidao'},
@@ -14,6 +14,7 @@ let radioHudTimer=null;
 
 function getAC(){return AC;}
 function getMaster(){return master;}
+function overkillActive(){return !!refs.getOverkillState?.()?.active;}
 
 export function radioInit(){
   const _AC=getAC(),_master=getMaster();
@@ -31,6 +32,7 @@ export function radioOff(){
 }
 
 export function radioOn(){
+  if(overkillActive()){radioOff();return;}
   radioInit();radioOff();
   const st=STATIONS[stationIdx];
   if(!st.id){_radioHudShow();return;}
@@ -45,6 +47,7 @@ export function radioRandom(){
 }
 
 export function radioSwitch(){
+  if(overkillActive()){radioOff();return;}
   stationIdx=(stationIdx+1)%STATIONS.length;
   _radioStatic();
   if(state.mode==='car')radioOn();else _radioHudShow();
