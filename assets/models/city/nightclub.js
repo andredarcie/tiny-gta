@@ -3,7 +3,7 @@ import {scene} from '../../../js/engine.js';
 import {rand,pick} from '../../../js/constants.js';
 import {addPalm} from '../props/palm.js';
 import {makePed,shirtColors} from '../characters/pedestrian.js';
-import {addDoorArrow,makeDoorArrow} from './door-arrow.js';
+import {makeDoorArrow} from './door-arrow.js';
 
 // Boate "THE FLAMINGO", estilo Vice City: prédio na orla oeste (quarteirão
 // CLUB_I/CLUB_J, reservado pelo world.js) com letreiro neon e entrada coberta.
@@ -39,7 +39,8 @@ function signTexture(){
   return t;
 }
 
-export const clubFx={tiles:[],tileMats:[],ball:null,dancers:[],exitArrow:null};
+export const clubFx={tiles:[],tileMats:[],ball:null,dancers:[],exitArrow:null,
+  facade:null,facadeArrow:null,footprint:null};
 export const clubInterior=new THREE.Group();
 clubInterior.visible=false;
 
@@ -55,28 +56,36 @@ export function addNightclub(solids){
   ringTop.position.set(-154,6.85,-22);scene.add(ringTop);
   const ringMid=new THREE.Mesh(new THREE.BoxGeometry(16.3,.12,18.3),neonPinkM);
   ringMid.position.set(-154,4.4,-22);scene.add(ringMid);
+  // Objetos da PORTA num grupo 'facade' que js/interior.js esconde quando a
+  // câmera entra na pegada do prédio (senão flutuam ao sair). O corpo (caixa)
+  // some sozinho por culling. Ver clubFx.facade/footprint/facadeArrow.
+  const facade=new THREE.Group();
   // porta dupla escura na fachada oeste
   const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.6),darkM);
-  door.position.set(-162.05,1.6,-22);scene.add(door);
+  door.position.set(-162.05,1.6,-22);facade.add(door);
   // barras neon verticais ladeando a porta
   for(const dz of[-2.2,2.2]){
     const bar=new THREE.Mesh(new THREE.BoxGeometry(.12,4.6,.12),neonCyanM);
-    bar.position.set(-162.1,2.5,-22+dz);scene.add(bar);
+    bar.position.set(-162.1,2.5,-22+dz);facade.add(bar);
   }
   // marquise sobre a entrada com colunas
   const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.16,4.2),
     new THREE.MeshStandardMaterial({color:0xff5f9e,roughness:.8}));
-  canopy.position.set(-163.4,3.3,-22);canopy.castShadow=true;scene.add(canopy);
+  canopy.position.set(-163.4,3.3,-22);canopy.castShadow=true;facade.add(canopy);
   for(const dz of[-1.8,1.8]){
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,3.2,6),darkM);
-    pole.position.set(-164.5,1.6,-22+dz);scene.add(pole);
+    pole.position.set(-164.5,1.6,-22+dz);facade.add(pole);
   }
   // letreiro neon (canvas) de frente pro mar
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(9.5,2.4),
     new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
-  sign.position.set(-162.18,5.7,-22);sign.rotation.y=-Math.PI/2;scene.add(sign);
-  // seta estilo Vice City quicando rente ao chão na entrada: encostou, entrou
-  addDoorArrow(-163.4,1.7,-22);
+  sign.position.set(-162.18,5.7,-22);sign.rotation.y=-Math.PI/2;facade.add(sign);
+  // seta quicando na entrada (mesh próprio, no grupo; animada por js/interior.js)
+  clubFx.facadeArrow=makeDoorArrow();
+  clubFx.facadeArrow.position.set(-163.4,1.7,-22);facade.add(clubFx.facadeArrow);
+  scene.add(facade);
+  clubFx.facade=facade;
+  clubFx.footprint={x0:-162.2,x1:-145.8,z0:-31.2,z1:-12.8};
   // palmeiras na calçada (entram na fusão de props do world.js)
   addPalm(-164.2,-13.2);addPalm(-164.2,-30.8);
   solids.push({x0:-162.2,x1:-145.8,z0:-31.2,z1:-12.8,h:7.2});

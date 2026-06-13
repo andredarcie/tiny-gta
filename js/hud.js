@@ -115,7 +115,12 @@ function mmSquare(px,py,size,col){
   mm.strokeRect(px-size/2,py-size/2,size,size);
 }
 
+const mapWrap=$('mapwrap');
 export function drawMinimap(){
+  // Em ambiente interno (boate/academia/hospital) o minimapa não faz sentido:
+  // esconde o painel inteiro. Ver também a seta 3D de missão em story.js.
+  if(mapWrap)mapWrap.style.display=state.interior?'none':'';
+  if(state.interior)return;
   const pp=refs.playerPos?.();if(!pp)return;
   const cur=refs.getCur?.();
   // a seta segue para onde o jogador/veículo está virado, não a câmera

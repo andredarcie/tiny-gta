@@ -31,6 +31,8 @@ import {arrowBob} from '../assets/models/city/door-arrow.js';
 //  intSpawn  {x,z} onde o jogador nasce ao entrar
 //  fx        objeto de efeitos do modelo (lê fx.exitArrow pra animar a seta)
 //  enterMsg/enterColor  aviso padrão ao entrar (onEnter pode trocar)
+//  exterior  {x,z,r} zona da FACHADA onde gangue não pode existir (js/gangs.js)
+//  spawnHeading  pra onde o jogador olha ao nascer dentro (padrão: +x)
 // ============================================================================
 
 // Registro de todos os interiores instanciados. js/doors.js varre por porta
@@ -39,10 +41,11 @@ export const interiors=[];
 
 export class Interior{
   constructor({group,bounds,center,door,spawnOut,intDoor,intSpawn,
-    fx=null,enterMsg='',enterColor='var(--gold)'}){
+    fx=null,enterMsg='',enterColor='var(--gold)',exterior=null,spawnHeading=Math.PI/2}){
     this.group=group;this.bounds=bounds;this.center=center;
     this.door=door;this.spawnOut=spawnOut;this.intDoor=intDoor;this.intSpawn=intSpawn;
     this.fx=fx;this.enterMsg=enterMsg;this.enterColor=enterColor;
+    this.exterior=exterior;this.spawnHeading=spawnHeading;
     interiors.push(this);
   }
 
@@ -68,10 +71,15 @@ export class Interior{
     }
   }
 
-  enter(){
+  // entrada normal pela porta: nasce ao lado da porta, olhando pra dentro
+  enter(){this.enterAt(this.intSpawn,this.spawnHeading);}
+
+  // liga a sala e teleporta pra um ponto/heading quaisquer (a morte do jogador
+  // usa isto pra acordar no meio do hospital — ver js/hospital.js)
+  enterAt(spawn,heading){
     state.interior=this;
     this.group.visible=true;
-    this.teleport(this.intSpawn.x,this.intSpawn.z,Math.PI/2);
+    this.teleport(spawn.x,spawn.z,heading);
     this.onEnter();
   }
 
@@ -95,7 +103,20 @@ export class Interior{
     return true;
   }
 
+  // Some com os objetos da PORTA externa (porta, marquise, seta...) enquanto a
+  // câmera está dentro da pegada do prédio — ao sair, as paredes somem por
+  // back-face culling e, sem isso, esses objetos ficariam flutuando no ar.
+  // O corpo do prédio continua sumindo sozinho pelo culling (comportamento ok).
+  updateFacade(){
+    const fx=this.fx;if(!fx||!fx.facade)return;
+    const c=camera.position,f=fx.footprint;
+    const inside=f&&c.x>f.x0&&c.x<f.x1&&c.z>f.z0&&c.z<f.z1;
+    fx.facade.visible=!inside;
+    if(!inside&&fx.facadeArrow)fx.facadeArrow.position.y=1.7+arrowBob(state.time);
+  }
+
   update(dt){
+    this.updateFacade(); // roda sempre (inclusive fora da sala, ao sair)
     if(!this.active)return;
     // saída de emergência: WASTED/BUSTED teleportam pra cidade sem passar pela porta
     const pp=playerPos();

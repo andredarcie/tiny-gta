@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {scene} from '../../../js/engine.js';
 import {rand,pick} from '../../../js/constants.js';
 import {makePed,shirtColors} from '../characters/pedestrian.js';
-import {addDoorArrow,makeDoorArrow} from './door-arrow.js';
+import {makeDoorArrow} from './door-arrow.js';
 
 // Academia "IRON TEMPLE", no mesmo molde da boate (nightclub.js): prédio num
 // quarteirão reservado pelo world.js, com letreiro e entrada coberta. O interior
@@ -52,7 +52,8 @@ function makeDumbbell(len=1.2,r=.34,mat=steelM){
   return g;
 }
 
-export const gymFx={lifters:[],sign:null,exitArrow:null,barbell:null};
+export const gymFx={lifters:[],sign:null,exitArrow:null,barbell:null,
+  facade:null,facadeArrow:null,footprint:null};
 export const gymInterior=new THREE.Group();
 gymInterior.visible=false;
 
@@ -60,6 +61,9 @@ export function addGym(solids){
   const cx=154,cz=-110; // centro do prédio no quarteirão (7,1)
 
   // ----- exterior: galpão cinza com faixa laranja, marquise e letreiro -----
+  // O corpo (caixa) some sozinho por culling quando a câmera entra; os objetos
+  // da PORTA vão num grupo 'facade' que js/interior.js esconde junto (senão
+  // ficariam flutuando ao sair). Ver gymFx.facade/footprint/facadeArrow.
   const wallM=new THREE.MeshStandardMaterial({color:0x2c3038,roughness:.96});
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),wallM);
   bld.position.set(cx,3.5,cz);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
@@ -68,31 +72,38 @@ export function addGym(solids){
   // faixa laranja em volta do prédio
   const band=new THREE.Mesh(new THREE.BoxGeometry(16.3,.5,16.3),accentM);
   band.position.set(cx,5.4,cz);scene.add(band);
+
+  const facade=new THREE.Group();
   // porta dupla escura na fachada oeste (x menor)
   const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.6),darkM);
-  door.position.set(cx-8.02,1.6,cz);scene.add(door);
+  door.position.set(cx-8.02,1.6,cz);facade.add(door);
   // barras de aço ladeando a porta
   for(const dz of[-2.2,2.2]){
     const bar=new THREE.Mesh(new THREE.BoxGeometry(.14,4.4,.14),steelM);
-    bar.position.set(cx-8.05,2.4,cz+dz);scene.add(bar);
+    bar.position.set(cx-8.05,2.4,cz+dz);facade.add(bar);
   }
   // marquise sobre a entrada com colunas
   const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,4.4),
     new THREE.MeshStandardMaterial({color:0x3a3f48,roughness:.8}));
-  canopy.position.set(cx-9.3,3.3,cz);canopy.castShadow=true;scene.add(canopy);
+  canopy.position.set(cx-9.3,3.3,cz);canopy.castShadow=true;facade.add(canopy);
   for(const dz of[-1.9,1.9]){
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3.2,6),steelM);
-    pole.position.set(cx-10.4,1.6,cz+dz);scene.add(pole);
+    pole.position.set(cx-10.4,1.6,cz+dz);facade.add(pole);
   }
   // halter gigante de fachada acima da porta
   const logo=makeDumbbell(3.4,.8,steelM);
-  logo.position.set(cx-8.1,4.4,cz);logo.scale.set(.6,.6,.6);scene.add(logo);
+  logo.position.set(cx-8.1,4.4,cz);logo.scale.set(.6,.6,.6);facade.add(logo);
   // letreiro (canvas) virado pra rua
   gymFx.sign=new THREE.Mesh(new THREE.PlaneGeometry(9,2.3),
     new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
-  gymFx.sign.position.set(cx-8.12,6,cz);gymFx.sign.rotation.y=-Math.PI/2;scene.add(gymFx.sign);
-  // seta estilo Vice City quicando rente ao chão na entrada: encostou, entrou
-  addDoorArrow(cx-9.3,1.7,cz);
+  gymFx.sign.position.set(cx-8.12,6,cz);gymFx.sign.rotation.y=-Math.PI/2;facade.add(gymFx.sign);
+  // seta estilo Vice City quicando rente ao chão na entrada (mesh próprio, no
+  // grupo, pra sumir junto; animada por js/interior.js)
+  gymFx.facadeArrow=makeDoorArrow();
+  gymFx.facadeArrow.position.set(cx-9.3,1.7,cz);facade.add(gymFx.facadeArrow);
+  scene.add(facade);
+  gymFx.facade=facade;
+  gymFx.footprint={x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2};
   solids.push({x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2,h:7.2});
 
   // ----- interior: sala 26x16 a ~600m do mapa, num grupo liga/desliga -----

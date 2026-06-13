@@ -517,7 +517,8 @@ function storyGoal(){
 
 export function updateStory(dt){
   if(cine.on)updateCine(dt);
-  const goal=state.started&&!state.cine?storyGoal():null;
+  // em ambiente interno a seta 3D de missão não aparece (o objetivo é na cidade)
+  const goal=state.started&&!state.cine&&!state.interior?storyGoal():null;
   storyArrow.visible=!!goal;
   if(goal){
     const pp=playerPos();

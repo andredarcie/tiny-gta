@@ -47,6 +47,7 @@ export const gym=new GymInterior({
   group:gymInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:GYM_DOOR,spawnOut:GYM_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:gymFx,
+  exterior:{x:154,z:-110,r:24}, // fachada: gangue não chega perto
 });
 
 // jogador perto do supino, dentro da academia (HUD/interact usam isto)

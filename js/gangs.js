@@ -10,7 +10,26 @@ import {message} from './hud.js';
 import {playerPos,getWasted} from './player.js';
 import {addBloodPuddle} from './pedestrians.js';
 import {spawnDrop} from './missions.js';
+import {interiors} from './interior.js';
 import {makeGangTracerLine} from '../assets/models/effects/gang-tracer.js';
+
+// Prédios especiais (boate/academia/hospital) registram uma zona de fachada
+// em interiors[].exterior; gangue não nasce nem fica dentro dela.
+function inSpecialZone(x,z){
+  for(const it of interiors){const e=it.exterior;
+    if(e&&Math.hypot(x-e.x,z-e.z)<e.r)return true;}
+  return false;
+}
+// empurra um ponto pra fora de qualquer zona de fachada (como um sólido circular)
+function repelFromZones(p){
+  for(const it of interiors){const e=it.exterior;if(!e)continue;
+    const dx=p.x-e.x,dz=p.z-e.z,d=Math.hypot(dx,dz);
+    if(d<e.r){
+      if(d<1e-3){p.x=e.x+e.r;}
+      else{p.x=e.x+dx/d*e.r;p.z=e.z+dz/d*e.r;}
+    }
+  }
+}
 
 // Três gangues, cada uma com cor própria, território circular (aparece no
 // minimapa) e membros uniformizados e armados. Matar um membro encolhe o
@@ -36,16 +55,23 @@ function spawnMember(gang){
   for(let k=0;k<24;k++){
     const a=rand(0,Math.PI*2),d=Math.sqrt(Math.random())*gang.r*.9;
     x=gang.x+Math.cos(a)*d;z=gang.z+Math.sin(a)*d;
-    if(Math.hypot(x-pp.x,z-pp.z)>26)break; // não nasce na cara do jogador
+    // não nasce na cara do jogador nem na fachada de um prédio especial
+    if(Math.hypot(x-pp.x,z-pp.z)>26&&!inSpecialZone(x,z))break;
   }
   const m={g:makePed(gang.color,gang.pants),gang,state:'walk',vel:new THREE.Vector3(),
     t:0,bob:0,shootT:rand(.6,1.6),tgt:null,tgtT:0};
   m.g.position.set(x,0,z);
   collideStatics(m.g.position,.4);
+  repelFromZones(m.g.position);
   attachHandGun(m.g); // pistola na mão direita (empunhadura padrão)
   gangPeds.push(m);
 }
-for(const g of gangs)for(let k=0;k<5;k++)spawnMember(g);
+// Spawn inicial: chamado por js/main.js DEPOIS dos prédios especiais entrarem
+// em interiors[], pra que a zona de fachada já valha (senão membros nasceriam
+// colados na academia, que fica dentro do território dos VIPERS).
+export function spawnInitialGangs(){
+  for(const g of gangs)for(let k=0;k<5;k++)spawnMember(g);
+}
 
 function gangCasualty(m){
   addBloodPuddle(m.g.position.x,m.g.position.z);
@@ -91,9 +117,13 @@ export function updateGangs(dt){
   const pp=playerPos();
   const c=refs.getCur?.();
   const danger=state.mode==='car'&&c&&Math.abs(c.speed)>6;
+  // na fachada de um prédio especial o jogador está a salvo: nada de aviso de
+  // território nem de gangue mirando/atirando nele (mesmo se o prédio cair
+  // dentro de um território, caso da academia nos VIPERS)
+  const playerSafe=inSpecialZone(pp.x,pp.z);
   for(const g of gangs){
     g.alarmT=Math.max(0,g.alarmT-dt);
-    const inside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r;
+    const inside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r&&!playerSafe;
     if(inside&&!g.wasInside&&state.started&&state.mode!=='cut')
       message(g.name+' TERRITORY - WATCH YOUR BACK!',g.css);
     g.wasInside=inside;
@@ -137,7 +167,7 @@ export function updateGangs(dt){
     const g=m.gang;
     const distP=Math.hypot(pp.x-p.x,pp.z-p.z);
     const playerInside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r;
-    const aggro=state.started&&state.mode!=='cut'
+    const aggro=state.started&&state.mode!=='cut'&&!playerSafe
       &&(playerInside||g.alarmT>0)&&distP<g.r+30;
     let mvAmount=0;
     if(aggro){
@@ -160,6 +190,7 @@ export function updateGangs(dt){
       }
     }
     collideStatics(p,.4);
+    repelFromZones(p); // não pisa na fachada dos prédios especiais
     p.y=Math.abs(Math.sin(m.bob))*.07;
     Entities.animatePed?.(m.g,m.bob,mvAmount);
     if(aggro)poseAiming(m.g); // pose padrão de mira, por cima da animação de andar

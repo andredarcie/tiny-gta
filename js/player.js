@@ -242,14 +242,16 @@ export function getBusted(){
 
 function wastedCut(){
   startCut('WASTED','#ff2e88',()=>{
-    state.onRoof=null;roofFall=null; // hospital fica no chão, não no telhado
+    state.onRoof=null;roofFall=null;
     state.money=Math.floor(state.money*.8);state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
+    if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
     unseatPlayer();
-    player.g.visible=true;player.g.position.set(nodeX(6)+4,0,nodeX(6)+4);
+    player.g.visible=true;
     state.weaponHeld=!!state.hasGun;
     state.mode='foot';hudCar.style.display='none';radioOff();
-    message('DISCHARGED FROM HOSPITAL. WATCH IT.','var(--cyan)');
+    // acorda DENTRO do hospital (teleporta pra sala fora do mapa); tem que sair
+    refs.hospitalAdmit?.();
   });
 }
 

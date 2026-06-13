@@ -6,7 +6,7 @@ import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
 import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted} from './player.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
-import {updateGangs,gangs} from './gangs.js';
+import {updateGangs,gangs,spawnInitialGangs} from './gangs.js';
 import {updateBeach} from './world.js';
 import {cops,heli,updateCops,updateHeli} from './police.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
@@ -18,8 +18,10 @@ import {setupTouchControls,updateTouchControls} from './touch-controls.js';
 import {canPickWeapon,updateWeapons,isWeaponHeld,confiscateWeapon} from './weapons.js';
 import {updateDayNight} from './daynight.js';
 import {updateInteriors} from './interior.js';
+import {updateSpeech,updateStreetChatter} from './speech.js';
 import './club.js'; // efeito de registro: instancia a boate em interiors[]
 import {gymTrainState} from './gym.js';
+import {hospitalAdmit} from './hospital.js';
 import {recordBest} from './leaderboard.js';
 import {updateDoors} from './doors.js';
 import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
@@ -48,9 +50,13 @@ refs.canPickWeapon=canPickWeapon;
 refs.isWeaponHeld=isWeaponHeld;
 refs.confiscateWeapon=confiscateWeapon;
 refs.gymTrainState=gymTrainState; // HUD mostra o botão TRAIN dentro da academia
+refs.hospitalAdmit=hospitalAdmit; // morrer leva o jogador pra dentro do hospital
 
 // First delivery spawned here, after refs are set (spawnDelivery needs playerPos)
 spawnDelivery();
+// Gangues nascem só agora, com os prédios especiais já registrados em interiors[]
+// (assim a zona de fachada vale desde o primeiro membro). Ver gangs.js.
+spawnInitialGangs();
 
 setupInput();
 setupTouchControls();
@@ -96,6 +102,8 @@ function step(dt){
   updateTaxi(dt);
   updateWeapons(dt);
   updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
+  updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
+  updateSpeech(dt);    // segue/fade dos balões de diálogo (rua e interiores)
   updateDoors(); // portas por toque: interiores e telhados dos prédios
   if(input.shootHeld)performShoot();
 

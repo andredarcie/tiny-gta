@@ -15,6 +15,7 @@ import {addAbandonedLot,finalizeAbandonedLots} from '../assets/models/city/aband
 import {finalizeProps} from '../assets/models/props/prop-merge.js';
 import {addNightclub,CLUB_I,CLUB_J} from '../assets/models/city/nightclub.js';
 import {addGym,GYM_I,GYM_J} from '../assets/models/city/gym.js';
+import {addHospital,HOSP_I,HOSP_J} from '../assets/models/city/hospital.js';
 import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
@@ -30,6 +31,7 @@ while(parks.size<6){
   const i=irand(0,N-1),j=irand(0,N-1);
   if(i===CLUB_I&&j===CLUB_J)continue; // quarteirão reservado pra boate
   if(i===GYM_I&&j===GYM_J)continue;   // quarteirão reservado pra academia
+  if(i===HOSP_I&&j===HOSP_J)continue; // quarteirão reservado pro hospital
   if(Math.abs(i-4)+Math.abs(j-4)>1)parks.add(i+'_'+j);
 }
 export const isPark=(i,j)=>parks.has(i+'_'+j);
@@ -41,6 +43,7 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   if(isPark(i,j))continue;
   if(i===CLUB_I&&j===CLUB_J)continue; // o quarteirão da boate não vira lote
   if(i===GYM_I&&j===GYM_J)continue;   // nem o da academia
+  if(i===HOSP_I&&j===HOSP_J)continue; // nem o do hospital
   const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE,inner=BLOCK-2*SIDE;
   const sx=Math.random()<.5?1:2,sz=Math.random()<.5?1:2;
   for(let a=0;a<sx;a++)for(let b=0;b<sz;b++)
@@ -122,6 +125,7 @@ for(const lot of cityLots){
 }
 addNightclub(solids); // boate de frente pro mar no quarteirão reservado
 addGym(solids);       // academia no quarteirão reservado (nordeste)
+addHospital(solids);  // hospital no quarteirão reservado (sudeste)
 finalizeBuildings();     // funde a cidade inteira em ~18 meshes (draw calls)
 finalizeAbandonedLots(); // e todos os lotes abandonados em ~5
 finalizeDoorArrows();    // todas as setinhas de porta num único mesh
