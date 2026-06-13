@@ -7,6 +7,7 @@ import {setMissionHUD} from './missions.js';
 import {message} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon} from './weapons.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
+import {getNickname,setNickname,startSession,refreshTopPlayers} from './leaderboard.js';
 
 const gameCanvas=()=>document.getElementById('game');
 const isBlocked=()=>state.paused||state.mode==='cut'||state.orientationBlocked||state.controlsLocked;
@@ -108,6 +109,32 @@ export function startGameFromUserGesture(opts={}){
   message(mobile?'TAKE THE PINK CAR':'TAKE THE PINK CAR - PRESS E','var(--gold)');
 }
 
+const isMobileEnv=()=>state.mobile||matchMedia('(pointer: coarse)').matches;
+
+// Abre o modal de nickname (passo antes de iniciar a partida).
+function openNickModal(){
+  if(state.started)return;
+  const inp=document.getElementById('nick-input');
+  if(inp)inp.value=getNickname();
+  document.getElementById('nickmodal')?.classList.add('open');
+  setTimeout(()=>inp?.focus(),60);
+}
+
+// Confirma o nick e inicia o jogo (este clique/tap é o gesto do usuário, então
+// vale pra áudio/fullscreen/pointer-lock dentro de startGameFromUserGesture).
+function confirmNick(){
+  const inp=document.getElementById('nick-input');
+  const name=(inp?.value||'').toUpperCase().replace(/[^A-Z0-9 _-]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
+  if(!name){inp?.classList.add('err');setTimeout(()=>inp?.classList.remove('err'),350);return;}
+  setNickname(name);
+  document.getElementById('nickmodal')?.classList.remove('open');
+  startGameFromUserGesture({mobile:isMobileEnv()});
+  startSession(); // abre a sessão do ranking pra esta run (não bloqueia o start)
+}
+
+// Usado pelo touch-controls: tocar pra jogar abre o modal de nickname.
+export function requestStart(){ openNickModal(); }
+
 export function setupInput(){
   const canvas=gameCanvas();
   addEventListener('mousemove',e=>{
@@ -150,8 +177,12 @@ export function setupInput(){
     document.getElementById('best').textContent=
       `BEST: $${savedBest.money} ◆ ${savedBest.deliveries} DELIVERIES`;
 
-  document.getElementById('title').addEventListener('click',()=>{
-    startGameFromUserGesture({mobile:state.mobile||matchMedia('(pointer: coarse)').matches});
+  // Iniciar passa pelo modal de nickname (o nick vai pro ranking global).
+  refreshTopPlayers();
+  document.getElementById('play')?.addEventListener('click',e=>{e.stopPropagation();openNickModal();});
+  document.getElementById('nick-play')?.addEventListener('click',confirmNick);
+  document.getElementById('nick-input')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){e.preventDefault();confirmNick();}
   });
   document.getElementById('btn-fullscreen')?.addEventListener('pointerdown',e=>{
     e.preventDefault();

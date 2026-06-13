@@ -18,6 +18,7 @@ import {setupTouchControls,updateTouchControls} from './touch-controls.js';
 import {canPickWeapon,updateWeapons,isWeaponHeld,confiscateWeapon} from './weapons.js';
 import {updateDayNight} from './daynight.js';
 import {updateClub} from './club.js';
+import {recordBest} from './leaderboard.js';
 import {updateDoors} from './doors.js';
 import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
 
@@ -101,6 +102,7 @@ function step(dt){
   updateCamera(dt);
   updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
   updateHUD(dt);
+  recordBest(state.money); // acompanha o maior dinheiro pro ranking global
   updateAudio();
   drawMinimap();
 

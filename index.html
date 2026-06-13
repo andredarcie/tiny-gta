@@ -112,21 +112,24 @@
 
 <div id="title">
   <div id="logo">Tiny<small>GTA</small></div>
-  <div id="controls">
-    <span><b>W A S D</b></span><span>drive / walk</span>
-    <span><b>MOUSE</b></span><span>look around</span>
-    <span><b>LEFT CLICK</b></span><span>shoot weapon</span>
-    <span><b>SHIFT</b></span><span>run on foot</span>
-    <span><b>SPACE</b></span><span>handbrake</span>
-    <span><b>E</b></span><span>interact / enter car</span>
-    <span><b>H</b></span><span>horn</span>
-    <span><b>TAB</b></span><span>change station</span>
-    <span><b>P</b></span><span>pause</span>
+  <div id="leaderboard">
+    <div class="lb-head">TOP PLAYERS</div>
+    <ol id="lb-list"><li class="lb-empty">Loading…</li></ol>
+    <div class="lb-prize">The player ranked <b>#1</b> at the end of the month gets a <b>statue</b> built in their honor in the city.</div>
   </div>
-  <div id="play">CLICK TO PLAY</div>
+  <button id="play" type="button">CLICK TO PLAY</button>
   <div id="best"></div>
   <div id="credit">TALK TO DIEGO PENHA ◆ EVADE THE POLICE ◆ DO NOT GET BUSTED</div>
   <div id="buildver" style="margin-top:8px;font:600 11px 'IBM Plex Mono',monospace;opacity:.55">BUILD 64</div>
+</div>
+
+<div id="nickmodal" aria-hidden="true">
+  <div class="nick-box">
+    <div class="nick-title">ENTER YOUR NICKNAME</div>
+    <input id="nick-input" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="YOUR NAME">
+    <div class="nick-note">This nickname will appear on the <b>global leaderboard</b> for everyone to see.</div>
+    <button id="nick-play" type="button">PLAY</button>
+  </div>
 </div>
 
 <script type="module" src="js/main.js"></script>

@@ -1,6 +1,6 @@
 import {state,input,refs} from './state.js';
 import {
-  startGameFromUserGesture,performInteract,performPauseToggle,
+  startGameFromUserGesture,requestStart,performInteract,performPauseToggle,
   performRadioSwitch,performShoot,resetInput
 } from './input.js';
 import {getInteractAction} from './hud.js';
@@ -123,13 +123,6 @@ export function setupTouchControls(){
   if(!state.mobile)return;
   input.touchActive=true;
   input.lastInput='touch';
-  const controls=$('controls');
-  if(controls)controls.innerHTML=
-    '<span><b>LEFT STICK</b></span><span>drive / walk</span>'+
-    '<span><b>RIGHT STICK</b></span><span>camera / aim</span>'+
-    '<span><b>FIRE</b></span><span>shoot weapon</span>'+
-    '<span><b>ACTION</b></span><span>interact / enter car</span>'+
-    '<span><b>BRAKE</b></span><span>handbrake in car</span>';
   const play=$('play');
   if(play)play.textContent='TAP TO PLAY';
   updateOrientationState();
@@ -181,7 +174,10 @@ export function setupTouchControls(){
     if(document.hidden)resetInput(true);
   });
 
-  $('title')?.addEventListener('pointerdown',()=>{
-    if(!state.started)startGameFromUserGesture({mobile:true});
+  // tocar pra jogar abre o modal de nickname (start acontece ao confirmar)
+  $('title')?.addEventListener('pointerdown',e=>{
+    if(state.started)return;
+    if(e.target.closest('#play'))return; // o botão PLAY já trata o clique
+    requestStart();
   },{capture:true});
 }
