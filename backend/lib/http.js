@@ -1,5 +1,9 @@
 // CORS + helpers de request. ALLOWED_ORIGINS é uma lista separada por vírgula.
-const ALLOWED = (process.env.ALLOWED_ORIGINS || '*').split(',').map(s => s.trim());
+// Cada entrada é normalizada para a ORIGEM (esquema://host) — CORS não casa por
+// path, então um path na lista é ignorado (e o navegador nunca manda path no Origin).
+const originOf = u => { try { return new URL(u).origin; } catch { return u; } };
+const ALLOWED = (process.env.ALLOWED_ORIGINS || '')
+  .split(',').map(s => s.trim()).filter(Boolean).map(originOf);
 
 // Aplica os headers de CORS e trata o preflight OPTIONS.
 // Retorna true se a resposta já foi encerrada (preflight) — o handler deve sair.

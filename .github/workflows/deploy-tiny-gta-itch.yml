@@ -1,4 +1,4 @@
-name: Deploy tiny-gta to itch.io
+name: Deploy tiny-theft-auto (itch.io + GitHub Pages)
 
 on:
   push:
@@ -6,8 +6,18 @@ on:
       - main
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# não roda dois deploys de Pages ao mesmo tempo
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
 jobs:
-  deploy-itch:
+  build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -25,6 +35,29 @@ jobs:
       - name: Build (Vite)
         run: npm run build
 
+      # artefato pro job do itch (dist cru)
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      # artefato pro GitHub Pages (formato próprio do Pages)
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy-itch:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
       - name: Install butler
         run: |
           curl --fail --location --retry 5 --retry-delay 2 --retry-all-errors -o butler.zip https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default
@@ -35,3 +68,14 @@ jobs:
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: ./butler push ./dist andredarcie/tiny-theft-auto:html5
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
