@@ -21,6 +21,10 @@ const urlTod=parseFloat(new URLSearchParams(location.search).get('tod'));
 let tod=isNaN(urlTod)?.55:((urlTod%1)+1)%1;
 export const getTod=()=>tod;
 export const setTod=v=>{tod=((v%1)+1)%1;};
+// Contador de dias: sobe toda vez que o relógio cruza a meia-noite. Usado pela
+// academia (js/gym.js) pra liberar o treino só uma vez por dia.
+let dayCount=0;
+export const getDay=()=>dayCount;
 
 // Keyframes do ciclo. sky = 5 paradas do gradiente (zênite -> horizonte).
 // sun = cor da luz direcional (vira luar à noite), win = brilho das janelas dos prédios.
@@ -112,7 +116,11 @@ const _fwd=new THREE.Vector3();
 let twinkleT=0;
 export function updateDayNight(dt){
   // em cut-scene o tempo para (story.js força meio-dia ao entrar na cena)
-  if(!state.cine)tod=(tod+dt*(tod<.24||tod>.76?NIGHT_MULT:DAY_MULT)/DAY_LEN)%1;
+  if(!state.cine){
+    const before=tod;
+    tod=(tod+dt*(tod<.24||tod>.76?NIGHT_MULT:DAY_MULT)/DAY_LEN)%1;
+    if(tod<before)dayCount++; // cruzou a meia-noite: novo dia
+  }
   twinkleT+=dt;
   sampleKeyframes();
   drawSky();

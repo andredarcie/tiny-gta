@@ -1,7 +1,7 @@
 import {state} from './state.js';
 import {camera,scene} from './engine.js';
 import {player,playerPos,cameraRig} from './player.js';
-import {clubNear,clubInteract} from './club.js';
+import {nearestDoor} from './interior.js';
 import {buildingDoors} from '../assets/models/city/building.js';
 import {makeDoorArrow,arrowBob} from '../assets/models/city/door-arrow.js';
 import {makeMoneyDrop} from '../assets/models/missions/money-drop.js';
@@ -64,8 +64,9 @@ function trigger(){
     return Math.hypot(pp.x-r.topX,pp.z-r.topZ)<1.4?{kind:'down',d:r}:null;
   }
   if(pp.y>1.5)return null; // caindo/voando não conta como encostar na porta
-  if(clubNear())return{kind:'club'};
-  if(state.inClub)return null;
+  const it=nearestDoor();
+  if(it)return{kind:'interior',it};
+  if(state.interior)return null; // dentro de um interior, sem porta perto: nada de portas de prédio
   for(const d of buildingDoors)
     if(Math.hypot(pp.x-d.x,pp.z-d.z)<1.5)return{kind:'up',d};
   return null;
@@ -87,7 +88,7 @@ export function updateDoors(){
   if(!t){latch=false;return;}
   if(latch)return;
   latch=true;
-  if(t.kind==='club'){clubInteract();return;}
+  if(t.kind==='interior'){t.it.doorInteract();return;}
   const d=t.d;
   if(t.kind==='up'){ // porta do prédio: sobe pro telhado
     state.onRoof=d;

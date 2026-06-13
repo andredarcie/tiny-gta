@@ -4,7 +4,8 @@ export const state={
   hasGun:false,weaponHeld:false,ammo:0,maxAmmo:0,
   crosshairKick:0,crosshairTarget:false,
   mobile:false,orientationBlocked:false,controlsLocked:false,
-  inClub:false,
+  interior:null, // ambiente interno ativo (instância de Interior) ou null — ver js/interior.js
+  armScale:1,armTarget:1,gymDay:-1, // academia: tamanho do braço, alvo e dia do último treino
   viewerOpen:false, // galeria de objetos (tecla I) aberta
   onRoof:null // registro da porta do prédio em cujo telhado o jogador está
 };

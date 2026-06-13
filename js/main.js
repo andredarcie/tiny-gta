@@ -17,7 +17,9 @@ import {setupInput,updateKeyboardInput,performShoot} from './input.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
 import {canPickWeapon,updateWeapons,isWeaponHeld,confiscateWeapon} from './weapons.js';
 import {updateDayNight} from './daynight.js';
-import {updateClub} from './club.js';
+import {updateInteriors} from './interior.js';
+import './club.js'; // efeito de registro: instancia a boate em interiors[]
+import {gymTrainState} from './gym.js';
 import {recordBest} from './leaderboard.js';
 import {updateDoors} from './doors.js';
 import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
@@ -45,6 +47,7 @@ refs.nearestCar=nearestCar;
 refs.canPickWeapon=canPickWeapon;
 refs.isWeaponHeld=isWeaponHeld;
 refs.confiscateWeapon=confiscateWeapon;
+refs.gymTrainState=gymTrainState; // HUD mostra o botão TRAIN dentro da academia
 
 // First delivery spawned here, after refs are set (spawnDelivery needs playerPos)
 spawnDelivery();
@@ -92,8 +95,8 @@ function step(dt){
   updatePickups(dt);
   updateTaxi(dt);
   updateWeapons(dt);
-  updateClub(dt);
-  updateDoors(); // portas por toque: boate e telhados dos prédios
+  updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
+  updateDoors(); // portas por toque: interiores e telhados dos prédios
   if(input.shootHeld)performShoot();
 
   if(cur)blinkBar(cur.g);

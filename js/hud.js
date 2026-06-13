@@ -43,6 +43,10 @@ export function getInteractAction(){
   if(state.paused||state.mode==='cut'||state.orientationBlocked)return{label:'...',prompt:'',enabled:false};
   if(refs.canPickWeapon?.())return{label:'PICK',prompt:'PICK UP WEAPON',enabled:true};
   if(state.mode==='foot'){
+    const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
+    if(gym)return gym;
+  }
+  if(state.mode==='foot'){
     const sn=refs.storyNear?.();
     if(sn)return{label:'TALK',prompt:'TALK TO '+sn,enabled:true};
   }
