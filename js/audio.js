@@ -90,6 +90,27 @@ export function gunshot(vol=1){
   o.connect(og).connect(shotBus);o.start(t0);o.stop(t0+.2);
 }
 
+// Sirene de largada da corrida: três "whoops" subindo, estilo buzina de
+// largada de prova. Tocada na contagem regressiva (ver js/race.js).
+export function raceSiren(){
+  if(!AC)return;
+  const t0=AC.currentTime;
+  const o=AC.createOscillator();o.type='sawtooth';
+  const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=1200;f.Q.value=3;
+  const g=AC.createGain();g.gain.value=0;
+  o.connect(f).connect(g).connect(master);
+  let t=t0;
+  for(let i=0;i<3;i++){
+    o.frequency.setValueAtTime(520,t);
+    o.frequency.linearRampToValueAtTime(1040,t+.34);
+    g.gain.setValueAtTime(.0001,t);
+    g.gain.linearRampToValueAtTime(.2,t+.05);
+    g.gain.exponentialRampToValueAtTime(.001,t+.4);
+    t+=.45;
+  }
+  o.start(t0);o.stop(t+.1);
+}
+
 export function blip(freqs,dur=.09,type='sine',vol=.18){
   if(!AC)return;
   freqs.forEach((fr,k)=>{

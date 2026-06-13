@@ -160,6 +160,8 @@ function completeEnter(f){
   else player.g.position.set(-.38,-.52,-.15); // sentado no banco do motorista
   player.g.rotation.set(0,0,0);
   setDrivePose(true);
+  // entrou no carro: câmera já posicionada atrás dele (não nasce de lado/torta)
+  cameraRig.yaw=cur.heading;cameraRig.touchLookIdle=1;
   hudCar.textContent=cur.name;hudCar.style.display='block';
   blip([330,440],0.07,'triangle',.12);
   if(refs.getOverkillState?.()?.active)radioOff();
@@ -557,10 +559,17 @@ export function updateCamera(dt){
     cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
     cameraRig.touchLookIdle=0;
   }else cameraRig.touchLookIdle+=dt;
-  const canRecentre=!document.pointerLockElement&&!input.touchActive;
-  if(canRecentre){
+  // Auto-follow atrás do carro: assim que o jogador para de mexer a câmera por um
+  // instante, ela volta suavemente pra trás do carro (mesmo com pointer-lock do
+  // mouse), pra não precisar reajustar o tempo todo dirigindo. A pé continua como
+  // antes (só recentra quando não há pointer-lock nem toque ativo).
+  const idle=cameraRig.touchLookIdle>.45;
+  const autoFollow=state.mode==='car'
+    ?idle
+    :(!document.pointerLockElement&&!input.touchActive);
+  if(autoFollow){
     const diff=THREE.MathUtils.euclideanModulo(heading-cameraRig.yaw+Math.PI,Math.PI*2)-Math.PI;
-    cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?1.6:.7));
+    cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:.7));
   }
   cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
   const forward=new THREE.Vector3(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));

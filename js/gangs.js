@@ -49,6 +49,14 @@ for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;}
 
 export const gangPeds=[];
 
+// Durante a corrida de rua as gangues somem (ficam invisíveis e congeladas) e
+// voltam quando a prova termina — ver js/race.js. Não destrói ninguém: só pausa.
+let gangsHidden=false;
+export function setGangsHidden(h){
+  gangsHidden=h;
+  for(const m of gangPeds)m.g.visible=!h;
+}
+
 function spawnMember(gang){
   const pp=playerPos();
   let x=gang.x,z=gang.z;
@@ -114,6 +122,7 @@ function memberShoot(m,pp,dist){
 }
 
 export function updateGangs(dt){
+  if(gangsHidden)return; // corrida de rua em andamento: gangues pausadas/escondidas
   const pp=playerPos();
   const c=refs.getCur?.();
   const danger=state.mode==='car'&&c&&Math.abs(c.speed)>6;

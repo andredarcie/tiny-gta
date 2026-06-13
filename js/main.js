@@ -6,11 +6,12 @@ import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
 import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted} from './player.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
-import {updateGangs,gangs,spawnInitialGangs} from './gangs.js';
+import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
 import {updateBeach} from './world.js';
 import {cops,heli,updateCops,updateHeli} from './police.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
 import {updateTaxi} from './taxi.js';
+import {updateRace} from './race.js';
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {blinkBar} from './entities.js';
 import {setupInput,updateKeyboardInput,performShoot} from './input.js';
@@ -40,6 +41,7 @@ refs.spawnTraffic=spawnTraffic;
 refs.ejectDriver=ejectDriver;
 refs.addBloodPuddle=addBloodPuddle; // morte do jogador deixa poça igual NPC
 refs.gangs=gangs; // hud desenha os territórios no minimapa via refs
+refs.setGangsHidden=setGangsHidden; // corrida de rua esconde/restaura as gangues
 refs.getDelivery=()=>delivery;
 refs.storyNear=storyNear;
 refs.storyBlips=storyBlips;
@@ -106,6 +108,7 @@ function step(dt){
   updateHeli(dt);
   updatePickups(dt);
   updateTaxi(dt);
+  updateRace(dt);
   updateWeapons(dt);
   updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
   updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
@@ -156,6 +159,7 @@ window.render_game_to_text=()=>{
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,
     taxi:refs.getTaxiState?.()||null,
+    race:refs.getRaceState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     storyBlips:refs.storyBlips?.()||[],

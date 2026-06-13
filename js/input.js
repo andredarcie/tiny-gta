@@ -1,4 +1,4 @@
-import {state,keys,input} from './state.js';
+import {state,keys,input,refs} from './state.js';
 import {initAudio,AC} from './audio.js';
 import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
@@ -85,8 +85,9 @@ export function performInteract(){
     if(startOverkill())return; // liga o modo overkill (perto do totem)
     if(storyInteract())return;
     enterCar();
-  }else if(state.mode==='car'&&Math.abs(cur?.speed||0)<6){
-    exitCar();
+  }else if(state.mode==='car'){
+    if(refs.startRaceInteract?.())return; // largar corrida no pórtico tem prioridade
+    if(Math.abs(cur?.speed||0)<6)exitCar();
   }
 }
 
@@ -148,6 +149,7 @@ export function setupInput(){
     cameraRig.yaw-=e.movementX*cameraRig.sensitivity;
     cameraRig.pitch+=(cameraRig.invertY?-1:1)*e.movementY*cameraRig.sensitivity;
     cameraRig.pitch=Math.max(.18,Math.min(.82,cameraRig.pitch));
+    cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
   });
   canvas?.addEventListener('click',()=>{
     if(state.mobile||input.touchActive)return;

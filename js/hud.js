@@ -9,7 +9,8 @@ export const hudMoney=$('money'),hudClock=$('clock'),hudHealth=$('health-val'),
   hudStars=[...document.querySelectorAll('#stars .s')],
   hudCar=$('carname'),hudPrompt=$('prompt'),hudMsg=$('msg'),hudBig=$('bigtext'),
   wiconFist=$('wicon-fist'),wiconPistol=$('wicon-pistol'),hudWeaponAmmo=$('weapon-ammo'),
-  hudAmmoNow=$('ammo-now'),hudAmmoMax=$('ammo-max'),hudCrosshair=$('crosshair');
+  hudAmmoNow=$('ammo-now'),hudAmmoMax=$('ammo-max'),hudCrosshair=$('crosshair'),
+  hudSpeedo=$('speedo'),hudSpeedoVal=$('speedo-val');
 
 let shownMoney=250,msgT=0;
 
@@ -59,6 +60,7 @@ export function getInteractAction(){
       :{label:'CAR',prompt:'TAKE THE CAR',enabled:true};
   }
   if(state.mode==='car'){
+    if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
     const speed=Math.abs(refs.getCur?.()?.speed||0);
     return speed<6
       ?{label:'EXIT',prompt:'EXIT THE CAR',enabled:true}
@@ -128,6 +130,8 @@ export function drawMinimap(){
   // a seta segue para onde o jogador/veículo está virado, não a câmera
   const h=refs.getPlayerHeading?.()??cur?.heading??0;
   const th=h-Math.PI,scale=MM_R/MM_RANGE;
+  // durante a corrida o radar mostra SÓ a corrida: nenhum outro objetivo/minigame
+  const raceOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
 
   mm.clearRect(0,0,170,170);
   mm.save();
@@ -141,7 +145,7 @@ export function drawMinimap(){
   mm.drawImage(mmRural,RURAL_X0,-RURAL_HALF,RRW,RRD);
   // territórios das gangues (círculos coloridos que encolhem conforme você mata)
   const gangsArr=refs.gangs;
-  if(gangsArr)for(const g of gangsArr){
+  if(!raceOn&&gangsArr)for(const g of gangsArr){
     mm.fillStyle=g.cssA;
     mm.beginPath();mm.arc(g.x,g.z,g.r,0,Math.PI*2);mm.fill();
     mm.strokeStyle=g.css;mm.lineWidth=2/scale;mm.stroke();
@@ -154,26 +158,34 @@ export function drawMinimap(){
     const[px,py]=mmBlip(c.g.position.x,c.g.position.z,pp,scale);
     mmSquare(px,py,6,'#3e7bff');
   }
-  const delivery=refs.getDelivery?.();
-  if(delivery){
-    const[px,py]=mmBlip(delivery.x,delivery.z,pp,scale);
-    mmSquare(px,py,8,'#ffd24a');
+  // Demais objetivos/minigames ficam ESCONDIDOS durante a corrida de rua
+  if(!raceOn){
+    const delivery=refs.getDelivery?.();
+    if(delivery){
+      const[px,py]=mmBlip(delivery.x,delivery.z,pp,scale);
+      mmSquare(px,py,8,'#ffd24a');
+    }
+    const taxiT=refs.taxiTarget?.(); // corrida de táxi: passageiro ou destino
+    if(taxiT){
+      const[px,py]=mmBlip(taxiT.x,taxiT.z,pp,scale);
+      mmSquare(px,py,8,'#5eff8a');
+    }
+    // Missão da história: blip no NPC atual (letra) ou no item quando ativa;
+    // o piscar de retorno já vem resolvido de storyBlips()
+    for(const b of refs.storyBlips?.()||[]){
+      const[px,py]=mmBlip(b.x,b.z,pp,scale);
+      if(b.letter){
+        mmSquare(px,py,9,b.col);
+        mm.fillStyle='#14091f';mm.font='bold 7px monospace';
+        mm.textAlign='center';mm.textBaseline='middle';
+        mm.fillText(b.letter,px,py+.5);
+      }else mmSquare(px,py,8,b.col);
+    }
   }
-  const taxiT=refs.taxiTarget?.(); // corrida de táxi: passageiro ou destino
-  if(taxiT){
-    const[px,py]=mmBlip(taxiT.x,taxiT.z,pp,scale);
-    mmSquare(px,py,8,'#5eff8a');
-  }
-  // Missão da história: blip no NPC atual (letra) ou no item quando ativa;
-  // o piscar de retorno já vem resolvido de storyBlips()
-  for(const b of refs.storyBlips?.()||[]){
+  // Corrida de rua: checkpoint atual (forte) + próximos (apagados) pra orientar
+  for(const b of refs.raceBlips?.()||[]){
     const[px,py]=mmBlip(b.x,b.z,pp,scale);
-    if(b.letter){
-      mmSquare(px,py,9,b.col);
-      mm.fillStyle='#14091f';mm.font='bold 7px monospace';
-      mm.textAlign='center';mm.textBaseline='middle';
-      mm.fillText(b.letter,px,py+.5);
-    }else mmSquare(px,py,8,b.col);
+    mmSquare(px,py,b.current?9:6,b.current?'#ff8a1e':'rgba(255,138,30,.55)');
   }
 
   // seta do jogador no centro, girando com a direção (mapa fixo no norte)
@@ -224,6 +236,15 @@ export function updateHUD(dt){
   }else{
     wiconFist.style.display='block';wiconPistol.style.display='none';
     hudWeaponAmmo.style.display='none';
+  }
+  // velocímetro (canto inferior direito): SÓ no modo corrida
+  if(hudSpeedo){
+    const racing=(refs.getRaceState?.()?.phase||'idle')!=='idle';
+    if(racing&&state.mode==='car'){
+      const kmh=Math.round(Math.abs(refs.getCur?.()?.speed||0)*5);
+      hudSpeedoVal.textContent=kmh;
+      hudSpeedo.style.display='flex';
+    }else hudSpeedo.style.display='none';
   }
   const aiming=state.started&&refs.isWeaponHeld?.()&&!state.paused&&!state.dlgActive&&!state.orientationBlocked;
   hudCrosshair.classList.toggle('show',aiming);
