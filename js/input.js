@@ -2,7 +2,7 @@ import {state,keys,input} from './state.js';
 import {initAudio,AC} from './audio.js';
 import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
-import {storyInteract} from './story.js';
+import {storyInteract,advanceCine} from './story.js';
 import {setMissionHUD} from './missions.js';
 import {message} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon} from './weapons.js';
@@ -152,11 +152,27 @@ export function setupInput(){
     else performShoot();
   });
 
+  // Cut-scene: clique (PC) ou toque na tela (celular) também avança o diálogo.
+  // O botão que ABRE a cena dá stopPropagation, então não vaza pra cá e não
+  // pula a primeira fala. Só roda durante a cena.
+  addEventListener('pointerdown',e=>{
+    if(state.cine){e.preventDefault();advanceCine();}
+  });
+
   addEventListener('keydown',e=>{
+    // Digitando num campo (ex.: modal de nickname): não captura atalhos globais.
+    const t=e.target;
+    if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
     if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].includes(e.code))
       e.preventDefault();
     keys[e.code]=true;
     input.lastInput='keyboard';
+    // Cut-scene: o diálogo só passa por interação. Avança com Space/Enter/E/F
+    // e nenhum outro atalho funciona enquanto a cena roda.
+    if(state.cine){
+      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();advanceCine();}
+      return;
+    }
     if(e.code==='KeyI'){toggleModelViewer();return;}
     if(e.code==='Escape'&&state.viewerOpen){closeModelViewer();return;}
     if(!state.started)return;

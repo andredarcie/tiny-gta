@@ -186,9 +186,19 @@ function makeStoryItem(item){
 // legendas estilo filme que correm sozinhas, letra a letra, com "voz" do NPC
 // ---------------------------------------------------------------------------
 const subEl=document.getElementById('cine-sub');
+const hintEl=document.getElementById('cine-hint');
 const cine={on:false,t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',
-  holdT:0,voice:null,onDone:null,side:1,npcPos:null,actor:null,
+  voice:null,onDone:null,side:1,npcPos:null,actor:null,
   shot:'wide',shotT:0,midCut:false};
+
+// Dica de "continuar": só aparece quando a fala terminou de aparecer e o jogo
+// está esperando a interação do jogador (clique/tecla no PC, toque no celular).
+function showHint(){
+  if(!hintEl)return;
+  hintEl.textContent=state.mobile?'TAP TO CONTINUE ▸':'SPACE / E ▸';
+  hintEl.classList.add('show');
+}
+function hideHint(){hintEl?.classList.remove('show');}
 
 // 3 câmeras de cinema, trocadas em corte seco a cada fala:
 // wide = plano aberto lateral; close = por cima do ombro do jogador, fechado
@@ -236,11 +246,30 @@ function nextLine(){
   cine.shot=pickShot(cine.li,cine.lines.length);
   cine.shotT=0;cine.midCut=false;
   subEl.textContent='';
+  hideHint();
+}
+
+// Avança a cut-scene SÓ por interação do jogador (não corre sozinha):
+//  - se a fala ainda está aparecendo, a 1ª interação revela ela inteira;
+//  - se a fala já está completa, avança pra próxima (ou encerra).
+// Usado tanto no PC (tecla/clique) quanto no celular (toque). Ver input.js.
+export function advanceCine(){
+  if(!cine.on)return false;
+  if(cine.phase==='type'&&cine.shown<cine.txt.length){
+    cine.shown=cine.txt.length;
+    subEl.textContent=cine.txt;
+    cine.phase='hold';
+    showHint();
+    return true;
+  }
+  nextLine();
+  return true;
 }
 function endCutscene(){
   cine.on=false;state.cine=false;state.dlgActive=false;
   document.body.classList.remove('cine');
   subEl.textContent='';
+  hideHint();
   // braços e boca de volta ao repouso
   const l=cine.actor?.ped.userData.limbs;
   if(l){
@@ -288,13 +317,12 @@ function updateCine(dt){
     }
     subEl.textContent=cine.txt.slice(0,cine.shown);
     if(cine.shown>=cine.txt.length){
+      // terminou de aparecer: espera o jogador (não passa mais sozinho)
       cine.phase='hold';
-      cine.holdT=Math.min(4,Math.max(1.3,.5+cine.txt.length*.03));
+      showHint();
     }
-  }else{
-    cine.holdT-=dt;
-    if(cine.holdT<=0)nextLine();
   }
+  // em 'hold' a cena fica parada até advanceCine() ser chamado por interação
   setTalkPose(cine.actor,cine.t,cine.phase==='type');
 
   // fala longa ganha um corte extra no meio, como num filme
