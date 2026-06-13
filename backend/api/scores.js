@@ -43,10 +43,12 @@ async function submit(req, res) {
   if (hits === 1) await redis.expire(rlKey, C.RL_WINDOW);
   if (hits > C.RL_MAX) return res.status(429).json({error: 'rate_limited'});
 
-  // 3) sessão: precisa existir (não expirada) e é single-use
+  // 3) sessão: precisa existir (não expirada). O token continua válido durante
+  //    toda a run (não é consumido), pra permitir enviar o melhor score várias
+  //    vezes ao longo da partida. A segurança fica no teto de plausibilidade
+  //    por tempo (abaixo) + rate-limit por IP + GT (só melhora).
   const startedAtRaw = await redis.get(C.SESSION_PREFIX + token);
   if (startedAtRaw == null) return res.status(403).json({error: 'invalid_session'});
-  await redis.del(C.SESSION_PREFIX + token); // consome o token
   const seconds = (Date.now() - Number(startedAtRaw)) / 1000;
   if (seconds < C.MIN_RUN_SECONDS) return res.status(403).json({error: 'run_too_short'});
 

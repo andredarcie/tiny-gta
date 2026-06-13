@@ -6,7 +6,7 @@
 const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 
-let token = null, bestMoney = 0, submitted = false;
+let token = null, bestMoney = 0, lastSent = -1, flushTimer = null;
 let nickname = '';
 try { nickname = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
 
@@ -17,30 +17,36 @@ export function setNickname(n) {
 }
 
 export async function startSession() {
-  token = null; bestMoney = 0; submitted = false;
+  token = null; bestMoney = 0; lastSent = -1;
   try {
     const r = await fetch(API + '/api/session', { method: 'POST' });
     token = (await r.json()).token;
   } catch (e) {}
 }
 
+// Acompanha o maior dinheiro da run e agenda um envio ~3s após o último ganho.
 export function recordBest(money) {
-  if (typeof money === 'number' && money > bestMoney) bestMoney = money;
+  if (typeof money !== 'number' || money <= bestMoney) return;
+  bestMoney = money;
+  if (!flushTimer) flushTimer = setTimeout(() => { flushTimer = null; flush(); }, 3000);
 }
 
-// Enviado ao sair da aba/fechar (fim natural da sessão). keepalive garante que
-// o request sobreviva ao unload. Single-use: só o 1º envio conta.
-export function submitFinal() {
-  if (submitted || !token || !nickname || bestMoney <= 0) return;
-  submitted = true;
+// Envia o melhor score (se subiu desde o último envio). O token vale a sessão
+// toda; o servidor guarda só o melhor (GT). keepalive sobrevive ao unload.
+export function flush() {
+  if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
+  if (!token || !nickname) return;
+  const money = Math.round(bestMoney);
+  if (money <= 0 || money <= lastSent) return;
+  lastSent = money; // otimista; em erro volta pra -1 e tenta de novo depois
   try {
     fetch(API + '/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nickname, money: Math.round(bestMoney), token }),
+      body: JSON.stringify({ name: nickname, money, token }),
       keepalive: true,
-    }).catch(() => {});
-  } catch (e) {}
+    }).then(r => { if (!r.ok) lastSent = -1; }).catch(() => { lastSent = -1; });
+  } catch (e) { lastSent = -1; }
 }
 
 const escapeHtml = s => String(s).replace(/[&<>"']/g,
@@ -65,6 +71,6 @@ export async function refreshTopPlayers() {
   ).join('');
 }
 
-// fim da sessão: manda o melhor score ao esconder/fechar a aba
-addEventListener('visibilitychange', () => { if (document.hidden) submitFinal(); });
-addEventListener('pagehide', submitFinal);
+// reforço: manda o melhor score ao esconder/fechar a aba
+addEventListener('visibilitychange', () => { if (document.hidden) flush(); });
+addEventListener('pagehide', flush);
