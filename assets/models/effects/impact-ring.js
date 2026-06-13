@@ -6,3 +6,6 @@ export function makeImpactRing(radius,color){
   ring.rotation.x=Math.PI/2;
   return ring;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Effects',label:'Impact ring',build:o=>makeImpactRing(o.radius??1,o.color??0x19e3ff)};

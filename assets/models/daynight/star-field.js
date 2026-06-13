@@ -18,3 +18,6 @@ export function makeStarField(){
     transparent:true,opacity:0,fog:false,depthWrite:false});
   return{points:new THREE.Points(geo,material),material};
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Daynight',label:'Star field',build:()=>makeStarField()};

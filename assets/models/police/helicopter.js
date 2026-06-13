@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {scene} from '../../../js/engine.js';
 
-export function makeHeli(){
+function buildHeli(opts={}){
   const g=new THREE.Group();
   const bodyM=new THREE.MeshStandardMaterial({color:0x2b3a6e,roughness:.4,metalness:.3});
   const body=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.3,3.6),bodyM);
@@ -18,7 +18,14 @@ export function makeHeli(){
   }
   const spot=new THREE.SpotLight(0xfff8d0,2600,90,.32,.5,1.8);
   spot.position.set(0,-.6,0);g.add(spot);
-  scene.add(spot.target);g.userData.spot=spot;
-  scene.add(g);
+  g.userData.spot=spot;
   return g;
+}
+
+// Padrão de modelo: build() puro; descriptor pro model-viewer.
+export default {category:'Police',label:'Helicopter',build:buildHeli};
+
+// Compat: gameplay usa makeHeli() e espera o heli (e o alvo do holofote) na cena.
+export function makeHeli(){
+  const g=buildHeli();scene.add(g.userData.spot.target);scene.add(g);return g;
 }

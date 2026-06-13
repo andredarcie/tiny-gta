@@ -11,3 +11,6 @@ export function makeGangGun(){
   gun.position.set(0,-.62,.14);
   return gun;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Weapons',label:'Gang gun',build:()=>makeGangGun()};

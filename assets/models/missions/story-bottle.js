@@ -8,3 +8,6 @@ export function makeStoryBottle(color){
   neck.position.y=.38;g.add(body,neck);
   return g;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Missions',label:'Story bottle',build:o=>makeStoryBottle(o.color??0x19e3ff)};

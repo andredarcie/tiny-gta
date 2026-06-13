@@ -22,3 +22,13 @@ export function makeClouds(count=10){
   }
   return clouds;
 }
+
+// Padrão de modelo: no jogo as nuvens são espalhadas pelo céu (makeClouds), mas
+// no preview agrupamos algumas perto da origem pra enquadrar bem.
+function buildPreview(){
+  const g=new THREE.Group();
+  const sprs=makeClouds(5);
+  sprs.forEach((sp,i)=>{sp.position.set((i-2)*60,rand(-10,10),rand(-30,30));g.add(sp);});
+  return g;
+}
+export default {category:'Environment',label:'Clouds',build:buildPreview};

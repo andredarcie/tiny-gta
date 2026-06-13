@@ -9,3 +9,6 @@ export function makeStoryUsb(color){
   plug.position.x=.34;g.add(body,plug);
   return g;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Missions',label:'Story USB',build:o=>makeStoryUsb(o.color??0xffd24a)};

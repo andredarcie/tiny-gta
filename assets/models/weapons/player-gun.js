@@ -32,3 +32,6 @@ export function makeGunModel({pickup=false}={}){
   g.add(muzzlePoint);
   return g;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Weapons',label:'Pistol',build:()=>makeGunModel()};

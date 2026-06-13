@@ -25,12 +25,23 @@ const poleM=new THREE.MeshStandardMaterial({color:0x7d7787,roughness:.8});
 const bulbG=new THREE.SphereGeometry(.22,8,6);
 const glowG=new THREE.PlaneGeometry(9,9);
 
+// build() puro: poste + lampada num grupo na origem (para o model-viewer). O
+// addStreetLamp mantem o caminho otimizado (meshes fundidos + halo individual).
+function build(){
+  const g=new THREE.Group();
+  const p=new THREE.Mesh(poleG,poleM);p.position.y=2.7;p.castShadow=true;g.add(p);
+  const b=new THREE.Mesh(bulbG,lampBulbMat);b.position.y=5.5;g.add(b);
+  return g;
+}
+
+export default {category:'Props',label:'Street lamp',build};
+
 export function addStreetLamp(px,pz){
   const p=new THREE.Mesh(poleG,poleM);p.position.set(px,2.7,pz);p.castShadow=true;bakeProp(p);
   const b=new THREE.Mesh(bulbG,lampBulbMat);b.position.set(px,5.5,pz);bakeProp(b);
   const gl=new THREE.Mesh(glowG,lampGlowMat);
   gl.rotation.x=-Math.PI/2;gl.position.set(px,.07,pz);gl.renderOrder=2;bakeProp(gl);
-  // halo é Sprite (não funde): fica individual, invisível de dia via material
+  // halo e Sprite (nao funde): fica individual, invisivel de dia via material
   const h=new THREE.Sprite(lampHaloMat);
   h.position.set(px,5.5,pz);h.scale.set(2.6,2.6,1);scene.add(h);
   return{halo:h};

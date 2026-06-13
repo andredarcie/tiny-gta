@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import {scene} from '../../../js/engine.js';
 
-export function makePlane(){
+// Padrão dos modelos: default export com {category,label,build}. build(opts) é
+// PURO — cria e devolve um Object3D novo, sem scene.add. O model-viewer descobre
+// todos os modelos por import.meta.glob e usa esse descriptor automaticamente.
+function build(opts={}){
   const g=new THREE.Group();
   const bodyM=new THREE.MeshStandardMaterial({color:0xe84545,roughness:.5,metalness:.25});
   const trimM=new THREE.MeshStandardMaterial({color:0xf2ead6,roughness:.6});
@@ -31,6 +34,10 @@ export function makePlane(){
     const strut=new THREE.Mesh(new THREE.BoxGeometry(.09,.62,.09),darkM);
     strut.position.set(wx,.55,wz);g.add(strut);
   }
-  scene.add(g);
   return g;
 }
+
+export default {category:'Aircraft',label:'Plane',build};
+
+// Compat: gameplay ainda usa makePlane() (adiciona à cena como antes).
+export const makePlane=()=>{const g=build();scene.add(g);return g;};

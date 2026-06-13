@@ -18,3 +18,6 @@ export function makeHorizonGlow(){
   const sprite=new THREE.Sprite(mat);sprite.scale.set(880,440,1);
   return{sprite,material:mat};
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Daynight',label:'Horizon glow',build:()=>makeHorizonGlow()};

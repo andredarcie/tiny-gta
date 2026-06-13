@@ -6,38 +6,55 @@ import {state} from './state.js';
 // girando. As fábricas que fazem scene.add() no mundo são "reparentadas": ao
 // adicionar o objeto ao pivot daqui, o THREE o remove da cena do jogo sozinho.
 
-// Cada entrada importa o módulo sob demanda e devolve um Object3D pronto pra ver.
-// `cat` é a pasta dentro de assets/models (vira a categoria do 1º combobox).
-// Cores escolhidas pra combinar com a paleta neon do jogo.
-const PINK=0xff2e88,CYAN=0x19e3ff,GOLD=0xffd24a;
-const REGISTRY=[
-  {cat:'Vehicles',  label:'Car — player (pink)',  load:async()=>(await import('../assets/models/vehicles/car.js')).makeCar(PINK,false)},
-  {cat:'Vehicles',  label:'Car — police',         load:async()=>(await import('../assets/models/vehicles/car.js')).makeCar(0x1b2b4a,true)},
-  {cat:'Aircraft',  label:'Plane',                load:async()=>(await import('../assets/models/aircraft/plane.js')).makePlane()},
-  {cat:'Police',    label:'Helicopter',           load:async()=>(await import('../assets/models/police/helicopter.js')).makeHeli()},
-  {cat:'Characters',label:'Pedestrian',           load:async()=>{const m=await import('../assets/models/characters/pedestrian.js');return m.makePed(m.shirtColors[0],0x3a3f4a);}},
-  {cat:'Weapons',   label:'Pistol',               load:async()=>(await import('../assets/models/weapons/player-gun.js')).makeGunModel()},
-  {cat:'Weapons',   label:'Bazooka',              load:async()=>(await import('../assets/models/weapons/bazooka.js')).makeBazookaModel()},
-  {cat:'Weapons',   label:'Missile',              load:async()=>(await import('../assets/models/weapons/bazooka.js')).makeMissileModel()},
-  {cat:'Weapons',   label:'Gang gun',             load:async()=>(await import('../assets/models/weapons/gang-gun.js')).makeGangGun()},
-  {cat:'Missions',  label:'Money drop',           load:async()=>(await import('../assets/models/missions/money-drop.js')).makeMoneyDrop()},
-  {cat:'Missions',  label:'Story arrow',          load:async()=>(await import('../assets/models/missions/story-arrow.js')).makeStoryArrow().arrow},
-  {cat:'Missions',  label:'Story marker',         load:async()=>(await import('../assets/models/missions/story-marker.js')).makeStoryMarker(GOLD).marker},
-  {cat:'Missions',  label:'Story beacon',         load:async()=>(await import('../assets/models/missions/story-beacon.js')).makeStoryBeacon(CYAN)},
-  {cat:'Missions',  label:'Story bottle',         load:async()=>(await import('../assets/models/missions/story-bottle.js')).makeStoryBottle(CYAN)},
-  {cat:'Missions',  label:'Story box',            load:async()=>(await import('../assets/models/missions/story-box.js')).makeStoryBox(GOLD)},
-  {cat:'Missions',  label:'Story gem',            load:async()=>(await import('../assets/models/missions/story-gem.js')).makeStoryGem(CYAN)},
-  {cat:'Missions',  label:'Story USB',            load:async()=>(await import('../assets/models/missions/story-usb.js')).makeStoryUsb(GOLD)},
-  {cat:'Missions',  label:'Delivery marker',      load:async()=>{const m=(await import('../assets/models/missions/delivery-marker.js')).makeDeliveryMarker(CYAN);const g=new THREE.Group();g.add(m.ring,m.beacon);return g;}},
-  {cat:'City',      label:'Door arrow',           load:async()=>(await import('../assets/models/city/door-arrow.js')).makeDoorArrow()},
-  {cat:'Effects',   label:'Bullet',               load:async()=>(await import('../assets/models/effects/bullet.js')).makeBulletModel()},
-  {cat:'Effects',   label:'Explosion',            load:async()=>(await import('../assets/models/effects/explosion.js')).makeExplosionModel()},
-  {cat:'Effects',   label:'Blood puddle',         load:async()=>(await import('../assets/models/effects/blood-puddle.js')).makeBloodPuddle()},
-  {cat:'Effects',   label:'Impact ring',          load:async()=>(await import('../assets/models/effects/impact-ring.js')).makeImpactRing(1,CYAN)},
-];
+// Descoberta automática: cada arquivo em assets/models que tiver um default
+// export {category,label,build} entra no modal sozinho. Adicionar um modelo novo
+// no jogo (seguindo o padrão) faz ele aparecer aqui sem editar este arquivo.
+// import.meta.glob é resolvido pelo Vite em build-time; os módulos são lazy
+// (só carregam quando o modal é aberto pela 1ª vez).
+const MODEL_LOADERS=import.meta.glob('../assets/models/**/*.js');
 
-// Categorias na ordem em que aparecem no registro
-const CATEGORIES=[...new Set(REGISTRY.map(m=>m.cat))];
+// Categoria amigável derivada da pasta (fallback quando o descriptor não define).
+const TITLE=s=>s.replace(/(^|[-_/])(\w)/g,(_,sep,c)=>(sep==='-'||sep==='_'?' ':'')+c.toUpperCase()).trim();
+const folderOf=path=>path.split('/assets/models/')[1].split('/')[0];
+
+let REGISTRY=[];     // preenchido em discover() na 1ª abertura
+let CATEGORIES=[];
+let discovered=false;
+
+// Normaliza o que build() devolve para um Object3D (algumas fábricas retornam
+// um dicionário de partes, ex.: {ring,beacon} ou {arrow}).
+function toObject3D(out){
+  if(!out)return null;
+  if(out.isObject3D)return out;
+  const g=new THREE.Group();
+  for(const v of Object.values(out))if(v&&v.isObject3D)g.add(v);
+  return g.children.length?g:null;
+}
+
+async function discover(){
+  if(discovered)return;
+  const entries=[];
+  for(const [path,loader] of Object.entries(MODEL_LOADERS)){
+    let mod;
+    try{mod=await loader();}catch(e){continue;}
+    const d=mod.default;
+    if(!d||(typeof d.build!=='function'&&!Array.isArray(d.variants)))continue;
+    const cat=d.category||TITLE(folderOf(path));
+    // Um arquivo pode expor vários looks via variants:[{label,opts?,build?}]
+    const variants=Array.isArray(d.variants)?d.variants:[{label:d.label,build:d.build}];
+    for(const v of variants){
+      const build=v.build||d.build;
+      if(typeof build!=='function')continue;
+      entries.push({cat,label:v.label||d.label||TITLE(path.split('/').pop().replace(/\.js$/,'')),
+        load:async()=>toObject3D(build(v.opts||{}))});
+    }
+  }
+  // ordena por categoria e depois por label, mantendo estável e previsível
+  entries.sort((a,b)=>a.cat.localeCompare(b.cat)||a.label.localeCompare(b.label));
+  REGISTRY=entries;
+  CATEGORIES=[...new Set(entries.map(m=>m.cat))];
+  discovered=true;
+}
 
 let renderer,vscene,vcamera,pivot,holder,current,raf,ready=false;
 let prevPaused=false;
@@ -69,14 +86,8 @@ function build(){
   pivot.add(holder);
   vscene.add(pivot);
 
-  // 1º combobox: categorias (uma por pasta de assets/models)
-  const catSel=el('mv-cat');
-  catSel.innerHTML='';
-  CATEGORIES.forEach(c=>{
-    const o=document.createElement('option');
-    o.value=c;o.textContent=c;catSel.appendChild(o);
-  });
-  catSel.addEventListener('change',()=>fillObjects(catSel.value));
+  // 1º combobox: categorias (preenchido em fillCategories após discover())
+  el('mv-cat').addEventListener('change',e=>fillObjects(e.target.value));
 
   // 2º combobox: objetos da categoria escolhida
   el('mv-select').addEventListener('change',e=>select(+e.target.value));
@@ -86,7 +97,35 @@ function build(){
     if(e.target===el('modelviewer'))close(); // clique fora da caixa fecha
   });
 
+  // Arrastar pra girar: yaw livre, pitch limitado (não desvira o objeto)
+  let dragging=false,lx=0,ly=0;
+  const cv=el('mv-canvas');
+  cv.style.touchAction='none'; // pointermove sem o navegador rolar/zoom no toque
+  cv.addEventListener('pointerdown',e=>{
+    dragging=true;lx=e.clientX;ly=e.clientY;
+    cv.setPointerCapture?.(e.pointerId);
+  });
+  cv.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    pivot.rotation.y+=(e.clientX-lx)*.01;
+    pivot.rotation.x=Math.max(-1.2,Math.min(1.2,pivot.rotation.x+(e.clientY-ly)*.01));
+    lx=e.clientX;ly=e.clientY;
+  });
+  const endDrag=e=>{dragging=false;cv.releasePointerCapture?.(e.pointerId);};
+  cv.addEventListener('pointerup',endDrag);
+  cv.addEventListener('pointercancel',endDrag);
+
   ready=true;
+}
+
+// Preenche o 1º combobox com as categorias descobertas
+function fillCategories(){
+  const catSel=el('mv-cat');
+  catSel.innerHTML='';
+  CATEGORIES.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c;o.textContent=c;catSel.appendChild(o);
+  });
 }
 
 // Preenche o combobox de objetos com os itens da categoria e seleciona o 1º
@@ -121,11 +160,21 @@ async function select(i){
   }
   obj.position.set(0,0,0);
   obj.rotation.set(0,0,0);
+  holder.position.set(0,0,0); // zera ANTES de medir, senão herda o offset do modelo anterior
   holder.add(obj);
   current=obj;
 
+  // Alguns modelos (sprites do ciclo dia/noite) nascem com opacity 0 e fazem
+  // fade no jogo — no preview, revela o que está totalmente invisível.
+  obj.traverse(o=>{
+    const mats=o.material?(Array.isArray(o.material)?o.material:[o.material]):[];
+    for(const m of mats)if(m&&m.transparent&&m.opacity===0){m.opacity=1;m.needsUpdate=true;}
+  });
+
   // centraliza e enquadra pela esfera envolvente
-  const box=new THREE.Box3().setFromObject(holder);
+  holder.updateWorldMatrix(true,true);
+  const box=measureBox(holder);
+  if(box.isEmpty())return; // nada mensurável (não deveria acontecer)
   const center=box.getCenter(new THREE.Vector3());
   holder.position.set(-center.x,-center.y,-center.z);
   const sphere=box.getBoundingSphere(new THREE.Sphere());
@@ -135,7 +184,24 @@ async function select(i){
   vcamera.near=Math.max(dist/100,.01);vcamera.far=dist*10;
   vcamera.lookAt(0,0,0);
   vcamera.updateProjectionMatrix();
-  pivot.rotation.y=0; // objeto fixo, sem girar, centralizado
+  pivot.rotation.set(0,0,0); // novo modelo começa de frente; drag gira a partir daqui
+}
+
+// Box3.setFromObject ignora Sprites (não têm geometria), então um modelo só de
+// sprite (sol, lua, glow) daria box vazia e enquadramento NaN. Aqui medimos
+// meshes/points normalmente e expandimos a box pelos sprites (posição ± escala).
+function measureBox(root){
+  const box=new THREE.Box3().setFromObject(root);
+  const p=new THREE.Vector3(),s=new THREE.Vector3();
+  root.traverse(o=>{
+    if(!o.isSprite)return;
+    o.updateWorldMatrix(true,false);
+    p.setFromMatrixPosition(o.matrixWorld);
+    s.setFromMatrixScale(o.matrixWorld);
+    box.expandByPoint(p.clone().add(new THREE.Vector3(s.x/2,s.y/2,0)));
+    box.expandByPoint(p.clone().add(new THREE.Vector3(-s.x/2,-s.y/2,0)));
+  });
+  return box;
 }
 
 function loop(){
@@ -143,9 +209,12 @@ function loop(){
   renderer.render(vscene,vcamera);
 }
 
-export function openModelViewer(){
+export async function openModelViewer(){
   if(state.viewerOpen)return;
   if(!ready)build();
+  await discover();          // descobre os modelos na 1ª abertura (lazy)
+  if(state.viewerOpen)return; // reentrância: abriu/fechou enquanto descobria
+  fillCategories();
   state.viewerOpen=true;
   prevPaused=state.paused;
   state.paused=true; // congela o jogo por baixo sem mostrar o overlay PAUSED

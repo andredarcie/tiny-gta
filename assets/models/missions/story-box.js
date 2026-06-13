@@ -4,3 +4,6 @@ export function makeStoryBox(color){
   return new THREE.Mesh(new THREE.BoxGeometry(.62,.42,.42),
     new THREE.MeshBasicMaterial({color}));
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Missions',label:'Story box',build:o=>makeStoryBox(o.color??0xffd24a)};

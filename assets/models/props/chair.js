@@ -12,7 +12,8 @@ const seatFor=c=>{if(!seatMats.has(c))seatMats.set(c,
   new THREE.MeshStandardMaterial({color:c,roughness:.9}));
   return seatMats.get(c);};
 
-export function addChair(x0,z0){
+// build() puro: a cadeira na origem (com giro aleatorio). addChair posiciona/funde.
+function build(){
   const m=seatFor(pick(umbCols));
   const g=new THREE.Group();
   const seat=new THREE.Mesh(new THREE.BoxGeometry(.72,.08,1.15),m);
@@ -23,6 +24,14 @@ export function addChair(x0,z0){
     const leg=new THREE.Mesh(new THREE.BoxGeometry(.07,.3,.07),legM);
     leg.position.set(lx,.15,lz);g.add(leg);
   }
-  g.rotation.y=rand(0,6.28);g.position.set(x0,-.06,z0);bakeProp(g);
+  g.rotation.y=rand(0,6.28);
+  return g;
+}
+
+export default {category:'Props',label:'Beach chair',build};
+
+export function addChair(x0,z0){
+  const g=build();
+  g.position.set(x0,-.06,z0);bakeProp(g);
   return g;
 }

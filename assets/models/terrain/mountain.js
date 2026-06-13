@@ -29,3 +29,6 @@ export function makeMountain(size,segments){
   m.castShadow=true;m.receiveShadow=true;
   return m;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Terrain',label:'Mountain',build:o=>makeMountain(o.size??60,o.segments??12)};

@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import {bakeProp} from './prop-merge.js';
 
-// Materiais no módulo (compartilhados pelas 3 torres) para a fusão de props
+// Materiais no modulo (compartilhados pelas 3 torres) para a fusao de props
 const woodM=new THREE.MeshStandardMaterial({color:0xc9885a,roughness:.9});
 const hutM=new THREE.MeshStandardMaterial({color:0xffd24a,roughness:.8});
 const roofM=new THREE.MeshStandardMaterial({color:0xff2e88,roughness:.8});
 
-export function addLifeguard(x0,z0,ry){
+// build() puro: a torre na origem (sem rotacao/posicao). addLifeguard coloca no mundo.
+function build(){
   const g=new THREE.Group();
   for(const[lx,lz]of[[-1,-1],[1,-1],[-1,1],[1,1]]){
     const leg=new THREE.Mesh(new THREE.BoxGeometry(.16,2.2,.16),woodM);
@@ -18,6 +19,13 @@ export function addLifeguard(x0,z0,ry){
   hut.position.y=2.95;hut.castShadow=true;g.add(hut);
   const roof=new THREE.Mesh(new THREE.ConeGeometry(1.7,.7,4),roofM);
   roof.position.y=3.95;roof.rotation.y=Math.PI/4;roof.castShadow=true;g.add(roof);
+  return g;
+}
+
+export default {category:'Props',label:'Lifeguard tower',build};
+
+export function addLifeguard(x0,z0,ry){
+  const g=build();
   g.position.set(x0,-.06,z0);g.rotation.y=ry;bakeProp(g);
   return g;
 }

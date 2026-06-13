@@ -47,3 +47,6 @@ export function updateDoorArrows(t,px,pz){
   }
   for(let i=n;i<POOL;i++)pool[i].visible=false;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'City',label:'Door arrow',build:()=>makeDoorArrow()};

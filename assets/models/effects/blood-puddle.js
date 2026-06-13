@@ -22,3 +22,6 @@ export function makeBloodPuddle(){
   }
   return puddle;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Effects',label:'Blood puddle',build:()=>makeBloodPuddle()};

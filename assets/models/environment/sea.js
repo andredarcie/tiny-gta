@@ -7,3 +7,6 @@ export function makeSea(){
   sea.position.y=-.32;
   return sea;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Environment',label:'Sea',build:()=>makeSea()};

@@ -48,3 +48,7 @@ export function makeMissileModel(){
   g.userData.flame=flame;
   return g;
 }
+
+// Padrão de modelo: 2 looks no mesmo arquivo via variants.
+export default {category:'Weapons',label:'Bazooka',build:()=>makeBazookaModel(),
+  variants:[{label:'Bazooka',build:()=>makeBazookaModel()},{label:'Missile',build:()=>makeMissileModel()}]};

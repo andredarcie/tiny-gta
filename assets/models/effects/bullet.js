@@ -12,3 +12,6 @@ export function makeBulletModel(){
   g.add(slug,core);
   return g;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Effects',label:'Bullet',build:()=>makeBulletModel()};

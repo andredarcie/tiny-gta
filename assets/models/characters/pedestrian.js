@@ -63,7 +63,7 @@ function tinted(geo,m,c){
 
 function pickOf(arr){return arr[Math.floor(Math.random()*arr.length)];}
 
-export function makePed(color,pantsColor){
+function buildPed({color=shirtColors[0],pantsColor}={}){
   const g=new THREE.Group();
   const skin=pickOf(skinColors);
   const pants=pantsColor??pickOf(pantsColors);
@@ -160,6 +160,13 @@ export function makePed(color,pantsColor){
   // fade de morte (setOpacity) mexe só nos materiais DESTE ped — a arma da
   // gangue usa material compartilhado e não pode ser afetada
   g.userData.fadeMats=[mat,mouthMat];
-  scene.add(g);
   return g;
+}
+
+// Padrão de modelo: build() puro; descriptor pro model-viewer.
+export default {category:'Characters',label:'Pedestrian',build:buildPed};
+
+// Compat: gameplay usa makePed(color,pantsColor) e espera o ped já na cena.
+export function makePed(color,pantsColor){
+  const g=buildPed({color,pantsColor});scene.add(g);return g;
 }

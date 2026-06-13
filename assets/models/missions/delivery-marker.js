@@ -9,3 +9,6 @@ export function makeDeliveryMarker(color=0x19e3ff){
       side:THREE.DoubleSide,depthWrite:false}));
   return{ring,beacon};
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Missions',label:'Delivery marker',build:o=>makeDeliveryMarker(o.color??0x19e3ff)};

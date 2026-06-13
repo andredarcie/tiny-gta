@@ -147,7 +147,7 @@ function paintFor(color){
   return paintCache.get(color);
 }
 
-export function makeCar(color,police){
+function buildCar({color=0xff2e88,police=false}={}){
   const g=new THREE.Group();
   const paint=paintFor(color);
 
@@ -214,6 +214,13 @@ export function makeCar(color,police){
     g.add(r,b);g.userData.bar=[r,b];
     g.add(new THREE.Mesh(policeStripesGeo,darkM));
   }
-  scene.add(g);
   return g;
 }
+
+// Padrão de modelo: build() puro; descriptor com 2 variações pro model-viewer.
+export default {category:'Vehicles',label:'Car',build:buildCar,
+  variants:[{label:'Car — player',opts:{color:0xff2e88}},
+            {label:'Car — police',opts:{color:0x1b2b4a,police:true}}]};
+
+// Compat: gameplay usa makeCar(color,police) e espera o carro já na cena.
+export function makeCar(color,police){const g=buildCar({color,police});scene.add(g);return g;}

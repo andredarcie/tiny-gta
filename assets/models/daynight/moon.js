@@ -20,3 +20,6 @@ export function makeMoonSprite(){
   const sprite=new THREE.Sprite(mat);sprite.scale.set(95,95,1);
   return{sprite,material:mat};
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Daynight',label:'Moon',build:()=>makeMoonSprite()};

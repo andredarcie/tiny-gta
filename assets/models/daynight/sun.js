@@ -15,3 +15,6 @@ export function makeSunSprite(){
   }),fog:false,depthWrite:false,transparent:true});
   return{sprite:new THREE.Sprite(mat),material:mat};
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Daynight',label:'Sun',build:()=>makeSunSprite()};

@@ -8,3 +8,6 @@ export function makeStoryArrow(){
   arrow.add(cone);
   return{arrow,material};
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Missions',label:'Story arrow',build:()=>makeStoryArrow()};

@@ -5,7 +5,7 @@ import {rand,pick} from '../../../js/constants.js';
 const ruralWallCols=[0xf4e3c2,0xe8d8c8,0xd9e4d0,0xf0d9b0,0xe4c9b0];
 const roofCols=[0xb05438,0x8a4a3a,0xa05a40];
 
-// Materiais cacheados por cor para a fusão de props
+// Materiais cacheados por cor para a fusao de props
 const doorM=new THREE.MeshStandardMaterial({color:0x6e4a32,roughness:.9});
 const winM=new THREE.MeshStandardMaterial({color:0x9ecbe0,roughness:.4});
 const wallMats=new Map(),roofMats=new Map();
@@ -13,7 +13,8 @@ const matFor=(map,c,rough)=>{if(!map.has(c))map.set(c,
   new THREE.MeshStandardMaterial({color:c,roughness:rough}));
   return map.get(c);};
 
-export function addFarmHouse(cx,cz,ry){
+// build() puro: a casa na origem; guarda raio/altura em userData para a colisao.
+function build(){
   const g=new THREE.Group();
   const bw=rand(4.4,5.8),bd=rand(3.6,4.6),bh=rand(2.4,2.9);
   const wall=new THREE.Mesh(new THREE.BoxGeometry(bw,bh,bd),
@@ -28,7 +29,15 @@ export function addFarmHouse(cx,cz,ry){
     const win=new THREE.Mesh(new THREE.BoxGeometry(.7,.7,.08),winM);
     win.position.set(sx*bw/3,1.5,bd/2+.04);g.add(win);
   }
+  g.userData.r=Math.max(bw,bd)/2+.3;g.userData.h=bh+1.7;
+  return g;
+}
+
+export default {category:'Props',label:'Farm house',build};
+
+export function addFarmHouse(cx,cz,ry){
+  const g=build();
   g.position.set(cx,-.02,cz);g.rotation.y=ry;bakeProp(g);
-  const r=Math.max(bw,bd)/2+.3;
-  return{x0:cx-r,x1:cx+r,z0:cz-r,z1:cz+r,h:bh+1.7};
+  const r=g.userData.r;
+  return{x0:cx-r,x1:cx+r,z0:cz-r,z1:cz+r,h:g.userData.h};
 }

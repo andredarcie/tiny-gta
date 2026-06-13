@@ -11,3 +11,6 @@ export function makeExplosionModel(){
   g.add(smoke,fire,core);
   return g;
 }
+
+// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
+export default {category:'Effects',label:'Explosion',build:()=>makeExplosionModel()};
