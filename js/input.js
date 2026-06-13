@@ -8,6 +8,7 @@ import {message} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon} from './weapons.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
 import {getNickname,setNickname,startSession,refreshTopPlayers} from './leaderboard.js';
+import {hasProfanity} from './profanity.js';
 
 const gameCanvas=()=>document.getElementById('game');
 const isBlocked=()=>state.paused||state.mode==='cut'||state.orientationBlocked||state.controlsLocked;
@@ -125,7 +126,8 @@ function openNickModal(){
 function confirmNick(){
   const inp=document.getElementById('nick-input');
   const name=(inp?.value||'').toUpperCase().replace(/[^A-Z0-9 _-]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
-  if(!name){inp?.classList.add('err');setTimeout(()=>inp?.classList.remove('err'),350);return;}
+  // vazio ou palavrão: rejeita com o shake (mesma validação do servidor).
+  if(!name||hasProfanity(name)){inp?.classList.add('err');setTimeout(()=>inp?.classList.remove('err'),350);return;}
   setNickname(name);
   document.getElementById('nickmodal')?.classList.remove('open');
   startGameFromUserGesture({mobile:isMobileEnv()});

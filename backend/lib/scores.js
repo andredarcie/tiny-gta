@@ -1,4 +1,6 @@
 // Constantes e validações compartilhadas pelos endpoints.
+import { hasProfanity } from './profanity.js';
+
 const num = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def);
 
 export const LEADERBOARD_KEY = 'tinygta:leaderboard';
@@ -13,11 +15,14 @@ export const MIN_RUN_SECONDS = num(process.env.MIN_RUN_SECONDS, 20);
 export const RL_MAX = num(process.env.RL_MAX, 30);
 export const RL_WINDOW = num(process.env.RL_WINDOW, 600);
 
-// Apelido: maiúsculas, A–Z 0–9 espaço _ -, até 12 chars. Retorna null se vazio.
+// Apelido: maiúsculas, A–Z 0–9 espaço _ -, até 12 chars. Retorna null se vazio
+// ou se contém palavrão (pt-BR/inglês) — validação autoritativa do servidor.
 export function sanitizeName(raw) {
   if (typeof raw !== 'string') return null;
   const s = raw.toUpperCase().replace(/[^A-Z0-9 _-]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
-  return s.length ? s : null;
+  if (!s.length) return null;
+  if (hasProfanity(s)) return null;
+  return s;
 }
 
 // Teto plausível de dinheiro para uma partida que durou `seconds`.
