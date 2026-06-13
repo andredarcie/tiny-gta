@@ -6,7 +6,7 @@ import {message} from './hud.js';
 import {arrowBob} from '../assets/models/city/door-arrow.js';
 
 // ============================================================================
-// Classe base de AMBIENTES INTERNOS (boate, academia, ...).
+// Classe base de AMBIENTES INTERNOS (boate, academia, hospital, presídio, ...).
 // Concentra TODAS as regras comuns de interior; cada ambiente novo só estende
 // esta classe e sobrescreve os hooks opcionais (onEnter/onExit/updateFx).
 //
@@ -74,8 +74,8 @@ export class Interior{
   // entrada normal pela porta: nasce ao lado da porta, olhando pra dentro
   enter(){this.enterAt(this.intSpawn,this.spawnHeading);}
 
-  // liga a sala e teleporta pra um ponto/heading quaisquer (a morte do jogador
-  // usa isto pra acordar no meio do hospital — ver js/hospital.js)
+  // liga a sala e teleporta pra um ponto/heading quaisquer (morte/prisão usam
+  // isto pra acordar no hospital/presídio — ver js/hospital.js e js/prison.js)
   enterAt(spawn,heading){
     state.interior=this;
     this.group.visible=true;

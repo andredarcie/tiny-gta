@@ -23,6 +23,7 @@ import {updateOverkill,overkillNear,endOverkill,getOverkillState} from './overki
 import './club.js'; // efeito de registro: instancia a boate em interiors[]
 import {gymTrainState} from './gym.js';
 import {hospitalAdmit} from './hospital.js';
+import {prisonAdmit} from './prison.js';
 import {recordBest} from './leaderboard.js';
 import {updateDoors} from './doors.js';
 import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
@@ -52,6 +53,7 @@ refs.isWeaponHeld=isWeaponHeld;
 refs.confiscateWeapon=confiscateWeapon;
 refs.gymTrainState=gymTrainState; // HUD mostra o botão TRAIN dentro da academia
 refs.hospitalAdmit=hospitalAdmit; // morrer leva o jogador pra dentro do hospital
+refs.prisonAdmit=prisonAdmit;     // ser preso leva o jogador pra dentro do presídio
 refs.overkillNear=overkillNear;   // HUD/interact mostram a ação no totem
 refs.endOverkill=endOverkill;     // a morte do jogador encerra o modo overkill
 refs.getOverkillState=getOverkillState;
@@ -148,6 +150,7 @@ window.render_game_to_text=()=>{
     started:state.started,
     paused:state.paused,
     mode:state.mode,
+    interior:state.interior?.constructor?.name||null,
     money:state.money,
     wanted:state.wanted,
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},

@@ -119,7 +119,7 @@ function mmSquare(px,py,size,col){
 
 const mapWrap=$('mapwrap');
 export function drawMinimap(){
-  // Em ambiente interno (boate/academia/hospital) o minimapa não faz sentido:
+  // Em ambiente interno (boate/academia/hospital/presídio) o minimapa não faz sentido:
   // esconde o painel inteiro. Ver também a seta 3D de missão em story.js.
   if(mapWrap)mapWrap.style.display=state.interior?'none':'';
   if(state.interior)return;

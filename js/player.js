@@ -230,15 +230,16 @@ export function getBusted(){
   refs.endOverkill?.(); // prisão também encerra o modo overkill na hora
   cancelEntering();
   startCut('BUSTED','#3e7bff',()=>{
-    state.onRoof=null;roofFall=null; // delegacia fica no chão, não no telhado
+    state.onRoof=null;roofFall=null; // presídio fica no chão, não no telhado
     state.money=Math.floor(state.money*.85);state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
-    player.g.visible=true;player.g.position.set(nodeX(2)+4,0,nodeX(2)+4);
+    player.g.visible=true;
     refs.confiscateWeapon?.();
     state.mode='foot';hudCar.style.display='none';radioOff();
-    message('YOU WERE RELEASED. BEHAVE.','var(--cyan)');
+    if(refs.prisonAdmit)refs.prisonAdmit();
+    else{player.g.position.set(nodeX(2)+4,0,nodeX(2)+4);message('YOU WERE RELEASED. BEHAVE.','var(--cyan)');}
   });
 }
 

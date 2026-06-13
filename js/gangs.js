@@ -13,7 +13,7 @@ import {spawnDrop} from './missions.js';
 import {interiors} from './interior.js';
 import {makeGangTracerLine} from '../assets/models/effects/gang-tracer.js';
 
-// Prédios especiais (boate/academia/hospital) registram uma zona de fachada
+// Prédios especiais (boate/academia/hospital/presídio) registram uma zona de fachada
 // em interiors[].exterior; gangue não nasce nem fica dentro dela.
 function inSpecialZone(x,z){
   for(const it of interiors){const e=it.exterior;
