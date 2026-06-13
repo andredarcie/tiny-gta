@@ -34,4 +34,4 @@ jobs:
       - name: Deploy to itch.io
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
-        run: ./butler push ./dist andredarcie/tiny-gta:html5
+        run: ./butler push ./dist andredarcie/tiny-theft-auto:html5
