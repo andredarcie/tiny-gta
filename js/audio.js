@@ -129,7 +129,8 @@ export function updateAudio(){
   const cur=refs.getCur?.();
   if(audioEngine){
     const sp=state.mode==='car'?Math.abs(cur?.speed||0):0;
-    audioEngine.o.frequency.value=52+sp*6.5;
+    // moto ronca mais agudo que o carro
+    audioEngine.o.frequency.value=(cur?.bike?92:52)+sp*(cur?.bike?9:6.5);
     audioEngine.g.gain.value=state.mode==='car'?.028+sp/32*.035:0;
   }
   if(siren){

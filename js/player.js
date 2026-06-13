@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {clamp,rand,nodeX,WATER,SWIM_BOUND,RURAL_X1,RURAL_HALF,groundHeight} from './constants.js';
 import {state,input,carNames,carColors,refs} from './state.js';
 import {scene,camera} from './engine.js';
-import {makeCar,makePed,makePlane,spinWheels,dentCar} from './entities.js';
+import {makeCar,makeMotorcycle,makePed,makePlane,spinWheels,dentCar} from './entities.js';
 import * as Entities from './entities.js';
 import {thud,blip} from './audio.js';
 import {radioOn,radioOff,radioRandom} from './radio.js';
@@ -11,7 +11,7 @@ import {message,bigText,hideBig,hudCar} from './hud.js';
 
 export const player={g:makePed(0x19e3ff),heading:0,bob:0};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
-document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ CAM-R');
+document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ CAM-R ◆ BIKE');
 export const cameraRig={
   yaw:player.heading,
   pitch:.34,
@@ -25,6 +25,21 @@ export const playerCar={g:makeCar(0xff2e88,false),heading:Math.PI/2,speed:0,name
 playerCar.g.position.set(nodeX(4)+3.5,0,nodeX(4)+16);
 playerCar.g.rotation.y=playerCar.heading;
 export const idleCars=[playerCar];
+
+// Motos estacionadas pela cidade: veículos livres como o playerCar (`bike`).
+// Montar/descer é direto (sem porta), o piloto fica visível por cima inclinando
+// nas curvas. Ver updateBike/setRidePose e o flag bike em completeEnter/updateCar.
+const BIKE_SEAT=.3; // altura local do piloto sentado no banco da moto
+function spawnBike(color,name,x,z,heading){
+  const b={g:makeMotorcycle(color),heading,speed:0,name,police:false,bike:true};
+  b.g.position.set(x,0,z);b.g.rotation.y=heading;
+  idleCars.push(b);
+  return b;
+}
+// uma ao lado do carro inicial; outra num cruzamento (sempre asfalto livre)
+spawnBike(0xd11f3a,'STREET ROCKET',nodeX(4)+3.5,0,nodeX(4)+10,Math.PI/2);
+spawnBike(0x18b0a6,'NEON BLADE',nodeX(5),0,nodeX(5),0);
+
 export let cur=null;
 
 // Avião estacionado na praia oeste; a faixa de areia é a pista de decolagem
@@ -76,6 +91,23 @@ function setDrivePose(on){
     for(const k of['leftArm','rightArm','leftForearm','rightForearm',
       'leftLeg','rightLeg','leftCalf','rightCalf'])l[k]?.rotation.set(0,0,0);
   }
+}
+
+// Pose de piloto de moto: sentado no banco, mãos esticadas pra frente/baixo no
+// guidão, pernas abertas dobradas pra trás (pés nas pedaleiras). Valores
+// ajustados visualmente; o reset volta tudo a zero via setDrivePose(false).
+function setRidePose(){
+  const l=player.g.userData.limbs;if(!l)return;
+  l.leftLeg.visible=l.rightLeg.visible=true;
+  l.leftLeg.rotation.set(-.35,0,.22);
+  l.rightLeg.rotation.set(-.35,0,-.22);
+  l.leftCalf?.rotation.set(.9,0,0);
+  l.rightCalf?.rotation.set(.9,0,0);
+  // braços esticados pra frente/baixo até o guidão erguido (alcance ~.62)
+  l.leftArm.rotation.set(-.86,.1,.1);
+  l.rightArm.rotation.set(-.86,-.1,-.1);
+  l.leftForearm?.rotation.set(-.15,0,0);
+  l.rightForearm?.rotation.set(-.15,0,0);
 }
 
 // Tira o jogador de dentro do veículo (reparenta na cena e desfaz a pose)
@@ -153,18 +185,27 @@ function completeEnter(f){
   // motorista NPC some do banco (o ejetado/fugitivo é tratado à parte)
   if(c.driver){c.g.remove(c.driver);c.driver=null;}
   state.mode='car';state.weaponHeld=false;
-  // jogador sentado no banco do motorista, visível pelo vidro
+  // jogador sentado no banco do motorista (carro: visível pelo vidro; moto: por cima)
   cur.g.add(player.g);
-  cur.g.userData.driver=player.g; // braços seguem o volante via spinWheels
-  if(cur.plane)player.g.position.set(0,-.45,.5);
-  else player.g.position.set(-.38,-.52,-.15); // sentado no banco do motorista
-  player.g.rotation.set(0,0,0);
-  setDrivePose(true);
-  // entrou no carro: câmera já posicionada atrás dele (não nasce de lado/torta)
+  if(cur.bike){
+    // moto não tem volante: piloto montado por cima, sem userData.driver (os
+    // braços não devem seguir o "volante" no spinWheels), mãos no guidão
+    player.g.position.set(0,BIKE_SEAT,-.06);
+    player.g.rotation.set(0,0,0);
+    setRidePose();
+  }else{
+    cur.g.userData.driver=player.g; // braços seguem o volante via spinWheels
+    if(cur.plane)player.g.position.set(0,-.45,.5);
+    else player.g.position.set(-.38,-.52,-.15); // sentado no banco do motorista
+    player.g.rotation.set(0,0,0);
+    setDrivePose(true);
+  }
+  // entrou no veículo: câmera já posicionada atrás dele (não nasce de lado/torta)
   cameraRig.yaw=cur.heading;cameraRig.touchLookIdle=1;
   hudCar.textContent=cur.name;hudCar.style.display='block';
   blip([330,440],0.07,'triangle',.12);
-  if(refs.getOverkillState?.()?.active)radioOff();
+  // moto não tem rádio; carro/avião ligam a estação (exceto no overkill)
+  if(cur.bike||refs.getOverkillState?.()?.active)radioOff();
   else{radioRandom();radioOn();}
 }
 
@@ -423,12 +464,14 @@ export function updateCar(dt){
   const th=input.moveY;
   const st=input.moveX;
   const hb=input.brake;
-  const MAX=32;
-  if(th>0)cur.speed+=16*dt*Math.max(.15,1-cur.speed/MAX);
-  else if(th<0)cur.speed-=(cur.speed>0?30:9)*dt;
+  // moto: mais rápida e acelera mais forte, esterça mais fino e quase não dá ré
+  const bike=cur.bike;
+  const MAX=bike?42:32;
+  if(th>0)cur.speed+=(bike?22:16)*dt*Math.max(.15,1-cur.speed/MAX);
+  else if(th<0)cur.speed-=(cur.speed>0?(bike?34:30):(bike?12:9))*dt;
   cur.speed*=Math.exp(-(hb?2.2:.45)*dt);
-  cur.speed=clamp(cur.speed,-11,MAX);
-  cur.heading+=st*2.0*dt*clamp(cur.speed/11,-1,1)*(hb?1.55:1);
+  cur.speed=clamp(cur.speed,bike?-8:-11,MAX);
+  cur.heading+=st*(bike?2.4:2.0)*dt*clamp(cur.speed/(bike?9:11),-1,1)*(hb?1.55:1);
   const p=cur.g.position;
   p.x+=Math.sin(cur.heading)*cur.speed*dt;
   p.z+=Math.cos(cur.heading)*cur.speed*dt;
@@ -460,7 +503,12 @@ export function updateCar(dt){
     }
   }
   cur.g.rotation.y=cur.heading;
-  cur.g.rotation.z=THREE.MathUtils.lerp(cur.g.rotation.z,-st*clamp(cur.speed/MAX,0,1)*.06,10*dt);
+  // moto inclina pra DENTRO da curva, já perceptível em velocidade média;
+  // carro só rola levemente. clamp em 0 evita inclinar dando ré.
+  const leanT=bike
+    ?-st*clamp(cur.speed/18,0,1)*.42
+    :-st*clamp(cur.speed/MAX,0,1)*.06;
+  cur.g.rotation.z=THREE.MathUtils.lerp(cur.g.rotation.z,leanT,bike?6*dt:10*dt);
   // Terreno: o carro acompanha a altura (dá pra subir a montanha) e inclina no morro
   const gh=groundHeight(p.x,p.z);
   p.y+=(gh-p.y)*Math.min(1,8*dt);

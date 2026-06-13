@@ -57,13 +57,16 @@ export function getInteractAction(){
     const near=refs.nearestCar?.(3.6);
     if(near)return refs.isTaxiCar?.(near.c)
       ?{label:'TAXI',prompt:'START TAXI SHIFT',enabled:true}
-      :{label:'CAR',prompt:'TAKE THE CAR',enabled:true};
+      :near.c.bike
+        ?{label:'BIKE',prompt:'RIDE THE BIKE',enabled:true}
+        :{label:'CAR',prompt:'TAKE THE CAR',enabled:true};
   }
   if(state.mode==='car'){
     if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
-    const speed=Math.abs(refs.getCur?.()?.speed||0);
+    const c=refs.getCur?.();
+    const speed=Math.abs(c?.speed||0);
     return speed<6
-      ?{label:'EXIT',prompt:'EXIT THE CAR',enabled:true}
+      ?{label:'EXIT',prompt:c?.bike?'GET OFF THE BIKE':'EXIT THE CAR',enabled:true}
       :{label:'...',prompt:'',enabled:false};
   }
   return{label:'...',prompt:'',enabled:false};
