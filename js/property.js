@@ -54,8 +54,11 @@ class HouseInterior extends Interior{
       ranchFx.food.position.y=1.2+Math.sin(state.time*3)*.1;
     }
     if(ranchFx.tv){
-      const hue=.58+.05*Math.sin(state.time*2.7);
-      ranchFx.tv.material.color.setHSL(hue,.7,.42+.08*Math.sin(state.time*8));
+      if(ranchFx.tv.material.map)ranchFx.tv.material.color.set(0xffffff);
+      else{
+        const hue=.58+.05*Math.sin(state.time*2.7);
+        ranchFx.tv.material.color.setHSL(hue,.7,.42+.08*Math.sin(state.time*8));
+      }
     }
   }
 }

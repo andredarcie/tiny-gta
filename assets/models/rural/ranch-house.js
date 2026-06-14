@@ -63,6 +63,51 @@ function saleTexture(sold){
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
 
+let tvPreviewTex=null;
+function tvPreviewTexture(){
+  if(tvPreviewTex)return tvPreviewTex;
+  const c=document.createElement('canvas');c.width=512;c.height=288;
+  const x=c.getContext('2d');
+  const rr=(px,py,w,h,r)=>{
+    x.beginPath();
+    x.moveTo(px+r,py);x.lineTo(px+w-r,py);x.quadraticCurveTo(px+w,py,px+w,py+r);
+    x.lineTo(px+w,py+h-r);x.quadraticCurveTo(px+w,py+h,px+w-r,py+h);
+    x.lineTo(px+r,py+h);x.quadraticCurveTo(px,py+h,px,py+h-r);
+    x.lineTo(px,py+r);x.quadraticCurveTo(px,py,px+r,py);x.fill();
+  };
+  const bg=x.createLinearGradient(0,0,512,288);
+  bg.addColorStop(0,'#10172b');bg.addColorStop(.55,'#1d2f5f');bg.addColorStop(1,'#071018');
+  x.fillStyle=bg;x.fillRect(0,0,512,288);
+  x.fillStyle='#0b1020';x.globalAlpha=.72;
+  for(let y=18;y<288;y+=26)x.fillRect(0,y,512,2);
+  x.globalAlpha=1;
+  x.fillStyle='#e8f7ff';x.font='900 48px monospace';x.textAlign='left';x.textBaseline='top';
+  x.fillText('ANDRE OS',30,26);
+  x.font='700 17px monospace';x.fillStyle='#67e8f9';x.fillText('andredarcie.github.io/andre-os',32,82);
+  x.fillStyle='#ff4fa3';rr(32,118,118,78,12);
+  x.fillStyle='#12d6b4';rr(164,118,118,78,12);
+  x.fillStyle='#f8c14a';rr(296,118,118,78,12);
+  x.fillStyle='#08111f';rr(40,132,102,10,4);rr(172,132,102,10,4);rr(304,132,102,10,4);
+  x.fillStyle='#fff';x.font='900 22px monospace';
+  x.fillText('APP',64,154);x.fillText('WEB',196,154);x.fillText('DEV',328,154);
+  x.fillStyle='rgba(255,255,255,.16)';rr(36,216,440,42,16);
+  for(let i=0;i<7;i++){
+    x.fillStyle=['#ff4fa3','#67e8f9','#f8c14a','#82f38f','#b78cff','#f472b6','#38bdf8'][i];
+    rr(56+i*54,226,28,22,7);
+  }
+  x.fillStyle='#e8f7ff';x.font='900 16px monospace';x.textAlign='right';
+  x.fillText('LIVE PREVIEW',478,36);
+  x.fillStyle='#ffffff';x.beginPath();x.moveTo(438,182);x.lineTo(470,214);x.lineTo(452,218);x.lineTo(444,238);x.lineTo(431,232);x.lineTo(439,212);x.closePath();x.fill();
+  tvPreviewTex=new THREE.CanvasTexture(c);
+  tvPreviewTex.colorSpace=THREE.SRGBColorSpace;
+  tvPreviewTex.minFilter=THREE.LinearFilter;
+  tvPreviewTex.magFilter=THREE.LinearFilter;
+  return tvPreviewTex;
+}
+function tvScreenMaterial(){
+  return new THREE.MeshBasicMaterial({map:tvPreviewTexture(),toneMapped:false});
+}
+
 // Placa de quintal: dois postes nas laterais e caixilho vazado. A tábua é
 // desenhada dos dois lados, então o texto aparece chegando de qualquer direção.
 function makeSign(sold){
@@ -139,7 +184,7 @@ function makeTv(){
   const frame=new THREE.Mesh(new THREE.BoxGeometry(1.7,1,.12),
     new THREE.MeshStandardMaterial({color:0x14161c,roughness:.5}));frame.position.y=1.2;g.add(frame);
   const screen=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.82),
-    new THREE.MeshBasicMaterial({color:0x2b5fae}));screen.position.set(0,1.2,.07);g.add(screen);
+    tvScreenMaterial());screen.position.set(0,1.2,.07);g.add(screen);
   ranchFx.tv=screen;
   return g;
 }
@@ -594,7 +639,7 @@ function buildInteriorPreview(){
   const tvFrame=new THREE.Mesh(new THREE.BoxGeometry(1.7,1,.12),
     new THREE.MeshStandardMaterial({color:0x14161c,roughness:.5}));tvFrame.position.y=1.2;tv.add(tvFrame);
   const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.82),
-    new THREE.MeshBasicMaterial({color:0x2b5fae}));tvScreen.position.set(0,1.2,.07);tv.add(tvScreen);
+    tvScreenMaterial());tvScreen.position.set(0,1.2,.07);tv.add(tvScreen);
   tv.position.set(ix-5,0,iz+1.2);g.add(tv);
   const lampStand=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,1.05,8),metalM);
   lampStand.position.set(ix-2.9,.55,iz+4.7);g.add(lampStand);
