@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 import {rand} from '../../../js/constants.js';
 import {makePed} from '../characters/pedestrian.js';
@@ -18,12 +19,12 @@ export const INT_SPAWN={x:-812.2,z:330};
 export const PRISON_RELEASE={x:-808.8,z:329.4}; // busted spawn, release corridor
 export const INT_BOUNDS={x0:-814.3,x1:-785.7,z0:320.7,z1:339.3,y1:5.2};
 
-const concreteM=new THREE.MeshStandardMaterial({color:0x6b7378,roughness:.96});
-const darkM=new THREE.MeshStandardMaterial({color:0x15191d,roughness:.86});
-const steelM=new THREE.MeshStandardMaterial({color:0x535d66,metalness:.75,roughness:.32});
+const concreteM=matte({color:0x6b7378,roughness:.96});
+const darkM=matte({color:0x15191d,roughness:.86});
+const steelM=matte({color:0x535d66,metalness:.75,roughness:.32});
 const stripeM=new THREE.MeshBasicMaterial({color:0x3e7bff});
 const amberM=new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.85});
-const cellWallM=new THREE.MeshStandardMaterial({color:0x1f252b,roughness:.98});
+const cellWallM=matte({color:0x1f252b,roughness:.98});
 
 export const prisonFx={guards:[],inmates:[],exitArrow:null,facade:null,
   facadeArrow:null,footprint:null,warning:null};
@@ -68,7 +69,7 @@ function makeBunk(){
   const frame=new THREE.Mesh(new THREE.BoxGeometry(2,.18,.9),steelM);
   frame.position.y=.55;g.add(frame);
   const mat=new THREE.Mesh(new THREE.BoxGeometry(1.85,.16,.78),
-    new THREE.MeshStandardMaterial({color:0x77808a,roughness:.8}));
+    matte({color:0x77808a,roughness:.8}));
   mat.position.y=.69;g.add(mat);
   const upper=frame.clone();upper.position.y=1.7;g.add(upper);
   const upperMat=mat.clone();upperMat.position.y=1.84;g.add(upperMat);
@@ -82,7 +83,7 @@ function makeBunk(){
 function makeDesk(){
   const g=new THREE.Group();
   const desk=new THREE.Mesh(new THREE.BoxGeometry(5.2,1.05,1.2),
-    new THREE.MeshStandardMaterial({color:0x303944,roughness:.74}));
+    matte({color:0x303944,roughness:.74}));
   desk.position.y=.52;g.add(desk);
   const top=new THREE.Mesh(new THREE.BoxGeometry(5.4,.1,1.35),steelM);
   top.position.y=1.08;g.add(top);
@@ -136,10 +137,10 @@ export function addPrison(solids){
 
   // Interior: processing room with a holding cell row.
   const shell=new THREE.Mesh(new THREE.BoxGeometry(30,6,20),
-    new THREE.MeshStandardMaterial({color:0x283039,roughness:1,side:THREE.BackSide}));
+    matte({color:0x283039,roughness:1,side:THREE.BackSide}));
   shell.position.set(-800,3,330);prisonInterior.add(shell);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(29.4,19.4),
-    new THREE.MeshStandardMaterial({color:0x41464d,roughness:.94}));
+    matte({color:0x41464d,roughness:.94}));
   floor.rotation.x=-Math.PI/2;floor.position.set(-800,.02,330);prisonInterior.add(floor);
   const outer=new THREE.Mesh(new THREE.BoxGeometry(34,10,24),
     new THREE.MeshBasicMaterial({color:0x050608,side:THREE.BackSide}));
@@ -177,7 +178,7 @@ export function addPrison(solids){
   const lockers=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.5,4.8),steelM);
   lockers.position.set(-787.8,1.25,327.4);prisonInterior.add(lockers);
   const bench=new THREE.Mesh(new THREE.BoxGeometry(4.2,.36,1),
-    new THREE.MeshStandardMaterial({color:0x22282e,roughness:.75}));
+    matte({color:0x22282e,roughness:.75}));
   bench.position.set(-807,.45,324.2);prisonInterior.add(bench);
 
   prisonFx.warning=new THREE.Mesh(new THREE.BoxGeometry(.7,.22,.7),amberM);

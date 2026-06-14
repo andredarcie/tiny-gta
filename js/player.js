@@ -6,12 +6,39 @@ import {makeCar,makeMotorcycle,makeBoat,makePed,makePlane,spinWheels,dentCar} fr
 import * as Entities from './entities.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
 import {thud,blip} from './audio.js';
-import {radioOn,radioOff,radioRandom} from './radio.js';
+import {radioOn,radioOff,radioEnter} from './radio.js';
 import {collideStatics,addWanted} from './physics.js';
 import {message,bigText,hideBig,hudCar} from './hud.js';
 
+// O JOGADOR nunca projeta sombra (pedido: a sombra seguindo fica estranha) — some
+// permanentemente nas meshes do ped.
+function noShadow(g){g.traverse(o=>{if(o.isMesh)o.castShadow=false;});}
+
+// Liga/desliga a sombra de um veículo inteiro, LEMBRANDO quais meshes projetavam
+// (vidro/detalhes que nunca projetam não voltam a projetar por engano). Usado só
+// no veículo que o jogador está dirigindo: enquanto pilota, sem sombra; ao largar,
+// a sombra volta (volta a ser um carro/moto parado normal).
+function setVehicleShadow(g,on){
+  g.traverse(o=>{
+    if(!o.isMesh)return;
+    if(on){if(o.userData.castOrig)o.castShadow=true;}
+    else if(o.castShadow){o.userData.castOrig=true;o.castShadow=false;}
+  });
+}
+// Sincroniza por frame: a sombra some só do carro/moto atualmente dirigido (não do
+// avião/lancha — a sombra deles no chão/água é útil/inofensiva). Chamado em main.js.
+let shadowless=null;
+export function updateDrivenShadow(){
+  const g=(cur&&!cur.plane&&!cur.boat)?cur.g:null;
+  if(g===shadowless)return;
+  if(shadowless)setVehicleShadow(shadowless,true); // largou o veículo: sombra volta
+  if(g)setVehicleShadow(g,false);                  // assumiu o volante: sombra some
+  shadowless=g;
+}
+
 export const player={g:makePed(0x19e3ff),heading:0,bob:0};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
+noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
 document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ CAM-R ◆ BIKE');
 export const cameraRig={
   yaw:player.heading,
@@ -241,7 +268,7 @@ function completeEnter(f){
   blip([330,440],0.07,'triangle',.12);
   // moto não tem rádio; carro/avião ligam a estação (exceto no overkill)
   if(cur.bike||refs.getOverkillState?.()?.active)radioOff();
-  else{radioRandom();radioOn();}
+  else{radioEnter();radioOn();}
 }
 
 // Sair também abre e fecha a porta (avião não tem porta: sai direto)
@@ -502,8 +529,10 @@ export function updateCar(dt){
   const hb=input.brake;
   // moto: mais rápida e acelera mais forte, esterça mais fino e quase não dá ré
   const bike=cur.bike;
-  const MAX=bike?42:32;
-  if(th>0)cur.speed+=(bike?22:16)*dt*Math.max(.15,1-cur.speed/MAX);
+  // upgrade de motor da oficina de custom (car-customs/mod-shop): topo + arranque
+  const mul=cur.g.userData.speedMul||1;
+  const MAX=(bike?42:32)*mul;
+  if(th>0)cur.speed+=(bike?22:16)*mul*dt*Math.max(.15,1-cur.speed/MAX);
   else if(th<0)cur.speed-=(cur.speed>0?(bike?34:30):(bike?12:9))*dt;
   cur.speed*=Math.exp(-(hb?2.2:.45)*dt);
   cur.speed=clamp(cur.speed,bike?-8:-11,MAX);

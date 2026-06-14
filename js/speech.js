@@ -16,6 +16,10 @@ import {makeSpeechBubble} from '../assets/models/characters/speech-bubble.js';
 const active=[];
 const tmp=new THREE.Vector3(),fwd=new THREE.Vector3();
 
+// O balão só aparece PERTO do NPC: 100% visível até VIEW_NEAR e some de vez em
+// VIEW_FAR (some quando o jogador se afasta, em vez de ficar boiando ao longe).
+const VIEW_NEAR=15, VIEW_FAR=23;
+
 export function say(target,text,{life=6,yOff=2.6,alive=null}={}){
   if(!target||target.userData.speaking)return false; // um balão por NPC
   const spr=makeSpeechBubble(text);
@@ -45,9 +49,13 @@ export function updateSpeech(dt){
     let vis=true,inActive=false,o=b.target;
     while(o){if(!o.visible)vis=false;if(state.interior&&o===state.interior.group)inActive=true;o=o.parent;}
     if(state.interior&&!inActive)vis=false;
-    b.spr.visible=vis;
+    // some quando o jogador está longe do NPC (só aparece de perto)
+    const pp=playerPos();
+    const dist=Math.hypot(tmp.x-pp.x,tmp.z-pp.z);
+    const near=Math.max(0,Math.min(1,(VIEW_FAR-dist)/(VIEW_FAR-VIEW_NEAR)));
+    b.spr.visible=vis&&near>.01;
     const fin=Math.min(1,b.t/.22),fout=Math.min(1,(b.life-b.t)/.6);
-    b.spr.material.opacity=Math.min(fin,fout); // fade in rápido, fade out suave
+    b.spr.material.opacity=Math.min(fin,fout)*near; // fade in/out + fade por distância
   }
 }
 
@@ -120,7 +128,7 @@ export function updateStreetChatter(dt){
     if(p.state!=='walk'&&p.state!=='flee'&&p.state!=='panic')continue;
     if(p.g.userData.speaking)continue;
     const d=p.g.position.distanceTo(pp);
-    if(d<3||d>22)continue;           // perto pra ler, mas não em cima
+    if(d<3||d>VIEW_NEAR)continue;    // só nasce PERTO do NPC (e não em cima)
     tmp.subVectors(p.g.position,camera.position);
     if(tmp.dot(fwd)<=0)continue;     // só quem está na frente da câmera
     cands.push(p);

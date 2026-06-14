@@ -7,6 +7,7 @@ import {thud} from './audio.js';
 import {playerPos,cur,player,getWasted} from './player.js';
 
 export const traffic=[];
+const CAR_CULL2=170*170; // LOD: carro de trânsito além disso não é desenhado
 
 export function neighborNodes(i,j){
   const r=[];
@@ -90,6 +91,11 @@ export function updateTraffic(dt){
     const dh=wrapA(want-t.heading);
     t.heading+=dh*Math.min(1,10*dt);
     t.g.rotation.y=t.heading;
+    // LOD: carro longe não é desenhado nem anima rodas/motorista; a posição
+    // segue atualizando (acima) pra o trânsito fluir quando reaparece.
+    const cdx=np.x-pp.x,cdz=np.z-pp.z;
+    if(cdx*cdx+cdz*cdz>=CAR_CULL2){t.g.visible=false;continue;}
+    t.g.visible=true;
     spinWheels(t.g,t.speed,dt,clamp(dh*2,-1,1)); // steer anima volante e braços
     const activeCur=cur;
     if(state.mode==='car'&&activeCur){

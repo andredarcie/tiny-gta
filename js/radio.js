@@ -1,5 +1,6 @@
 import {AC,master} from './audio.js';
 import {state,refs} from './state.js';
+import {RURAL_X0} from './constants.js';
 
 export const STATIONS=[
   {name:'BOOMBEAT RADIO 98.3', tag:'FUNK PARTY',        col:'#ff2e88', id:'batidao'},
@@ -11,6 +12,7 @@ export const STATIONS=[
 export let stationIdx=0;
 let radioActive=false,radioSched=null,radioGain=null,radioNodes=[];
 let radioHudTimer=null;
+let inRural=false,_savedIdx=null; // troca de estação por zona (cidade ↔ rural)
 
 function getAC(){return AC;}
 function getMaster(){return master;}
@@ -44,6 +46,26 @@ export function radioOn(){
 // Entrou no carro: sorteia uma estação de música (nunca a OFF AIR)
 export function radioRandom(){
   stationIdx=Math.floor(Math.random()*(STATIONS.length-1));
+}
+
+const sertaoIdx=()=>STATIONS.findIndex(s=>s.id==='sertao'); // COUNTRY ROOTS = rádio rural
+
+// Entrou no carro DENTRO da zona rural toca a country; fora dela, sorteia.
+export function radioEnter(){
+  if(inRural)stationIdx=sertaoIdx();else radioRandom();
+}
+
+// Chamado por frame com a posição do jogador: detecta a troca de zona e, se
+// estiver dirigindo, troca a estação na hora (rural → COUNTRY ROOTS; ao voltar,
+// retoma a estação que tocava antes). radioOn() já mostra o HUD da estação.
+export function radioZone(px){
+  const nowRural=px>RURAL_X0+8; // histerese pequena pra não piscar na fronteira
+  if(nowRural===inRural)return;
+  inRural=nowRural;
+  if(state.mode!=='car'||overkillActive())return;
+  if(nowRural){_savedIdx=stationIdx;stationIdx=sertaoIdx();}
+  else{stationIdx=_savedIdx!=null?_savedIdx:Math.floor(Math.random()*(STATIONS.length-1));_savedIdx=null;}
+  radioOn();
 }
 
 export function radioSwitch(){

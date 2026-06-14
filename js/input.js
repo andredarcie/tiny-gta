@@ -4,6 +4,10 @@ import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
 import {storyInteract,advanceCine} from './story.js';
 import {gymTrain} from './gym.js';
+import {gymGameActive,gymGamePress,closeGymGame} from './gym-game.js';
+import {clubDance} from './club.js';
+import {danceGameActive,closeDanceGame,pressLane,danceGameConfirm} from './dance-game.js';
+import {modShopActive,closeModShop} from './mod-shop.js';
 import {houseBuy,houseEat,houseGaragePark} from './property.js';
 import {houseTvInteract} from './house-tv.js';
 import {startOverkill} from './overkill.js';
@@ -84,6 +88,8 @@ export function performFullscreenToggle(){
 
 export function performInteract(){
   if(!state.started)return;
+  if(gymGameActive()){gymGamePress();return;} // mini-game do supino: E/botão = repetição
+  if(danceGameActive()){danceGameConfirm();return;} // mini-game da dança: E só avança o resultado
   if(houseTvInteract())return; // ativo: E fecha; perto da TV: E abre
   if(state.dlgActive)return; // cut-scene: legendas correm sozinhas
   if(isBlocked())return;
@@ -92,12 +98,16 @@ export function performInteract(){
     if(houseEat())return;  // comer da geladeira dentro de casa (cura)
     if(houseBuy())return;  // comprar a casa de campo (perto da placa FOR SALE)
     if(gymTrain())return; // treino na academia (perto do supino)
+    if(clubDance())return; // dança na pista da boate (perto do centro da pista)
     if(refs.gunShopBuy?.())return; // comprar arma no balcão da loja de armas
     if(startOverkill())return; // liga o modo overkill (perto do totem)
+    if(refs.rickInteract?.())return; // missão secreta do Rick no acampamento rural
     if(storyInteract())return;
     enterCar();
   }else if(state.mode==='car'){
     if(refs.startRaceInteract?.())return; // largar corrida no pórtico tem prioridade
+    if(refs.startBoatRaceInteract?.())return; // largar corrida de lanchas no pórtico flutuante
+    if(refs.modShopInteract?.())return; // abrir o menu da oficina de custom na plataforma
     if(houseGaragePark())return; // guardar o carro na garagem da casa comprada
     if(Math.abs(cur?.speed||0)<6)exitCar();
   }
@@ -200,6 +210,22 @@ export function setupInput(){
     // e nenhum outro atalho funciona enquanto a cena roda.
     if(state.cine){
       if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();advanceCine();}
+      return;
+    }
+    if(gymGameActive()){ // mini-game do supino: Espaço/Enter/E/F = repetição, Esc desiste
+      if(e.code==='Escape'){closeGymGame();return;}
+      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();gymGamePress();}
+      return;
+    }
+    if(danceGameActive()){ // mini-game da dança: setas tocam as pistas, Esc desiste
+      if(e.code==='Escape'){closeDanceGame();return;}
+      const lane={ArrowLeft:0,ArrowDown:1,ArrowUp:2,ArrowRight:3}[e.code];
+      if(lane!==undefined){if(!e.repeat){e.preventDefault();pressLane(lane);}return;}
+      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();danceGameConfirm();}
+      return;
+    }
+    if(modShopActive()){ // menu da oficina: Esc/E/F fecham; o resto é clique no menu
+      if(['Escape','KeyE','KeyF'].includes(e.code))closeModShop();
       return;
     }
     if(state.tvActive){

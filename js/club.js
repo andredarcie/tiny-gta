@@ -1,21 +1,29 @@
-import {radioRandom,radioOn,radioOff} from './radio.js';
 import {animatePed} from './entities.js';
 import {Interior} from './interior.js';
+import {playerPos} from './player.js';
+import {state} from './state.js';
+import {message} from './hud.js';
+import {clubMusicOn,clubMusicOff} from './club-music.js';
+import {openDanceGame,danceGameActive} from './dance-game.js';
 import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
   from '../assets/models/city/nightclub.js';
 
-// Boate "THE FLAMINGO": só estende a classe base de interiores (js/interior.js),
+// Boate "THE FLAMINGO": estende a classe base de interiores (js/interior.js),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
-// Aqui ficam só as particularidades: o som da casa (rádio) ao entrar/sair e a
-// animação da pista (globo, ladrilhos piscando, dançarinos).
+// Particularidades daqui: a MÚSICA PRÓPRIA da casa (js/club-music.js) ao
+// entrar/sair, a animação da pista (globo, ladrilhos, dançarinos) e o MINI-GAME
+// de ritmo (js/dance-game.js) que abre ao pisar no meio da pista.
 const PAL=[0xff2e88,0x19e3ff,0xffd24a,0x9dff2e];
+
+// centro da pista de dança (ladrilhos do nightclub.js) e raio de ação
+const DANCE_X=-800.98,DANCE_Z=-22.03,DANCE_RANGE=4.2;
 
 class ClubInterior extends Interior{
   onEnter(){
-    super.onEnter();          // aviso de boas-vindas padrão
-    radioRandom();radioOn();  // som da casa por conta do sistema de rádio
+    super.onEnter();      // aviso de boas-vindas padrão
+    clubMusicOn();        // trilha house própria da boate
   }
-  onExit(){radioOff();}
+  onExit(){clubMusicOff();}
   updateFx(dt){
     clubFx.ball.rotation.y+=dt*1.4;
     this.fxT=(this.fxT||0)+dt;
@@ -39,3 +47,35 @@ export const club=new ClubInterior({
   exterior:{x:-154,z:-22,r:24}, // fachada: gangue não chega perto
   mapIcon:{id:'club',label:'THE FLAMINGO',icon:'club',color:'#ff2e88'},
 });
+
+// jogador no meio da pista, dentro da boate (HUD/interact usam isto)
+function clubDanceNear(){
+  if(!club.active)return false;
+  const pp=playerPos();
+  return Math.hypot(pp.x-DANCE_X,pp.z-DANCE_Z)<DANCE_RANGE;
+}
+
+// Rótulo do HUD pra ação DANCE (só na pista, com o mini-game fechado).
+export function clubDanceState(){
+  if(!clubDanceNear()||danceGameActive())return null;
+  return{label:'DANCE',prompt:'HIT THE DANCE FLOOR',enabled:true};
+}
+
+// Ação na pista (chamada pelo performInteract): abre o mini-game de ritmo.
+export function clubDance(){
+  if(!clubDanceNear())return false;
+  openDanceGame({onFinish:onDanceFinish});
+  return true;
+}
+
+// chamado pelo mini-game ao terminar: gorjeta da casa conforme a nota
+function onDanceFinish(info){
+  if(info.reward>0){
+    state.money+=info.reward;
+    message(`GRADE ${info.grade}! THE CROWD TIPS YOU $${info.reward}`,'var(--gold)');
+  }else if(info.won){
+    message(`GRADE ${info.grade} - KEEP PRACTICING FOR A TIP`,'var(--cream)');
+  }else{
+    message('THE CROWD BOOED YOU OFF THE FLOOR','var(--pink)');
+  }
+}

@@ -25,7 +25,7 @@ export function makeMountain(size,segments){
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
   geo.computeVertexNormals();
   const m=new THREE.Mesh(geo,
-    new THREE.MeshStandardMaterial({vertexColors:true,roughness:.95,flatShading:true}));
+    new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true}));
   m.castShadow=true;m.receiveShadow=true;
   return m;
 }

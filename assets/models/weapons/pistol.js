@@ -18,12 +18,12 @@ const boreMat=new THREE.MeshBasicMaterial({color:0x050507});
 const dotMat=new THREE.MeshBasicMaterial({color:0xe9eef2}); // pontos brancos da mira
 const glowMat=new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.25});
 
-const box=(w,h,d,mat,x,y,z,rx=0,ry=0,rz=0,cast=true)=>{
+const box=(w,h,d,mat,x,y,z,rx=0,ry=0,rz=0,cast=false)=>{
   const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
   m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=cast;
   return m;
 };
-const cyl=(r,len,mat,x,y,z,rx=0,cast=true)=>{
+const cyl=(r,len,mat,x,y,z,rx=0,cast=false)=>{
   const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,12),mat);
   m.position.set(x,y,z);m.rotation.x=rx;m.castShadow=cast;
   return m;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {clamp} from './constants.js';
+import {clamp,RURAL_X0} from './constants.js';
 import {scene,renderer,hemi,dlight,sunDir,clouds} from './engine.js';
 import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from './world.js';
 import {state,refs} from './state.js';
@@ -131,9 +131,16 @@ export function updateDayNight(dt){
   drawSky();
 
   scene.fog.color.copy(cur.fog);
-  // Mirante: do alto da montanha o horizonte abre (a névoa recua com a altitude)
+  // Fog por zona: na cidade o alcance é amplo (vê a cidade inteira); ao entrar na
+  // zona rural ele encolhe (430→230), escondendo a cidade distante na névoa — e,
+  // da cidade, a zona rural distante. Transição suave no corredor de pasto.
+  // Mirante: do alto da montanha o horizonte reabre (a névoa recua com a altitude).
   const ppos=refs.playerPos?.();
-  scene.fog.far=430+(ppos?Math.max(0,ppos.y)*14:0);
+  const ruralF=clamp(((ppos?ppos.x:0)-RURAL_X0)/120,0,1);
+  // Cap em 430: o mirante ainda abre a névoa com a altitude, mas não ao ponto de
+  // anular o culling da cidade (que corta ~400m). Assim a região cortada cai no
+  // haze em vez de virar "chão vazio" visível do alto.
+  scene.fog.far=Math.min(300-ruralF*70+(ppos?Math.max(0,ppos.y)*14:0),430);
   renderer.toneMappingExposure=cur.exp;
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;

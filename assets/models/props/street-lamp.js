@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 import {bakeProp} from './prop-merge.js';
 
@@ -21,7 +22,7 @@ lampHaloMat.visible=false;
 export const lampBulbMat=new THREE.MeshBasicMaterial({color:0xffd9a0});
 
 const poleG=new THREE.CylinderGeometry(.08,.1,5.4,5);
-const poleM=new THREE.MeshStandardMaterial({color:0x7d7787,roughness:.8});
+const poleM=matte({color:0x7d7787,roughness:.8});
 const bulbG=new THREE.SphereGeometry(.22,8,6);
 const glowG=new THREE.PlaneGeometry(9,9);
 
@@ -29,7 +30,7 @@ const glowG=new THREE.PlaneGeometry(9,9);
 // addStreetLamp mantem o caminho otimizado (meshes fundidos + halo individual).
 function build(){
   const g=new THREE.Group();
-  const p=new THREE.Mesh(poleG,poleM);p.position.y=2.7;p.castShadow=true;g.add(p);
+  const p=new THREE.Mesh(poleG,poleM);p.position.y=2.7;p.castShadow=false;g.add(p);
   const b=new THREE.Mesh(bulbG,lampBulbMat);b.position.y=5.5;g.add(b);
   return g;
 }
@@ -37,7 +38,7 @@ function build(){
 export default {category:'Props',label:'Street lamp',build};
 
 export function addStreetLamp(px,pz){
-  const p=new THREE.Mesh(poleG,poleM);p.position.set(px,2.7,pz);p.castShadow=true;bakeProp(p);
+  const p=new THREE.Mesh(poleG,poleM);p.position.set(px,2.7,pz);p.castShadow=false;bakeProp(p);
   const b=new THREE.Mesh(bulbG,lampBulbMat);b.position.set(px,5.5,pz);bakeProp(b);
   const gl=new THREE.Mesh(glowG,lampGlowMat);
   gl.rotation.x=-Math.PI/2;gl.position.set(px,.07,pz);gl.renderOrder=2;bakeProp(gl);

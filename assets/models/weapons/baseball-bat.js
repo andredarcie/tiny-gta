@@ -15,7 +15,7 @@ export function makeBaseballBatModel({pickup=false}={}){
   const len=.92;
   // barril cônico: topo (+Y -> +Z após girar) grosso, base (-Z) fino
   const barrel=new THREE.Mesh(new THREE.CylinderGeometry(.052,.026,len,12),woodMat);
-  barrel.rotation.x=Math.PI/2;barrel.castShadow=true;g.add(barrel);
+  barrel.rotation.x=Math.PI/2;barrel.castShadow=false;g.add(barrel);
   // ponta arredondada do barril
   const cap=new THREE.Mesh(new THREE.SphereGeometry(.052,12,8),woodMat);
   cap.position.z=len/2;cap.scale.z=.7;g.add(cap);

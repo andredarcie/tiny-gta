@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import {state,input,refs} from './state.js';
 import {renderer,scene,camera,clouds,dlight,sunDir} from './engine.js';
 import {updateAudio} from './audio.js';
+import {radioZone} from './radio.js';
 import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar} from './player.js';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,updateDrivenShadow} from './player.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
@@ -12,7 +13,9 @@ import {cops,heli,updateCops,updateHeli} from './police.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
 import {updateTaxi} from './taxi.js';
 import {updateRace} from './race.js';
+import {updateBoatRace} from './boat-race.js';
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
+import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
 import {setupInput,updateKeyboardInput,performShoot} from './input.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
@@ -22,8 +25,11 @@ import {updateDayNight} from './daynight.js';
 import {updateInteriors,interiors} from './interior.js';
 import {updateSpeech,updateStreetChatter} from './speech.js';
 import {updateOverkill,overkillNear,endOverkill,getOverkillState} from './overkill.js';
-import './club.js'; // efeito de registro: instancia a boate em interiors[]
+import {clubDanceState} from './club.js'; // instancia a boate em interiors[] + ação DANCE
+import {updateDanceGame} from './dance-game.js';
 import {gymTrainState} from './gym.js';
+import {updateGymGame} from './gym-game.js';
+import {modShopState,modShopInteract,updateModShop,workshopBlip} from './mod-shop.js';
 import {hospitalAdmit} from './hospital.js';
 import {prisonAdmit} from './prison.js';
 import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from './gun-shop.js';
@@ -32,6 +38,9 @@ import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState}
 import {houseTvState,updateHouseTv,getHouseTvState} from './house-tv.js';
 import {updateDoors} from './doors.js';
 import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
+import {updateCityCulling} from '../assets/models/city/building.js';
+import {updatePropCulling} from '../assets/models/props/prop-merge.js';
+import {updateLotCulling} from '../assets/models/city/abandoned-lot.js';
 
 // Populate late-binding refs so cross-module code can access these without circular imports
 refs.playerPos=playerPos;
@@ -53,6 +62,9 @@ refs.getDelivery=()=>delivery;
 refs.storyNear=storyNear;
 refs.storyBlips=storyBlips;
 refs.storyTargets=storyTargets;
+refs.rickNear=rickNear;         // HUD mostra TALK TO RICK no acampamento secreto
+refs.rickInteract=rickInteract; // performInteract abre a cut-scene do Rick
+refs.getRickState=getRickState; // snapshot de debug da missão secreta
 refs.getBusted=getBusted;
 refs.getWasted=getWasted;
 refs.getHeli=()=>heli;
@@ -65,6 +77,10 @@ refs.selectWeaponSlot=selectWeaponSlot;
 refs.getWeaponHud=getWeaponHud;       // HUD lê nome/munição da arma atual
 refs.confiscateWeapon=confiscateWeapon;
 refs.gymTrainState=gymTrainState; // HUD mostra o botão TRAIN dentro da academia
+refs.clubDanceState=clubDanceState; // HUD mostra o botão DANCE no meio da pista da boate
+refs.modShopState=modShopState;   // HUD mostra CUSTOMIZE CAR na plataforma da oficina
+refs.modShopInteract=modShopInteract; // performInteract abre/fecha o menu de custom
+refs.workshopBlip=workshopBlip;   // radar mostra o blip da oficina
 refs.hospitalAdmit=hospitalAdmit; // morrer leva o jogador pra dentro do hospital
 refs.prisonAdmit=prisonAdmit;     // ser preso leva o jogador pra dentro do presídio
 refs.gunShopState=gunShopState;   // HUD mostra BUY $X perto de uma arma na loja
@@ -95,10 +111,20 @@ setupInput();
 setupTouchControls();
 
 const clock=new THREE.Clock();
+let shadowTick=0;
+const SHADOW_EVERY=12; // re-renderiza o shadow map 1 a cada N frames (~5fps @60)
 function step(dt){
   updateKeyboardInput();
   updateTouchControls();
+  // Sombra a ~5fps: a luz direcional é fixa (só a posição segue o jogador), então
+  // o shadow pass (2º render da cena inteira) roda raramente. Sombras de coisas
+  // que se movem (jogador/NPC) ficam mais "atrasadas" — trade-off aceito. Antes
+  // de qualquer render abaixo.
+  if(shadowTick++%SHADOW_EVERY===0)renderer.shadowMap.needsUpdate=true;
   if(updateHouseTv()){renderer.render(scene,camera);return;}
+  if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
+  if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
+  if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
   state.time+=dt;
 
@@ -135,6 +161,7 @@ function step(dt){
   updatePickups(dt);
   updateTaxi(dt);
   updateRace(dt);
+  updateBoatRace(dt);
   updateWeapons(dt);
   updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
   updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
@@ -143,17 +170,23 @@ function step(dt){
   updateDoors(); // portas por toque: interiores e telhados dos prédios
   if(input.shootHeld)performShoot();
 
+  updateDrivenShadow(); // sombra some do carro/moto que o jogador está dirigindo
   if(cur)blinkBar(cur.g);
   for(const c of idleCars)blinkBar(c.g);
 
   updateCamera(dt);
   updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
+  updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
   updateHUD(dt);
   recordBest(state.money); // acompanha o maior dinheiro pro ranking global
   updateAudio();
   drawMinimap();
 
   const pp=playerPos();
+  radioZone(pp.x); // troca a rádio ao cruzar entre cidade e zona rural
+  updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
+  updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
+  updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
 
@@ -186,12 +219,14 @@ window.render_game_to_text=()=>{
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
+    boatRace:refs.getBoatRaceState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],
     house:refs.getHouseState?.()||null,
     houseTv:refs.getHouseTvState?.()||null,
+    rick:refs.getRickState?.()||null,
   });
 };
 frame();

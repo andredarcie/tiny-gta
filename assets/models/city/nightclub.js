@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 import {rand,pick} from '../../../js/constants.js';
 import {addPalm} from '../props/palm.js';
@@ -25,7 +26,7 @@ export const INT_BOUNDS={x0:-812.3,x1:-787.7,z0:-29.3,z1:-14.7,y1:4.9};
 
 const neonPinkM=new THREE.MeshBasicMaterial({color:0xff2e88});
 const neonCyanM=new THREE.MeshBasicMaterial({color:0x19e3ff});
-const darkM=new THREE.MeshStandardMaterial({color:0x14101e,roughness:.8});
+const darkM=matte({color:0x14101e,roughness:.8});
 
 function signTexture(){
   const c=document.createElement('canvas');c.width=512;c.height=128;
@@ -46,7 +47,7 @@ clubInterior.visible=false;
 
 export function addNightclub(solids){
   // ----- exterior: caixa rosa com faixas neon, marquise e letreiro -----
-  const wallM=new THREE.MeshStandardMaterial({color:0xf2c4d8,roughness:.95});
+  const wallM=matte({color:0xf2c4d8,roughness:.95});
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,18),wallM);
   bld.position.set(-154,3.5,-22);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,18.2),darkM);
@@ -70,7 +71,7 @@ export function addNightclub(solids){
   }
   // marquise sobre a entrada com colunas
   const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.16,4.2),
-    new THREE.MeshStandardMaterial({color:0xff5f9e,roughness:.8}));
+    matte({color:0xff5f9e,roughness:.8}));
   canopy.position.set(-163.4,3.3,-22);canopy.castShadow=true;facade.add(canopy);
   for(const dz of[-1.8,1.8]){
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,3.2,6),darkM);
@@ -94,7 +95,7 @@ export function addNightclub(solids){
   // casca BackSide: de dentro é parede/teto/chão; de fora é invisível, então
   // a câmera atrás do jogador enxerga a sala mesmo "atravessando" a parede
   const shell=new THREE.Mesh(new THREE.BoxGeometry(26,5.5,16),
-    new THREE.MeshStandardMaterial({color:0x140b26,roughness:1,side:THREE.BackSide}));
+    matte({color:0x140b26,roughness:1,side:THREE.BackSide}));
   shell.position.set(-800,2.75,-22);clubInterior.add(shell);
   // backstop: caixa preta envolvendo a sala — se a câmera escapar da casca
   // interna por um frame, vê escuridão em vez do mar e da cidade ao fundo
@@ -127,7 +128,7 @@ export function addNightclub(solids){
 
   // balcão do bar na parede norte, com tampo neon e garrafas na prateleira
   const bar=new THREE.Mesh(new THREE.BoxGeometry(8.4,1.1,1.3),
-    new THREE.MeshStandardMaterial({color:0x3a2350,roughness:.7}));
+    matte({color:0x3a2350,roughness:.7}));
   bar.position.set(-802,.55,-28.6);clubInterior.add(bar);
   const barTop=new THREE.Mesh(new THREE.BoxGeometry(8.6,.08,1.45),neonCyanM);
   barTop.position.set(-802,1.14,-28.6);clubInterior.add(barTop);
@@ -144,13 +145,13 @@ export function addNightclub(solids){
   booth.position.set(-789.2,.65,-22);clubInterior.add(booth);
   for(const z of[-26.8,-17.2]){
     const sp=new THREE.Mesh(new THREE.BoxGeometry(1.3,2.6,1.3),
-      new THREE.MeshStandardMaterial({color:0x0c0a14,roughness:.9}));
+      matte({color:0x0c0a14,roughness:.9}));
     sp.position.set(-789.4,1.3,z);clubInterior.add(sp);
   }
 
   // globo de espelhos girando sobre a pista
   clubFx.ball=new THREE.Mesh(new THREE.SphereGeometry(.75,12,10),
-    new THREE.MeshStandardMaterial({color:0xdde2f0,metalness:.95,roughness:.12}));
+    matte({color:0xdde2f0,metalness:.95,roughness:.12}));
   clubFx.ball.position.set(-801,4.3,-22);clubInterior.add(clubFx.ball);
   const mount=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.7,5),darkM);
   mount.position.set(-801,5.1,-22);clubInterior.add(mount);

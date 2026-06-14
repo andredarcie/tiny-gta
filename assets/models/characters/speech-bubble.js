@@ -57,8 +57,10 @@ export function makeSpeechBubble(text,{worldWidth=3,font=30,pad=26,maxTextW=448}
   const tex=new THREE.CanvasTexture(c);
   tex.colorSpace=THREE.SRGBColorSpace;
   tex.anisotropy=4;
+  // depthTest:true → o balão é TAMPADO pela cena (prédios na frente o escondem,
+  // não atravessa mais paredes). depthWrite:false pra não furar a transparência.
   const mat=new THREE.SpriteMaterial({map:tex,transparent:true,
-    depthTest:false,depthWrite:false}); // sempre legível, nunca tampado pela cena
+    depthTest:true,depthWrite:false});
   const spr=new THREE.Sprite(mat);
   spr.renderOrder=20;
   spr.scale.set(worldWidth,worldWidth*c.height/c.width,1);

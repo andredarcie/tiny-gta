@@ -239,6 +239,14 @@ function startCutscene(m,actor,lines,onDone){
   cine.side=((camera.position.x-midx)*dz+(camera.position.z-midz)*-dx)>=0?1:-1;
   nextLine();
 }
+// Cut-scene genérica para missões FORA do STORY (ex.: a missão secreta do Rick
+// em js/rick.js). Reaproveita toda a máquina de câmera/legendas/voz: passa um
+// "ator" mínimo (ped + marcador fantasma) e a voz; updateCine/advanceCine já
+// rodam pelo updateStory. ped precisa ter userData.limbs/mouth (vale pra buildPed).
+export function playCutscene(ped,voice,lines,onDone){
+  startCutscene({npc:{voice}},{ped,marker:{visible:false}},lines,onDone);
+}
+
 function nextLine(){
   cine.li++;
   if(cine.li>=cine.lines.length)return endCutscene();

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 import {rand} from '../../../js/constants.js';
 import {makePed} from '../characters/pedestrian.js';
@@ -83,20 +84,20 @@ const rubberTex=repeatTex(canvasTexture(96,96,(x,w,h)=>{
   for(let i=-w;i<w*2;i+=18){x.beginPath();x.moveTo(i,0);x.lineTo(i+w,h);x.stroke();}
 }),2,2);
 
-const wallM=new THREE.MeshStandardMaterial({color:0x2b2622,roughness:.96});
-const darkM=new THREE.MeshStandardMaterial({color:0x16140f,roughness:.85});
-const steelM=new THREE.MeshStandardMaterial({color:0x6b7079,metalness:.85,roughness:.35});
+const wallM=matte({color:0x2b2622,roughness:.96});
+const darkM=matte({color:0x16140f,roughness:.85});
+const steelM=matte({color:0x6b7079,metalness:.85,roughness:.35});
 const accentM=new THREE.MeshBasicMaterial({color:0xf5c518}); // amarelo do AMMO DEPOT
-const counterBodyM=new THREE.MeshStandardMaterial({color:0x20242b,roughness:.82});
-const counterTopM=new THREE.MeshStandardMaterial({color:0x3a2c20,roughness:.6});
-const floorM=new THREE.MeshStandardMaterial({map:floorTex,roughness:.94});
-const pegM=new THREE.MeshStandardMaterial({map:pegTex,roughness:.86,side:THREE.DoubleSide});
-const glassM=new THREE.MeshStandardMaterial({color:0x9fdaf1,roughness:.05,metalness:.05,
+const counterBodyM=matte({color:0x20242b,roughness:.82});
+const counterTopM=matte({color:0x3a2c20,roughness:.6});
+const floorM=matte({map:floorTex,roughness:.94});
+const pegM=matte({map:pegTex,roughness:.86,side:THREE.DoubleSide});
+const glassM=matte({color:0x9fdaf1,roughness:.05,metalness:.05,
   transparent:true,opacity:.24,depthWrite:false});
-const rubberM=new THREE.MeshStandardMaterial({map:rubberTex,roughness:.9});
-const shelfM=new THREE.MeshStandardMaterial({color:0x35291c,roughness:.72});
-const brassM=new THREE.MeshStandardMaterial({color:0xc89536,metalness:.35,roughness:.34});
-const greenM=new THREE.MeshStandardMaterial({color:0x29412f,roughness:.82});
+const rubberM=matte({map:rubberTex,roughness:.9});
+const shelfM=matte({color:0x35291c,roughness:.72});
+const brassM=matte({color:0xc89536,metalness:.35,roughness:.34});
+const greenM=matte({color:0x29412f,roughness:.82});
 const redM=new THREE.MeshBasicMaterial({color:0xff3030});
 const glowM=new THREE.MeshBasicMaterial({color:0xffe5a5});
 
@@ -202,7 +203,7 @@ function addDisplayCase(z){
 function makeAmmoBox(label,color=0x6b4b26){
   const g=new THREE.Group();
   const b=new THREE.Mesh(new THREE.BoxGeometry(.68,.42,.48),
-    new THREE.MeshStandardMaterial({color,roughness:.75}));
+    matte({color,roughness:.75}));
   b.castShadow=true;g.add(b);
   const tag=makePanel(label,.58,.24,{bg:'#1a130b',fg:'#f7d36d',sub:'#000'});
   tag.position.set(0,.03,.246);g.add(tag);
@@ -387,7 +388,7 @@ export function addGunShop(solids){
     bar.position.set(CX-8.05,2.4,CZ+dz);facade.add(bar);
   }
   const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,4.4),
-    new THREE.MeshStandardMaterial({color:0x3a352a,roughness:.8}));
+    matte({color:0x3a352a,roughness:.8}));
   canopy.position.set(CX-9.3,3.3,CZ);canopy.castShadow=true;facade.add(canopy);
   for(const dz of[-1.9,1.9]){
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3.2,6),steelM);

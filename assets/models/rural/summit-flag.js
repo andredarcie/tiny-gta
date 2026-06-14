@@ -1,12 +1,13 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 
 // build() puro: mastro + bandeira num grupo na origem. addSummitFlag posiciona.
 function build(){
   const g=new THREE.Group();
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.09,4.6,6),
-    new THREE.MeshStandardMaterial({color:0xd8dde6,roughness:.5}));
-  pole.position.y=2.3;pole.castShadow=true;g.add(pole);
+    matte({color:0xd8dde6,roughness:.5}));
+  pole.position.y=2.3;pole.castShadow=false;g.add(pole);
   const flag=new THREE.Mesh(new THREE.PlaneGeometry(1.7,1),
     new THREE.MeshBasicMaterial({color:0xff2e88,side:THREE.DoubleSide}));
   flag.position.set(.9,1.8,0);g.add(flag);

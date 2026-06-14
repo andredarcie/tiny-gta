@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {N,CELL,ROAD,BLOCK,SIDE,HALF,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
-  RURAL_X0,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,groundHeight} from './constants.js';
+  RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,groundHeight,ruralHillH} from './constants.js';
 import {scene,renderer} from './engine.js';
 import {addPalm} from '../assets/models/props/palm.js';
 import {addUmbrella} from '../assets/models/props/umbrella.js';
@@ -18,6 +18,7 @@ import {addGym,GYM_I,GYM_J} from '../assets/models/city/gym.js';
 import {addHospital,HOSP_I,HOSP_J} from '../assets/models/city/hospital.js';
 import {addPrison,PRISON_I,PRISON_J} from '../assets/models/city/prison.js';
 import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../assets/models/city/gun-shop.js';
+import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../assets/models/city/workshop.js';
 import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
 import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
@@ -37,6 +38,7 @@ while(parks.size<6){
   if(i===HOSP_I&&j===HOSP_J)continue; // quarteirão reservado pro hospital
   if(i===PRISON_I&&j===PRISON_J)continue; // quarteirão reservado pro presídio
   if(i===GUNSHOP_I&&j===GUNSHOP_J)continue; // quarteirão reservado pra loja de armas
+  if(i===WORKSHOP_I&&j===WORKSHOP_J)continue; // quarteirão reservado pra oficina de custom
   if(Math.abs(i-4)+Math.abs(j-4)>1)parks.add(i+'_'+j);
 }
 export const isPark=(i,j)=>parks.has(i+'_'+j);
@@ -51,11 +53,15 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   if(i===HOSP_I&&j===HOSP_J)continue; // nem o do hospital
   if(i===PRISON_I&&j===PRISON_J)continue; // nem o do presídio
   if(i===GUNSHOP_I&&j===GUNSHOP_J)continue; // nem o da loja de armas
+  if(i===WORKSHOP_I&&j===WORKSHOP_J)continue; // nem o da oficina de custom
   const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE,inner=BLOCK-2*SIDE;
   const sx=Math.random()<.5?1:2,sz=Math.random()<.5?1:2;
-  for(let a=0;a<sx;a++)for(let b=0;b<sz;b++)
-    cityLots.push({cx:x0+(a+.5)*inner/sx,cz:z0+(b+.5)*inner/sz,
-      w:inner/sx-1.6,d:inner/sz-1.6,empty:Math.random()<1/3});
+  const bcx=x0+inner/2,bcz=z0+inner/2; // janelas só nas faces viradas pra fora do quarteirão
+  for(let a=0;a<sx;a++)for(let b=0;b<sz;b++){
+    const cx=x0+(a+.5)*inner/sx,cz=z0+(b+.5)*inner/sz;
+    cityLots.push({cx,cz,w:inner/sx-1.6,d:inner/sz-1.6,empty:Math.random()<1/3,
+      win:{e:cx>=bcx,w:cx<bcx,s:cz>=bcz,n:cz<bcz}});
+  }
 }
 
 // Ground texture (asphalt, sidewalks, crosswalks)
@@ -115,7 +121,6 @@ const groundCv=document.createElement('canvas');groundCv.width=2048;groundCv.hei
   const gt=new THREE.CanvasTexture(groundCv);gt.colorSpace=THREE.SRGBColorSpace;
   gt.anisotropy=renderer.capabilities.getMaxAnisotropy();
   const ground=makeTexturedPlane(GROUND,GROUND,gt);
-  ground.material.roughness=.95;
   scene.add(ground);
 }
 
@@ -128,13 +133,14 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
 }
 for(const lot of cityLots){
   if(lot.empty)addAbandonedLot(lot.cx,lot.cz,lot.w,lot.d,solids);
-  else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids);
+  else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids,lot.win);
 }
 addNightclub(solids); // boate de frente pro mar no quarteirão reservado
 addGym(solids);       // academia no quarteirão reservado (nordeste)
 addHospital(solids);  // hospital no quarteirão reservado (sudeste)
 addPrison(solids);    // presídio no quarteirão reservado (busted)
 addGunShop(solids);   // loja de armas (AMMU-NATION) no quarteirão reservado
+addWorkshop(solids);  // oficina de custom (MOD GARAGE) no quarteirão reservado
 finalizeBuildings();     // funde a cidade inteira em ~18 meshes (draw calls)
 finalizeAbandonedLots(); // e todos os lotes abandonados em ~5
 finalizeDoorArrows();    // todas as setinhas de porta num único mesh
@@ -221,7 +227,8 @@ const waves=addShallowsAndWaves(GROUND/2,BEACH);
     x.fillRect(Math.random()*1024,Math.random()*512,irand(2,7),irand(2,7));
   }
   // roças: terra arada com linhas de plantação
-  const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]];
+  const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
+    .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
   for(const[fx0,fx1,fz0,fz1]of fields){
     x.fillStyle='#8a6a3e';x.fillRect(u(fx0),w(fz0),u(fx1)-u(fx0),w(fz1)-w(fz0));
     x.strokeStyle='rgba(120,185,90,.9)';x.lineWidth=3;
@@ -250,14 +257,24 @@ const waves=addShallowsAndWaves(GROUND/2,BEACH);
   x.fillStyle='rgba(146,116,78,.6)'; // areia úmida na linha d'água
   x.fillRect(0,0,1024,8);x.fillRect(0,512-8,1024,8);x.fillRect(1024-15,0,15,512);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-  const ground=makeTexturedPlane(RW,RD,t,-.02);
-  ground.position.set(RURAL_X0+RW/2,-.02,0);
+  // Chão rural com colinas suaves no corredor. Mesma orientação do
+  // makeTexturedPlane (plano XY girado -90° no X): o relevo vai no Z local, que
+  // após o giro vira altura (+Y mundo). Amostro ruralHillH em coords de mundo.
+  const rcx=RURAL_X0+RW/2;
+  const rgeo=new THREE.PlaneGeometry(RW,RD,Math.round(RW/5),Math.round(RD/5));
+  const rpos=rgeo.attributes.position;
+  for(let k=0;k<rpos.count;k++)
+    rpos.setZ(k,ruralHillH(rpos.getX(k)+rcx,-rpos.getY(k)));
+  rgeo.computeVertexNormals();
+  const ground=new THREE.Mesh(rgeo,new THREE.MeshLambertMaterial({map:t}));
+  ground.rotation.x=-Math.PI/2;ground.position.set(rcx,-.02,0);
+  ground.receiveShadow=true;
   scene.add(ground);
 }
 
-solids.push(addFarmHouse(212,-12,0),addFarmHouse(236,10,-.4),addFarmHouse(258,12,.3),
-  addFarmHouse(282,-12,.2),addFarmHouse(302,10,-.25),addFarmHouse(222,74,2.8),
-  addFarmHouse(310,-58,1.3));
+solids.push(addFarmHouse(212+RURAL_GAP,-12,0),addFarmHouse(236+RURAL_GAP,10,-.4),addFarmHouse(258+RURAL_GAP,12,.3),
+  addFarmHouse(282+RURAL_GAP,-12,.2),addFarmHouse(302+RURAL_GAP,10,-.25),addFarmHouse(222+RURAL_GAP,74,2.8),
+  addFarmHouse(310+RURAL_GAP,-58,1.3));
 
 // celeiro vermelho com silo
 addBarnWithSilo(solids);
@@ -267,7 +284,8 @@ addRanchHouse(solids);
 
 // pinheiros pela zona rural e encostas baixas da montanha
 {
-  const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]];
+  const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
+    .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
   let placed=0,guard=0;
   while(placed<44&&guard++<400){
     const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);

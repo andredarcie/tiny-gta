@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 import {rand,pick} from '../../../js/constants.js';
 import {makePed,shirtColors} from '../characters/pedestrian.js';
@@ -24,9 +25,9 @@ export const INT_BOUNDS={x0:-812.3,x1:-787.7,z0:-207.3,z1:-192.7,y1:4.9};
 export const GYM_TRAIN={x:-800,z:-200};
 
 const accentM=new THREE.MeshBasicMaterial({color:0xff5a1e});   // laranja "neon"
-const steelM=new THREE.MeshStandardMaterial({color:0x6b7079,metalness:.85,roughness:.35});
-const darkM=new THREE.MeshStandardMaterial({color:0x16181d,roughness:.85});
-const plateM=new THREE.MeshStandardMaterial({color:0x202227,roughness:.7});
+const steelM=matte({color:0x6b7079,metalness:.85,roughness:.35});
+const darkM=matte({color:0x16181d,roughness:.85});
+const plateM=matte({color:0x202227,roughness:.7});
 
 function signTexture(){
   const c=document.createElement('canvas');c.width=512;c.height=128;
@@ -64,7 +65,7 @@ export function addGym(solids){
   // O corpo (caixa) some sozinho por culling quando a câmera entra; os objetos
   // da PORTA vão num grupo 'facade' que js/interior.js esconde junto (senão
   // ficariam flutuando ao sair). Ver gymFx.facade/footprint/facadeArrow.
-  const wallM=new THREE.MeshStandardMaterial({color:0x2c3038,roughness:.96});
+  const wallM=matte({color:0x2c3038,roughness:.96});
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),wallM);
   bld.position.set(cx,3.5,cz);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,16.2),darkM);
@@ -84,7 +85,7 @@ export function addGym(solids){
   }
   // marquise sobre a entrada com colunas
   const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,4.4),
-    new THREE.MeshStandardMaterial({color:0x3a3f48,roughness:.8}));
+    matte({color:0x3a3f48,roughness:.8}));
   canopy.position.set(cx-9.3,3.3,cz);canopy.castShadow=true;facade.add(canopy);
   for(const dz of[-1.9,1.9]){
     const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3.2,6),steelM);
@@ -110,11 +111,11 @@ export function addGym(solids){
   // casca BackSide: de dentro é parede/teto/chão; de fora invisível, então a
   // câmera atrás do jogador enxerga a sala mesmo "atravessando" a parede
   const shell=new THREE.Mesh(new THREE.BoxGeometry(26,5.5,16),
-    new THREE.MeshStandardMaterial({color:0x23262d,roughness:1,side:THREE.BackSide}));
+    matte({color:0x23262d,roughness:1,side:THREE.BackSide}));
   shell.position.set(-800,2.75,-200);gymInterior.add(shell);
   // piso de borracha escuro por cima da casca
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(25.4,15.4),
-    new THREE.MeshStandardMaterial({color:0x14161b,roughness:.95}));
+    matte({color:0x14161b,roughness:.95}));
   floor.rotation.x=-Math.PI/2;floor.position.set(-800,.02,-200);gymInterior.add(floor);
   // backstop: se a câmera escapar da casca por um frame, vê escuridão
   const outer=new THREE.Mesh(new THREE.BoxGeometry(30,9,20),
@@ -135,7 +136,7 @@ export function addGym(solids){
 
   // parede de espelhos na face norte
   const mirror=new THREE.Mesh(new THREE.PlaneGeometry(15,3.2),
-    new THREE.MeshStandardMaterial({color:0x9fb0c4,metalness:.9,roughness:.15}));
+    matte({color:0x9fb0c4,metalness:.9,roughness:.15}));
   mirror.position.set(-800,1.9,-207.85);gymInterior.add(mirror);
 
   // rack de halteres na parede leste
@@ -148,7 +149,7 @@ export function addGym(solids){
 
   // estação de supino no centro (a "estação de treino"): banco + barra + discos
   const bench=new THREE.Mesh(new THREE.BoxGeometry(.9,.5,2.6),
-    new THREE.MeshStandardMaterial({color:0x8a1f12,roughness:.7}));
+    matte({color:0x8a1f12,roughness:.7}));
   bench.position.set(-800,.5,-200);gymInterior.add(bench);
   const benchLeg=new THREE.Mesh(new THREE.BoxGeometry(.7,.5,.18),darkM);
   benchLeg.position.set(-800,.25,-200);gymInterior.add(benchLeg);

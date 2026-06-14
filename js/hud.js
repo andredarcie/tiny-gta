@@ -1,5 +1,5 @@
 import {N,ROAD,BLOCK,GROUND,BEACH,nodeX,
-  RURAL_X0,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R} from './constants.js';
+  RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R} from './constants.js';
 import {state,input,refs} from './state.js';
 import {isPark} from './world.js';
 import {getTod} from './daynight.js';
@@ -54,12 +54,16 @@ export function getInteractAction(){
     if(buy)return buy;
     const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
     if(gym)return gym;
+    const dance=refs.clubDanceState?.(); // no meio da pista dentro da boate
+    if(dance)return dance;
     const shop=refs.gunShopState?.(); // perto de uma arma dentro da loja de armas
     if(shop)return shop;
     const ov=refs.overkillNear?.(); // perto do totem do modo overkill
     if(ov)return{label:'OVERKILL',prompt:ov,enabled:true};
   }
   if(state.mode==='foot'){
+    const rk=refs.rickNear?.(); // acampamento secreto do Rick (sem blip no mapa)
+    if(rk)return{label:'TALK',prompt:'TALK TO '+rk,enabled:true};
     const sn=refs.storyNear?.();
     if(sn)return{label:'TALK',prompt:'TALK TO '+sn,enabled:true};
   }
@@ -75,6 +79,9 @@ export function getInteractAction(){
   }
   if(state.mode==='car'){
     if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
+    if(refs.boatRaceNear?.())return{label:'RACE',prompt:'START THE BOAT RACE',enabled:true};
+    const mod=refs.modShopState?.(); // carro parado na plataforma da oficina de custom
+    if(mod)return mod;
     const garage=refs.houseGarageState?.(); // carro parado dentro da garagem da casa
     if(garage)return garage;
     const c=refs.getCur?.();
@@ -112,7 +119,8 @@ const mmRural=document.createElement('canvas');mmRural.width=260;mmRural.height=
   const U=v=>(v-RURAL_X0)*sx,W=v=>(v+RURAL_HALF)*sz;
   x.fillStyle='#6a9a50';x.fillRect(0,0,260,240);                // pasto
   x.fillStyle='#8a6a3e';                                        // roças
-  for(const[a,b,d,e]of[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]])
+  for(const[a,b,d,e]of[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
+    .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]))
     x.fillRect(U(a),W(d),(b-a)*sx,(e-d)*sz);
   x.fillStyle='#b08a5e';                                        // estrada de terra
   x.fillRect(U(RURAL_X0),W(-3.4),(MOUNT_X-MOUNT_R+16-RURAL_X0)*sx,6.8*sz);
@@ -180,6 +188,13 @@ function mmCircleIcon(px,py,b){
       mm.lineTo(4.7,.2);mm.lineTo(4.7,5);mm.lineTo(-4.7,5);mm.lineTo(-4.7,.2);
       mm.closePath();mm.fill();
       mm.fillStyle=b.color||'#f5c518';mm.fillRect(-1.2,1.5,2.4,3.5);
+      break;
+    case'wrench':
+      mm.lineWidth=2.4;mm.lineCap='round';
+      mm.beginPath();mm.moveTo(-3.4,-3.4);mm.lineTo(3.4,3.4);mm.stroke(); // cabo
+      mm.lineWidth=1.6;
+      mm.beginPath();mm.arc(-3.8,-3.8,2.2,-1.0,2.2);mm.stroke();           // boca
+      mm.beginPath();mm.arc(3.8,3.8,2.2,2.1,5.3);mm.stroke();
       break;
     default:
       mm.lineWidth=1.8;mm.strokeRect(-3.6,-5,7.2,10);
@@ -338,7 +353,8 @@ export function drawMinimap(){
   const h=refs.getPlayerHeading?.()??cur?.heading??0;
   const th=h-Math.PI,scale=MM_R/MM_RANGE;
   // durante a corrida o radar mostra SÓ a corrida: nenhum outro objetivo/minigame
-  const raceOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
+  const raceOn=((refs.getRaceState?.()?.phase||'idle')!=='idle')
+    ||((refs.getBoatRaceState?.()?.phase||'idle')!=='idle');
 
   mm.clearRect(0,0,170,170);
   mm.save();
@@ -371,6 +387,8 @@ export function drawMinimap(){
       const[px,py]=mmBlip(b.x,b.z,pp,scale);
       mmCircleIcon(px,py,b);
     }
+    const ws=refs.workshopBlip?.(); // oficina de custom (não é Interior)
+    if(ws){const[px,py]=mmBlip(ws.x,ws.z,pp,scale);mmCircleIcon(px,py,ws);}
     const delivery=refs.getDelivery?.();
     if(delivery){
       const[px,py]=mmBlip(delivery.x,delivery.z,pp,scale);
@@ -393,8 +411,8 @@ export function drawMinimap(){
       }else mmSquare(px,py,8,b.col);
     }
   }
-  // Corrida de rua: checkpoint atual (forte) + próximos (apagados) pra orientar
-  for(const b of refs.raceBlips?.()||[]){
+  // Corrida (rua/lanchas): checkpoint/boia atual (forte) + próximos (apagados)
+  for(const b of[...(refs.raceBlips?.()||[]),...(refs.boatRaceBlips?.()||[])]){
     const[px,py]=mmBlip(b.x,b.z,pp,scale);
     mmSquare(px,py,b.current?9:6,b.current?'#ff8a1e':'rgba(255,138,30,.55)');
   }
@@ -453,7 +471,8 @@ export function updateHUD(dt){
   }
   // velocímetro (canto inferior direito): SÓ no modo corrida
   if(hudSpeedo){
-    const racing=(refs.getRaceState?.()?.phase||'idle')!=='idle';
+    const racing=((refs.getRaceState?.()?.phase||'idle')!=='idle')
+      ||((refs.getBoatRaceState?.()?.phase||'idle')!=='idle');
     if(racing&&state.mode==='car'){
       const kmh=Math.round(Math.abs(refs.getCur?.()?.speed||0)*5);
       hudSpeedoVal.textContent=kmh;

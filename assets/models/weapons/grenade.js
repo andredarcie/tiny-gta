@@ -12,7 +12,7 @@ export function makeGrenadeModel({pickup=false}={}){
   const g=new THREE.Group();
   // corpo ovóide
   const body=new THREE.Mesh(new THREE.SphereGeometry(.07,12,10),ironMat);
-  body.scale.set(1,1.25,1);body.castShadow=true;g.add(body);
+  body.scale.set(1,1.25,1);body.castShadow=false;g.add(body);
   // ranhuras (anéis horizontais)
   for(let i=-1;i<=1;i++){
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.066,.006,6,16),ironMat);

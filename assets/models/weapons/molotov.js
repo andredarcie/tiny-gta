@@ -16,7 +16,7 @@ export function makeMolotovModel({pickup=false}={}){
   const g=new THREE.Group();
   // corpo da garrafa
   const body=new THREE.Mesh(new THREE.CylinderGeometry(.07,.06,.22,12),glassMat);
-  body.position.y=0;body.castShadow=true;g.add(body);
+  body.position.y=0;body.castShadow=false;g.add(body);
   // gasolina dentro (menor que o corpo)
   const fuel=new THREE.Mesh(new THREE.CylinderGeometry(.055,.05,.14,12),fuelMat);
   fuel.position.y=-.03;g.add(fuel);

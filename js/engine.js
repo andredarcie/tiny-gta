@@ -17,6 +17,11 @@ renderer.setSize(initialSize.w,initialSize.h);
 renderer.shadowMap.enabled=true;
 // PCF simples: o PCFSoft fazia várias leituras extras da shadow map por pixel
 renderer.shadowMap.type=THREE.PCFShadowMap;
+// Sombra throttlada: a luz direcional é fixa (só a POSIÇÃO segue o jogador),
+// então o depth map não precisa ser redesenhado todo frame. main.js liga
+// needsUpdate 1 frame sim / 1 não (~30fps de sombra), cortando ~metade do
+// shadow pass — que é um 2º render da cena inteira por frame.
+renderer.shadowMap.autoUpdate=false;
 renderer.toneMapping=THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure=1.25;
 
@@ -42,9 +47,12 @@ export const hemi=new THREE.HemisphereLight(0xbfdfff,0x8a8078,1.05);scene.add(he
 export const sunDir=new THREE.Vector3(-.45,.9,-.55).normalize();
 export const dlight=new THREE.DirectionalLight(0xfff1d6,2.2);
 dlight.castShadow=true;
-dlight.shadow.mapSize.set(isMobileLike()?1024:2048,isMobileLike()?1024:2048);
-dlight.shadow.camera.left=-95;dlight.shadow.camera.right=95;
-dlight.shadow.camera.top=95;dlight.shadow.camera.bottom=-95;
+// Resolução reduzida do shadow map (era 1024/2048): sombra mais "blocky", mais barata.
+dlight.shadow.mapSize.set(isMobileLike()?512:1024,isMobileLike()?512:1024);
+// Frustum mais apertado (era ±95): foca a sombra perto do jogador, melhora a
+// densidade de texel e reduz a área rasterizada no shadow pass.
+dlight.shadow.camera.left=-80;dlight.shadow.camera.right=80;
+dlight.shadow.camera.top=80;dlight.shadow.camera.bottom=-80;
 dlight.shadow.camera.far=420;dlight.shadow.bias=-.0015;
 scene.add(dlight);scene.add(dlight.target);
 

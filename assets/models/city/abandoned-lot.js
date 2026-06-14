@@ -8,13 +8,24 @@ import {rand,irand} from '../../../js/constants.js';
 // geometria vai para baldes por material e finalizeAbandonedLots() funde a
 // cidade inteira em ~5 meshes (draw calls).
 
-const concreteM=new THREE.MeshStandardMaterial({color:0x9a958c,roughness:.95});
-const woodM=new THREE.MeshStandardMaterial({color:0x7a5c3a,roughness:.9});
-const tireM=new THREE.MeshStandardMaterial({color:0x1c1a20,roughness:.95});
-const binM=new THREE.MeshStandardMaterial({color:0x55684c,roughness:.8,metalness:.25});
-const weedM=new THREE.MeshStandardMaterial({color:0x5f8a48,roughness:.95});
+const concreteM=new THREE.MeshLambertMaterial({color:0x9a958c});
+const woodM=new THREE.MeshLambertMaterial({color:0x7a5c3a});
+const tireM=new THREE.MeshLambertMaterial({color:0x1c1a20});
+const binM=new THREE.MeshLambertMaterial({color:0x55684c});
+const weedM=new THREE.MeshLambertMaterial({color:0x5f8a48});
 
-const buckets={concrete:[],wood:[],tire:[],bin:[],weed:[]};
+// Chunking espacial (LOD por tamanho, igual aos props): entulho é objeto
+// pequeno/médio → distância de corte curta. updateLotCulling esconde os longe.
+const LOT_CHUNK=90, LOT_CULL=200;
+const newBuckets=()=>({concrete:[],wood:[],tire:[],bin:[],weed:[]});
+const chunks=new Map();
+function chunkFor(cx,cz){
+  const k=Math.round(cx/LOT_CHUNK)+'_'+Math.round(cz/LOT_CHUNK);
+  let b=chunks.get(k);
+  if(!b){b=newBuckets();chunks.set(k,b);}
+  return b;
+}
+export const lotChunks=[];
 
 function push(arr,geo,x,y,z,ry=0,rx=0,rz=0){
   if(rx)geo.rotateX(rx);
@@ -25,6 +36,7 @@ function push(arr,geo,x,y,z,ry=0,rx=0,rz=0){
 }
 
 export function addAbandonedLot(cx,cz,w,d,solids){
+  const buckets=chunkFor(cx,cz); // tudo deste lote vai pro balde do seu chunk
   // pilhas de entulho: lajes e blocos quebrados meio afundados na terra
   for(let k=0;k<irand(2,3);k++){
     const px=cx+rand(-w/2+1.2,w/2-1.2),pz=cz+rand(-d/2+1.2,d/2-1.2);
@@ -90,16 +102,33 @@ export function addAbandonedLot(cx,cz,w,d,solids){
 
 // Funde cada balde num único mesh — chamar UMA vez, depois da cidade montada
 export function finalizeAbandonedLots(){
-  const addMerged=(geos,mat,cast=true)=>{
-    if(!geos.length)return;
-    const m=new THREE.Mesh(mergeGeometries(geos),mat);
-    m.castShadow=cast;
-    scene.add(m);
-    geos.length=0;
-  };
-  addMerged(buckets.concrete,concreteM);
-  addMerged(buckets.wood,woodM);
-  addMerged(buckets.tire,tireM);
-  addMerged(buckets.bin,binM);
-  addMerged(buckets.weed,weedM,false);
+  for(const[key,b]of chunks){
+    const group=new THREE.Group();
+    const add=(geos,mat,cast=true)=>{
+      if(!geos.length)return;
+      const m=new THREE.Mesh(mergeGeometries(geos),mat);
+      m.castShadow=cast;
+      group.add(m);
+    };
+    add(b.concrete,concreteM);
+    add(b.wood,woodM);
+    add(b.tire,tireM);
+    add(b.bin,binM);
+    add(b.weed,weedM,false);
+    if(!group.children.length)continue;
+    const[ki,kj]=key.split('_').map(Number);
+    group.userData.cx=ki*LOT_CHUNK;group.userData.cz=kj*LOT_CHUNK;
+    scene.add(group);
+    lotChunks.push(group);
+  }
+  chunks.clear();
+}
+
+// Esconde os lotes longe do jogador (distância média — entulho é pequeno).
+export function updateLotCulling(px,pz){
+  const f2=LOT_CULL*LOT_CULL;
+  for(const g of lotChunks){
+    const dx=g.userData.cx-px,dz=g.userData.cz-pz;
+    g.visible=dx*dx+dz*dz<f2;
+  }
 }

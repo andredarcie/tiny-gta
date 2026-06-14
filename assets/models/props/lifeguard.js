@@ -1,10 +1,11 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
 
 // Materiais no modulo (compartilhados pelas 3 torres) para a fusao de props
-const woodM=new THREE.MeshStandardMaterial({color:0xc9885a,roughness:.9});
-const hutM=new THREE.MeshStandardMaterial({color:0xffd24a,roughness:.8});
-const roofM=new THREE.MeshStandardMaterial({color:0xff2e88,roughness:.8});
+const woodM=matte({color:0xc9885a,roughness:.9});
+const hutM=matte({color:0xffd24a,roughness:.8});
+const roofM=matte({color:0xff2e88,roughness:.8});
 
 // build() puro: a torre na origem (sem rotacao/posicao). addLifeguard coloca no mundo.
 function build(){

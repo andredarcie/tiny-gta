@@ -63,7 +63,7 @@ function tinted(geo,m,c){
 
 function pickOf(arr){return arr[Math.floor(Math.random()*arr.length)];}
 
-function buildPed({color=shirtColors[0],pantsColor}={}){
+export function buildPed({color=shirtColors[0],pantsColor}={}){
   const g=new THREE.Group();
   const skin=pickOf(skinColors);
   const pants=pantsColor??pickOf(pantsColors);

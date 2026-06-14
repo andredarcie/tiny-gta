@@ -18,6 +18,7 @@ export function pedCorner(p){
 }
 
 export const peds=[];
+const PED_CULL2=130*130; // LOD: pedestre além disso não é desenhado nem simulado
 const bloodPuddles=[];
 
 export function addBloodPuddle(x,z){
@@ -91,6 +92,11 @@ export function updatePeds(dt){
       }
       continue;
     }
+    // LOD: pedestre longe do jogador não é desenhado nem simulado (retoma ao se
+    // aproximar). fly/dead acima sempre rodam — acontecem colados no jogador.
+    const lx=p.g.position.x-pp.x,lz=p.g.position.z-pp.z;
+    if(lx*lx+lz*lz>PED_CULL2){p.g.visible=false;continue;}
+    p.g.visible=true;
     if(danger&&p.g.position.distanceTo(activeCur.g.position)<2.0){
       p.state='fly';
       p.bloodDropped=false;

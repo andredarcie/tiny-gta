@@ -144,6 +144,102 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 body.house-tv-open #hud{display:none!important}
 body.house-tv-open #touch-controls{display:none!important}
 body.house-tv-open #btn-fullscreen{display:none!important}
+
+/* mini-game do supino: canvas transparente por cima do banco enquadrado */
+#gym-game{position:fixed;inset:0;z-index:64;display:none;
+  background:radial-gradient(ellipse at 50% 36%,rgba(0,0,0,.04),rgba(2,0,8,.66) 84%);
+  pointer-events:auto;touch-action:none}
+#gym-game.open{display:block}
+#gym-game-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#gym-game-exit{position:fixed;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));
+  z-index:65;min-width:74px;height:48px;padding:0 16px;border-radius:10px;border:2px solid var(--pink);
+  background:rgba(20,9,31,.88);color:var(--pink);font-family:'Bowlby One SC';font-size:13px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,46,136,.42);
+  pointer-events:auto;touch-action:none}
+body.gym-game-open #hud{display:none!important}
+body.gym-game-open #touch-controls{display:none!important}
+body.gym-game-open #btn-fullscreen{display:none!important}
+
+/* mini-game da dança: highway de setas + botões de pista por cima da boate */
+#dance-game{position:fixed;inset:0;z-index:64;display:none;
+  background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.02),rgba(2,0,8,.6) 86%);
+  pointer-events:none;touch-action:none}
+#dance-game.open{display:block}
+#dance-game-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+#dance-lanes{position:fixed;left:50%;bottom:max(10px,env(safe-area-inset-bottom));
+  transform:translateX(-50%);width:min(86vw,460px);height:min(18vh,108px);
+  display:flex;gap:8px;z-index:65;pointer-events:none}
+.dance-lane{flex:1;border-radius:14px;border:3px solid #fff;
+  background:rgba(20,9,31,.42);color:#fff;font-size:34px;font-weight:700;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;
+  text-shadow:1px 1px 0 #000;transition:background .05s,transform .05s}
+.dance-lane:active{transform:translateY(2px) scale(.97)}
+#dance-lane-0{border-color:#ff2e88;color:#ff2e88;box-shadow:0 0 16px rgba(255,46,136,.35)}
+#dance-lane-1{border-color:#19e3ff;color:#19e3ff;box-shadow:0 0 16px rgba(25,227,255,.35)}
+#dance-lane-2{border-color:#ffd24a;color:#ffd24a;box-shadow:0 0 16px rgba(255,210,74,.35)}
+#dance-lane-3{border-color:#9dff2e;color:#9dff2e;box-shadow:0 0 16px rgba(157,255,46,.35)}
+#dance-lane-0:active{background:rgba(255,46,136,.5)}
+#dance-lane-1:active{background:rgba(25,227,255,.5)}
+#dance-lane-2:active{background:rgba(255,210,74,.5)}
+#dance-lane-3:active{background:rgba(157,255,46,.5)}
+#dance-game-exit{position:fixed;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));
+  z-index:66;min-width:74px;height:48px;padding:0 16px;border-radius:10px;border:2px solid var(--pink);
+  background:rgba(20,9,31,.88);color:var(--pink);font-family:'Bowlby One SC';font-size:13px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,46,136,.42);
+  pointer-events:auto;touch-action:none}
+body.dance-game-open #hud{display:none!important}
+body.dance-game-open #touch-controls{display:none!important}
+body.dance-game-open #btn-fullscreen{display:none!important}
+
+/* oficina de custom: painel lateral sobre o carro girando na turntable */
+#modshop{position:fixed;inset:0;z-index:64;display:none;pointer-events:none;
+  background:linear-gradient(90deg,rgba(2,0,8,0) 38%,rgba(2,0,8,.42) 62%,rgba(2,0,8,.74) 100%)}
+#modshop.open{display:block}
+#modshop-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));
+  pointer-events:none}
+#modshop-title{font-family:'Bowlby One SC';font-size:clamp(18px,3vw,26px);color:var(--cream);
+  letter-spacing:2px;text-shadow:2px 2px 0 #000,0 0 18px rgba(25,227,255,.55)}
+#modshop-money{font:800 clamp(15px,2.4vw,20px) 'IBM Plex Mono',monospace;color:var(--gold);
+  text-shadow:1px 1px 0 #000;margin-left:auto}
+#modshop-exit{pointer-events:auto;touch-action:none;min-width:84px;height:46px;padding:0 18px;
+  border-radius:10px;border:2px solid var(--gold);background:rgba(20,9,31,.9);color:var(--gold);
+  font-family:'Bowlby One SC';font-size:14px;letter-spacing:1px;text-shadow:1px 1px 0 #000;
+  box-shadow:0 0 18px rgba(255,210,74,.4)}
+#modshop-panel{position:absolute;top:64px;right:max(16px,env(safe-area-inset-right));
+  bottom:max(16px,env(safe-area-inset-bottom));width:min(40vw,380px);
+  display:flex;flex-direction:column;gap:10px;pointer-events:auto;
+  background:rgba(12,5,22,.72);border:2px solid var(--cyan);border-radius:14px;padding:12px;
+  box-shadow:0 0 28px rgba(25,227,255,.22),0 14px 40px rgba(0,0,0,.6)}
+#modshop-cats{display:flex;flex-wrap:wrap;gap:6px}
+.ms-cat{flex:1 0 auto;min-width:62px;padding:8px 6px;border-radius:8px;border:2px solid rgba(255,233,201,.28);
+  background:rgba(20,9,31,.7);color:var(--cream);font:700 12px 'IBM Plex Mono',monospace;
+  letter-spacing:1px;cursor:pointer;touch-action:none}
+.ms-cat.on{border-color:var(--cyan);color:#fff;box-shadow:0 0 14px rgba(25,227,255,.4);background:rgba(25,227,255,.12)}
+#modshop-opts{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.ms-note{font:600 11px 'IBM Plex Mono',monospace;color:var(--gold);opacity:.9;margin:2px 2px 8px;letter-spacing:.5px}
+.ms-grid{display:flex;flex-direction:column;gap:7px}
+.ms-opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;
+  border:2px solid rgba(255,233,201,.22);background:rgba(20,9,31,.62);color:var(--cream);
+  font:700 14px 'IBM Plex Mono',monospace;cursor:pointer;text-align:left;touch-action:none}
+.ms-opt.on{border-color:var(--gold);background:rgba(255,210,74,.12);box-shadow:0 0 12px rgba(255,210,74,.3)}
+.ms-sw{width:20px;height:20px;border-radius:5px;border:2px solid rgba(255,255,255,.6);flex:none}
+.ms-lab{flex:1}
+.ms-price{font-weight:800;font-size:12px;color:var(--gold);letter-spacing:.5px}
+.ms-opt.on .ms-price{color:#9dff2e}
+#modshop-toast{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(10px);opacity:0;transition:opacity .15s,transform .15s;
+  pointer-events:none;font:800 16px 'Bowlby One SC','IBM Plex Mono',monospace;letter-spacing:1px;
+  color:#9dff2e;text-shadow:2px 2px 0 #000,0 0 16px rgba(157,255,46,.5)}
+#modshop-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+body.mod-shop-open #hud{display:none!important}
+body.mod-shop-open #touch-controls{display:none!important}
+body.mod-shop-open #btn-fullscreen{display:none!important}
+@media (max-width:760px){
+  #modshop-panel{width:auto;left:max(10px,env(safe-area-inset-left));top:auto;height:46vh}
+  #modshop{background:linear-gradient(0deg,rgba(2,0,8,.8) 0%,rgba(2,0,8,.3) 46%,rgba(2,0,8,0) 70%)}
+}
 #btn-fullscreen{position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
   z-index:72;min-width:92px;height:44px;padding:0 18px;border:2px solid var(--gold);border-radius:8px;
   background:rgba(20,9,31,.78);color:var(--gold);font-family:'Bowlby One SC';font-size:15px;

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 import {rand} from '../../../js/constants.js';
 import {makePed} from '../characters/pedestrian.js';
@@ -26,10 +27,10 @@ export const INT_BOUNDS={x0:-812.3,x1:-787.7,z0:172.7,z1:187.3,y1:4.9};
 // kit de cura no meio da sala (cruz verde): cura quem entra ferido
 export const HOSP_HEAL={x:-801,z:176};
 
-const whiteM=new THREE.MeshStandardMaterial({color:0xeef2f4,roughness:.92});
+const whiteM=matte({color:0xeef2f4,roughness:.92});
 const greenM=new THREE.MeshBasicMaterial({color:0x35d47a});      // cruz/sinal
-const tealM=new THREE.MeshStandardMaterial({color:0x2aa6a0,roughness:.6});
-const darkM=new THREE.MeshStandardMaterial({color:0x1a2226,roughness:.85});
+const tealM=matte({color:0x2aa6a0,roughness:.6});
+const darkM=matte({color:0x1a2226,roughness:.85});
 
 function signTexture(){
   const c=document.createElement('canvas');c.width=512;c.height=128;
@@ -55,8 +56,8 @@ function makeCross(s=1,mat=greenM){
 export const hospFx={sign:null,exitArrow:null,heal:null,peds:[],sickPatient:null,
   facade:null,facadeArrow:null,footprint:null};
 
-const metalM=new THREE.MeshStandardMaterial({color:0xb8c0c6,metalness:.6,roughness:.4});
-const bedM=new THREE.MeshStandardMaterial({color:0xf4f6f7,roughness:.7});
+const metalM=matte({color:0xb8c0c6,metalness:.6,roughness:.4});
+const bedM=matte({color:0xf4f6f7,roughness:.7});
 const screenM=new THREE.MeshBasicMaterial({color:0x35d47a});
 
 // Suporte de soro (haste + bolsa) ao lado do leito
@@ -67,7 +68,7 @@ function makeIvStand(){
   const foot=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.05,8),metalM);
   foot.position.y=.03;g.add(foot);
   const bag=new THREE.Mesh(new THREE.BoxGeometry(.16,.32,.06),
-    new THREE.MeshStandardMaterial({color:0xe8f4d8,transparent:true,opacity:.85,roughness:.5}));
+    matte({color:0xe8f4d8,transparent:true,opacity:.85,roughness:.5}));
   bag.position.set(.12,1.7,0);g.add(bag);
   return g;
 }
@@ -77,7 +78,7 @@ function makeMonitor(){
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,1.1,6),metalM);
   pole.position.y=.55;g.add(pole);
   const box=new THREE.Mesh(new THREE.BoxGeometry(.5,.4,.3),
-    new THREE.MeshStandardMaterial({color:0x2a3338,roughness:.6}));
+    matte({color:0x2a3338,roughness:.6}));
   box.position.y=1.25;g.add(box);
   const screen=new THREE.Mesh(new THREE.PlaneGeometry(.36,.26),screenM);
   screen.position.set(0,1.25,.151);g.add(screen);
@@ -116,7 +117,7 @@ export function addHospital(solids){
   const facade=new THREE.Group();
   // porta dupla na fachada oeste (x menor)
   const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.6),
-    new THREE.MeshStandardMaterial({color:0x2a3338,roughness:.7}));
+    matte({color:0x2a3338,roughness:.7}));
   door.position.set(cx-8.02,1.6,cz);facade.add(door);
   // marquise sobre a entrada com colunas
   const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,4.4),tealM);
@@ -142,10 +143,10 @@ export function addHospital(solids){
 
   // ----- interior: sala 26x16 a ~600m do mapa, num grupo liga/desliga -----
   const shell=new THREE.Mesh(new THREE.BoxGeometry(26,5.5,16),
-    new THREE.MeshStandardMaterial({color:0xdfe7ea,roughness:1,side:THREE.BackSide}));
+    matte({color:0xdfe7ea,roughness:1,side:THREE.BackSide}));
   shell.position.set(-800,2.75,180);hospInterior.add(shell);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(25.4,15.4),
-    new THREE.MeshStandardMaterial({color:0xc6d2d6,roughness:.85}));
+    matte({color:0xc6d2d6,roughness:.85}));
   floor.rotation.x=-Math.PI/2;floor.position.set(-800,.02,180);hospInterior.add(floor);
   // backstop: se a câmera escapar da casca por um frame, vê escuridão
   const outer=new THREE.Mesh(new THREE.BoxGeometry(30,9,20),
@@ -172,7 +173,7 @@ export function addHospital(solids){
     // cortina divisória entre os leitos (trilho + pano)
     if(k<2){
       const curtain=new THREE.Mesh(new THREE.BoxGeometry(.05,2,2.2),
-        new THREE.MeshStandardMaterial({color:0x9fd0cf,transparent:true,opacity:.55,roughness:.9}));
+        matte({color:0x9fd0cf,transparent:true,opacity:.55,roughness:.9}));
       curtain.position.set(x+2,2,185.6);hospInterior.add(curtain);
     }
     if(k!==1){ // leitos das pontas: soro + monitor
@@ -191,7 +192,7 @@ export function addHospital(solids){
 
   // armário de remédios na parede leste
   const cabinet=new THREE.Mesh(new THREE.BoxGeometry(.5,2.2,2.6),
-    new THREE.MeshStandardMaterial({color:0xeef2f4,roughness:.6}));
+    matte({color:0xeef2f4,roughness:.6}));
   cabinet.position.set(-787.6,1.1,182);hospInterior.add(cabinet);
   const cabCross=makeCross(.5,greenM);
   cabCross.position.set(-787.3,1.6,182);cabCross.rotation.y=Math.PI/2;hospInterior.add(cabCross);
@@ -236,7 +237,7 @@ export function addHospital(solids){
 
   // porta de saída (parede oeste) com cruz verde em cima
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.16,3,2.4),
-    new THREE.MeshStandardMaterial({color:0x2a3338,roughness:.7}));
+    matte({color:0x2a3338,roughness:.7}));
   exitDoor.position.set(-812.85,1.5,180);hospInterior.add(exitDoor);
   const exitCross=makeCross(.9,greenM);
   exitCross.position.set(-812.78,3.2,180);exitCross.rotation.y=Math.PI/2;hospInterior.add(exitCross);

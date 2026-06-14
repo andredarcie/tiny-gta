@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
 import {rand,pick} from '../../../js/constants.js';
 
@@ -6,11 +7,11 @@ const ruralWallCols=[0xf4e3c2,0xe8d8c8,0xd9e4d0,0xf0d9b0,0xe4c9b0];
 const roofCols=[0xb05438,0x8a4a3a,0xa05a40];
 
 // Materiais cacheados por cor para a fusao de props
-const doorM=new THREE.MeshStandardMaterial({color:0x6e4a32,roughness:.9});
-const winM=new THREE.MeshStandardMaterial({color:0x9ecbe0,roughness:.4});
+const doorM=matte({color:0x6e4a32,roughness:.9});
+const winM=matte({color:0x9ecbe0,roughness:.4});
 const wallMats=new Map(),roofMats=new Map();
 const matFor=(map,c,rough)=>{if(!map.has(c))map.set(c,
-  new THREE.MeshStandardMaterial({color:c,roughness:rough}));
+  matte({color:c,roughness:rough}));
   return map.get(c);};
 
 // build() puro: a casa na origem; guarda raio/altura em userData para a colisao.

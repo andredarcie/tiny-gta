@@ -61,27 +61,43 @@ const texVariants=facadePalette.map(windowTexPair);
 // que permite fundir a cidade inteira em pouquíssimos meshes (draw calls).
 export const buildingMats=[];
 const sideMats=texVariants.map(v=>{
-  const m=new THREE.MeshStandardMaterial({map:v.map,emissiveMap:v.emis,
-    emissive:0xffe9b0,emissiveIntensity:.3,roughness:.9});
+  const m=new THREE.MeshLambertMaterial({map:v.map,emissiveMap:v.emis,
+    emissive:0xffe9b0,emissiveIntensity:.3});
   buildingMats.push(m);
   return m;
 });
-const roofMat=new THREE.MeshStandardMaterial({color:0x8a857c,roughness:1});
-const parapetMat=new THREE.MeshStandardMaterial({color:0xf0eadc,roughness:.9});
-const roofEquipMat=new THREE.MeshStandardMaterial({color:0x9aa0a8,roughness:.8,metalness:.2});
-const tankMat=new THREE.MeshStandardMaterial({color:0x8a705a,roughness:.9});
-const doorMat=new THREE.MeshStandardMaterial({color:0x2a2230,roughness:.8});
+const roofMat=new THREE.MeshLambertMaterial({color:0x8a857c});
+const parapetMat=new THREE.MeshLambertMaterial({color:0xf0eadc});
+const roofEquipMat=new THREE.MeshLambertMaterial({color:0x9aa0a8});
+const tankMat=new THREE.MeshLambertMaterial({color:0x8a705a});
+const doorMat=new THREE.MeshLambertMaterial({color:0x2a2230});
 const antennaTipMat=new THREE.MeshBasicMaterial({color:0xff3030});
 const awningMats=[0xff5f9e,0x2ec8c8,0xffd24a,0xff8c2e,0xb06ad8]
-  .map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.85}));
+  .map(c=>new THREE.MeshLambertMaterial({color:c}));
+// Paredes lisas (faces sem janela): cor sólida da fachada, SEM textura — bem
+// mais barato de desenhar que a face com mapa de janelas (map+emissiveMap).
+const plainMats=facadePalette.map(c=>new THREE.MeshLambertMaterial({color:c}));
 
-// Baldes de geometria por material; finalizeBuildings() funde cada balde num
-// único mesh — a cidade toda vira ~18 draw calls em vez de ~900
-const buckets={
-  sides:texVariants.map(()=>[]),
+// Geometria agrupada por CHUNK espacial (super-bloco) E por material. Cada chunk
+// vira um Group de meshes fundidos: o Three faz frustum culling por chunk e
+// updateCityCulling() esconde os chunks distantes (atrás da névoa), em vez de
+// desenhar a cidade inteira todo frame (um mesh fundido global nunca era culled).
+const CHUNK=100; // lado do super-bloco de culling (m)
+const newBuckets=()=>({
+  sides:texVariants.map(()=>[]),  // faces COM janela (viradas pra rua)
+  plain:texVariants.map(()=>[]),  // faces lisas (sem textura) viradas pro miolo
   roof:[],parapet:[],equip:[],tank:[],tip:[],door:[],
   awning:awningMats.map(()=>[]),
-};
+});
+const chunks=new Map();
+function chunkFor(cx,cz){
+  const k=Math.round(cx/CHUNK)+'_'+Math.round(cz/CHUNK);
+  let b=chunks.get(k);
+  if(!b){b=newBuckets();chunks.set(k,b);}
+  return b;
+}
+// Grupos de chunk prontos (cada um com seus meshes e o centro em userData).
+export const cityChunks=[];
 
 // Tiling que antes era texture.repeat/offset, agora por face nas UVs
 function bakeBoxUVs(geo,w,h,d){
@@ -110,12 +126,17 @@ function sliceFaces(geo,faces){
 
 // Caixa de fachada: laterais no balde da variante, topo no balde de telhado;
 // a face de baixo nunca aparece e é descartada
-function addFacadeBox(vi,cx,cy,cz,w,h,d){
+function addFacadeBox(b,vi,cx,cy,cz,w,h,d,win){
   const nb=new THREE.BoxGeometry(w,h,d).toNonIndexed();
   bakeBoxUVs(nb,w,h,d);
   nb.translate(cx,cy,cz);
-  buckets.sides[vi].push(sliceFaces(nb,[0,1,4,5]));
-  buckets.roof.push(sliceFaces(nb,[2]));
+  // janela só nas faces viradas pra rua (win); o resto vira parede lisa.
+  // Faces do box: 0=+x(L), 1=-x(O), 4=+z(S), 5=-z(N).
+  const winF=[],plainF=[];
+  for(const[f,on]of[[0,win.e],[1,win.w],[4,win.s],[5,win.n]])(on?winF:plainF).push(f);
+  if(winF.length)b.sides[vi].push(sliceFaces(nb,winF));
+  if(plainF.length)b.plain[vi].push(sliceFaces(nb,plainF));
+  b.roof.push(sliceFaces(nb,[2]));
 }
 
 function pushBox(arr,sx,sy,sz,x,y,z,rx=0,rz=0){
@@ -126,11 +147,12 @@ function pushBox(arr,sx,sy,sz,x,y,z,rx=0,rz=0){
   arr.push(g);
 }
 
-export function addBuilding(cx,cz,w,d,solids){
+export function addBuilding(cx,cz,w,d,solids,win={e:1,w:1,s:1,n:1}){
+  const buckets=chunkFor(cx,cz); // tudo deste prédio vai pro balde do seu chunk
   const dist=Math.hypot(cx,cz);
   const h=clamp(rand(7,17)+Math.max(0,1-dist/200)*rand(8,30),7,46);
   const vi=irand(0,texVariants.length-1);
-  addFacadeBox(vi,cx,h/2,cz,w,h,d);
+  addFacadeBox(buckets,vi,cx,h/2,cz,w,h,d,win);
   solids.push({x0:cx-w/2,x1:cx+w/2,z0:cz-d/2,z1:cz+d/2,h});
 
   pushBox(buckets.parapet,w+.35,.55,d+.35,cx,h+.12,cz);
@@ -138,7 +160,7 @@ export function addBuilding(cx,cz,w,d,solids){
   let topH=h;
   if(h>26&&Math.random()<.6){
     const w2=w*.62,d2=d*.62,h2=rand(3.5,6.5);
-    addFacadeBox(vi,cx,h+h2/2,cz,w2,h2,d2);
+    addFacadeBox(buckets,vi,cx,h+h2/2,cz,w2,h2,d2,win);
     topH=h+h2;
   }
 
@@ -197,21 +219,47 @@ export function addBuilding(cx,cz,w,d,solids){
   }
 }
 
-// Funde cada balde num único mesh — chamar UMA vez, depois da cidade montada
+// Funde os baldes de CADA chunk em meshes, agrupados num Group por chunk — UMA
+// vez, depois da cidade montada. Cada Group guarda seu centro pra distância.
 export function finalizeBuildings(){
-  const addMerged=(geos,mat,cast=true,receive=false)=>{
-    if(!geos.length)return;
-    const m=new THREE.Mesh(mergeGeometries(geos),mat);
-    m.castShadow=cast;m.receiveShadow=receive;
-    scene.add(m);
-    geos.length=0;
-  };
-  buckets.sides.forEach((g,i)=>addMerged(g,sideMats[i],true,true));
-  addMerged(buckets.roof,roofMat,true,true);
-  addMerged(buckets.parapet,parapetMat);
-  addMerged(buckets.equip,roofEquipMat);
-  addMerged(buckets.tank,tankMat);
-  addMerged(buckets.tip,antennaTipMat,false);
-  addMerged(buckets.door,doorMat,false);
-  buckets.awning.forEach((g,i)=>addMerged(g,awningMats[i]));
+  for(const[key,b]of chunks){
+    const group=new THREE.Group();
+    const add=(geos,mat,cast=true,receive=false)=>{
+      if(!geos.length)return;
+      const m=new THREE.Mesh(mergeGeometries(geos),mat);
+      m.castShadow=cast;m.receiveShadow=receive;
+      group.add(m);
+    };
+    b.sides.forEach((g,i)=>add(g,sideMats[i],true,true));
+    b.plain.forEach((g,i)=>add(g,plainMats[i],true,true));
+    add(b.roof,roofMat,true,true);
+    add(b.parapet,parapetMat);
+    add(b.equip,roofEquipMat);
+    add(b.tank,tankMat);
+    add(b.tip,antennaTipMat,false);
+    add(b.door,doorMat,false);
+    b.awning.forEach((g,i)=>add(g,awningMats[i]));
+    if(!group.children.length)continue;
+    const[ki,kj]=key.split('_').map(Number);
+    group.userData.cx=ki*CHUNK;group.userData.cz=kj*CHUNK;
+    scene.add(group);
+    cityChunks.push(group);
+  }
+  chunks.clear();
+}
+
+// Esconde os chunks da cidade longe do jogador (além da névoa + margem de ~1
+// chunk, pra não dar pop). O que a névoa já apagou não precisa ser desenhado;
+// o frustum culling do Three já corta o que está fora da câmera.
+export function updateCityCulling(px,pz){
+  // Distância de corte: acompanha a névoa, mas CAPADA. No mirante da montanha a
+  // névoa abre com a altitude (daynight.js) — sem o cap, o corte ia a ~970m e a
+  // cidade inteira era desenhada de lá. Margem de ~meio chunk (não +CHUNK
+  // inteiro, que deixava a borda leste da cidade renderizar da zona rural).
+  const ff=Math.min(scene.fog?scene.fog.far:430,330);
+  const far=ff+70,f2=far*far;
+  for(const g of cityChunks){
+    const dx=g.userData.cx-px,dz=g.userData.cz-pz;
+    g.visible=dx*dx+dz*dz<f2;
+  }
 }

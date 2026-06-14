@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
+import {RURAL_GAP} from '../../../js/constants.js';
 import {makeDoorArrow} from '../city/door-arrow.js';
 
 // Casa de campo COMPRÁVEL (safehouse estilo GTA), no mesmo molde dos demais
@@ -11,11 +13,11 @@ import {makeDoorArrow} from '../city/door-arrow.js';
 //     de fechar o jogo (localStorage).
 
 // ----- fachada: casa + garagem perto da montanha, no fim da zona rural -----
-export const RANCH_CX=420, RANCH_CZ=-80;        // centro do corpo da casa, longe da cidade
-export const RANCH_DOOR={x:420,z:-85.5};        // porta da frente (face norte): entra ao encostar
-export const RANCH_SPAWN_OUT={x:420,z:-88};     // onde o jogador nasce ao sair pro quintal
-export const RANCH_SALE={x:420,z:-88};          // placa FOR SALE / gatilho de compra
-export const GARAGE_PAD={x:409,z:-80};          // vaga dentro da garagem (carro salvo fica aqui)
+export const RANCH_CX=420+RURAL_GAP, RANCH_CZ=-80;   // centro do corpo da casa, longe da cidade
+export const RANCH_DOOR={x:420+RURAL_GAP,z:-85.5};   // porta da frente (face norte): entra ao encostar
+export const RANCH_SPAWN_OUT={x:420+RURAL_GAP,z:-88};// onde o jogador nasce ao sair pro quintal
+export const RANCH_SALE={x:420+RURAL_GAP,z:-88};     // placa FOR SALE / gatilho de compra
+export const GARAGE_PAD={x:409+RURAL_GAP,z:-80};     // vaga dentro da garagem (carro salvo fica aqui)
 
 // ----- interior: sala a ~600m do mapa (z=80 fica livre entre boate(-22) e hospital(180)) -----
 export const INT_CENTER={x:-800,z:80};
@@ -26,19 +28,19 @@ export const FOOD={x:-793,z:77};                // comida da geladeira: cura que
 export const TV={x:INT_CENTER.x-5,z:INT_CENTER.z+1.2,y:1.2}; // tela da TV da sala
 export const HOUSE_PRICE=1;                      // preço da casa (1 dólar pra teste; js/property.js importa)
 
-const wallM=new THREE.MeshStandardMaterial({color:0xf3ecd8,roughness:.95});      // tábuas claras (lambris)
-const roofM=new THREE.MeshStandardMaterial({color:0x7c3b2c,roughness:.85});      // telha de barro escura
-const trimM=new THREE.MeshStandardMaterial({color:0x5e3c24,roughness:.8});       // madeira escura (vigas)
-const sidingM=new THREE.MeshStandardMaterial({color:0xd8ccb2,roughness:.9});     // linhas do lambril
-const whiteM=new THREE.MeshStandardMaterial({color:0xfbfaf4,roughness:.7});      // acabamento branco (quinas/janelas)
-const woodDoorM=new THREE.MeshStandardMaterial({color:0x6e4a32,roughness:.85});
-const winM=new THREE.MeshStandardMaterial({color:0xbfe0ef,roughness:.25,metalness:.3,side:THREE.DoubleSide});
-const shutterM=new THREE.MeshStandardMaterial({color:0x4a7a52,roughness:.85});   // venezianas verdes
-const brickM=new THREE.MeshStandardMaterial({color:0x9a4b3a,roughness:.95});     // chaminé de tijolo
-const metalM=new THREE.MeshStandardMaterial({color:0xb8bec6,roughness:.45,metalness:.6});
-const concreteM=new THREE.MeshStandardMaterial({color:0x8d8f93,roughness:1});
-const flowerM=new THREE.MeshStandardMaterial({color:0xdb4d68,roughness:.75});
-const leafAccentM=new THREE.MeshStandardMaterial({color:0x3f8e4d,roughness:.85});
+const wallM=matte({color:0xf3ecd8,roughness:.95});      // tábuas claras (lambris)
+const roofM=matte({color:0x7c3b2c,roughness:.85});      // telha de barro escura
+const trimM=matte({color:0x5e3c24,roughness:.8});       // madeira escura (vigas)
+const sidingM=matte({color:0xd8ccb2,roughness:.9});     // linhas do lambril
+const whiteM=matte({color:0xfbfaf4,roughness:.7});      // acabamento branco (quinas/janelas)
+const woodDoorM=matte({color:0x6e4a32,roughness:.85});
+const winM=matte({color:0xbfe0ef,roughness:.25,metalness:.3,side:THREE.DoubleSide});
+const shutterM=matte({color:0x4a7a52,roughness:.85});   // venezianas verdes
+const brickM=matte({color:0x9a4b3a,roughness:.95});     // chaminé de tijolo
+const metalM=matte({color:0xb8bec6,roughness:.45,metalness:.6});
+const concreteM=matte({color:0x8d8f93,roughness:1});
+const flowerM=matte({color:0xdb4d68,roughness:.75});
+const leafAccentM=matte({color:0x3f8e4d,roughness:.85});
 const warmLampM=new THREE.MeshBasicMaterial({color:0xffd37a});
 
 export const ranchFx={facade:null,facadeArrow:null,footprint:null,
@@ -135,12 +137,12 @@ function makeSign(sold){
 function makeFridge(){
   const g=new THREE.Group();
   const body=new THREE.Mesh(new THREE.BoxGeometry(1.1,2.2,1),
-    new THREE.MeshStandardMaterial({color:0xd9dde2,roughness:.4,metalness:.4}));
+    matte({color:0xd9dde2,roughness:.4,metalness:.4}));
   body.position.y=1.1;g.add(body);
   // duas portas com puxadores cromados
   for(const[y,h]of[[1.6,1.1],[.55,.95]]){
     const door=new THREE.Mesh(new THREE.BoxGeometry(1.06,h-.06,.06),
-      new THREE.MeshStandardMaterial({color:0xeef1f4,roughness:.35,metalness:.5}));
+      matte({color:0xeef1f4,roughness:.35,metalness:.5}));
     door.position.set(0,y,.5);g.add(door);
     const handle=new THREE.Mesh(new THREE.BoxGeometry(.05,h*.6,.05),metalM);
     handle.position.set(-.42,y,.56);g.add(handle);
@@ -151,21 +153,21 @@ function makeFridge(){
 function makeFood(){
   const g=new THREE.Group();
   const plate=new THREE.Mesh(new THREE.CylinderGeometry(.32,.28,.05,16),
-    new THREE.MeshStandardMaterial({color:0xf4f4f0,roughness:.5}));
+    matte({color:0xf4f4f0,roughness:.5}));
   g.add(plate);
-  const bun=new THREE.MeshStandardMaterial({color:0xd9a14e,roughness:.8});
+  const bun=matte({color:0xd9a14e,roughness:.8});
   const bot=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.07,14),bun);bot.position.y=.07;g.add(bot);
   const patty=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,.06,14),
-    new THREE.MeshStandardMaterial({color:0x5a3826,roughness:.9}));patty.position.y=.13;g.add(patty);
+    matte({color:0x5a3826,roughness:.9}));patty.position.y=.13;g.add(patty);
   const sal=new THREE.Mesh(new THREE.CylinderGeometry(.23,.23,.03,14),
-    new THREE.MeshStandardMaterial({color:0x4caf50,roughness:.8}));sal.position.y=.17;g.add(sal);
+    matte({color:0x4caf50,roughness:.8}));sal.position.y=.17;g.add(sal);
   const top=new THREE.Mesh(new THREE.SphereGeometry(.2,14,8,0,Math.PI*2,0,Math.PI/2),bun);
   top.position.y=.19;g.add(top);
   return g;
 }
 function makeSofa(){
   const g=new THREE.Group();
-  const m=new THREE.MeshStandardMaterial({color:0x4a6a8a,roughness:.9});
+  const m=matte({color:0x4a6a8a,roughness:.9});
   const base=new THREE.Mesh(new THREE.BoxGeometry(2.6,.5,1),m);base.position.y=.35;g.add(base);
   const back=new THREE.Mesh(new THREE.BoxGeometry(2.6,.8,.25),m);back.position.set(0,.75,-.45);g.add(back);
   for(const sx of[-1.25,1.25]){
@@ -173,7 +175,7 @@ function makeSofa(){
   }
   for(const sx of[-.45,.45]){
     const pillow=new THREE.Mesh(new THREE.BoxGeometry(.55,.28,.16),
-      new THREE.MeshStandardMaterial({color:sx<0?0xf0c15d:0xce6f7b,roughness:.9}));
+      matte({color:sx<0?0xf0c15d:0xce6f7b,roughness:.9}));
     pillow.position.set(sx,.78,-.28);g.add(pillow);
   }
   return g;
@@ -182,7 +184,7 @@ function makeTv(){
   const g=new THREE.Group();
   const stand=new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,.5),trimM);stand.position.y=.25;g.add(stand);
   const frame=new THREE.Mesh(new THREE.BoxGeometry(1.7,1,.12),
-    new THREE.MeshStandardMaterial({color:0x14161c,roughness:.5}));frame.position.y=1.2;g.add(frame);
+    matte({color:0x14161c,roughness:.5}));frame.position.y=1.2;g.add(frame);
   const screen=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.82),
     tvScreenMaterial());screen.position.set(0,1.2,.07);g.add(screen);
   ranchFx.tv=screen;
@@ -192,11 +194,11 @@ function makeBed(){
   const g=new THREE.Group();
   const frame=new THREE.Mesh(new THREE.BoxGeometry(2,.4,3),trimM);frame.position.y=.2;g.add(frame);
   const mat=new THREE.Mesh(new THREE.BoxGeometry(1.9,.25,2.9),
-    new THREE.MeshStandardMaterial({color:0xe7e2d6,roughness:.8}));mat.position.y=.5;g.add(mat);
+    matte({color:0xe7e2d6,roughness:.8}));mat.position.y=.5;g.add(mat);
   const blanket=new THREE.Mesh(new THREE.BoxGeometry(1.92,.12,1.8),
-    new THREE.MeshStandardMaterial({color:0x39507a,roughness:.85}));blanket.position.set(0,.62,.5);g.add(blanket);
+    matte({color:0x39507a,roughness:.85}));blanket.position.set(0,.62,.5);g.add(blanket);
   const pillow=new THREE.Mesh(new THREE.BoxGeometry(1.6,.2,.5),
-    new THREE.MeshStandardMaterial({color:0xf4f1ea,roughness:.8}));pillow.position.set(0,.62,-1.1);g.add(pillow);
+    matte({color:0xf4f1ea,roughness:.8}));pillow.position.set(0,.62,-1.1);g.add(pillow);
   const headboard=new THREE.Mesh(new THREE.BoxGeometry(2.1,1,.18),trimM);
   headboard.position.set(0,.75,-1.48);g.add(headboard);
   return g;
@@ -371,7 +373,7 @@ export function addRanchHouse(solids){
 
   // garagem ao lado oeste (open front pro norte), centrada em (cx-11, cz)
   const gx=GARAGE_PAD.x,gz=GARAGE_PAD.z;
-  const gWall=new THREE.MeshStandardMaterial({color:0xe7d9bb,roughness:.95});
+  const gWall=matte({color:0xe7d9bb,roughness:.95});
   // três paredes (fundo + duas laterais), frente aberta pro carro entrar
   const back=new THREE.Mesh(new THREE.BoxGeometry(6,3.4,.3),gWall);
   back.position.set(gx,1.7,gz+3.5);back.castShadow=true;scene.add(back);
@@ -408,13 +410,13 @@ export function addRanchHouse(solids){
   // ===== INTERIOR (sala a ~600m, no Group liga/desliga) =====
   const ix=INT_CENTER.x,iz=INT_CENTER.z;
   const shell=new THREE.Mesh(new THREE.BoxGeometry(16,4.4,12),
-    new THREE.MeshStandardMaterial({color:0xe9ddc4,roughness:1,side:THREE.BackSide}));
+    matte({color:0xe9ddc4,roughness:1,side:THREE.BackSide}));
   shell.position.set(ix,2.2,iz);ranchInterior.add(shell);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),
-    new THREE.MeshStandardMaterial({color:0x9c7850,roughness:.85}));
+    matte({color:0x9c7850,roughness:.85}));
   floor.rotation.x=-Math.PI/2;floor.position.set(ix,.02,iz);ranchInterior.add(floor);
   const ceil=new THREE.Mesh(new THREE.BoxGeometry(15.7,.08,11.7),
-    new THREE.MeshStandardMaterial({color:0xf0e6d2,roughness:.95}));
+    matte({color:0xf0e6d2,roughness:.95}));
   ceil.position.set(ix,4.36,iz);ranchInterior.add(ceil);
   // rodapés de madeira nas quatro paredes
   for(const[x,z,w,d]of[
@@ -431,7 +433,7 @@ export function addRanchHouse(solids){
 
   // cozinha (canto nordeste): bancada + geladeira; a comida fica à frente
   const counter=new THREE.Mesh(new THREE.BoxGeometry(5,1,1),
-    new THREE.MeshStandardMaterial({color:0xcdb594,roughness:.7}));
+    matte({color:0xcdb594,roughness:.7}));
   counter.position.set(ix+3,.5,iz-5);ranchInterior.add(counter);
   const ctop=new THREE.Mesh(new THREE.BoxGeometry(5.2,.12,1.2),trimM);
   ctop.position.set(ix+3,1.06,iz-5);ranchInterior.add(ctop);
@@ -444,7 +446,7 @@ export function addRanchHouse(solids){
   const sink=new THREE.Mesh(new THREE.BoxGeometry(.78,.08,.46),metalM);
   sink.position.set(ix+2.15,1.14,iz-4.92);ranchInterior.add(sink);
   const stove=new THREE.Mesh(new THREE.BoxGeometry(.9,.12,.58),
-    new THREE.MeshStandardMaterial({color:0x232323,roughness:.45,metalness:.4}));
+    matte({color:0x232323,roughness:.45,metalness:.4}));
   stove.position.set(ix+3.45,1.16,iz-4.9);ranchInterior.add(stove);
   for(const dx of[-.22,.22])for(const dz of[-.13,.13]){
     const burner=new THREE.Mesh(new THREE.TorusGeometry(.1,.015,6,12),metalM);
@@ -457,7 +459,7 @@ export function addRanchHouse(solids){
 
   // sala de estar (sudoeste): sofá + mesa de centro + tapete + TV (divisória)
   const rug=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.4),
-    new THREE.MeshStandardMaterial({color:0x7a3b3b,roughness:.95}));
+    matte({color:0x7a3b3b,roughness:.95}));
   rug.rotation.x=-Math.PI/2;rug.position.set(ix-5,.03,iz+3);ranchInterior.add(rug);
   const sofa=makeSofa();sofa.position.set(ix-5,0,iz+5);sofa.rotation.y=Math.PI;ranchInterior.add(sofa); // encosto na parede sul, assento virado pra TV (norte)
   const ctable=makeTable();ctable.scale.set(.8,.6,.8);ctable.position.set(ix-5,0,iz+3.3);ranchInterior.add(ctable);
@@ -592,9 +594,9 @@ function buildExteriorPreview(){
 function buildInteriorPreview(){
   const g=new THREE.Group(),ix=0,iz=0;
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),
-    new THREE.MeshStandardMaterial({color:0x9c7850,roughness:.85}));
+    matte({color:0x9c7850,roughness:.85}));
   floor.rotation.x=-Math.PI/2;floor.position.set(ix,.02,iz);g.add(floor);
-  const wallMat=new THREE.MeshStandardMaterial({color:0xe9ddc4,roughness:1});
+  const wallMat=matte({color:0xe9ddc4,roughness:1});
   for(const[x,z,w,d]of[
     [ix,iz-5.95,15.6,.18],
     [ix-7.9,iz,.18,11.6],
@@ -613,7 +615,7 @@ function buildInteriorPreview(){
   }
 
   const counter=new THREE.Mesh(new THREE.BoxGeometry(5,1,1),
-    new THREE.MeshStandardMaterial({color:0xcdb594,roughness:.7}));
+    matte({color:0xcdb594,roughness:.7}));
   counter.position.set(ix+3,.5,iz-5);g.add(counter);
   const ctop=new THREE.Mesh(new THREE.BoxGeometry(5.2,.12,1.2),trimM);
   ctop.position.set(ix+3,1.06,iz-5);g.add(ctop);
@@ -624,20 +626,20 @@ function buildInteriorPreview(){
   const sink=new THREE.Mesh(new THREE.BoxGeometry(.78,.08,.46),metalM);
   sink.position.set(ix+2.15,1.14,iz-4.92);g.add(sink);
   const stove=new THREE.Mesh(new THREE.BoxGeometry(.9,.12,.58),
-    new THREE.MeshStandardMaterial({color:0x232323,roughness:.45,metalness:.4}));
+    matte({color:0x232323,roughness:.45,metalness:.4}));
   stove.position.set(ix+3.45,1.16,iz-4.9);g.add(stove);
   const fridge=makeFridge();fridge.position.set(ix+7,0,iz-4.4);fridge.rotation.y=-Math.PI/2;g.add(fridge);
   const food=makeFood();food.position.set(FOOD.x-INT_CENTER.x,1.2,FOOD.z-INT_CENTER.z);g.add(food);
 
   const rug=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.4),
-    new THREE.MeshStandardMaterial({color:0x7a3b3b,roughness:.95}));
+    matte({color:0x7a3b3b,roughness:.95}));
   rug.rotation.x=-Math.PI/2;rug.position.set(ix-5,.03,iz+3);g.add(rug);
   const sofa=makeSofa();sofa.position.set(ix-5,0,iz+5);sofa.rotation.y=Math.PI;g.add(sofa);
   const ctable=makeTable();ctable.scale.set(.8,.6,.8);ctable.position.set(ix-5,0,iz+3.3);g.add(ctable);
   const tv=new THREE.Group();
   const tvStand=new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,.5),trimM);tvStand.position.y=.25;tv.add(tvStand);
   const tvFrame=new THREE.Mesh(new THREE.BoxGeometry(1.7,1,.12),
-    new THREE.MeshStandardMaterial({color:0x14161c,roughness:.5}));tvFrame.position.y=1.2;tv.add(tvFrame);
+    matte({color:0x14161c,roughness:.5}));tvFrame.position.y=1.2;tv.add(tvFrame);
   const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.82),
     tvScreenMaterial());tvScreen.position.set(0,1.2,.07);tv.add(tvScreen);
   tv.position.set(ix-5,0,iz+1.2);g.add(tv);

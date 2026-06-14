@@ -5,17 +5,18 @@ import {animatePed} from './entities.js';
 import {blip} from './audio.js';
 import {getDay} from './daynight.js';
 import {Interior} from './interior.js';
+import {openGymGame,gymGameActive} from './gym-game.js';
 import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
   gymFx,gymInterior} from '../assets/models/city/gym.js';
 
 // Academia "IRON TEMPLE": estende a classe base de interiores (js/interior.js),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
-// Particularidades daqui: PAGAR pra treinar perto do supino — uma vez por dia
-// de jogo — fazendo o braço crescer um pouco, até um teto pra não vazar o carro.
+// Particularidades daqui: encostar no supino abre o MINI-GAME do supino
+// (js/gym-game.js). VENCER o set engrossa o braço — uma vez por dia de jogo,
+// até um teto pra não vazar o carro. PERDER não dá nada (pode tentar de novo).
 
-const TRAIN_COST=200;     // preço de cada treino
 const ARM_MAX=1.5;        // engrossamento máximo do braço (x/z)
-const ARM_STEP=0.1;       // ganho por treino
+const ARM_STEP=0.1;       // ganho por set vencido
 const TRAIN_RANGE=2.2;    // distância pra liberar a ação TRAIN
 
 class GymInterior extends Interior{
@@ -58,28 +59,31 @@ function gymTrainNear(){
   return Math.hypot(pp.x-GYM_TRAIN.x,pp.z-GYM_TRAIN.z)<TRAIN_RANGE;
 }
 
-// Estado do treino pra montar o rótulo do HUD ('TRAIN $200' / 'MAX' / 'TOMORROW')
+// Estado do supino pra montar o rótulo do HUD ('BENCH PRESS' / 'MAX' / 'TOMORROW')
 export function gymTrainState(){
-  if(!gymTrainNear())return null;
+  if(!gymTrainNear()||gymGameActive())return null;
   if(state.armScale>=ARM_MAX-1e-3)return{label:'MAX',prompt:'ARMS MAXED OUT',enabled:false};
   if(getDay()===state.gymDay)return{label:'GYM',prompt:'ALREADY TRAINED - COME BACK TOMORROW',enabled:false};
-  if(state.money<TRAIN_COST)return{label:'GYM',prompt:`NEED $${TRAIN_COST} TO TRAIN`,enabled:false};
-  return{label:'TRAIN',prompt:`TRAIN $${TRAIN_COST}`,enabled:true};
+  return{label:'BENCH',prompt:'HIT THE BENCH PRESS',enabled:true};
 }
 
-// Ação de treinar (chamada pelo performInteract). Cobra, trava por um dia e
-// aumenta um degrau o braço (com teto). Devolve true se consumiu a interação.
+// Ação no supino (chamada pelo performInteract): abre o mini-game do supino.
+// Vencer o set chama onWin -> engrossa um degrau o braço (com teto) e trava o
+// dia. Perder não faz nada. Devolve true se consumiu a interação.
 export function gymTrain(){
   if(!gymTrainNear())return false;
   if(state.armScale>=ARM_MAX-1e-3){message('YOUR ARMS ARE MAXED OUT','var(--pink)');return true;}
   if(getDay()===state.gymDay){message('ALREADY TRAINED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
-  if(state.money<TRAIN_COST){message(`NOT ENOUGH MONEY - NEED $${TRAIN_COST}`,'var(--pink)');return true;}
-  state.money-=TRAIN_COST;
+  openGymGame({onWin:onSetComplete}); // 2 séries de 6 reps são internas ao mini-game
+  return true;
+}
+
+// chamado pelo mini-game quando o jogador FECHA o set (vitória)
+function onSetComplete(){
   state.gymDay=getDay();
   state.armTarget=Math.min(ARM_MAX,state.armScale+ARM_STEP);
   message('PUMPED UP! YOUR ARMS GREW','var(--gold)');
   blip([330,440,587,660],.09,'square',.16);
-  return true;
 }
 
 // Aplica o tamanho atual do braço ao boneco (engrossa só x/z, sem alongar).
