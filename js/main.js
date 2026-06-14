@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {state,input,refs} from './state.js';
-import {renderer,scene,camera,clouds,dlight,sunDir} from './engine.js';
+import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from './engine.js';
 import {updateAudio} from './audio.js';
 import {radioZone} from './radio.js';
 import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
@@ -41,6 +41,7 @@ import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
 import {updateCityCulling} from '../assets/models/city/building.js';
 import {updatePropCulling} from '../assets/models/props/prop-merge.js';
 import {updateLotCulling} from '../assets/models/city/abandoned-lot.js';
+import * as P from './profiler.js'; // profiler embutido (tecla ` ou ?prof na URL)
 
 // Populate late-binding refs so cross-module code can access these without circular imports
 refs.playerPos=playerPos;
@@ -113,6 +114,11 @@ setupTouchControls();
 const clock=new THREE.Clock();
 let shadowTick=0;
 const SHADOW_EVERY=12; // re-renderiza o shadow map 1 a cada N frames (~5fps @60)
+// Minimapa: canvas2D pesado (drawImage com resample + dezenas de blips/arcos).
+// Redesenhar todo frame era puro custo de CPU na main thread; a 22fps o radar
+// fica visualmente idêntico e libera o orçamento do frame.
+let mmAccum=0;
+const MM_INTERVAL=1/22;
 function step(dt){
   updateKeyboardInput();
   updateTouchControls();
@@ -132,8 +138,7 @@ function step(dt){
     c.position.x+=c.userData.v*dt;
     if(c.position.x>550)c.position.x=-550;
   }
-  updateBeach(state.time);
-  updateDayNight(dt);
+  P.begin('daynight');updateBeach(state.time);updateDayNight(dt);P.end();
   { // setinhas de porta: só aparecem nas portas perto do jogador
     const ap=playerPos();
     updateDoorArrows(state.time,ap.x,ap.z);
@@ -147,22 +152,27 @@ function step(dt){
     renderer.render(scene,camera);return;
   }
 
+  P.begin('player');
   if(state.mode==='cut'){
     state.cutT-=dt;
     if(state.cutT<=0){hideBig();const fn=state.cutFn;state.cutFn=null;fn&&fn();}
   }else if(state.mode==='car')updateCar(dt);
   else updateFoot(dt);
+  P.end();
 
-  updateTraffic(dt);
-  updatePeds(dt);
-  updateGangs(dt);
-  if(state.mode!=='cut'&&!state.cine)updateCops(dt);
+  P.begin('traffic');updateTraffic(dt);P.end();
+  P.begin('peds');updatePeds(dt);P.end();
+  P.begin('gangs');updateGangs(dt);P.end();
+  P.begin('cops');if(state.mode!=='cut'&&!state.cine)updateCops(dt);P.end();
+  P.begin('misc');
   updateHeli(dt);
   updatePickups(dt);
   updateTaxi(dt);
   updateRace(dt);
   updateBoatRace(dt);
-  updateWeapons(dt);
+  P.end();
+  P.begin('weapons');updateWeapons(dt);P.end();
+  P.begin('misc');
   updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
   updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
   updateSpeech(dt);    // segue/fade dos balões de diálogo (rua e interiores)
@@ -173,30 +183,62 @@ function step(dt){
   updateDrivenShadow(); // sombra some do carro/moto que o jogador está dirigindo
   if(cur)blinkBar(cur.g);
   for(const c of idleCars)blinkBar(c.g);
+  P.end();
 
-  updateCamera(dt);
+  P.begin('camera');updateCamera(dt);P.end();
+  P.begin('story');
   updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
   updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
-  updateHUD(dt);
+  P.end();
+  P.begin('hud');updateHUD(dt);P.end();
   recordBest(state.money); // acompanha o maior dinheiro pro ranking global
-  updateAudio();
-  drawMinimap();
+  P.begin('audio');updateAudio();P.end();
+  // Radar redesenhado a ~22fps (ver MM_INTERVAL): liberar a main thread sem
+  // impacto visual perceptível.
+  mmAccum+=dt;
+  if(mmAccum>=MM_INTERVAL){mmAccum=0;P.begin('minimap');drawMinimap();P.end();}
 
   const pp=playerPos();
   radioZone(pp.x); // troca a rádio ao cruzar entre cidade e zona rural
+  P.begin('culling');
   updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
   updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
+  P.end();
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
 
-  renderer.render(scene,camera);
+  P.begin('render');renderer.render(scene,camera);P.end();
 }
+
+// ----- Resolução adaptativa: REDE DE SEGURANÇA, decisão única no boot -----
+// Princípio: NUNCA piorar o visual de quem já roda bem. Trocar resolução em jogo
+// é proibido (setPixelRatio realoca o framebuffer → trava ~100ms em HiDPI), então
+// fixamos uma única vez, após estabilizar o tempo de frame na abertura (o título
+// renderiza a cidade INTEIRA sem culling = pior caso). E só reduzimos se esse
+// pior caso estiver abaixo de ~45fps (22ms) — limiar tão alto que qualquer GPU
+// decente (e a maioria travada no vsync) passa longe e fica em 1.0 (resolução
+// cheia, ZERO mudança visual). Abaixo disso, ajuda o hardware que realmente
+// engasga a recuperar fluidez. O piso de escala (.72 no engine) mantém nítido.
+let _emaDt=16.7,_frames=0,_scaleLocked=false;
+function adaptResolution(ms){
+  if(ms<1||ms>200)return; // hitch isolado (compile de shader, aba em 2º plano): ignora
+  _emaDt=_emaDt*.9+ms*.1;
+  if(_scaleLocked)return;
+  if(++_frames<60)return; // deixa o tempo de frame estabilizar antes de decidir
+  _scaleLocked=true;
+  if(_emaDt>22)setRenderScale(Math.sqrt(14/_emaDt)); // <45fps no pior caso: mira ~70fps
+}
+window.__renderScale=getRenderScale; // debug/profiler
 
 function frame(){
   requestAnimationFrame(frame);
+  P.frameStart(); // marca o início do frame pro profiler (limpa acumuladores)
   tickFps(); // antes dos early-returns: mede até pausado/tela de título
-  step(Math.min(clock.getDelta(),.05));
+  const raw=clock.getDelta();
+  step(Math.min(raw,.05));
+  adaptResolution(raw*1000);
+  P.frameEnd(); // fecha o frame: atualiza FPS/ms/overlay do profiler
 }
 
 window.advanceTime=ms=>{
@@ -229,4 +271,9 @@ window.render_game_to_text=()=>{
     rick:refs.getRickState?.()||null,
   });
 };
+// Pré-compila todos os shaders/materiais da cena montada ANTES do loop: sem
+// isso, o primeiro frame que revela um material novo (andar revela chunks da
+// cidade) trava ~100ms compilando o programa. Custa um pouco no boot e elimina
+// esses engasgos em jogo.
+try{renderer.compile(scene,camera);}catch(e){}
 frame();

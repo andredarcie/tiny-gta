@@ -15,6 +15,10 @@ const weaponIconCtx=hudWeaponIcon&&hudWeaponIcon.getContext('2d');
 let weaponIconKey='';
 
 let shownMoney=250,msgT=0;
+// Cache dos últimos valores escritos no DOM do HUD: setar textContent/innerHTML
+// troca nós de texto e invalida layout mesmo quando o valor não mudou. Só
+// escrevemos quando muda de fato (a maioria dos frames não muda nada).
+let _money='',_clock='',_health=-1,_wanted=-1,_wname='',_prompt='',_promptShown=null;
 
 // Medidor de FPS: conta frames reais e só toca no DOM 2x por segundo —
 // atualizar texto todo frame custaria mais que aquilo que o medidor mede
@@ -41,7 +45,19 @@ export function bigText(t,col){
 }
 export function hideBig(){hudBig.classList.remove('show');}
 
+// A ação de interação (label/prompt do botão E) é consultada por updateHUD e
+// pelo touch-controls TODO frame, e percorre uma cascata de refs + nearestCar
+// (loop por carros/tráfego/viaturas). O alvo muda devagar do ponto de vista do
+// jogador, então memoizamos ~12fps: corta esse custo da maioria dos frames sem
+// atraso perceptível no HUD.
+let _iaCache=null,_iaT=-1;
 export function getInteractAction(){
+  const now=performance.now();
+  if(_iaCache&&now-_iaT<80)return _iaCache;
+  _iaT=now;
+  return _iaCache=computeInteractAction();
+}
+function computeInteractAction(){
   const tv=refs.houseTvState?.();
   if(tv)return tv;
   if(state.cine||state.dlgActive)return{label:'...',prompt:'',enabled:false}; // cut-scene: sem ações
@@ -448,19 +464,21 @@ export function drawMinimap(){
 export function updateHUD(dt){
   shownMoney+=(state.money-shownMoney)*Math.min(1,8*dt);
   if(Math.abs(shownMoney-state.money)<1)shownMoney=state.money;
-  hudMoney.textContent='$'+String(Math.max(0,Math.round(shownMoney))).padStart(8,'0');
+  const moneyS='$'+String(Math.max(0,Math.round(shownMoney))).padStart(8,'0');
+  if(moneyS!==_money){hudMoney.textContent=moneyS;_money=moneyS;}
   const min=Math.floor(getTod()*1440);              // relógio segue o ciclo de dia/noite
-  hudClock.textContent=String(Math.floor(min/60)).padStart(2,'0')
-    +':'+String(min%60).padStart(2,'0');
-  hudHealth.textContent=Math.max(0,Math.round(state.health));
+  const clockS=String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0');
+  if(clockS!==_clock){hudClock.textContent=clockS;_clock=clockS;}
+  const hp=Math.max(0,Math.round(state.health));
+  if(hp!==_health){hudHealth.textContent=hp;_health=hp;}
   const w=Math.floor(state.wanted);
-  hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));
+  if(w!==_wanted){hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));_wanted=w;}
   // Painel da arma: ícone (punho p/ melee, pistola p/ o resto), nome e munição
   // (∞ para punho/lança-chamas/detonador). Lê a arma atual via refs.
   const wh=refs.getWeaponHud?.();
   if(wh){
     drawHudWeaponIcon(wh);
-    if(hudWeaponName){hudWeaponName.textContent=wh.name;hudWeaponName.style.display='block';}
+    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=wh.name;hudWeaponName.style.display='block';_wname=wh.name;}
     if(wh.infinite){hudWeaponAmmo.style.display='none';}
     else{
       hudWeaponAmmo.style.display='block';
@@ -486,7 +504,10 @@ export function updateHUD(dt){
   if(state.crosshairKick>0)state.crosshairKick=Math.max(0,state.crosshairKick-dt*7);
   if(msgT>0){msgT-=dt;if(msgT<=0)hudMsg.style.opacity=0;}
   const action=getInteractAction();
-  if(action.enabled&&!input.touchActive){
-    hudPrompt.innerHTML=`<b>E</b> - ${action.prompt}`;hudPrompt.style.display='block';
-  }else hudPrompt.style.display='none';
+  const showPrompt=action.enabled&&!input.touchActive;
+  if(showPrompt){
+    const html=`<b>E</b> - ${action.prompt}`;
+    if(html!==_prompt){hudPrompt.innerHTML=html;_prompt=html;}
+  }
+  if(showPrompt!==_promptShown){hudPrompt.style.display=showPrompt?'block':'none';_promptShown=showPrompt;}
 }

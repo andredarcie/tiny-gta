@@ -119,6 +119,11 @@ scene.add(headSpot);scene.add(headSpot.target);
 const _fwd=new THREE.Vector3();
 
 let twinkleT=0;
+// O céu muda ao longo de minutos (DAY_LEN=300s). Redesenhar o gradiente no
+// canvas e re-subir a textura pra GPU todo frame era desperdício; a ~12fps a
+// transição continua suave. As luzes/fog seguem por frame (baratas e precisam
+// ser suaves). skyAccum começa alto pra forçar o primeiro desenho.
+let skyAccum=1;
 export function updateDayNight(dt){
   // em cut-scene o tempo para (story.js força meio-dia ao entrar na cena)
   if(!state.cine){
@@ -128,7 +133,8 @@ export function updateDayNight(dt){
   }
   twinkleT+=dt;
   sampleKeyframes();
-  drawSky();
+  skyAccum+=dt;
+  if(skyAccum>=.08){skyAccum=0;drawSky();} // redesenho/upload do céu throttlado (~12fps)
 
   scene.fog.color.copy(cur.fog);
   // Fog por zona: na cidade o alcance é amplo (vê a cidade inteira); ao entrar na

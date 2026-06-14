@@ -49,6 +49,11 @@ for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;}
 
 export const gangPeds=[];
 
+// Scratch reaproveitado por frame em updateGangs (laço quente). Aggro e wander
+// são ramos mutuamente exclusivos → um único _gdir serve aos dois. Não usar em
+// m.tgt/m.vel (guardados no membro e lidos em frames posteriores).
+const _gdir=new THREE.Vector3();
+
 // Durante a corrida de rua as gangues somem (ficam invisíveis e congeladas) e
 // voltam quando a prova termina — ver js/race.js. Não destrói ninguém: só pausa.
 let gangsHidden=false;
@@ -180,7 +185,7 @@ export function updateGangs(dt){
       &&(playerInside||g.alarmT>0)&&distP<g.r+30;
     let mvAmount=0;
     if(aggro){
-      const dir=new THREE.Vector3(pp.x-p.x,0,pp.z-p.z).normalize();
+      const dir=_gdir.set(pp.x-p.x,0,pp.z-p.z).normalize();
       m.g.rotation.y=Math.atan2(dir.x,dir.z);
       if(distP>13){p.addScaledVector(dir,4.6*dt);mvAmount=.85;m.bob+=dt*10;}
       m.shootT-=dt;
@@ -192,7 +197,7 @@ export function updateGangs(dt){
         m.tgt=new THREE.Vector3(g.x+Math.cos(a)*d,0,g.z+Math.sin(a)*d);
         m.tgtT=rand(5,9); // troca de alvo mesmo se travar num prédio
       }
-      const dir=new THREE.Vector3().subVectors(m.tgt,p);dir.y=0;
+      const dir=_gdir.subVectors(m.tgt,p);dir.y=0;
       if(dir.length()>.1){
         dir.normalize();p.addScaledVector(dir,1.3*dt);
         m.g.rotation.y=Math.atan2(dir.x,dir.z);mvAmount=.3;m.bob+=dt*2.9;

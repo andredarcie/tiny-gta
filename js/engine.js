@@ -12,8 +12,23 @@ const viewportSize=()=>({
 });
 function pixelRatioLimit(){return isMobileLike()?1.5:2;}
 const initialSize=viewportSize();
-renderer.setPixelRatio(Math.min(devicePixelRatio,pixelRatioLimit()));
+// Resolução adaptativa: basePR é o teto pelo DPR do aparelho; renderScale
+// (0.72..1) é ajustado em runtime por adaptResolution() (main.js) pra segurar a
+// taxa de atualização sob carga. Com folga de GPU fica em 1.0 — ou seja, ZERO
+// mudança visual quando a máquina dá conta; só reduz a resolução interna quando
+// os frames passam a cair, e mesmo assim com piso alto (antialias mantém nítido).
+let basePR=Math.min(devicePixelRatio,pixelRatioLimit());
+let renderScale=1;
+renderer.setPixelRatio(basePR*renderScale);
 renderer.setSize(initialSize.w,initialSize.h);
+export function setRenderScale(s){
+  s=Math.max(.72,Math.min(1,s));
+  if(Math.abs(s-renderScale)<.015)return false;
+  renderScale=s;
+  renderer.setPixelRatio(basePR*renderScale);
+  return true;
+}
+export const getRenderScale=()=>renderScale;
 renderer.shadowMap.enabled=true;
 // PCF simples: o PCFSoft fazia várias leituras extras da shadow map por pixel
 renderer.shadowMap.type=THREE.PCFShadowMap;
@@ -32,7 +47,8 @@ camera.position.set(0,60,120);
 
 export function resizeRenderer(){
   const {w,h}=viewportSize();
-  renderer.setPixelRatio(Math.min(devicePixelRatio,pixelRatioLimit()));
+  basePR=Math.min(devicePixelRatio,pixelRatioLimit());
+  renderer.setPixelRatio(basePR*renderScale); // preserva o renderScale atual
   camera.aspect=w/h;camera.updateProjectionMatrix();
   renderer.setSize(w,h);
 }

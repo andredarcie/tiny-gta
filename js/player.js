@@ -93,6 +93,11 @@ spawnBoat(0xff5a3c,'SEA BLASTER',24,WATER+12,Math.PI);
 export function playerPos(){return state.mode==='car'?cur.g.position:player.g.position;}
 
 const _dentPt=new THREE.Vector3(),_dentDir=new THREE.Vector3();
+// Scratch vectors reaproveitados nos hot loops (evita alocar por frame).
+// updateFoot: camF/camR/mv vivem juntos -> 3 instâncias distintas.
+const _footF=new THREE.Vector3(),_footR=new THREE.Vector3(),_footMv=new THREE.Vector3();
+// updateCamera: forward/right/focus/want vivem juntos -> 4 instâncias distintas.
+const _camFwd=new THREE.Vector3(),_camRight=new THREE.Vector3(),_camFocus=new THREE.Vector3(),_camWant=new THREE.Vector3();
 
 export function nearestCar(maxD){
   let best=null,bd=maxD,kind=null;
@@ -687,11 +692,11 @@ export function updateFoot(dt){
   const swim=inWater(player.g.position);
   let walkAmount=0;
   if(f||side){
-    const camF=new THREE.Vector3(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
-    const camR=new THREE.Vector3(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
+    const camF=_footF.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+    const camR=_footR.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
     const analog=Math.min(1,Math.hypot(f,side));
     walkAmount=analog;
-    const mv=new THREE.Vector3().addScaledVector(camF,f).addScaledVector(camR,side).normalize();
+    const mv=_footMv.set(0,0,0).addScaledVector(camF,f).addScaledVector(camR,side).normalize();
     const spd=(swim?3.2:input.run?9:5.2)*analog;
     player.g.position.addScaledVector(mv,spd*dt);
     player.heading=Math.atan2(mv.x,mv.z);
@@ -776,13 +781,13 @@ export function updateCamera(dt){
     cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:.7));
   }
   cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
-  const forward=new THREE.Vector3(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
-  const right=new THREE.Vector3(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
+  const forward=_camFwd.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+  const right=_camRight.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
   const flat=dist*Math.cos(cameraRig.pitch);
   const height=baseH+dist*Math.sin(cameraRig.pitch);
   const shoulder=(state.mode==='car'?0:cameraRig.shoulder);
-  const focus=new THREE.Vector3(tgt.x,tgt.y+1.45,tgt.z).addScaledVector(right,shoulder);
-  const want=new THREE.Vector3(tgt.x,tgt.y+height,tgt.z)
+  const focus=_camFocus.set(tgt.x,tgt.y+1.45,tgt.z).addScaledVector(right,shoulder);
+  const want=_camWant.set(tgt.x,tgt.y+height,tgt.z)
     .addScaledVector(forward,-flat)
     .addScaledVector(right,shoulder);
   if(state.interior){ // no interior a câmera fica presa na sala (não vaza)

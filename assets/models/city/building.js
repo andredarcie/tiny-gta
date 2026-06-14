@@ -228,6 +228,8 @@ export function finalizeBuildings(){
       if(!geos.length)return;
       const m=new THREE.Mesh(mergeGeometries(geos),mat);
       m.castShadow=cast;m.receiveShadow=receive;
+      // mesh fundido nunca se move: congela a matriz local (sem recompose/frame)
+      m.matrixAutoUpdate=false;m.updateMatrix();
       group.add(m);
     };
     b.sides.forEach((g,i)=>add(g,sideMats[i],true,true));
@@ -242,6 +244,8 @@ export function finalizeBuildings(){
     if(!group.children.length)continue;
     const[ki,kj]=key.split('_').map(Number);
     group.userData.cx=ki*CHUNK;group.userData.cz=kj*CHUNK;
+    // chunk fica na identidade (geometria já em world space): congela a matriz
+    group.matrixAutoUpdate=false;group.updateMatrix();
     scene.add(group);
     cityChunks.push(group);
   }

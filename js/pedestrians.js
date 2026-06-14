@@ -20,6 +20,12 @@ export function pedCorner(p){
 export const peds=[];
 const PED_CULL2=130*130; // LOD: pedestre além disso não é desenhado nem simulado
 const bloodPuddles=[];
+// Scratch reaproveitados por frame em updatePeds (evita alocação no laço quente).
+// _tgt e _d ficam vivos juntos → têm de ser distintos. _dir/_rnd só na batida.
+const _tgt=new THREE.Vector3();
+const _d=new THREE.Vector3();
+const _dir=new THREE.Vector3();
+const _rnd=new THREE.Vector3();
 
 export function addBloodPuddle(x,z){
   const puddle=makeBloodPuddle();
@@ -100,9 +106,9 @@ export function updatePeds(dt){
     if(danger&&p.g.position.distanceTo(activeCur.g.position)<2.0){
       p.state='fly';
       p.bloodDropped=false;
-      const dir=new THREE.Vector3(Math.sin(activeCur.heading),0,Math.cos(activeCur.heading));
-      p.vel.copy(dir).multiplyScalar(activeCur.speed*.4)
-        .add(new THREE.Vector3(rand(-2,2),rand(5,8),rand(-2,2)));
+      _dir.set(Math.sin(activeCur.heading),0,Math.cos(activeCur.heading));
+      _rnd.set(rand(-2,2),rand(5,8),rand(-2,2));
+      p.vel.copy(_dir).multiplyScalar(activeCur.speed*.4).add(_rnd);
       state.comboN=state.time-state.lastHit<4?state.comboN+1:1;
       state.lastHit=state.time;
       spawnDrop(p.g.position.x,p.g.position.z,irand(20,80)*state.comboN);
@@ -112,19 +118,19 @@ export function updatePeds(dt){
       continue;
     }
     if(p.state==='panic'&&(p.panicT-=dt)<=0)p.state='walk';
-    let tgt;
+    const tgt=_tgt;
     if(p.state==='panic'){
-      tgt=new THREE.Vector3().subVectors(p.g.position,pp).setY(0).normalize()
+      tgt.subVectors(p.g.position,pp).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
     }else if(danger&&p.g.position.distanceTo(activeCur.g.position)<11){
       p.state='flee';
-      tgt=new THREE.Vector3().subVectors(p.g.position,activeCur.g.position).setY(0).normalize()
+      tgt.subVectors(p.g.position,activeCur.g.position).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
     }else{
       if(p.state==='flee')p.state='walk';
-      const c=pedCorner(p);tgt=new THREE.Vector3(c[0],0,c[1]);
+      const c=pedCorner(p);tgt.set(c[0],0,c[1]);
     }
-    const d=new THREE.Vector3().subVectors(tgt,p.g.position);d.y=0;
+    const d=_d.subVectors(tgt,p.g.position);d.y=0;
     const dist=d.length();
     if(p.state==='walk'&&dist<1){p.corner=(p.corner+p.dir+4)%4;continue;}
     d.normalize();

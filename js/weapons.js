@@ -278,35 +278,43 @@ function rayHitXZ(origin,dir,pos,radius,range){
   return side<=radius?ahead:null;
 }
 
+// Scratch reaproveitado pela mira. aimRay() roda TODO frame com arma em punho
+// (checagem de alvo do crosshair) e a cada tiro — antes alocava ~4 Vector3 por
+// chamada. _ray é um objeto fixo (origin=_muzzle, dir=_aimPoint) devolvido sem
+// alocar. Os chamadores consomem o resultado na hora (clonam o que guardam),
+// então reusar os mesmos scratch entre chamadas é seguro.
+const _camDir=new THREE.Vector3(),_muzzle=new THREE.Vector3(),
+  _flatDir=new THREE.Vector3(),_aimPoint=new THREE.Vector3(),_gmRight=new THREE.Vector3();
+const _ray={origin:_muzzle,dir:_aimPoint};
+const _molDir=new THREE.Vector3(); // direção do molotov em voo (scratch)
+let _xhairT=0; // acumulador do throttle do alvo do crosshair
 function aimRay(range=48){
-  const camDir=new THREE.Vector3();
-  camera.getWorldDirection(camDir);
-  const muzzle=getMuzzleWorldPosition();
-  const flatDir=new THREE.Vector3(camDir.x,0,camDir.z);
-  if(flatDir.lengthSq()<.0001)flatDir.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
-  flatDir.normalize();
-  let aimPoint;
-  if(Math.abs(camDir.y)>.001){
-    const t=(muzzle.y-camera.position.y)/camDir.y;
-    if(t>3&&t<range*2)aimPoint=camera.position.clone().addScaledVector(camDir,t);
+  camera.getWorldDirection(_camDir);
+  const muzzle=getMuzzleWorldPosition(_muzzle);
+  _flatDir.set(_camDir.x,0,_camDir.z);
+  if(_flatDir.lengthSq()<.0001)_flatDir.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+  _flatDir.normalize();
+  let haveAim=false;
+  if(Math.abs(_camDir.y)>.001){
+    const t=(muzzle.y-camera.position.y)/_camDir.y;
+    if(t>3&&t<range*2){_aimPoint.copy(camera.position).addScaledVector(_camDir,t);haveAim=true;}
   }
-  if(!aimPoint)aimPoint=muzzle.clone().addScaledVector(flatDir,range);
-  const dir=aimPoint.sub(muzzle);
+  if(!haveAim)_aimPoint.copy(muzzle).addScaledVector(_flatDir,range);
+  const dir=_aimPoint.sub(muzzle); // dir === _aimPoint (distinto de _muzzle)
   dir.y=0;
-  if(dir.lengthSq()<.0001)dir.copy(flatDir);
+  if(dir.lengthSq()<.0001)dir.copy(_flatDir);
   dir.normalize();
-  return{origin:muzzle.addScaledVector(dir,.42),dir};
+  muzzle.addScaledVector(dir,.42); // origin === _muzzle
+  return _ray;
 }
 
-function getMuzzleWorldPosition(){
-  if(heldRocket.visible){
-    return heldRocket.userData.muzzlePoint.getWorldPosition(new THREE.Vector3());
-  }
-  if(heldHolder.visible&&curMuzzle){
-    return curMuzzle.getWorldPosition(new THREE.Vector3());
-  }
-  const right=new THREE.Vector3(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
-  return playerPos().clone().addScaledVector(right,.46).setY(playerPos().y+1.12);
+function getMuzzleWorldPosition(out){
+  if(heldRocket.visible)return heldRocket.userData.muzzlePoint.getWorldPosition(out);
+  if(heldHolder.visible&&curMuzzle)return curMuzzle.getWorldPosition(out);
+  const pp=playerPos();
+  return out.set(pp.x,pp.y,pp.z)
+    .addScaledVector(_gmRight.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw)),.46)
+    .setY(pp.y+1.12);
 }
 
 function posePlayerWithGun(){
@@ -871,9 +879,15 @@ export function updateWeapons(dt){
     m.g.userData.flame.scale.setScalar(.7+Math.random()*.6); // chama tremula
     addTracer(m.g.position.clone().addScaledVector(m.dir,-1.1),m.g.position);
   }
+  // Alvo do crosshair (cor do retículo): findWeaponHit varre ~70 entidades. É
+  // puramente cosmético, então recalcula a ~20fps em vez de todo frame.
+  _xhairT-=dt;
   if(isWeaponHeld()&&!state.paused&&!state.dlgActive&&!state.orientationBlocked){
-    const{origin,dir}=aimRay();
-    state.crosshairTarget=findWeaponHit(origin,dir,48).kind!=='miss';
+    if(_xhairT<=0){
+      _xhairT=.05;
+      const{origin,dir}=aimRay();
+      state.crosshairTarget=findWeaponHit(origin,dir,48).kind!=='miss';
+    }
   }else state.crosshairTarget=false;
   if(!state.hasGun){
     for(let i=0;i<weaponPickups.length;i++){
@@ -935,9 +949,9 @@ export function updateWeapons(dt){
     t.g.rotation.x+=t.spin.x*dt;t.g.rotation.z+=t.spin.z*dt;
     const gh=groundHeight(t.g.position.x,t.g.position.z);
     if(t.kind==='molotov'){
-      const dir=new THREE.Vector3(t.vel.x,0,t.vel.z);
-      const hitTarget=dir.lengthSq()>.0001&&
-        findWeaponHit(t.g.position,dir.normalize(),.8).kind!=='miss';
+      _molDir.set(t.vel.x,0,t.vel.z);
+      const hitTarget=_molDir.lengthSq()>.0001&&
+        findWeaponHit(t.g.position,_molDir.normalize(),.8).kind!=='miss';
       if(t.g.position.y<=gh+.1||hitTarget||t.life<=0){
         const pos=t.g.position.clone();
         if(t.g.position.y<=gh+.1)pos.y=gh;

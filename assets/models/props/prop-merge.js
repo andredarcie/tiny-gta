@@ -44,11 +44,15 @@ export function finalizeProps(){
       if(!b.geos.length)continue;
       const m=new THREE.Mesh(mergeGeometries(b.geos),mat);
       m.castShadow=b.cast;m.receiveShadow=b.receive;m.renderOrder=b.order;
+      // mesh fundido nunca se move: congela a matriz local (sem recompose/frame)
+      m.matrixAutoUpdate=false;m.updateMatrix();
       group.add(m);
     }
     if(!group.children.length)continue;
     const[ki,kj]=key.split('_').map(Number);
     group.userData.cx=ki*PROP_CHUNK;group.userData.cz=kj*PROP_CHUNK;
+    // chunk fica na identidade (geometria já em world space): congela a matriz
+    group.matrixAutoUpdate=false;group.updateMatrix();
     scene.add(group);
     propChunks.push(group);
   }

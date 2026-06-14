@@ -188,7 +188,7 @@ export function updateHeli(dt){
   if(!need&&heli){scene.remove(heli,heli.userData.spot.target);heli=null;return;}
   if(!heli)return;
   const pp=playerPos();
-  const tgt=new THREE.Vector3(pp.x+Math.sin(state.time*.4)*14,
+  const tgt=_heliTgt.set(pp.x+Math.sin(state.time*.4)*14,
     Math.max(0,pp.y)+26+Math.sin(state.time*1.3)*1.5,pp.z+Math.cos(state.time*.4)*14);
   heli.position.lerp(tgt,1-Math.exp(-1.2*dt));
   heli.lookAt(pp.x,heli.position.y-4,pp.z);
@@ -197,6 +197,9 @@ export function updateHeli(dt){
 }
 
 const _missileProbe=new THREE.Vector3();
+const _heliTgt=new THREE.Vector3();
+const _push=new THREE.Vector3();
+const _mid=new THREE.Vector3();
 
 export function updateCops(dt){
   const want=Math.floor(state.wanted);
@@ -257,13 +260,13 @@ export function updateCops(dt){
     if(state.mode==='car'&&activeCur){
       const d=p.distanceTo(activeCur.g.position);
       if(d<2.9){
-        const push=new THREE.Vector3().subVectors(activeCur.g.position,p).setY(0).normalize();
+        const push=_push.subVectors(activeCur.g.position,p).setY(0).normalize();
         activeCur.g.position.addScaledVector(push,(2.9-d)*.7);
         activeCur.speed*=.75;c.speed*=.6;thud(8);state.shake=.35;
         // amassa os dois na pancada (cooldown: o encosto dura vários frames)
         if(!c.dentT||state.time-c.dentT>.5){
           c.dentT=state.time;
-          const mid=new THREE.Vector3().addVectors(p,activeCur.g.position)
+          const mid=_mid.addVectors(p,activeCur.g.position)
             .multiplyScalar(.5).setY(.7);
           dentCar(activeCur.g,mid,push,.16);
           dentCar(c.g,mid,push.clone().negate(),.16);

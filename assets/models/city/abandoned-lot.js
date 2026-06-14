@@ -108,6 +108,8 @@ export function finalizeAbandonedLots(){
       if(!geos.length)return;
       const m=new THREE.Mesh(mergeGeometries(geos),mat);
       m.castShadow=cast;
+      // mesh fundido nunca se move: congela a matriz local (sem recompose/frame)
+      m.matrixAutoUpdate=false;m.updateMatrix();
       group.add(m);
     };
     add(b.concrete,concreteM);
@@ -118,6 +120,8 @@ export function finalizeAbandonedLots(){
     if(!group.children.length)continue;
     const[ki,kj]=key.split('_').map(Number);
     group.userData.cx=ki*LOT_CHUNK;group.userData.cz=kj*LOT_CHUNK;
+    // chunk fica na identidade (geometria já em world space): congela a matriz
+    group.matrixAutoUpdate=false;group.updateMatrix();
     scene.add(group);
     lotChunks.push(group);
   }

@@ -8,6 +8,9 @@ import {playerPos,cur,player,getWasted} from './player.js';
 
 export const traffic=[];
 const CAR_CULL2=170*170; // LOD: carro de trânsito além disso não é desenhado
+// Vector3 de rascunho reaproveitados na colisão carro-vs-carro do jogador.
+const _push=new THREE.Vector3();
+const _mid=new THREE.Vector3();
 
 export function neighborNodes(i,j){
   const r=[];
@@ -34,16 +37,27 @@ export function spawnTraffic(){
 const TURN=7; // metros antes/depois do nó em que a esquina vira curva
 const TURN_S=TURN/CELL;
 
-function lanePoint(A,B,t){
+// Objetos de rascunho reaproveitados pra evitar alocações por frame.
+// _lp: saída padrão de lanePoint (faixa direta); _e/_x: as DUAS chamadas
+// internas de cornerPos (precisam ser distintas, ver aliasing); _cp: saída
+// de cornerPos. Reuso é seguro porque nenhum chamador mantém dois resultados
+// vivos ao mesmo tempo (ver updateTraffic e player.js completeEnter).
+const _lp={x:0,z:0,dx:0,dz:0};
+const _e={x:0,z:0,dx:0,dz:0};
+const _x={x:0,z:0,dx:0,dz:0};
+const _cp={x:0,z:0,dx:0,dz:0};
+
+function lanePoint(A,B,t,out=_lp){
   const ax=nodeX(A[0]),az=nodeX(A[1]),bx=nodeX(B[0]),bz=nodeX(B[1]);
   const dx=(bx-ax)/CELL,dz=(bz-az)/CELL;
-  return{x:ax+(bx-ax)*t-dz*3.5,z:az+(bz-az)*t+dx*3.5,dx,dz};
+  out.x=ax+(bx-ax)*t-dz*3.5;out.z=az+(bz-az)*t+dx*3.5;out.dx=dx;out.dz=dz;
+  return out;
 }
 
 // Curva suave na esquina: Bezier quadrática do fim da faixa atual (E) ao
 // começo da próxima (X), com controle no cruzamento das duas faixas
 function cornerPos(A,B,C,u){
-  const E=lanePoint(A,B,1-TURN_S),X=lanePoint(B,C,TURN_S);
+  const E=lanePoint(A,B,1-TURN_S,_e),X=lanePoint(B,C,TURN_S,_x);
   let mx,mz;
   if(Math.abs(E.dx)>.5&&Math.abs(X.dz)>.5){mx=X.x;mz=E.z;}
   else if(Math.abs(E.dz)>.5&&Math.abs(X.dx)>.5){mx=E.x;mz=X.z;}
@@ -53,7 +67,8 @@ function cornerPos(A,B,C,u){
   const z=v*v*E.z+2*v*u*mz+u*u*X.z;
   let tx=v*(mx-E.x)+u*(X.x-mx),tz=v*(mz-E.z)+u*(X.z-mz);
   const len=Math.hypot(tx,tz)||1;
-  return{x,z,dx:tx/len,dz:tz/len};
+  _cp.x=x;_cp.z=z;_cp.dx=tx/len;_cp.dz=tz/len;
+  return _cp;
 }
 
 export function trafficPos(t){
@@ -101,12 +116,12 @@ export function updateTraffic(dt){
     if(state.mode==='car'&&activeCur){
       const d=t.g.position.distanceTo(activeCur.g.position);
       if(d<2.9){
-        const push=new THREE.Vector3().subVectors(t.g.position,activeCur.g.position).setY(0).normalize();
+        const push=_push.subVectors(t.g.position,activeCur.g.position).setY(0).normalize();
         activeCur.g.position.addScaledVector(push,-(2.9-d)*.6);
         if(Math.abs(activeCur.speed)>8){
           addWanted(.25,null,'pursuit');thud(Math.abs(activeCur.speed));state.shake=.3;
           // amassa os dois carros no ponto de contato
-          const mid=new THREE.Vector3().addVectors(t.g.position,activeCur.g.position)
+          const mid=_mid.addVectors(t.g.position,activeCur.g.position)
             .multiplyScalar(.5).setY(.7);
           dentCar(activeCur.g,mid,push.clone().negate(),.2);
           dentCar(t.g,mid,push,.2);
