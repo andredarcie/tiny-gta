@@ -150,6 +150,7 @@ function paintFor(color){
 function buildCar({color=0xff2e88,police=false}={}){
   const g=new THREE.Group();
   const paint=paintFor(color);
+  g.userData.color=color; // a garagem rural lê isto pra recriar o carro salvo
 
   // geometria fundida compartilhada entre os carros; dentCar clona na 1ª batida
   const body=new THREE.Mesh(bodyGeo,paint);

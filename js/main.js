@@ -3,7 +3,7 @@ import {state,input,refs} from './state.js';
 import {renderer,scene,camera,clouds,dlight,sunDir} from './engine.js';
 import {updateAudio} from './audio.js';
 import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted} from './player.js';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar} from './player.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
@@ -26,6 +26,8 @@ import {gymTrainState} from './gym.js';
 import {hospitalAdmit} from './hospital.js';
 import {prisonAdmit} from './prison.js';
 import {recordBest} from './leaderboard.js';
+import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from './property.js';
+import {houseTvState,updateHouseTv,getHouseTvState} from './house-tv.js';
 import {updateDoors} from './doors.js';
 import {updateDoorArrows} from '../assets/models/city/door-arrow.js';
 
@@ -59,6 +61,16 @@ refs.prisonAdmit=prisonAdmit;     // ser preso leva o jogador pra dentro do pres
 refs.overkillNear=overkillNear;   // HUD/interact mostram a ação no totem
 refs.endOverkill=endOverkill;     // a morte do jogador encerra o modo overkill
 refs.getOverkillState=getOverkillState;
+refs.exitCar=exitCar;                 // a garagem manda sair do carro ao guardá-lo
+refs.houseBuyState=houseBuyState;     // HUD: comprar a casa perto da placa
+refs.houseEatState=houseEatState;     // HUD: comer da geladeira (cura) dentro de casa
+refs.houseGarageState=houseGarageState; // HUD: guardar o carro na garagem
+refs.getHouseState=getHouseState;
+refs.houseTvState=houseTvState;         // HUD: usar/sair da TV dentro da casa
+refs.getHouseTvState=getHouseTvState;
+
+// Veículo salvo na garagem renasce parado dentro dela (precisa de idleCars/refs prontos)
+initProperty();
 
 // First delivery spawned here, after refs are set (spawnDelivery needs playerPos)
 spawnDelivery();
@@ -73,6 +85,7 @@ const clock=new THREE.Clock();
 function step(dt){
   updateKeyboardInput();
   updateTouchControls();
+  if(updateHouseTv()){renderer.render(scene,camera);return;}
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
   state.time+=dt;
 
@@ -163,6 +176,8 @@ window.render_game_to_text=()=>{
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     storyBlips:refs.storyBlips?.()||[],
+    house:refs.getHouseState?.()||null,
+    houseTv:refs.getHouseTvState?.()||null,
   });
 };
 frame();

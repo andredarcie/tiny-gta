@@ -29,10 +29,18 @@ import {arrowBob} from '../assets/models/city/door-arrow.js';
 //  spawnOut  {x,z} onde o jogador nasce ao sair pra rua
 //  intDoor   {x,z} porta interna (sai ao encostar)
 //  intSpawn  {x,z} onde o jogador nasce ao entrar
-//  fx        objeto de efeitos do modelo (lê fx.exitArrow pra animar a seta)
+//  fx        objeto de efeitos do modelo:
+//              exitArrow anima a seta interna;
+//              facade + footprint são OBRIGATÓRIOS quando o exterior tem
+//              porta/marquise/placa/janela/alpendre ou qualquer detalhe solto
+//              fora do corpo principal. Coloque esses detalhes em fx.facade e
+//              informe a pegada do prédio em fx.footprint, porque a câmera pode
+//              nascer dentro da construção ao sair e esses detalhes precisam
+//              sumir junto com a fachada.
 //  enterMsg/enterColor  aviso padrão ao entrar (onEnter pode trocar)
 //  exterior  {x,z,r} zona da FACHADA onde gangue não pode existir (js/gangs.js)
 //  spawnHeading  pra onde o jogador olha ao nascer dentro (padrão: +x)
+//  spawnOutHeading  pra onde olha ao sair pra rua (padrão: -x)
 // ============================================================================
 
 // Registro de todos os interiores instanciados. js/doors.js varre por porta
@@ -41,11 +49,13 @@ export const interiors=[];
 
 export class Interior{
   constructor({group,bounds,center,door,spawnOut,intDoor,intSpawn,
-    fx=null,enterMsg='',enterColor='var(--gold)',exterior=null,spawnHeading=Math.PI/2}){
+    fx=null,enterMsg='',enterColor='var(--gold)',exterior=null,
+    spawnHeading=Math.PI/2,spawnOutHeading=-Math.PI/2}){
     this.group=group;this.bounds=bounds;this.center=center;
     this.door=door;this.spawnOut=spawnOut;this.intDoor=intDoor;this.intSpawn=intSpawn;
     this.fx=fx;this.enterMsg=enterMsg;this.enterColor=enterColor;
     this.exterior=exterior;this.spawnHeading=spawnHeading;
+    this.spawnOutHeading=spawnOutHeading;
     interiors.push(this);
   }
 
@@ -85,7 +95,7 @@ export class Interior{
 
   exit(){
     this.leave();
-    this.teleport(this.spawnOut.x,this.spawnOut.z,-Math.PI/2);
+    this.teleport(this.spawnOut.x,this.spawnOut.z,this.spawnOutHeading);
   }
 
   // desliga o ambiente sem teleportar (saída normal e de emergência)
@@ -103,10 +113,11 @@ export class Interior{
     return true;
   }
 
-  // Some com os objetos da PORTA externa (porta, marquise, seta...) enquanto a
-  // câmera está dentro da pegada do prédio — ao sair, as paredes somem por
-  // back-face culling e, sem isso, esses objetos ficariam flutuando no ar.
-  // O corpo do prédio continua sumindo sozinho pelo culling (comportamento ok).
+  // Some com os objetos externos destacados (porta, marquise, placa, alpendre,
+  // setas, janelas decorativas...) enquanto a câmera está dentro da pegada do
+  // prédio. Ao sair, as paredes principais somem por back-face culling e, sem
+  // este grupo, os detalhes ficariam flutuando no ar. Todo novo Interior com
+  // detalhe externo separado deve preencher fx.facade + fx.footprint.
   updateFacade(){
     const fx=this.fx;if(!fx||!fx.facade)return;
     const c=camera.position,f=fx.footprint;

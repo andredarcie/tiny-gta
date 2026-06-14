@@ -7,6 +7,7 @@ export const state={
   interior:null, // ambiente interno ativo (instância de Interior) ou null — ver js/interior.js
   armScale:1,armTarget:1,gymDay:-1, // academia: tamanho do braço, alvo e dia do último treino
   viewerOpen:false, // galeria de objetos (tecla I) aberta
+  tvActive:false,   // iframe da TV da safehouse aberto
   onRoof:null // registro da porta do prédio em cujo telhado o jogador está
 };
 

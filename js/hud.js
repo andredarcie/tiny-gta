@@ -40,10 +40,16 @@ export function bigText(t,col){
 export function hideBig(){hudBig.classList.remove('show');}
 
 export function getInteractAction(){
+  const tv=refs.houseTvState?.();
+  if(tv)return tv;
   if(state.cine||state.dlgActive)return{label:'...',prompt:'',enabled:false}; // cut-scene: sem ações
   if(state.paused||state.mode==='cut'||state.orientationBlocked)return{label:'...',prompt:'',enabled:false};
   if(refs.canPickWeapon?.())return{label:'PICK',prompt:'PICK UP WEAPON',enabled:true};
   if(state.mode==='foot'){
+    const eat=refs.houseEatState?.(); // perto da geladeira dentro de casa
+    if(eat)return eat;
+    const buy=refs.houseBuyState?.(); // perto da placa FOR SALE da casa de campo
+    if(buy)return buy;
     const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
     if(gym)return gym;
     const ov=refs.overkillNear?.(); // perto do totem do modo overkill
@@ -63,6 +69,8 @@ export function getInteractAction(){
   }
   if(state.mode==='car'){
     if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
+    const garage=refs.houseGarageState?.(); // carro parado dentro da garagem da casa
+    if(garage)return garage;
     const c=refs.getCur?.();
     const speed=Math.abs(c?.speed||0);
     return speed<6

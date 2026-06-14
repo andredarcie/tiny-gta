@@ -68,6 +68,7 @@ function makeWheel(){
 function buildMotorcycle({color=0xd11f3a}={}){
   const g=new THREE.Group();
   const paint=paintFor(color);
+  g.userData.color=color; // a garagem rural lê isto pra recriar a moto salva
 
   // ---- roda traseira + balança + escapamentos ----
   const rw=makeWheel();

@@ -109,13 +109,14 @@ export function updateTouchControls(){
     interact.disabled=!action.enabled;
     interact.classList.toggle('disabled',!action.enabled);
   }
-  const armed=state.started&&refs.isWeaponHeld?.()&&!state.dlgActive&&!state.paused&&!state.orientationBlocked;
-  const driving=state.started&&state.mode==='car'&&!state.dlgActive&&!state.paused;
+  const tv=!!refs.getHouseTvState?.()?.active;
+  const armed=state.started&&refs.isWeaponHeld?.()&&!state.dlgActive&&!state.paused&&!state.orientationBlocked&&!tv;
+  const driving=state.started&&state.mode==='car'&&!state.dlgActive&&!state.paused&&!tv;
   const radioAllowed=driving&&!refs.getOverkillState?.()?.active;
   $('btn-shoot')?.classList.toggle('show',armed);
   $('btn-brake')?.classList.toggle('show',driving);
   $('btn-radio')?.classList.toggle('show',radioAllowed);
-  $('touch-controls')?.classList.toggle('in-dialog',state.dlgActive);
+  $('touch-controls')?.classList.toggle('in-dialog',state.dlgActive||tv);
 }
 
 export function setupTouchControls(){

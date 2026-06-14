@@ -122,6 +122,26 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 #pauseov{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;
   background:rgba(10,2,20,.6);font-family:'Bowlby One SC';font-size:64px;color:var(--cyan);
   letter-spacing:8px;text-shadow:0 0 24px rgba(25,227,255,.7)}
+#house-tv{position:fixed;inset:0;z-index:64;display:none;align-items:center;justify-content:center;
+  padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(48px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));
+  background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.12),rgba(2,0,8,.72) 78%);
+  pointer-events:auto}
+#house-tv.open{display:flex}
+.house-tv-shell{width:min(86vw,1180px);height:min(74vh,720px);border:10px solid #09070d;border-radius:10px;
+  background:#020204;box-shadow:0 0 0 3px rgba(255,210,74,.45),0 0 55px rgba(25,227,255,.22),0 18px 55px rgba(0,0,0,.72);
+  overflow:hidden}
+#house-tv-frame{display:block;width:100%;height:100%;border:0;background:#050505;pointer-events:auto;touch-action:auto}
+#house-tv-hint{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);
+  pointer-events:none;font:800 12px 'IBM Plex Mono',monospace;letter-spacing:2px;color:var(--gold);
+  text-shadow:2px 2px 0 #000,0 0 14px rgba(255,210,74,.65)}
+#house-tv-exit{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));
+  z-index:65;display:none;min-width:74px;height:54px;border-radius:10px;border:2px solid var(--gold);
+  background:rgba(20,9,31,.88);color:var(--gold);font-family:'Bowlby One SC';font-size:14px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,210,74,.42);
+  pointer-events:auto;touch-action:none}
+body.house-tv-open #hud{display:none!important}
+body.house-tv-open #touch-controls{display:none!important}
+body.house-tv-open #btn-fullscreen{display:none!important}
 #btn-fullscreen{position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
   z-index:72;min-width:92px;height:44px;padding:0 18px;border:2px solid var(--gold);border-radius:8px;
   background:rgba(20,9,31,.78);color:var(--gold);font-family:'Bowlby One SC';font-size:15px;
@@ -346,6 +366,9 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #rampage{top:max(128px,calc(env(safe-area-inset-top) + 128px));font-size:10px}
   #bigtext{font-size:clamp(38px,11vw,96px);letter-spacing:3px;white-space:normal;text-align:center;max-width:88vw}
   #pauseov{font-size:clamp(38px,12vw,64px)}
+  .house-tv-shell{width:92vw;height:78vh;border-width:6px}
+  #house-tv-hint{display:none}
+  #house-tv-exit{display:block}
   #btn-fullscreen{top:max(10px,env(safe-area-inset-top));min-width:82px;height:40px;font-size:13px;
     box-shadow:0 0 18px rgba(255,210,74,.52)}
   #mp-title{font-size:clamp(36px,10vw,72px);letter-spacing:3px;text-align:center}

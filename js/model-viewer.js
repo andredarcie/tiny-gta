@@ -46,6 +46,8 @@ async function discover(){
       const build=v.build||d.build;
       if(typeof build!=='function')continue;
       entries.push({cat,label:v.label||d.label||TITLE(path.split('/').pop().replace(/\.js$/,'')),
+        zoom:v.zoom||d.zoom||1,
+        yaw:v.yaw||d.yaw||0,
         load:async()=>toObject3D(build(v.opts||{}))});
     }
   }
@@ -179,12 +181,12 @@ async function select(i){
   holder.position.set(-center.x,-center.y,-center.z);
   const sphere=box.getBoundingSphere(new THREE.Sphere());
   const r=Math.max(sphere.radius,.2);
-  const dist=r/Math.sin((vcamera.fov*Math.PI/180)/2)*1.25;
+  const dist=r/Math.sin((vcamera.fov*Math.PI/180)/2)*1.25*(entry.zoom||1);
   vcamera.position.set(dist*.45,dist*.32,dist);
   vcamera.near=Math.max(dist/100,.01);vcamera.far=dist*10;
   vcamera.lookAt(0,0,0);
   vcamera.updateProjectionMatrix();
-  pivot.rotation.set(0,0,0); // novo modelo começa de frente; drag gira a partir daqui
+  pivot.rotation.set(0,entry.yaw||0,0); // variante pode definir o lado inicial visto no preview
 }
 
 // Box3.setFromObject ignora Sprites (não têm geometria), então um modelo só de

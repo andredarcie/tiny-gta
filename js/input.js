@@ -4,6 +4,8 @@ import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
 import {storyInteract,advanceCine} from './story.js';
 import {gymTrain} from './gym.js';
+import {houseBuy,houseEat,houseGaragePark} from './property.js';
+import {houseTvInteract} from './house-tv.js';
 import {startOverkill} from './overkill.js';
 import {setMissionHUD} from './missions.js';
 import {message} from './hud.js';
@@ -32,6 +34,11 @@ export function resetInput(keepTouch=false){
 }
 
 export function updateKeyboardInput(){
+  if(state.tvActive){
+    input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+    input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
+    return;
+  }
   const f=(keys['KeyW']||keys['ArrowUp']?1:0)-(keys['KeyS']||keys['ArrowDown']?1:0);
   const side=(keys['KeyA']||keys['ArrowLeft']?1:0)-(keys['KeyD']||keys['ArrowRight']?1:0);
   const keyboardMoving=!!(f||side||keys['ShiftLeft']||keys['ShiftRight']);
@@ -77,16 +84,20 @@ export function performFullscreenToggle(){
 
 export function performInteract(){
   if(!state.started)return;
+  if(houseTvInteract())return; // ativo: E fecha; perto da TV: E abre
   if(state.dlgActive)return; // cut-scene: legendas correm sozinhas
   if(isBlocked())return;
   if(state.mode==='foot'){
     if(canPickWeapon()){pickupWeapon();return;}
+    if(houseEat())return;  // comer da geladeira dentro de casa (cura)
+    if(houseBuy())return;  // comprar a casa de campo (perto da placa FOR SALE)
     if(gymTrain())return; // treino na academia (perto do supino)
     if(startOverkill())return; // liga o modo overkill (perto do totem)
     if(storyInteract())return;
     enterCar();
   }else if(state.mode==='car'){
     if(refs.startRaceInteract?.())return; // largar corrida no pórtico tem prioridade
+    if(houseGaragePark())return; // guardar o carro na garagem da casa comprada
     if(Math.abs(cur?.speed||0)<6)exitCar();
   }
 }
@@ -177,6 +188,10 @@ export function setupInput(){
     // e nenhum outro atalho funciona enquanto a cena roda.
     if(state.cine){
       if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();advanceCine();}
+      return;
+    }
+    if(state.tvActive){
+      if(e.code==='KeyE'||e.code==='KeyF')performInteract();
       return;
     }
     if(e.code==='KeyI'){toggleModelViewer();return;}

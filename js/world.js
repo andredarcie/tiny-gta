@@ -18,6 +18,7 @@ import {addGym,GYM_I,GYM_J} from '../assets/models/city/gym.js';
 import {addHospital,HOSP_I,HOSP_J} from '../assets/models/city/hospital.js';
 import {addPrison,PRISON_I,PRISON_J} from '../assets/models/city/prison.js';
 import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
+import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
 import {makeTexturedPlane} from '../assets/models/terrain/textured-plane.js';
@@ -257,6 +258,9 @@ solids.push(addFarmHouse(212,-12,0),addFarmHouse(236,10,-.4),addFarmHouse(258,12
 // celeiro vermelho com silo
 addBarnWithSilo(solids);
 
+// casa de campo comprável (safehouse): fachada + garagem aqui, interior a ~600m
+addRanchHouse(solids);
+
 // pinheiros pela zona rural e encostas baixas da montanha
 {
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]];
@@ -265,6 +269,8 @@ addBarnWithSilo(solids);
     const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
     if(Math.abs(pz)<7&&px<MOUNT_X)continue;            // estrada de terra
     if(groundHeight(px,pz)>18)continue;                 // encosta alta é rocha
+    if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)continue;  // quintal/varanda/placa
+    if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)continue; // entrada da garagem
     if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))continue;
     addPine(px,pz);placed++;
   }
