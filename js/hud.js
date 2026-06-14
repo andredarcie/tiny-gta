@@ -1,4 +1,4 @@
-import {N,ROAD,BLOCK,GROUND,BEACH,nodeX,
+import {N,ROAD,BLOCK,GROUND,BEACH,nodeX,WATER,SWIM_BOUND,
   RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R} from './constants.js';
 import {state,input,refs} from './state.js';
 import {isPark} from './world.js';
@@ -10,7 +10,8 @@ export const hudMoney=$('money'),hudClock=$('clock'),hudHealth=$('health-val'),
   hudCar=$('carname'),hudPrompt=$('prompt'),hudMsg=$('msg'),hudBig=$('bigtext'),
   hudWeaponIcon=$('weapon-icon'),hudWeaponAmmo=$('weapon-ammo'),hudWeaponName=$('weapon-name'),
   hudAmmoNow=$('ammo-now'),hudAmmoMax=$('ammo-max'),hudCrosshair=$('crosshair'),
-  hudSpeedo=$('speedo'),hudSpeedoVal=$('speedo-val');
+  hudSpeedo=$('speedo'),hudSpeedoVal=$('speedo-val'),
+  hudBreath=$('breath'),hudBreathFill=$('breath-fill');
 const weaponIconCtx=hudWeaponIcon&&hudWeaponIcon.getContext('2d');
 let weaponIconKey='';
 
@@ -19,6 +20,7 @@ let shownMoney=250,msgT=0;
 // troca nós de texto e invalida layout mesmo quando o valor não mudou. Só
 // escrevemos quando muda de fato (a maioria dos frames não muda nada).
 let _money='',_clock='',_health=-1,_wanted=-1,_wname='',_prompt='',_promptShown=null;
+let _breath=-1,_breathShown=null;
 
 // Medidor de FPS: conta frames reais e só toca no DOM 2x por segundo —
 // atualizar texto todo frame custaria mais que aquilo que o medidor mede
@@ -85,13 +87,17 @@ function computeInteractAction(){
   }
   if(state.mode==='foot'){
     const near=refs.nearestCar?.(3.6);
-    if(near)return refs.isTaxiCar?.(near.c)
-      ?{label:'TAXI',prompt:'START TAXI SHIFT',enabled:true}
-      :near.c.boat
+    if(near){
+      const c=near.c;
+      if(refs.isTaxiCar?.(c))return{label:'TAXI',prompt:'START TAXI SHIFT',enabled:true};
+      if(refs.isVigilanteCar?.(c))return{label:'VIGILANTE',prompt:'START VIGILANTE DUTY',enabled:true};
+      if(refs.isAmbulanceCar?.(c))return{label:'PARAMEDIC',prompt:'START PARAMEDIC',enabled:true};
+      return c.boat
         ?{label:'BOAT',prompt:'RIDE THE BOAT',enabled:true}
-        :near.c.bike
+        :c.bike
           ?{label:'BIKE',prompt:'RIDE THE BIKE',enabled:true}
           :{label:'CAR',prompt:'TAKE THE CAR',enabled:true};
+    }
   }
   if(state.mode==='car'){
     if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
@@ -115,6 +121,7 @@ const mmCanvas=$('minimap');
 export const mm=mmCanvas.getContext('2d');
 const MMW=GROUND+BEACH*2;            // world span covered by the static map
 const MM_C=85,MM_R=80,MM_RANGE=105;  // center px, radius px, radar reach in meters
+const MM_POI_REVEAL=90;              // POIs fixos só aparecem dentro de N metros (declutter)
 const mmStatic=document.createElement('canvas');mmStatic.width=512;mmStatic.height=512;
 {
   const x=mmStatic.getContext('2d'),s=512/MMW,M=v=>(v+MMW/2)*s;
@@ -154,69 +161,141 @@ function mmBlip(wx,wz,pp,scale){
   if(d>max){px*=max/d;py*=max/d;}
   return[MM_C+px,MM_C+py];
 }
-function mmSquare(px,py,size,col){
-  mm.fillStyle=col;mm.strokeStyle='rgba(0,0,0,.75)';mm.lineWidth=1.5;
-  mm.fillRect(px-size/2,py-size/2,size,size);
-  mm.strokeRect(px-size/2,py-size/2,size,size);
+function mmSquare(ctx,px,py,size,col){
+  ctx.fillStyle=col;ctx.strokeStyle='rgba(0,0,0,.75)';ctx.lineWidth=1.5;
+  ctx.fillRect(px-size/2,py-size/2,size,size);
+  ctx.strokeRect(px-size/2,py-size/2,size,size);
 }
-function mmCircleIcon(px,py,b){
+function mmCircleIcon(ctx,px,py,b,scale=1){
   const r=8.6;
-  mm.save();
-  mm.translate(px,py);
-  mm.fillStyle='rgba(5,3,8,.9)';
-  mm.beginPath();mm.arc(0,0,r+2,0,Math.PI*2);mm.fill();
-  mm.fillStyle=b.color||'#f5c518';
-  mm.strokeStyle='rgba(255,255,255,.78)';mm.lineWidth=1.15;
-  mm.beginPath();mm.arc(0,0,r,0,Math.PI*2);mm.fill();mm.stroke();
-  mm.fillStyle='#120916';mm.strokeStyle='#120916';mm.lineCap='round';mm.lineJoin='round';
+  ctx.save();
+  ctx.translate(px,py);
+  if(scale!==1)ctx.scale(scale,scale);
+  ctx.fillStyle='rgba(5,3,8,.9)';
+  ctx.beginPath();ctx.arc(0,0,r+2,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=b.color||'#f5c518';
+  ctx.strokeStyle='rgba(255,255,255,.78)';ctx.lineWidth=1.15;
+  ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#120916';ctx.strokeStyle='#120916';ctx.lineCap='round';ctx.lineJoin='round';
   switch(b.icon){
     case'gun':
-      mm.beginPath();
-      mm.moveTo(-6.4,-3.1);mm.lineTo(4.9,-3.1);mm.lineTo(4.9,-1.2);
-      mm.lineTo(1.4,-1.2);mm.lineTo(.6,.5);mm.lineTo(-4.2,.5);
-      mm.lineTo(-4.8,2.3);mm.lineTo(-6.4,2.3);mm.closePath();mm.fill();
-      mm.fillRect(3.9,-4.0,3.0,1.25);
-      mm.beginPath();mm.moveTo(-.7,.6);mm.lineTo(2.4,.6);mm.lineTo(1.1,5.7);
-      mm.lineTo(-2.2,5.7);mm.closePath();mm.fill();
-      mm.strokeStyle='#120916';mm.lineWidth=1.25;
-      mm.beginPath();mm.arc(-1.8,2.0,1.8,-.6,1.55);mm.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-6.4,-3.1);ctx.lineTo(4.9,-3.1);ctx.lineTo(4.9,-1.2);
+      ctx.lineTo(1.4,-1.2);ctx.lineTo(.6,.5);ctx.lineTo(-4.2,.5);
+      ctx.lineTo(-4.8,2.3);ctx.lineTo(-6.4,2.3);ctx.closePath();ctx.fill();
+      ctx.fillRect(3.9,-4.0,3.0,1.25);
+      ctx.beginPath();ctx.moveTo(-.7,.6);ctx.lineTo(2.4,.6);ctx.lineTo(1.1,5.7);
+      ctx.lineTo(-2.2,5.7);ctx.closePath();ctx.fill();
+      ctx.strokeStyle='#120916';ctx.lineWidth=1.25;
+      ctx.beginPath();ctx.arc(-1.8,2.0,1.8,-.6,1.55);ctx.stroke();
       break;
     case'gym':
-      mm.lineWidth=2;mm.beginPath();mm.moveTo(-4.8,0);mm.lineTo(4.8,0);mm.stroke();
-      for(const x of[-6.2,-4.5,4.5,6.2])mm.fillRect(x-.55,-3.8,1.1,7.6);
+      ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(-4.8,0);ctx.lineTo(4.8,0);ctx.stroke();
+      for(const x of[-6.2,-4.5,4.5,6.2])ctx.fillRect(x-.55,-3.8,1.1,7.6);
       break;
     case'hospital':
-      mm.fillRect(-2.1,-5.4,4.2,10.8);
-      mm.fillRect(-5.4,-2.1,10.8,4.2);
+      ctx.fillRect(-2.1,-5.4,4.2,10.8);
+      ctx.fillRect(-5.4,-2.1,10.8,4.2);
       break;
     case'prison':
-      mm.fillRect(-5.5,-4.7,11,1.35);mm.fillRect(-5.5,3.35,11,1.35);
-      for(const x of[-3.6,0,3.6])mm.fillRect(x-.55,-4.7,1.1,9.4);
+      ctx.fillRect(-5.5,-4.7,11,1.35);ctx.fillRect(-5.5,3.35,11,1.35);
+      for(const x of[-3.6,0,3.6])ctx.fillRect(x-.55,-4.7,1.1,9.4);
       break;
     case'club':
-      mm.lineWidth=1.8;
-      mm.beginPath();mm.moveTo(.8,-5.3);mm.lineTo(.8,2.2);mm.stroke();
-      mm.beginPath();mm.moveTo(.8,-5.3);mm.quadraticCurveTo(4.9,-4.7,5.1,-2.6);mm.stroke();
-      mm.beginPath();mm.ellipse(-2.2,3.0,2.6,1.8,-.25,0,Math.PI*2);mm.fill();
+      ctx.lineWidth=1.8;
+      ctx.beginPath();ctx.moveTo(.8,-5.3);ctx.lineTo(.8,2.2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(.8,-5.3);ctx.quadraticCurveTo(4.9,-4.7,5.1,-2.6);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(-2.2,3.0,2.6,1.8,-.25,0,Math.PI*2);ctx.fill();
       break;
     case'house':
-      mm.beginPath();mm.moveTo(-6,.2);mm.lineTo(0,-5.3);mm.lineTo(6,.2);
-      mm.lineTo(4.7,.2);mm.lineTo(4.7,5);mm.lineTo(-4.7,5);mm.lineTo(-4.7,.2);
-      mm.closePath();mm.fill();
-      mm.fillStyle=b.color||'#f5c518';mm.fillRect(-1.2,1.5,2.4,3.5);
+      ctx.beginPath();ctx.moveTo(-6,.2);ctx.lineTo(0,-5.3);ctx.lineTo(6,.2);
+      ctx.lineTo(4.7,.2);ctx.lineTo(4.7,5);ctx.lineTo(-4.7,5);ctx.lineTo(-4.7,.2);
+      ctx.closePath();ctx.fill();
+      ctx.fillStyle=b.color||'#f5c518';ctx.fillRect(-1.2,1.5,2.4,3.5);
       break;
     case'wrench':
-      mm.lineWidth=2.4;mm.lineCap='round';
-      mm.beginPath();mm.moveTo(-3.4,-3.4);mm.lineTo(3.4,3.4);mm.stroke(); // cabo
-      mm.lineWidth=1.6;
-      mm.beginPath();mm.arc(-3.8,-3.8,2.2,-1.0,2.2);mm.stroke();           // boca
-      mm.beginPath();mm.arc(3.8,3.8,2.2,2.1,5.3);mm.stroke();
+      ctx.lineWidth=2.4;ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(-3.4,-3.4);ctx.lineTo(3.4,3.4);ctx.stroke(); // cabo
+      ctx.lineWidth=1.6;
+      ctx.beginPath();ctx.arc(-3.8,-3.8,2.2,-1.0,2.2);ctx.stroke();           // boca
+      ctx.beginPath();ctx.arc(3.8,3.8,2.2,2.1,5.3);ctx.stroke();
+      break;
+    case'cop': // distintivo policial (estrela de 5 pontas)
+      ctx.beginPath();
+      for(let i=0;i<10;i++){
+        const a=-Math.PI/2+i*Math.PI/5,rr=i%2?2.7:6.3;
+        const fx=Math.cos(a)*rr,fy=Math.sin(a)*rr;
+        i?ctx.lineTo(fx,fy):ctx.moveTo(fx,fy);
+      }
+      ctx.closePath();ctx.fill();
+      break;
+    case'package': // entrega: caixa com fita
+      ctx.fillRect(-5.2,-4.6,10.4,9.2);
+      ctx.fillStyle=b.color||'#f5c518';
+      ctx.fillRect(-1.1,-4.6,2.2,9.2);
+      ctx.fillRect(-5.2,-1.1,10.4,2.2);
+      break;
+    case'person': // passageiro do táxi
+      ctx.beginPath();ctx.arc(0,-3.3,2.4,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-4.3,5.3);ctx.quadraticCurveTo(-4.3,-.8,0,-.8);
+      ctx.quadraticCurveTo(4.3,-.8,4.3,5.3);ctx.closePath();ctx.fill();
+      break;
+    case'target': // alvo (criminoso em fuga / vigilante)
+      ctx.lineWidth=1.6;
+      ctx.beginPath();ctx.arc(0,0,5,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,1.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0,-6.8);ctx.lineTo(0,-3.6);ctx.moveTo(0,3.6);ctx.lineTo(0,6.8);
+      ctx.moveTo(-6.8,0);ctx.lineTo(-3.6,0);ctx.moveTo(3.6,0);ctx.lineTo(6.8,0);
+      ctx.stroke();
+      break;
+    case'cross': // cruz médica (paramédico / feridos)
+      ctx.fillRect(-1.9,-5.6,3.8,11.2);
+      ctx.fillRect(-5.6,-1.9,11.2,3.8);
+      break;
+    case'flag': // bandeira quadriculada (checkpoint de corrida)
+      ctx.fillRect(-4.7,-6,1.4,12);                 // mastro
+      ctx.fillRect(-3.3,-6,7.8,5.61);               // pano
+      ctx.fillStyle=b.color||'#f5c518';             // xadrez na cor do círculo
+      ctx.fillRect(-3.3,-6,1.95,1.87);ctx.fillRect(.6,-6,1.95,1.87);
+      ctx.fillRect(-1.35,-4.13,1.95,1.87);ctx.fillRect(2.55,-4.13,1.95,1.87);
+      ctx.fillRect(-3.3,-2.26,1.95,1.87);ctx.fillRect(.6,-2.26,1.95,1.87);
+      break;
+    case'diamond': // objetivo genérico da história (item)
+      ctx.beginPath();
+      ctx.moveTo(0,-6);ctx.lineTo(5.2,0);ctx.lineTo(0,6);ctx.lineTo(-5.2,0);
+      ctx.closePath();ctx.fill();
+      break;
+    case'letter': // marcador de missão com a inicial do NPC
+      ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(b.letter||'?',0,.6);
+      break;
+    case'taxi': // ponto de táxi (carro de perfil)
+      ctx.fillRect(-6,0,12,3.4);                                   // chassi
+      ctx.beginPath();ctx.moveTo(-3.4,0);ctx.lineTo(-2,-3.4);
+      ctx.lineTo(2.4,-3.4);ctx.lineTo(3.8,0);ctx.closePath();ctx.fill(); // cabine
+      ctx.fillStyle=b.color||'#f5c518';
+      ctx.beginPath();ctx.arc(-3.4,3.6,1.7,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(3.4,3.6,1.7,0,Math.PI*2);ctx.fill();  // rodas
+      ctx.fillStyle='#120916';
+      ctx.beginPath();ctx.arc(-3.4,3.6,.8,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(3.4,3.6,.8,0,Math.PI*2);ctx.fill();
+      break;
+    case'skull': // modo overkill (caveira)
+      ctx.beginPath();ctx.arc(0,-1.4,5.2,Math.PI,0);
+      ctx.lineTo(3.6,3.2);ctx.lineTo(2,3.2);ctx.lineTo(2,5);
+      ctx.lineTo(-2,5);ctx.lineTo(-2,3.2);ctx.lineTo(-3.6,3.2);ctx.closePath();ctx.fill();
+      ctx.fillStyle=b.color||'#ff2e88';
+      ctx.beginPath();ctx.arc(-2.1,-1.2,1.5,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.arc(2.1,-1.2,1.5,0,Math.PI*2);ctx.fill();  // olhos
+      ctx.beginPath();ctx.moveTo(0,.4);ctx.lineTo(.9,2.2);ctx.lineTo(-.9,2.2);ctx.closePath();ctx.fill();
       break;
     default:
-      mm.lineWidth=1.8;mm.strokeRect(-3.6,-5,7.2,10);
-      mm.beginPath();mm.arc(1.7,.2,.65,0,Math.PI*2);mm.fill();
+      ctx.lineWidth=1.8;ctx.strokeRect(-3.6,-5,7.2,10);
+      ctx.beginPath();ctx.arc(1.7,.2,.65,0,Math.PI*2);ctx.fill();
   }
-  mm.restore();
+  ctx.restore();
 }
 function drawHudWeaponIcon(wh){
   if(!weaponIconCtx)return;
@@ -385,52 +464,77 @@ export function drawMinimap(){
   // territórios das gangues (círculos coloridos que encolhem conforme você mata)
   const gangsArr=refs.gangs;
   if(!raceOn&&gangsArr)for(const g of gangsArr){
+    if(g.defeated)continue; // gangue eliminada: sem território no radar
     mm.fillStyle=g.cssA;
     mm.beginPath();mm.arc(g.x,g.z,g.r,0,Math.PI*2);mm.fill();
     mm.strokeStyle=g.css;mm.lineWidth=2/scale;mm.stroke();
   }
   mm.restore();
 
-  // blips quadrados (presos na borda quando longe)
+  // Blips de objetivo agora usam o MESMO esquema de ícone dos POIs (em vez de
+  // quadradinhos coloridos sem significado): polícia=distintivo, entrega=caixa,
+  // táxi=pessoa, vigilante=alvo, paramédico=cruz, história=letra/losango.
   const cops=refs.cops||[];
   for(const c of cops){
     const[px,py]=mmBlip(c.g.position.x,c.g.position.z,pp,scale);
-    mmSquare(px,py,6,'#3e7bff');
+    mmCircleIcon(mm,px,py,{icon:'cop',color:'#3e7bff'},.78);
   }
   // Demais objetivos/minigames ficam ESCONDIDOS durante a corrida de rua
   if(!raceOn){
+    // POIs fixos (lojas/serviços): só aparecem quando o jogador chega perto —
+    // antes ficavam todos presos na borda e o radar virava uma sopa de ícones.
+    // O mapa completo (tecla M) continua listando todos, longe ou perto.
     for(const b of refs.interiorBlips?.()||[]){
-      const[px,py]=mmBlip(b.x,b.z,pp,scale);
-      mmCircleIcon(px,py,b);
+      if(Math.hypot(b.x-pp.x,b.z-pp.z)>MM_POI_REVEAL)continue;
+      mmCircleIcon(mm,MM_C+(b.x-pp.x)*scale,MM_C+(b.z-pp.z)*scale,b);
     }
     const ws=refs.workshopBlip?.(); // oficina de custom (não é Interior)
-    if(ws){const[px,py]=mmBlip(ws.x,ws.z,pp,scale);mmCircleIcon(px,py,ws);}
+    if(ws&&Math.hypot(ws.x-pp.x,ws.z-pp.z)<=MM_POI_REVEAL)
+      mmCircleIcon(mm,MM_C+(ws.x-pp.x)*scale,MM_C+(ws.z-pp.z)*scale,ws);
+    // Pontos fixos de minigame (overkill/vigilante/paramédico): mesmo gate de
+    // proximidade dos POIs, pra o radar não voltar a entulhar de ícone.
+    const ov=refs.overkillBlip?.(),vg=refs.vigilanteStart?.(),pm=refs.paramedicStart?.();
+    for(const m of[ov&&{...ov,icon:'skull',color:'#ff2e88'},
+      vg&&{...vg,icon:'cop',color:'#3e7bff'},
+      pm&&{...pm,icon:'cross',color:'#19e3ff'}]){
+      if(!m||Math.hypot(m.x-pp.x,m.z-pp.z)>MM_POI_REVEAL)continue;
+      mmCircleIcon(mm,MM_C+(m.x-pp.x)*scale,MM_C+(m.z-pp.z)*scale,m);
+    }
     const delivery=refs.getDelivery?.();
     if(delivery){
       const[px,py]=mmBlip(delivery.x,delivery.z,pp,scale);
-      mmSquare(px,py,8,'#ffd24a');
+      mmCircleIcon(mm,px,py,{icon:'package',color:'#ffd24a'});
     }
-    const taxiT=refs.taxiTarget?.(); // corrida de táxi: passageiro ou destino
+    const taxiT=refs.taxiTarget?.(); // táxi livre / passageiro / destino
     if(taxiT){
       const[px,py]=mmBlip(taxiT.x,taxiT.z,pp,scale);
-      mmSquare(px,py,8,'#5eff8a');
+      mmCircleIcon(mm,px,py,{
+        icon:taxiT.kind==='taxi'?'taxi':taxiT.kind==='pickup'?'person':'flag',
+        color:taxiT.kind==='taxi'?'#f5c518':'#5eff8a'});
     }
-    // Missão da história: blip no NPC atual (letra) ou no item quando ativa;
+    for(const b of refs.vigilanteBlips?.()||[]){ // criminoso em fuga (vigilante)
+      const[px,py]=mmBlip(b.x,b.z,pp,scale);
+      mmCircleIcon(mm,px,py,{icon:'target',color:b.col||'#ff3b56'},b.current?1:.82);
+    }
+    for(const b of refs.paramedicBlips?.()||[]){ // feridos / hospital (paramedic)
+      const[px,py]=mmBlip(b.x,b.z,pp,scale);
+      mmCircleIcon(mm,px,py,{icon:'cross',color:b.col||'#5eff8a'},b.current?1:.82);
+    }
+    // Missão da história: blip no NPC atual (letra) ou no item (losango) quando ativa;
     // o piscar de retorno já vem resolvido de storyBlips()
     for(const b of refs.storyBlips?.()||[]){
       const[px,py]=mmBlip(b.x,b.z,pp,scale);
-      if(b.letter){
-        mmSquare(px,py,9,b.col);
-        mm.fillStyle='#14091f';mm.font='bold 7px monospace';
-        mm.textAlign='center';mm.textBaseline='middle';
-        mm.fillText(b.letter,px,py+.5);
-      }else mmSquare(px,py,8,b.col);
+      mmCircleIcon(mm,px,py,{icon:b.letter?'letter':'diamond',letter:b.letter,color:b.col});
     }
   }
-  // Corrida (rua/lanchas): checkpoint/boia atual (forte) + próximos (apagados)
+  // Corrida (rua/lanchas): bandeira no checkpoint atual + próximos como anéis apagados
   for(const b of[...(refs.raceBlips?.()||[]),...(refs.boatRaceBlips?.()||[])]){
     const[px,py]=mmBlip(b.x,b.z,pp,scale);
-    mmSquare(px,py,b.current?9:6,b.current?'#ff8a1e':'rgba(255,138,30,.55)');
+    if(b.current)mmCircleIcon(mm,px,py,{icon:'flag',color:'#ff8a1e'});
+    else{
+      mm.fillStyle='rgba(255,138,30,.5)';mm.strokeStyle='rgba(20,9,31,.8)';mm.lineWidth=1.4;
+      mm.beginPath();mm.arc(px,py,3.4,0,Math.PI*2);mm.fill();mm.stroke();
+    }
   }
 
   // seta do jogador no centro, girando com a direção (mapa fixo no norte)
@@ -461,6 +565,108 @@ export function drawMinimap(){
   mm.fillText('N',MM_C,ny+.5);
 }
 
+// ---- Mapa completo (tecla M) ----------------------------------------------
+// Visão geral do mundo inteiro (cidade + península rural) com TODOS os blips,
+// inclusive os POIs que o radar esconde quando estão longe. O mundo fica
+// congelado enquanto o mapa está aberto (ver state.mapOpen / main.js).
+const fmCanvas=$('fullmap-canvas');
+const fm=fmCanvas&&fmCanvas.getContext('2d');
+// O mapa grande inclui uma faixa de MAR ao redor da cidade: a corrida de lanchas
+// roda num anel no mar (raio ~ (WATER+SWIM_BOUND)/2), então o mapa precisa
+// alcançar além da linha d'água pra mostrar as boias/largada da prova.
+const FM_SEA=Math.round((WATER+SWIM_BOUND)/2)+24;
+const FM_MINX=-FM_SEA,FM_MAXX=RURAL_X1+20,FM_MINZ=-FM_SEA,FM_MAXZ=FM_SEA;
+const FM_WW=FM_MAXX-FM_MINX,FM_WH=FM_MAXZ-FM_MINZ;
+// Resolução interna seguindo a proporção real do mundo (sem barras); o CSS
+// reescala isso pra caber em qualquer tela mantendo a proporção.
+if(fmCanvas){fmCanvas.width=1280;fmCanvas.height=Math.round(1280*FM_WH/FM_WW);}
+function fmFit(){
+  const s=Math.min(fmCanvas.width/FM_WW,fmCanvas.height/FM_WH);
+  return{s,ox:(fmCanvas.width-FM_WW*s)/2,oy:(fmCanvas.height-FM_WH*s)/2};
+}
+export function drawFullMap(){
+  if(!fm)return;
+  const{s,ox,oy}=fmFit();
+  const P=(wx,wz)=>[ox+(wx-FM_MINX)*s,oy+(wz-FM_MINZ)*s];
+  fm.setTransform(1,0,0,1,0,0);
+  fm.clearRect(0,0,fmCanvas.width,fmCanvas.height);
+  fm.fillStyle='#2e8a96';fm.fillRect(0,0,fmCanvas.width,fmCanvas.height); // mar ao fundo
+  fm.drawImage(mmStatic,...P(-MMW/2,-MMW/2),MMW*s,MMW*s);
+  fm.drawImage(mmRural,...P(RURAL_X0,-RURAL_HALF),RRW*s,RRD*s);
+  // territórios das gangues
+  const gangsArr=refs.gangs;
+  if(gangsArr)for(const g of gangsArr){
+    if(g.defeated)continue; // gangue eliminada: some do mapa
+    const[cx,cy]=P(g.x,g.z);
+    fm.fillStyle=g.cssA;fm.beginPath();fm.arc(cx,cy,g.r*s,0,Math.PI*2);fm.fill();
+    fm.strokeStyle=g.css;fm.lineWidth=2;fm.stroke();
+  }
+  // ---- REGRA: todo ícone do mapa grande leva um rótulo embaixo ----
+  // Junta TODOS os marcadores num formato único {x,z,icon,color,label,letter},
+  // incluindo os pontos de início de cada minigame (corrida, lanchas, táxi,
+  // vigilante, paramédico, overkill), e desenha ícone + descrição pra todos.
+  const marks=[];
+  const push=(b,icon,color,label,faded)=>{
+    if(b)marks.push({x:b.x,z:b.z,icon,color,label,letter:b.letter,faded});
+  };
+  for(const b of refs.interiorBlips?.()||[])marks.push({...b});  // lojas/serviços (já têm label)
+  const ws=refs.workshopBlip?.();if(ws)marks.push({...ws});      // oficina de custom
+  // minigames de ponto fixo
+  push(refs.overkillBlip?.(),'skull','#ff2e88','OVERKILL');
+  push(refs.vigilanteStart?.(),'cop','#3e7bff','VIGILANTE');
+  push(refs.paramedicStart?.(),'cross','#19e3ff','PARAMEDIC');
+  // táxi: livre / passageiro / destino
+  const tx=refs.taxiTarget?.();
+  if(tx)push(tx,tx.kind==='taxi'?'taxi':tx.kind==='pickup'?'person':'flag',
+              tx.kind==='taxi'?'#f5c518':'#5eff8a',
+              tx.kind==='taxi'?'TAXI':tx.kind==='pickup'?'PASSENGER':'DROP OFF');
+  // entrega
+  push(refs.getDelivery?.(),'package','#ffd24a','DELIVERY');
+  // plantões ativos
+  for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPECT');
+  for(const b of refs.paramedicBlips?.()||[])
+    push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PATIENT');
+  // história
+  for(const b of refs.storyBlips?.()||[])push(b,b.letter?'letter':'diamond',b.col,'MISSION');
+  // corridas: largada nomeada quando ociosa; durante a prova, checkpoint atual +
+  // boias seguintes (anel apagado, sem rótulo)
+  const rOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
+  for(const b of refs.raceBlips?.()||[])
+    push(b,'flag','#ff8a1e',rOn?(b.current?'CHECKPOINT':null):'STREET RACE',rOn&&!b.current);
+  const bOn=(refs.getBoatRaceState?.()?.phase||'idle')!=='idle';
+  for(const b of refs.boatRaceBlips?.()||[])
+    push(b,'flag','#1ec8ff',bOn?(b.current?'NEXT BUOY':null):'BOAT RACE',bOn&&!b.current);
+
+  for(const m of marks){
+    const[px,py]=P(m.x,m.z);
+    if(m.faded){ // trilha dos próximos checkpoints/boias: anel apagado, sem rótulo
+      fm.fillStyle='rgba(255,138,30,.5)';fm.strokeStyle='rgba(20,9,31,.8)';fm.lineWidth=1.6;
+      fm.beginPath();fm.arc(px,py,5,0,Math.PI*2);fm.fill();fm.stroke();
+      continue;
+    }
+    mmCircleIcon(fm,px,py,m,1.25);
+    if(m.label){
+      fm.font='700 10px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
+      fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText(m.label,px,py+15);
+      fm.fillStyle='#ffe9c9';fm.fillText(m.label,px,py+15);
+    }
+  }
+  // jogador (seta + "YOU"), mesma convenção do radar: norte pra cima, seta gira
+  const pp=refs.playerPos?.();
+  if(pp){
+    const[px,py]=P(pp.x,pp.z);
+    const c=refs.getCur?.();
+    const h=refs.getPlayerHeading?.()??c?.heading??0;
+    fm.save();fm.translate(px,py);fm.rotate(-(h-Math.PI));
+    fm.fillStyle='#fff';fm.strokeStyle='#000';fm.lineWidth=2;
+    fm.beginPath();fm.moveTo(0,-11);fm.lineTo(-8,9);fm.lineTo(0,4.5);fm.lineTo(8,9);
+    fm.closePath();fm.fill();fm.stroke();fm.restore();
+    fm.font='700 11px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
+    fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('YOU',px,py+13);
+    fm.fillStyle='#9bf0ff';fm.fillText('YOU',px,py+13);
+  }
+}
+
 export function updateHUD(dt){
   shownMoney+=(state.money-shownMoney)*Math.min(1,8*dt);
   if(Math.abs(shownMoney-state.money)<1)shownMoney=state.money;
@@ -473,6 +679,16 @@ export function updateHUD(dt){
   if(hp!==_health){hudHealth.textContent=hp;_health=hp;}
   const w=Math.floor(state.wanted);
   if(w!==_wanted){hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));_wanted=w;}
+  // Fôlego: aparece nadando (e até reencher fora d'água); pisca/vermelho sem ar
+  if(hudBreath){
+    const showB=state.swimming||state.swimAir<.999;
+    if(showB!==_breathShown){hudBreath.classList.toggle('show',showB);_breathShown=showB;}
+    if(showB){
+      const pct=Math.round(state.swimAir*100);
+      if(pct!==_breath){hudBreathFill.style.width=pct+'%';_breath=pct;}
+      hudBreath.classList.toggle('low',state.swimAir<.25);
+    }
+  }
   // Painel da arma: ícone (punho p/ melee, pistola p/ o resto), nome e munição
   // (∞ para punho/lança-chamas/detonador). Lê a arma atual via refs.
   const wh=refs.getWeaponHud?.();

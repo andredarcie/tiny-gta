@@ -31,21 +31,21 @@ function repelFromZones(p){
   }
 }
 
-// Três gangues, cada uma com cor própria, território circular (aparece no
-// minimapa) e membros uniformizados e armados. Matar um membro encolhe o
-// território; reforços internos chegam sempre — só que mais devagar quanto
-// menor a área.
-const GANG_MIN_R=14, GANG_R0=52, KILL_SHRINK=3.2;
+// DUAS gangues, cada uma com cor própria, território circular (aparece no
+// minimapa) e membros uniformizados e armados. O efetivo é FINITO: cada gangue
+// só coloca GANG_ROSTER bandidos em campo na vida toda (no máximo GANG_ALIVE
+// vivos por vez). Matar membros encolhe o território; quando o efetivo esgota e
+// o último cai, a gangue é ELIMINADA — some do mapa de vez (sem mais reforço/blip).
+const GANG_MIN_R=12, GANG_R0=44, KILL_SHRINK=5;
+const GANG_ROSTER=7;  // total de bandidos que a gangue põe em campo (eliminada ao zerar)
+const GANG_ALIVE=3;   // máximo de bandidos vivos ao mesmo tempo (poucos)
 export const gangs=[
   {name:'VIPERS', color:0x35d435,pants:0x14401c,css:'#35d435',cssA:'rgba(53,212,53,.22)',
    x:nodeX(6)+22,z:nodeX(1)+22,r:GANG_R0},
   {name:'SKULLS', color:0x9d2eff,pants:0x2a1440,css:'#9d2eff',cssA:'rgba(157,46,255,.22)',
    x:nodeX(1)+22,z:nodeX(6)+22,r:GANG_R0},
-  // norte-centro: os cantos SE/NW ficam livres (respawns do hospital e da delegacia)
-  {name:'JACKALS',color:0xff7a1a,pants:0x4a2410,css:'#ff7a1a',cssA:'rgba(255,122,26,.22)',
-   x:nodeX(3)+22,z:nodeX(1)+22,r:GANG_R0},
 ];
-for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;}
+for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;g.remaining=GANG_ROSTER;g.defeated=false;}
 
 export const gangPeds=[];
 
@@ -63,6 +63,7 @@ export function setGangsHidden(h){
 }
 
 function spawnMember(gang){
+  if(gang.remaining<=0)return; // efetivo esgotado: não nasce mais ninguém
   const pp=playerPos();
   let x=gang.x,z=gang.z;
   for(let k=0;k<24;k++){
@@ -78,12 +79,13 @@ function spawnMember(gang){
   repelFromZones(m.g.position);
   attachHandGun(m.g,Math.random()<.45?'uzi':'pistol'); // arma real do arsenal na mão
   gangPeds.push(m);
+  gang.remaining--; // consumiu um do efetivo da gangue
 }
 // Spawn inicial: chamado por js/main.js DEPOIS dos prédios especiais entrarem
 // em interiors[], pra que a zona de fachada já valha (senão membros nasceriam
 // colados na academia, que fica dentro do território dos VIPERS).
 export function spawnInitialGangs(){
-  for(const g of gangs)for(let k=0;k<5;k++)spawnMember(g);
+  for(const g of gangs)for(let k=0;k<GANG_ALIVE;k++)spawnMember(g);
 }
 
 function gangCasualty(m){
@@ -136,19 +138,25 @@ export function updateGangs(dt){
   // dentro de um território, caso da academia nos VIPERS)
   const playerSafe=inSpecialZone(pp.x,pp.z);
   for(const g of gangs){
+    if(g.defeated)continue; // gangue eliminada: não age mais (sem reforço/aviso/blip)
     g.alarmT=Math.max(0,g.alarmT-dt);
     const inside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r&&!playerSafe;
     if(inside&&!g.wasInside&&state.started&&state.mode!=='cut')
       message(g.name+' TERRITORY - WATCH YOUR BACK!',g.css);
     g.wasInside=inside;
-    // reforço interno: área maior = spawn mais rápido; nunca cessa de vez
-    const cap=Math.max(2,Math.round(g.r/9));
-    const interval=clamp(46-g.r*.55,10,46);
+    // efetivo vivo (em pé) desta gangue agora
+    let live=0;for(const m of gangPeds)if(m.gang===g&&m.state!=='dead'&&m.state!=='fly')live++;
+    // reforço: só enquanto SOBRAR efetivo (g.remaining) e abaixo do limite de vivos
     g.spawnT-=dt;
     if(g.spawnT<=0){
-      let count=0;for(const m of gangPeds)if(m.gang===g&&m.state!=='dead')count++;
-      if(count<cap)spawnMember(g);
-      g.spawnT=interval*rand(.85,1.25);
+      if(g.remaining>0&&live<GANG_ALIVE)spawnMember(g);
+      g.spawnT=clamp(46-g.r*.55,12,40)*rand(.85,1.25);
+    }
+    // ELIMINADA: efetivo esgotado e ninguém mais vivo → some do mapa de vez
+    if(g.remaining<=0&&live===0){
+      g.defeated=true;g.r=0;g.wasInside=false;
+      if(state.started)message(g.name+' WIPED OUT!',g.css);
+      blip([523,659,784,1047],.1,'square',.2);
     }
   }
   for(let i=gangPeds.length-1;i>=0;i--){

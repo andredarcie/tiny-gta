@@ -44,6 +44,38 @@ export function thud(v){
   src.connect(f).connect(g).connect(master);src.start();
 }
 
+// Splash de água: jato de ruído filtrado caindo de agudo pra médio (a água
+// "espirra" e logo abafa) com um soco grave por baixo na entrada na água. vol
+// controla a força; big engrossa pro mergulho/entrada (mais grave e demorado).
+// Usado pelo nado (js/player.js): braçadas, batida de perna e entrada na água.
+export function splash(vol=1,big=false){
+  if(!AC)return;
+  const t0=AC.currentTime;
+  const dur=big?.5:.26;
+  const len=Math.floor(AC.sampleRate*dur);
+  const b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,big?1.4:2.4);
+  const src=AC.createBufferSource();src.buffer=b;
+  const f=AC.createBiquadFilter();f.type='bandpass';f.Q.value=.7;
+  f.frequency.setValueAtTime(big?2400:3400,t0);
+  f.frequency.exponentialRampToValueAtTime(big?420:760,t0+dur);
+  const g=AC.createGain();
+  const v=Math.max(.03,Math.min(.5,vol*(big?.4:.16)));
+  g.gain.setValueAtTime(v,t0);
+  g.gain.exponentialRampToValueAtTime(.0006,t0+dur);
+  src.connect(f).connect(g).connect(master);
+  src.start(t0);src.stop(t0+dur);
+  if(big){ // "ploc" grave do corpo entrando na água
+    const o=AC.createOscillator();o.type='sine';
+    o.frequency.setValueAtTime(190,t0);
+    o.frequency.exponentialRampToValueAtTime(58,t0+.2);
+    const og=AC.createGain();
+    og.gain.setValueAtTime(.5*Math.min(1,vol),t0);
+    og.gain.exponentialRampToValueAtTime(.001,t0+.22);
+    o.connect(og).connect(master);o.start(t0);o.stop(t0+.24);
+  }
+}
+
 // Tiro realista em camadas: estalo agudo do disparo, corpo do estouro,
 // soco grave com queda de pitch e cauda de reverberação da rua, tudo passando
 // por uma saturação (tanh) — arma de verdade "clipa" o ar, não soa limpa

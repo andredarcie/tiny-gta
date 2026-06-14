@@ -14,6 +14,8 @@ import {delivery,spawnDelivery,updatePickups} from './missions.js';
 import {updateTaxi} from './taxi.js';
 import {updateRace} from './race.js';
 import {updateBoatRace} from './boat-race.js';
+import {updateVigilante} from './vigilante.js'; // side-mission: viatura caça criminosos
+import {updateParamedic} from './paramedic.js'; // side-mission: ambulância salva feridos
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
@@ -131,6 +133,7 @@ function step(dt){
   if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
+  if(state.mapOpen){renderer.render(scene,camera);return;} // mapa completo (tecla M) congela o mundo
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
   state.time+=dt;
 
@@ -168,6 +171,8 @@ function step(dt){
   updateHeli(dt);
   updatePickups(dt);
   updateTaxi(dt);
+  updateVigilante(dt); // viatura: patrulha vigilante (caça aos criminosos)
+  updateParamedic(dt); // ambulância: plantão de paramédico (resgate de feridos)
   updateRace(dt);
   updateBoatRace(dt);
   P.end();
@@ -262,6 +267,8 @@ window.render_game_to_text=()=>{
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
     boatRace:refs.getBoatRaceState?.()||null,
+    vigilante:refs.getVigilanteState?.()||null,
+    paramedic:refs.getParamedicState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],

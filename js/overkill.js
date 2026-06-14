@@ -41,6 +41,9 @@ export function overkillNear(){
   return Math.hypot(pp.x-TOTEM.x,pp.z-TOTEM.z)<RANGE?'START OVERKILL MODE':null;
 }
 
+// blip do totem no mapa (some enquanto o modo já está ligado)
+refs.overkillBlip=()=>ok.active?null:{x:TOTEM.x,z:TOTEM.z};
+
 // liga o modo (chamado pelo performInteract). Devolve true se consumiu o aperto.
 export function startOverkill(){
   if(!overkillNear())return false;

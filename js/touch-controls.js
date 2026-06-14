@@ -116,7 +116,7 @@ export function updateTouchControls(){
   const driving=state.started&&state.mode==='car'&&!state.dlgActive&&!state.paused&&!tv;
   const radioAllowed=driving&&!refs.getOverkillState?.()?.active;
   $('btn-shoot')?.classList.toggle('show',armed);
-  $('btn-wpn')?.classList.toggle('show',onFoot&&state.hasGun); // troca de arma (só com arsenal)
+  $('btn-wpn')?.classList.toggle('show',onFoot&&state.hasGun&&!state.swimming); // troca de arma (só com arsenal; nadando guarda)
   $('btn-brake')?.classList.toggle('show',driving);
   $('btn-radio')?.classList.toggle('show',radioAllowed);
   $('touch-controls')?.classList.toggle('in-dialog',state.dlgActive||tv);

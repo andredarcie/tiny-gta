@@ -31,6 +31,15 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
   text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000}
 #stars .s.on{color:#e9f4fb;text-shadow:2px 2px 0 #000,0 0 10px rgba(233,244,251,.8)}
 @keyframes blink{50%{opacity:.25}}
+/* Fôlego ao nadar: barra que esvazia; fica vermelha e pisca quando o ar acaba */
+#breath{width:118px;height:10px;border:2px solid #9bdcf0;border-radius:6px;
+  background:rgba(8,22,32,.55);box-shadow:0 0 0 2px rgba(0,0,0,.8);
+  overflow:hidden;display:none}
+#breath.show{display:block}
+#breath-fill{height:100%;width:100%;
+  background:linear-gradient(90deg,#2fb8e6,#9bf0ff);transition:width .1s linear}
+#breath.low{border-color:#ff6b9a;animation:blink .5s infinite}
+#breath.low #breath-fill{background:linear-gradient(90deg,#ff2e88,#ff9ed8)}
 #weaponhud{position:relative;width:62px;height:62px;border:3px solid #f0b6e2;border-radius:15px;
   background:rgba(16,6,30,.45);
   box-shadow:0 0 0 2px rgba(0,0,0,.85),inset 0 0 0 2px rgba(0,0,0,.55);
@@ -74,7 +83,7 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 #speedo-unit{font:700 10px 'IBM Plex Mono',monospace;letter-spacing:2px;color:#ff8a1e;margin-top:2px}
 #mapwrap{
   position:absolute;left:18px;bottom:18px;padding:5px;border:3px solid #efa1d8;border-radius:50%;
-  background:#08050a;
+  background:#08050a;pointer-events:auto;cursor:pointer;
   box-shadow:0 0 0 2px rgba(0,0,0,.92),4px 5px 0 rgba(0,0,0,.36),0 0 12px rgba(239,161,216,.28)
 }
 #minimap{display:block;border-radius:50%}
@@ -109,6 +118,29 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .race-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
 .race-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffce8a}
 .race-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+/* Vigilante (viatura) e Paramedic (ambulância): mesmo formato do taxihud, à
+   esquerda. São mutuamente exclusivos entre si e com o táxi (você está em UM
+   veículo especial por vez), então compartilham a posição sem sobrepor. */
+#vighud,#medhud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  display:none;width:120px;box-sizing:border-box;padding:6px 7px;
+  border-radius:4px;background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  color:var(--cream);text-shadow:1px 1px 0 #000}
+#vighud{border:1px solid rgba(62,123,255,.72)}
+#medhud{border:1px solid rgba(255,77,106,.72)}
+#vighud.show,#medhud.show{display:block}
+.vig-label,.med-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;line-height:1}
+.vig-label{color:#3e7bff}.med-label{color:#ff4d6a}
+.vig-main,.med-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
+.vig-main span,.med-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px}
+.vig-main span{color:#9fc0ff}.med-main span{color:#5eff8a}
+.vig-main b,.med-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.vig-row,.med-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
+.vig-row span,.med-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px}
+.vig-row span{color:#9fc0ff}.med-row span{color:#9affc0}
+.vig-row b,.med-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.vig-meter,.med-meter{height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.13);overflow:hidden}
+.vig-meter i,.med-meter i{display:block;height:100%;border-radius:2px}
+.vig-meter i{background:#3e7bff}.med-meter i{background:#ff4d6a}
 #msg{position:absolute;left:50%;top:84px;transform:translateX(-50%);
   font-family:'Bowlby One SC';font-size:24px;color:var(--cream);letter-spacing:2px;
   text-shadow:2px 2px 0 #000,0 0 18px rgba(255,46,136,.7);opacity:0;transition:opacity .25s;
@@ -436,6 +468,7 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #health{font-size:11px}
   #health-heart{font-size:14px;margin-right:6px}
   #stars{font-size:16px;letter-spacing:2px}
+  #breath{width:84px;height:8px}
   #weaponhud{width:46px;height:46px;border-width:2px;border-radius:11px}
   #weapon-icon{width:34px;height:34px}
   #weapon-ammo{font-size:6px}
@@ -456,6 +489,11 @@ body.is-portrait-blocked #rotate-device{display:flex}
   .taxi-label{font-size:8px}.taxi-main{margin-top:4px;gap:4px}
   .taxi-main span{font-size:10px}.taxi-main b{font-size:11px}
   .taxi-meter{height:3px;margin-top:4px}
+  #vighud,#medhud{left:max(8px,env(safe-area-inset-left));top:50%;bottom:auto;width:100px;padding:5px 6px}
+  .vig-label,.med-label{font-size:8px}.vig-main,.med-main{margin-top:4px;gap:4px}
+  .vig-main span,.med-main span{font-size:10px}.vig-main b,.med-main b{font-size:12px}
+  .vig-row,.med-row{margin-top:3px;gap:4px}.vig-row span,.med-row span{font-size:8px}
+  .vig-row b,.med-row b{font-size:10px}.vig-meter,.med-meter{height:3px;margin-top:4px}
   #racehud{right:max(8px,env(safe-area-inset-right));top:50%;bottom:auto;width:100px;padding:5px 6px}
   .race-label{font-size:8px}.race-main{margin-top:4px;gap:4px}
   .race-main span{font-size:10px}.race-main b{font-size:12px}
@@ -524,4 +562,37 @@ body.is-portrait-blocked #rotate-device{display:flex}
   .mv-box{width:96vw;max-height:94vh;padding:14px 14px 10px}
   .mv-stage{min-height:42vh}
   .mv-title{font-size:clamp(20px,6vw,26px)}
+}
+
+/* Mapa completo (tecla M) — overlay com a visão geral do mundo */
+#fullmap{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  background:radial-gradient(ellipse at 50% 40%,rgba(20,9,31,.82),rgba(8,4,16,.94));
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#fullmap.open{display:flex}
+body.map-open #touch-controls{display:none!important}
+.fm-box{display:flex;flex-direction:column;gap:10px;max-width:96vw;max-height:96vh;
+  background:rgba(16,6,30,.92);border:2px solid var(--pink);border-radius:14px;padding:14px 14px 10px;
+  box-shadow:0 0 26px rgba(255,46,136,.45),inset 0 0 30px rgba(255,46,136,.1)}
+.fm-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.fm-title{font-family:'Bowlby One SC';font-size:clamp(20px,3.4vw,28px);color:var(--cream);
+  letter-spacing:1px;text-shadow:2px 2px 0 #7a0f3d,0 0 18px rgba(255,46,136,.6)}
+#fm-close{font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;color:var(--cream);
+  background:rgba(255,46,136,.16);border:2px solid var(--pink);border-radius:8px;
+  width:36px;height:36px;flex:none;cursor:pointer;transition:background .15s,transform .15s}
+#fm-close:hover{background:rgba(255,46,136,.4);transform:scale(1.06)}
+.fm-stage{position:relative;align-self:center;border-radius:12px;overflow:hidden;
+  border:2px solid rgba(25,227,255,.35);background:#2e8a96;box-shadow:inset 0 0 30px rgba(8,4,16,.4)}
+/* Mapa SEMPRE inteiro na tela: o canvas é um elemento substituído com proporção
+   intrínseca (definida em hud.js), então max-width/max-height em unidades de
+   viewport o reduzem mantendo a proporção — cabe em qualquer tela sem cortar. */
+#fullmap-canvas{display:block;width:auto;height:auto;
+  max-width:94vw;max-height:calc(94vh - 118px)}
+.fm-hint{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;
+  color:rgba(255,233,201,.7)}
+.fm-hint b{color:var(--gold)}
+@media (max-width:640px),(pointer:coarse){
+  .fm-box{padding:10px 10px 8px;gap:8px}
+  .fm-title{font-size:clamp(18px,5vw,24px)}
+  #fullmap-canvas{max-width:96vw;max-height:calc(94vh - 96px)}
 }

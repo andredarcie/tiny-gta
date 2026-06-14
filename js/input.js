@@ -12,14 +12,14 @@ import {houseBuy,houseEat,houseGaragePark} from './property.js';
 import {houseTvInteract} from './house-tv.js';
 import {startOverkill} from './overkill.js';
 import {setMissionHUD} from './missions.js';
-import {message} from './hud.js';
+import {message,drawFullMap} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from './weapons.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
 import {getNickname,setNickname,startSession,refreshTopPlayers} from './leaderboard.js';
 import {hasProfanity} from './profanity.js';
 
 const gameCanvas=()=>document.getElementById('game');
-const isBlocked=()=>state.paused||state.mode==='cut'||state.orientationBlocked||state.controlsLocked;
+const isBlocked=()=>state.paused||state.mapOpen||state.mode==='cut'||state.orientationBlocked||state.controlsLocked;
 
 function lockPointer(){
   if(state.mobile||input.touchActive)return;
@@ -76,6 +76,27 @@ export function performPauseToggle(){
   if(state.paused)resetInput(true);
   showPause();
 }
+
+// Mapa completo (tecla M / toque no radar): congela o mundo e mostra a visão
+// geral com todos os POIs. Ver state.mapOpen e o early-return em main.js.
+const fullmapEl=()=>document.getElementById('fullmap');
+export function openFullMap(){
+  if(state.mapOpen)return;
+  if(!state.started||state.mode==='cut'||state.dlgActive||state.cine
+    ||state.viewerOpen||state.tvActive||state.paused)return;
+  state.mapOpen=true;
+  resetInput(true); // não deixa input preso enquanto o mapa está aberto
+  fullmapEl()?.classList.add('open');
+  document.body.classList.add('map-open'); // esconde os controles de toque
+  drawFullMap();
+}
+export function closeFullMap(){
+  if(!state.mapOpen)return;
+  state.mapOpen=false;
+  fullmapEl()?.classList.remove('open');
+  document.body.classList.remove('map-open');
+}
+export function toggleFullMap(){ state.mapOpen?closeFullMap():openFullMap(); }
 
 export function performFullscreenToggle(){
   if(document.fullscreenElement){
@@ -167,7 +188,7 @@ export function requestStart(){ openNickModal(); }
 export function setupInput(){
   const canvas=gameCanvas();
   addEventListener('mousemove',e=>{
-    if(document.pointerLockElement!==canvas||!state.started||state.paused||state.dlgActive)return;
+    if(document.pointerLockElement!==canvas||!state.started||state.paused||state.mapOpen||state.dlgActive)return;
     cameraRig.yaw-=e.movementX*cameraRig.sensitivity;
     cameraRig.pitch+=(cameraRig.invertY?-1:1)*e.movementY*cameraRig.sensitivity;
     cameraRig.pitch=Math.max(.18,Math.min(.82,cameraRig.pitch));
@@ -236,6 +257,9 @@ export function setupInput(){
     if(e.code==='Escape'&&state.viewerOpen){closeModelViewer();return;}
     if(!state.started)return;
     if(state.dlgActive)return; // cut-scene: nada de pular falas
+    // Mapa completo aberto: só M/Esc o fecham; o resto dos atalhos fica congelado
+    if(state.mapOpen){if(e.code==='KeyM'||e.code==='Escape')closeFullMap();return;}
+    if(e.code==='KeyM'){toggleFullMap();return;}
     if(e.code==='KeyP'){performPauseToggle();return;}
     if(e.code==='KeyF'&&e.shiftKey){performFullscreenToggle();return;}
     if(e.code==='Tab'){performRadioSwitch();return;}
@@ -267,5 +291,12 @@ export function setupInput(){
     e.preventDefault();
     e.stopPropagation();
     performFullscreenToggle();
+  });
+  // Mapa completo: X fecha; tocar/clicar no radar abre (acesso no celular, sem tecla M)
+  document.getElementById('fm-close')?.addEventListener('click',e=>{e.stopPropagation();closeFullMap();});
+  document.getElementById('mapwrap')?.addEventListener('pointerdown',e=>{
+    if(!state.started)return;
+    e.preventDefault();e.stopPropagation();
+    toggleFullMap();
   });
 }

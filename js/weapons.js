@@ -161,14 +161,14 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ ARSENA
 // Mira/crosshair só pra armas de pontaria (fogo, pesadas, arremesso); punho e
 // detonador atacam sem retículo. O rampage da lança-foguetes também conta como armado.
 export function isWeaponHeld(){
-  if(state.mode!=='foot')return false;
+  if(state.mode!=='foot'||state.swimming)return false; // nadando não se empunha arma
   return rampage.active||(curWeapon.aimed&&state.weaponHeld);
 }
 
 // No modo a pé sempre dá pra atacar (nem que seja com o punho) — usado pelo
 // botão de tiro do mobile e pela lógica de disparo.
 export function canAttack(){
-  return state.mode==='foot'&&!!curWeapon;
+  return state.mode==='foot'&&!state.swimming&&!!curWeapon;
 }
 
 export function canPickWeapon(){
@@ -798,7 +798,7 @@ const api={
 };
 
 export function shootWeapon(){
-  if(state.mode!=='foot')return;
+  if(state.mode!=='foot'||state.swimming)return; // sem disparo dentro d'água
   if(rampage.active)return fireMissile();
   curWeapon.tryFire(api);
 }
@@ -816,14 +816,17 @@ function animateHeldWeapon(){
 }
 
 export function updateWeapons(dt){
-  const rampaging=rampage.active&&state.mode==='foot';
+  // nadando o jogador guarda a arma: nada de modelo na mão, pose de mira ou tiro
+  // (a pose do nado controla os membros — ver player.js animateSwim)
+  const swimming=state.swimming;
+  const rampaging=rampage.active&&state.mode==='foot'&&!swimming;
   heldRocket.visible=rampaging;
   // arma na mão: aparece sempre que está a pé e tem modelo (o punho não tem).
-  const showHeld=state.mode==='foot'&&!rampaging&&!!curWeapon.makeModel;
+  const showHeld=state.mode==='foot'&&!rampaging&&!swimming&&!!curWeapon.makeModel;
   heldHolder.visible=showHeld;
   // pose de mira pras armas de pontaria; melee tem animação própria de golpe.
-  const meleeAnimating=updateMeleeAnimation(dt);
-  if(!meleeAnimating){
+  const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
+  if(!swimming&&!meleeAnimating){
     if(rampaging||(showHeld&&curWeapon.aimed))posePlayerWithGun();
     else if(showHeld)carryPose();
   }
@@ -831,7 +834,7 @@ export function updateWeapons(dt){
   updateMeleeTrails(dt);
 
   // fogo automático: segurar o botão mantém o disparo (uzi/ak/m16/lança-chamas)
-  if(input.shootHeld&&curWeapon.automatic&&!rampaging&&state.mode==='foot'&&
+  if(input.shootHeld&&curWeapon.automatic&&!rampaging&&!swimming&&state.mode==='foot'&&
      !state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.controlsLocked)
     curWeapon.tryFire(api);
 

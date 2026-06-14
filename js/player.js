@@ -5,7 +5,7 @@ import {scene,camera} from './engine.js';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlane,spinWheels,dentCar} from './entities.js';
 import * as Entities from './entities.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
-import {thud,blip} from './audio.js';
+import {thud,blip,splash} from './audio.js';
 import {radioOn,radioOff,radioEnter} from './radio.js';
 import {collideStatics,addWanted} from './physics.js';
 import {message,bigText,hideBig,hudCar} from './hud.js';
@@ -36,7 +36,10 @@ export function updateDrivenShadow(){
   shadowless=g;
 }
 
-export const player={g:makePed(0x19e3ff),heading:0,bob:0};
+// Campos de nado (ver updateSwim): velocidade própria com inércia, mistura de
+// pose boiando↔crawl, fase/cadência da braçada e marcador da última braçada.
+export const player={g:makePed(0x19e3ff),heading:0,bob:0,
+  swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
 noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
 document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ CAM-R ◆ BIKE');
@@ -373,6 +376,12 @@ function wastedCut(){
 let dying=null;
 export function getWasted(){
   if(dying)return;
+  // morrer nadando: endireita a postura do nado antes da animação de queda
+  if(state.swimming){
+    state.swimming=false;state.swimAir=1;
+    player.g.rotation.order='XYZ';player.g.rotation.x=0;player.g.rotation.z=0;
+    player.swimVX=player.swimVZ=0;player.swimPose=0;
+  }
   refs.endOverkill?.(); // morrer encerra o modo overkill (banca o resumo)
   cancelEntering();
   if(state.mode==='car'||cur)return wastedCut(); // dentro de veículo: corte direto
@@ -680,6 +689,148 @@ function updateBoat(dt){
   updateWake(dt);
 }
 
+// ============================ NATAÇÃO ============================
+// Dois modos que se misturam por player.swimPose (0 = boiando em pé, 1 = nado
+// crawl deitado). Parado, o jogador pedala as pernas e scula os braços pra se
+// sustentar; movendo, deita na superfície e cai no crawl, com propulsão pulsada
+// a cada braçada e DESLIZE por inércia entre elas (não é velocidade constante).
+// Sprint (run) acelera a cadência e a propulsão, gastando mais fôlego. Sem
+// fôlego o jogador começa a se afogar (perde vida).
+const SWIM_TREAD_Y=-1.42; // boiando em pé: linha d'água na altura do peito
+const SWIM_PRONE_Y=-.62;  // deitado nadando: corpo na superfície
+let swimRippleT=0;
+
+// Borrifo na superfície: reaproveita a espuma da lancha (spawnPuff) como anel/
+// jato d'água em volta do nadador. big = jato mais aberto e forte (entrada/braçada).
+function spawnSplash(x,z,scale,life,big){
+  const ang=Math.random()*Math.PI*2,sp=big?1.4:.5;
+  spawnPuff(x+(Math.random()-.5)*.3,SEA_Y+.02,z+(Math.random()-.5)*.3,
+    Math.cos(ang)*sp,Math.sin(ang)*sp,scale*.55,scale,life);
+}
+
+// Transição terra→água: estoura um anel de espuma, toca o splash grave e leva o
+// embalo da corrida pra dentro d'água (entra deslizando, não para seco).
+function enterWater(){
+  const p=player.g.position;
+  for(let i=0;i<7;i++)spawnSplash(p.x,p.z,1.3+Math.random()*1.3,.7,true);
+  splash(1,true);state.shake=Math.max(state.shake,.16);
+  player.swimVX=Math.sin(player.heading)*2.4;
+  player.swimVZ=Math.cos(player.heading)*2.4;
+  player.swimPose=0;player.stroke=0;player.lastHalf=0;
+}
+
+function updateSwim(dt){
+  const p=player.g.position;
+  const f=input.moveY,side=input.moveX;
+  const moving=!!(f||side);
+  // ----- fôlego: nadar cansa; sprint cansa mais; sem ar começa a afogar -----
+  const sprint=input.run&&moving&&state.swimAir>.06;
+  state.swimAir=clamp(state.swimAir-(moving?(sprint?.085:.045):.02)*dt,0,1);
+  // ----- cadência da braçada (rad/s): dispara no sprint, lenta boiando -----
+  const cadTgt=moving?(sprint?8.6:5.4):2.4;
+  player.cadence+=(cadTgt-player.cadence)*Math.min(1,4*dt);
+  player.stroke+=player.cadence*dt;
+  const sp=player.stroke;
+  // ----- propulsão pulsada + inércia -----
+  if(moving){
+    const camF=_footF.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+    const camR=_footR.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
+    const mv=_footMv.set(0,0,0).addScaledVector(camF,f).addScaledVector(camR,side).normalize();
+    // dois pulsos por ciclo (uma puxada por braço): empurra forte na puxada,
+    // quase nada no recobro → sensação de braçada+deslize
+    const pulse=Math.pow(Math.abs(Math.sin(sp)),1.5);
+    const accel=(sprint?15:9.5)*pulse*(state.swimAir>.06?1:.4);
+    player.swimVX+=mv.x*accel*dt;
+    player.swimVZ+=mv.z*accel*dt;
+    // aponta na direção do nado (giro suave)
+    const tgt=Math.atan2(mv.x,mv.z);
+    let dh=tgt-player.heading;
+    while(dh>Math.PI)dh-=2*Math.PI;while(dh<-Math.PI)dh+=2*Math.PI;
+    player.heading+=dh*Math.min(1,6*dt);
+  }
+  // arrasto da água: segura mais quando se está parado (boiando)
+  const drag=Math.exp(-(moving?1.5:2.5)*dt);
+  player.swimVX*=drag;player.swimVZ*=drag;
+  const vmag=Math.hypot(player.swimVX,player.swimVZ);
+  const VMAX=sprint?5.8:3.6;
+  if(vmag>VMAX){const s=VMAX/vmag;player.swimVX*=s;player.swimVZ*=s;}
+  p.x+=player.swimVX*dt;p.z+=player.swimVZ*dt;
+  // ----- pose: deita ao nadar, volta a ficar em pé ao boiar -----
+  const poseTgt=moving?1:0;
+  player.swimPose+=(poseTgt-player.swimPose)*Math.min(1,2.6*dt);
+  const pose=player.swimPose;
+  // ----- profundidade + ondinha da superfície -----
+  const bob=Math.sin(state.time*1.5+p.x*.12+p.z*.12)*.05+Math.sin(sp*2)*pose*.04;
+  const depthTgt=SWIM_TREAD_Y+(SWIM_PRONE_Y-SWIM_TREAD_Y)*pose+bob;
+  p.y+=(depthTgt-p.y)*Math.min(1,6*dt);
+  // ----- postura do corpo (ordem YXZ: guinada → inclina à frente → rola) -----
+  player.g.rotation.order='YXZ';
+  const pitch=pose*1.12;            // deita até ~64° na superfície
+  const roll=pose*Math.sin(sp)*.13; // rola de leve a cada braçada (respiração)
+  player.g.rotation.set(pitch,player.heading,roll);
+  animateSwim(player.g,sp,pose);
+  // ----- limites/colisão: parede invisível bem mar adentro -----
+  collideStatics(p,.5,SWIM_BOUND);
+  // ----- borrifos: braçada entrando na água + rastro de espuma na esteira -----
+  const half=Math.floor(sp/Math.PI);
+  if(half!==player.lastHalf){
+    player.lastHalf=half;
+    if(pose>.4){ // a mão da frente fura a água: jato + som de braçada
+      const hx=p.x+Math.sin(player.heading)*1,hz=p.z+Math.cos(player.heading)*1;
+      spawnSplash(hx,hz,.85+vmag*.12,.55,false);
+      splash(.32+vmag*.05,false);
+    }
+  }
+  swimRippleT-=dt;
+  if(swimRippleT<=0){
+    swimRippleT=vmag>1.2?.1:.27;
+    spawnPuff(p.x,SEA_Y+.02,p.z,-player.swimVX*.08,-player.swimVZ*.08,
+      .5,1+vmag*.12,1.4);
+  }
+  // ----- afogamento: sem fôlego, a vida cai (acorda no hospital) -----
+  if(state.swimAir<=0){
+    state.health-=14*dt;
+    if(Math.random()<.05){splash(.5,false);state.shake=Math.max(state.shake,.05);}
+    if(state.health<=0){state.health=100;getWasted();} // getWasted reseta a postura do nado
+  }
+}
+
+// Anima os membros do nado misturando crawl (deitado) e pedalada de sustentação
+// (boiando) pelo fator pose. Gesto próprio do nado — não passa pelo animatePed.
+function animateSwim(g,sp,pose){
+  const l=g.userData.limbs;if(!l)return;
+  const tread=1-pose;
+  // --- braços ---
+  // crawl: moinho alternado, recobro por cima e puxada por baixo (rotação
+  // contínua no ombro); braços opostos meia-volta defasados. A fase fica em
+  // [0,2π) — visualmente 2π≡0 (sem salto) e o termo pose*aL desaparece limpo ao
+  // voltar a boiar (senão um sp grande deixaria os braços travados num offset).
+  const TAU=Math.PI*2,aL=sp%TAU,aR=(sp+Math.PI)%TAU;
+  // boiando: braços abertos varrendo a água à frente (scull)
+  const scull=Math.sin(sp*1.4);
+  l.leftArm.rotation.x =pose*aL + tread*(-.45+scull*.3);
+  l.rightArm.rotation.x=pose*aR + tread*(-.45-scull*.3);
+  l.leftArm.rotation.z = pose*.1  + tread*.9;
+  l.rightArm.rotation.z=-(pose*.1 + tread*.9);
+  if(l.leftForearm){
+    // crawl: o cotovelo dobra na puxada (braço embaixo) e estica no recobro/entrada
+    const flexL=Math.max(0,Math.cos(aL))*.5,flexR=Math.max(0,Math.cos(aR))*.5;
+    l.leftForearm.rotation.x =-(pose*(.2+flexL) + tread*(.9+scull*.3));
+    l.rightForearm.rotation.x=-(pose*(.2+flexR) + tread*(.9-scull*.3));
+  }
+  // --- pernas ---
+  const flutter=Math.sin(sp*2.4);                 // crawl: batida rápida alternada
+  const pa=Math.sin(sp),pb=Math.sin(sp+Math.PI);  // boiando: pedalada alternada
+  l.leftLeg.rotation.x = pose*(flutter*.3)  + tread*(.3+pa*.5);
+  l.rightLeg.rotation.x= pose*(-flutter*.3) + tread*(.3+pb*.5);
+  l.leftLeg.rotation.z = tread*.1;
+  l.rightLeg.rotation.z=-tread*.1;
+  if(l.leftCalf){
+    l.leftCalf.rotation.x = pose*Math.max(0,flutter)*.35  + tread*(.5+Math.max(0,pa)*.7);
+    l.rightCalf.rotation.x= pose*Math.max(0,-flutter)*.35 + tread*(.5+Math.max(0,pb)*.7);
+  }
+}
+
 export function updateFoot(dt){
   if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
   if(dying)return updateDying(dt);
@@ -687,9 +838,29 @@ export function updateFoot(dt){
   if(entering)return updateEntering(dt);
   if(exiting)return updateExiting(dt);
   if(state.dlgActive)return;
+  // ----- água: o nado tem física, pose e efeitos próprios (updateSwim) -----
+  if(inWater(player.g.position)){
+    if(!state.swimming)enterWater(); // transição terra→água: splash de entrada
+    state.swimming=true;
+    return updateSwim(dt);
+  }
+  if(state.swimming){ // acabou de sair: zera a inércia do nado e o gesto de braçada
+    state.swimming=false;
+    player.swimVX=player.swimVZ=0;player.swimPose=0;
+    player.g.rotation.order='XYZ';
+  }
+  // fôlego se recupera em terra firme
+  if(state.swimAir<1)state.swimAir=Math.min(1,state.swimAir+dt*.55);
+  // endireita suavemente qualquer resíduo de inclinação do nado ao pisar em terra
+  const g=player.g;
+  if(g.rotation.x||g.rotation.z){
+    const ke=Math.max(0,1-9*dt);
+    g.rotation.x*=ke;g.rotation.z*=ke;
+    if(Math.abs(g.rotation.x)<.01)g.rotation.x=0;
+    if(Math.abs(g.rotation.z)<.01)g.rotation.z=0;
+  }
   const f=input.moveY;
   const side=input.moveX;
-  const swim=inWater(player.g.position);
   let walkAmount=0;
   if(f||side){
     const camF=_footF.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
@@ -697,16 +868,12 @@ export function updateFoot(dt){
     const analog=Math.min(1,Math.hypot(f,side));
     walkAmount=analog;
     const mv=_footMv.set(0,0,0).addScaledVector(camF,f).addScaledVector(camR,side).normalize();
-    const spd=(swim?3.2:input.run?9:5.2)*analog;
+    const spd=(input.run?9:5.2)*analog;
     player.g.position.addScaledVector(mv,spd*dt);
     player.heading=Math.atan2(mv.x,mv.z);
-    player.bob+=dt*spd*(swim?1.3:1.8);
-  }else if(swim)player.bob+=dt*2.2; // boiando: braçadas leves no lugar
-  // Nadando: submerso até o peito; em terra acompanha a altura do terreno (montanha)
-  if(swim){
-    player.g.position.y=-1.5+Math.sin(player.bob*2)*.06;
-    walkAmount=Math.max(walkAmount,.5);
-  }else{
+    player.bob+=dt*spd*1.8;
+  }
+  {
     const r=state.onRoof,p=player.g.position;
     if(r){
       // bloco superior do prédio é sólido pra quem anda na laje (não tem
@@ -759,7 +926,11 @@ export function updateCamera(dt){
     tgt=cur?cur.g.position:player.g.position;heading=cur?cur.heading:player.heading;
     // carro: câmera colada e baixa, estilo GTA; avião continua afastado
     dist=cur?.plane?15.5:7.2;baseH=cur?.plane?1.95:1.1;
-  }else{tgt=player.g.position;heading=player.heading;dist=6.2;baseH=1.25;}
+  }else{
+    tgt=player.g.position;heading=player.heading;
+    // nadando, a câmera baixa e chega mais perto, rente à água
+    if(state.swimming){dist=5.6;baseH=1.0;}else{dist=6.2;baseH=1.25;}
+  }
   if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked){
     // Positive lookX means "turn right". In this engine yaw increases to the LEFT
     // (forward = (sin yaw, cos yaw); keyboard A is moveX=+1; mouse-right does yaw-=),
@@ -785,7 +956,7 @@ export function updateCamera(dt){
   const right=_camRight.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
   const flat=dist*Math.cos(cameraRig.pitch);
   const height=baseH+dist*Math.sin(cameraRig.pitch);
-  const shoulder=(state.mode==='car'?0:cameraRig.shoulder);
+  const shoulder=(state.mode==='car'||state.swimming?0:cameraRig.shoulder);
   const focus=_camFocus.set(tgt.x,tgt.y+1.45,tgt.z).addScaledVector(right,shoulder);
   const want=_camWant.set(tgt.x,tgt.y+height,tgt.z)
     .addScaledVector(forward,-flat)
