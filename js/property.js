@@ -67,6 +67,7 @@ export const house=new HouseInterior({
   group:ranchInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:RANCH_DOOR,spawnOut:RANCH_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:ranchFx,exterior:{x:RANCH_CX,z:RANCH_CZ,r:16}, // gangue não chega perto da casa
+  mapIcon:{id:'house',label:'SAFE HOUSE',icon:'house',color:'#9dff2e'},
   spawnOutHeading:Math.PI, // sai pela porta norte olhando pra frente do alpendre
 });
 

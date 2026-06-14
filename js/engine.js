@@ -48,7 +48,11 @@ dlight.shadow.camera.top=95;dlight.shadow.camera.bottom=-95;
 dlight.shadow.camera.far=420;dlight.shadow.bias=-.0015;
 scene.add(dlight);scene.add(dlight.target);
 
-scene.add(makeSea());
+// O mar é um disco GIGANTE (raio 1400) centrado na origem — ele se estende por
+// baixo da região dos ambientes internos (que vivem ~600m fora do mapa).
+// Fica exportado porque js/interior.js esconde as camadas externas enquanto
+// qualquer interior está ativo.
+export const sea=makeSea();scene.add(sea);
 
 export const clouds=[];
 {

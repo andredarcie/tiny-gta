@@ -1,0 +1,14 @@
+- generic [active] [ref=e1]:
+  - button "Toggle fullscreen" [ref=e3]: FULL
+  - generic [ref=e4] [cursor=pointer]:
+    - generic [ref=e5]:
+      - text: Tiny
+      - generic [ref=e6]: GTA
+    - generic [ref=e7]:
+      - generic [ref=e8]: TOP PLAYERS
+      - list [ref=e9]:
+        - listitem [ref=e10]: Be the first on the board!
+      - generic [ref=e11]: "The player ranked #1 at the end of the month gets a statue built in their honor in the city."
+    - button "CLICK TO PLAY" [ref=e12]
+    - generic [ref=e13]: TALK TO DIEGO PENHA ◆ EVADE THE POLICE ◆ DO NOT GET BUSTED
+    - generic [ref=e14]: BUILD 72 ◆ CAM-R ◆ BIKE ◆ TAXI ◆ RACE ◆ BULLET

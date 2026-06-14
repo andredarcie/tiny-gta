@@ -53,6 +53,7 @@ export const prison=new PrisonInterior({
   door:PRISON_DOOR,spawnOut:PRISON_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:prisonFx,enterMsg:'COUNTY JAIL',enterColor:'var(--cyan)',
   exterior:{x:-66,z:-66,r:26},
+  mapIcon:{id:'prison',label:'COUNTY JAIL',icon:'prison',color:'#19e3ff'},
 });
 
 export function prisonAdmit(){prison.enterAt(PRISON_RELEASE,-Math.PI/2);}

@@ -5,7 +5,7 @@ import {scene} from './engine.js';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
   attachHandGun,poseAiming} from './entities.js';
 import {makeHeli} from '../assets/models/police/helicopter.js';
-import {makeBazookaModel,makeMissileModel} from '../assets/models/weapons/bazooka.js';
+import {makeRocketLauncherModel,makeMissileModel} from '../assets/models/weapons/rocket-launcher.js';
 import {makeGangTracerLine} from '../assets/models/effects/gang-tracer.js';
 import {thud,gunshot} from './audio.js';
 import {collideStatics,addWanted} from './physics.js';
@@ -16,7 +16,7 @@ import {playerPos,cur,getBusted,getWasted} from './player.js';
 // ela ENCOSTA e desce uma dupla de policiais que corre até a distância de
 // tiro e atira. Se o jogador abre distância, a dupla volta correndo, embarca
 // e a perseguição recomeça. No nível máximo de procurado (5 estrelas) os
-// policiais descem com BAZUCAS e atiram mísseis (explodem via weapons.js).
+// policiais descem com LANÇA-FOGUETES e atiram mísseis (explodem via weapons.js).
 
 export const cops=[];
 export const officers=[]; // policiais a pé em campo (e corpos, por uns segundos)
@@ -43,10 +43,10 @@ function deployOfficers(c){
   for(const side of[1.3,-1.3]){
     const o={g:makePed(COP_BLUE),car:c,bob:rand(0,6),shootT:rand(.5,1.1),
       mode:'hunt',dead:false,deadT:0,
-      bazooka:Math.floor(state.wanted)>=5}; // 5 estrelas: esquadrão de bazucas
+      rocket:Math.floor(state.wanted)>=5}; // 5 estrelas: esquadrão de lança-foguetes
     o.g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
-    if(o.bazooka){
-      const bz=makeBazookaModel();
+    if(o.rocket){
+      const bz=makeRocketLauncherModel();
       bz.scale.set(.85,.85,.85);
       bz.position.set(.32,1.42,.12); // apoiada no ombro
       o.g.add(bz);
@@ -117,7 +117,7 @@ function officerShoot(o,pp,dist){
   }
 }
 
-// míssil de bazuca: mira onde o jogador ESTÁ — o tempo de voo dá a esquiva
+// míssil de lança-foguetes: mira onde o jogador ESTÁ — o tempo de voo dá a esquiva
 function officerRocket(o,pp){
   o.shootT=rand(2.6,3.8);
   const from=o.g.position.clone();from.y+=1.45;
@@ -162,7 +162,7 @@ function updateOfficer(o,dt,pp){
   }
   // caçando: corre até a distância de tiro e atira parado (para, mira, atira)
   const dx=pp.x-p.x,dz=pp.z-p.z,distP=Math.hypot(dx,dz);
-  const stop=o.bazooka?16:9;
+  const stop=o.rocket?16:9;
   if(distP>stop){
     p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
     o.bob+=dt*11;animatePed(o.g,o.bob,1);
@@ -172,8 +172,8 @@ function updateOfficer(o,dt,pp){
   collideStatics(p,.5);
   o.shootT-=dt;
   // só atira em alvo no nível da rua (telhado fica fora do alcance deles)
-  if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.bazooka?44:26)){
-    if(o.bazooka)officerRocket(o,pp);
+  if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.rocket?44:26)){
+    if(o.rocket)officerRocket(o,pp);
     else officerShoot(o,pp,distP);
   }
 }
@@ -277,7 +277,7 @@ export function updateCops(dt){
   // policiais a pé (iteração reversa: embarque/corpo somem da lista no meio)
   for(let i=officers.length-1;i>=0;i--)updateOfficer(officers[i],dt,pp);
 
-  // mísseis das bazucas da polícia: voo reto, explode no destino/obstáculo
+  // mísseis das lança-foguetes da polícia: voo reto, explode no destino/obstáculo
   for(let i=copMissiles.length-1;i>=0;i--){
     const m=copMissiles[i];
     const step=26*dt;

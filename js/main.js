@@ -16,15 +16,17 @@ import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {blinkBar} from './entities.js';
 import {setupInput,updateKeyboardInput,performShoot} from './input.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
-import {canPickWeapon,updateWeapons,isWeaponHeld,confiscateWeapon} from './weapons.js';
+import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
+  switchWeapon,selectWeaponSlot,getWeaponHud} from './weapons.js';
 import {updateDayNight} from './daynight.js';
-import {updateInteriors} from './interior.js';
+import {updateInteriors,interiors} from './interior.js';
 import {updateSpeech,updateStreetChatter} from './speech.js';
 import {updateOverkill,overkillNear,endOverkill,getOverkillState} from './overkill.js';
 import './club.js'; // efeito de registro: instancia a boate em interiors[]
 import {gymTrainState} from './gym.js';
 import {hospitalAdmit} from './hospital.js';
 import {prisonAdmit} from './prison.js';
+import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from './gun-shop.js';
 import {recordBest} from './leaderboard.js';
 import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from './property.js';
 import {houseTvState,updateHouseTv,getHouseTvState} from './house-tv.js';
@@ -44,6 +46,9 @@ refs.ejectDriver=ejectDriver;
 refs.addBloodPuddle=addBloodPuddle; // morte do jogador deixa poça igual NPC
 refs.gangs=gangs; // hud desenha os territórios no minimapa via refs
 refs.setGangsHidden=setGangsHidden; // corrida de rua esconde/restaura as gangues
+refs.interiorBlips=()=>interiors
+  .filter(it=>it.mapIcon&&it.door)
+  .map(it=>({x:it.door.x,z:it.door.z,...it.mapIcon}));
 refs.getDelivery=()=>delivery;
 refs.storyNear=storyNear;
 refs.storyBlips=storyBlips;
@@ -54,10 +59,18 @@ refs.getHeli=()=>heli;
 refs.nearestCar=nearestCar;
 refs.canPickWeapon=canPickWeapon;
 refs.isWeaponHeld=isWeaponHeld;
+refs.canAttack=canAttack;             // botão de tiro do mobile (punho inclusive)
+refs.switchWeapon=switchWeapon;       // troca cíclica de arma
+refs.selectWeaponSlot=selectWeaponSlot;
+refs.getWeaponHud=getWeaponHud;       // HUD lê nome/munição da arma atual
 refs.confiscateWeapon=confiscateWeapon;
 refs.gymTrainState=gymTrainState; // HUD mostra o botão TRAIN dentro da academia
 refs.hospitalAdmit=hospitalAdmit; // morrer leva o jogador pra dentro do hospital
 refs.prisonAdmit=prisonAdmit;     // ser preso leva o jogador pra dentro do presídio
+refs.gunShopState=gunShopState;   // HUD mostra BUY $X perto de uma arma na loja
+refs.gunShopBuy=gunShopBuy;       // performInteract compra a arma do balcão
+refs.gunShopTargets=gunShopTargets; // armas.js acerta os alvos da sala de treino
+refs.inGunShopRange=inGunShopRange; // tiros na sala de treino não geram wanted
 refs.overkillNear=overkillNear;   // HUD/interact mostram a ação no totem
 refs.endOverkill=endOverkill;     // a morte do jogador encerra o modo overkill
 refs.getOverkillState=getOverkillState;
@@ -175,6 +188,7 @@ window.render_game_to_text=()=>{
     race:refs.getRaceState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
+    interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],
     house:refs.getHouseState?.()||null,
     houseTv:refs.getHouseTvState?.()||null,

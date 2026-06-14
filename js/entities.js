@@ -6,18 +6,28 @@ export {makeBoat} from '../assets/models/vehicles/boat.js';
 import {makePed,shirtColors} from '../assets/models/characters/pedestrian.js';
 export {makePed,shirtColors};
 export {makePlane} from '../assets/models/aircraft/plane.js';
-import {makeGangGun} from '../assets/models/weapons/gang-gun.js';
+import {makePistolModel} from '../assets/models/weapons/pistol.js';
+import {makeUziModel} from '../assets/models/weapons/uzi.js';
 
 // ---- Empunhadura PADRÃO de arma (jogador, gangues e polícia) ----
-// attachHandGun pendura a pistola na mão direita do ped (idempotente);
-// poseAiming põe o boneco na pose única de mira: braço da arma esticado à
-// frente, braço de apoio dobrado. Chamar DEPOIS do animatePed do frame, que
-// a pose sobrescreve os braços e as pernas continuam na animação de andar.
-// kick = recuo do tiro (0..~.16), usado pelo jogador.
-export function attachHandGun(ped){
+// Não existe mais um "gang gun" próprio: NPCs seguram os MESMOS modelos do
+// arsenal do jogador (pistola/uzi), só que reduzidos e SEM sombra (são muitos
+// NPCs — manter o custo de render baixo). `attachHandGun(ped, kind)` pendura a
+// arma na mão direita do ped (idempotente). poseAiming põe o boneco na pose de
+// mira: braço da arma esticado à frente, braço de apoio dobrado — chamar DEPOIS
+// do animatePed do frame. kick = recuo do tiro (0..~.16), usado pelo jogador.
+const HAND_WEAPONS={
+  pistol:{make:makePistolModel,scale:.5,pos:[0,-.55,.08]},
+  uzi:{make:makeUziModel,scale:.55,pos:[0,-.56,.05]}
+};
+export function attachHandGun(ped,kind='pistol'){
   const arm=ped.userData.limbs?.rightArm;
   if(!arm||arm.userData.gun)return;
-  const gun=makeGangGun();
+  const def=HAND_WEAPONS[kind]||HAND_WEAPONS.pistol;
+  const gun=def.make();
+  gun.scale.setScalar(def.scale);
+  gun.position.set(...def.pos);
+  gun.traverse(o=>{o.castShadow=false;}); // NPC: sem sombra pra não pesar
   arm.add(gun);
   arm.userData.gun=gun;
 }

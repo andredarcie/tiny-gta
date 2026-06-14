@@ -9,7 +9,7 @@ import {houseTvInteract} from './house-tv.js';
 import {startOverkill} from './overkill.js';
 import {setMissionHUD} from './missions.js';
 import {message} from './hud.js';
-import {canPickWeapon,pickupWeapon,shootWeapon} from './weapons.js';
+import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from './weapons.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
 import {getNickname,setNickname,startSession,refreshTopPlayers} from './leaderboard.js';
 import {hasProfanity} from './profanity.js';
@@ -92,6 +92,7 @@ export function performInteract(){
     if(houseEat())return;  // comer da geladeira dentro de casa (cura)
     if(houseBuy())return;  // comprar a casa de campo (perto da placa FOR SALE)
     if(gymTrain())return; // treino na academia (perto do supino)
+    if(refs.gunShopBuy?.())return; // comprar arma no balcão da loja de armas
     if(startOverkill())return; // liga o modo overkill (perto do totem)
     if(storyInteract())return;
     enterCar();
@@ -162,12 +163,23 @@ export function setupInput(){
     cameraRig.pitch=Math.max(.18,Math.min(.82,cameraRig.pitch));
     cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
   });
-  canvas?.addEventListener('click',()=>{
+  // Desktop: o 1º clique trava o ponteiro; com o ponteiro travado, segurar o
+  // botão esquerdo dispara (e mantém o fogo automático via input.shootHeld).
+  canvas?.addEventListener('mousedown',e=>{
     if(state.mobile||input.touchActive)return;
     if(!state.started||state.dlgActive)return;
-    if(document.pointerLockElement!==canvas)lockPointer();
-    else performShoot();
+    if(document.pointerLockElement!==canvas){lockPointer();return;}
+    if(e.button!==0)return;
+    input.shootHeld=true;
+    performShoot();
   });
+  addEventListener('mouseup',e=>{if(e.button===0)input.shootHeld=false;});
+  // Roda do mouse troca de arma (a pé).
+  canvas?.addEventListener('wheel',e=>{
+    if(!state.started||isBlocked()||state.dlgActive||state.mode!=='foot')return;
+    e.preventDefault();
+    switchWeapon(e.deltaY>0?1:-1);
+  },{passive:false});
 
   // Cut-scene: clique (PC) ou toque na tela (celular) também avança o diálogo.
   // O botão que ABRE a cena dá stopPropagation, então não vaza pra cá e não
@@ -201,6 +213,8 @@ export function setupInput(){
     if(e.code==='KeyP'){performPauseToggle();return;}
     if(e.code==='KeyF'&&e.shiftKey){performFullscreenToggle();return;}
     if(e.code==='Tab'){performRadioSwitch();return;}
+    if(/^Digit[0-9]$/.test(e.code)){selectWeaponSlot(e.code==='Digit0'?10:+e.code.slice(5));return;}
+    if(e.code==='KeyQ'){switchWeapon(1);return;}
     if(e.code==='KeyE'||e.code==='KeyF'){performInteract();return;}
   });
 

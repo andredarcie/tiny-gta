@@ -5,7 +5,7 @@ import {nearestDoor} from './interior.js';
 import {buildingDoors} from '../assets/models/city/building.js';
 import {makeDoorArrow,arrowBob} from '../assets/models/city/door-arrow.js';
 import {makeMoneyDrop} from '../assets/models/missions/money-drop.js';
-import {makeGunModel} from '../assets/models/weapons/player-gun.js';
+import {makePistolModel} from '../assets/models/weapons/pistol.js';
 import {grantWeapon} from './weapons.js';
 import {irand} from './constants.js';
 import {message} from './hud.js';
@@ -23,7 +23,7 @@ let latch=true;
 // reposicionado a cada subida, em vez de um por prédio (draw calls).
 const roofArrow=makeDoorArrow();roofArrow.visible=false;scene.add(roofArrow);
 const roofMoney=makeMoneyDrop();roofMoney.visible=false;scene.add(roofMoney);
-const roofGun=makeGunModel({pickup:true});roofGun.visible=false;scene.add(roofGun);
+const roofGun=makePistolModel({pickup:true});roofGun.visible=false;scene.add(roofGun);
 
 function updateRoofProps(){
   const r=state.onRoof;

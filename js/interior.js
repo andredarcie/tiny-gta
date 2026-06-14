@@ -1,5 +1,6 @@
 import {state} from './state.js';
-import {camera} from './engine.js';
+import {camera,sea} from './engine.js';
+import {setSkyHidden} from './daynight.js';
 import {player,playerPos,cameraRig} from './player.js';
 import {clamp} from './constants.js';
 import {message} from './hud.js';
@@ -39,6 +40,7 @@ import {arrowBob} from '../assets/models/city/door-arrow.js';
 //              sumir junto com a fachada.
 //  enterMsg/enterColor  aviso padrão ao entrar (onEnter pode trocar)
 //  exterior  {x,z,r} zona da FACHADA onde gangue não pode existir (js/gangs.js)
+//  mapIcon   {id,label,color,icon} blip do radar para a porta externa
 //  spawnHeading  pra onde o jogador olha ao nascer dentro (padrão: +x)
 //  spawnOutHeading  pra onde olha ao sair pra rua (padrão: -x)
 // ============================================================================
@@ -50,11 +52,13 @@ export const interiors=[];
 export class Interior{
   constructor({group,bounds,center,door,spawnOut,intDoor,intSpawn,
     fx=null,enterMsg='',enterColor='var(--gold)',exterior=null,
+    mapIcon=null,
     spawnHeading=Math.PI/2,spawnOutHeading=-Math.PI/2}){
     this.group=group;this.bounds=bounds;this.center=center;
     this.door=door;this.spawnOut=spawnOut;this.intDoor=intDoor;this.intSpawn=intSpawn;
     this.fx=fx;this.enterMsg=enterMsg;this.enterColor=enterColor;
     this.exterior=exterior;this.spawnHeading=spawnHeading;
+    this.mapIcon=mapIcon;
     this.spawnOutHeading=spawnOutHeading;
     interiors.push(this);
   }
@@ -89,6 +93,7 @@ export class Interior{
   enterAt(spawn,heading){
     state.interior=this;
     this.group.visible=true;
+    setExteriorWorldHidden(true); // some com mar/céu que cortam salas off-map
     this.teleport(spawn.x,spawn.z,heading);
     this.onEnter();
   }
@@ -102,6 +107,7 @@ export class Interior{
   leave(){
     if(state.interior===this)state.interior=null;
     this.group.visible=false;
+    setExteriorWorldHidden(false); // de volta pra rua: mar/céu reaparecem
     this.onExit();
   }
 
@@ -148,6 +154,17 @@ export class Interior{
 export function nearestDoor(){
   for(const it of interiors)if(it.near())return it;
   return null;
+}
+
+// Correção DEFINITIVA dos "blocos" externos cortando ambientes internos:
+// - o mar é um disco gigante centrado na origem;
+// - o céu é uma esfera de raio 900, e interiores como a loja ficam perto dessa
+//   borda, então o domo azul/roxo entrava na sala conforme o horário.
+// Como enterAt()/leave() são os ÚNICOS pontos onde state.interior muda,
+// esconder essas camadas aqui cobre QUALQUER ambiente interno atual ou futuro.
+function setExteriorWorldHidden(hidden){
+  sea.visible=!hidden;
+  setSkyHidden(hidden);
 }
 
 // atualiza todos os interiores por frame (js/main.js)

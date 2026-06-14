@@ -110,10 +110,13 @@ export function updateTouchControls(){
     interact.classList.toggle('disabled',!action.enabled);
   }
   const tv=!!refs.getHouseTvState?.()?.active;
-  const armed=state.started&&refs.isWeaponHeld?.()&&!state.dlgActive&&!state.paused&&!state.orientationBlocked&&!tv;
+  // a pé sempre dá pra atacar (nem que seja com o punho) -> botão FIRE aparece
+  const onFoot=state.started&&state.mode==='foot'&&!state.dlgActive&&!state.paused&&!state.orientationBlocked&&!tv;
+  const armed=onFoot&&!!refs.canAttack?.();
   const driving=state.started&&state.mode==='car'&&!state.dlgActive&&!state.paused&&!tv;
   const radioAllowed=driving&&!refs.getOverkillState?.()?.active;
   $('btn-shoot')?.classList.toggle('show',armed);
+  $('btn-wpn')?.classList.toggle('show',onFoot&&state.hasGun); // troca de arma (só com arsenal)
   $('btn-brake')?.classList.toggle('show',driving);
   $('btn-radio')?.classList.toggle('show',radioAllowed);
   $('touch-controls')?.classList.toggle('in-dialog',state.dlgActive||tv);
@@ -158,6 +161,7 @@ export function setupTouchControls(){
     input.shootHeld=true;
     performShoot();
   },()=>{input.shootHeld=false;});
+  bindButton($('btn-wpn'),()=>refs.switchWeapon?.(1));
   bindButton($('btn-brake'),()=>{
     input.brake=true;
     input.brakeActive=true;

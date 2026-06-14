@@ -71,7 +71,7 @@ function spawnMember(gang){
   m.g.position.set(x,0,z);
   collideStatics(m.g.position,.4);
   repelFromZones(m.g.position);
-  attachHandGun(m.g); // pistola na mão direita (empunhadura padrão)
+  attachHandGun(m.g,Math.random()<.45?'uzi':'pistol'); // arma real do arsenal na mão
   gangPeds.push(m);
 }
 // Spawn inicial: chamado por js/main.js DEPOIS dos prédios especiais entrarem

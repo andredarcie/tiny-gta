@@ -48,6 +48,7 @@ export const gym=new GymInterior({
   door:GYM_DOOR,spawnOut:GYM_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:gymFx,
   exterior:{x:154,z:-110,r:24}, // fachada: gangue não chega perto
+  mapIcon:{id:'gym',label:'IRON TEMPLE',icon:'gym',color:'#ff8a1e'},
 });
 
 // jogador perto do supino, dentro da academia (HUD/interact usam isto)

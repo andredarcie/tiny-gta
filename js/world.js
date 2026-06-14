@@ -17,6 +17,7 @@ import {addNightclub,CLUB_I,CLUB_J} from '../assets/models/city/nightclub.js';
 import {addGym,GYM_I,GYM_J} from '../assets/models/city/gym.js';
 import {addHospital,HOSP_I,HOSP_J} from '../assets/models/city/hospital.js';
 import {addPrison,PRISON_I,PRISON_J} from '../assets/models/city/prison.js';
+import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../assets/models/city/gun-shop.js';
 import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
 import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
@@ -35,6 +36,7 @@ while(parks.size<6){
   if(i===GYM_I&&j===GYM_J)continue;   // quarteirão reservado pra academia
   if(i===HOSP_I&&j===HOSP_J)continue; // quarteirão reservado pro hospital
   if(i===PRISON_I&&j===PRISON_J)continue; // quarteirão reservado pro presídio
+  if(i===GUNSHOP_I&&j===GUNSHOP_J)continue; // quarteirão reservado pra loja de armas
   if(Math.abs(i-4)+Math.abs(j-4)>1)parks.add(i+'_'+j);
 }
 export const isPark=(i,j)=>parks.has(i+'_'+j);
@@ -48,6 +50,7 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   if(i===GYM_I&&j===GYM_J)continue;   // nem o da academia
   if(i===HOSP_I&&j===HOSP_J)continue; // nem o do hospital
   if(i===PRISON_I&&j===PRISON_J)continue; // nem o do presídio
+  if(i===GUNSHOP_I&&j===GUNSHOP_J)continue; // nem o da loja de armas
   const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE,inner=BLOCK-2*SIDE;
   const sx=Math.random()<.5?1:2,sz=Math.random()<.5?1:2;
   for(let a=0;a<sx;a++)for(let b=0;b<sz;b++)
@@ -131,6 +134,7 @@ addNightclub(solids); // boate de frente pro mar no quarteirão reservado
 addGym(solids);       // academia no quarteirão reservado (nordeste)
 addHospital(solids);  // hospital no quarteirão reservado (sudeste)
 addPrison(solids);    // presídio no quarteirão reservado (busted)
+addGunShop(solids);   // loja de armas (AMMU-NATION) no quarteirão reservado
 finalizeBuildings();     // funde a cidade inteira em ~18 meshes (draw calls)
 finalizeAbandonedLots(); // e todos os lotes abandonados em ~5
 finalizeDoorArrows();    // todas as setinhas de porta num único mesh

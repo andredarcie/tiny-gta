@@ -70,6 +70,7 @@ export const hospital=new HospitalInterior({
   group:hospInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:HOSP_DOOR,spawnOut:HOSP_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:hospFx,exterior:{x:110,z:110,r:24},
+  mapIcon:{id:'hospital',label:'HOSPITAL',icon:'hospital',color:'#44e6b1'},
 });
 
 // Acordar no hospital depois de morrer (js/player.js chama via refs.hospitalAdmit):

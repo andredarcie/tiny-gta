@@ -31,13 +31,15 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
   text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000}
 #stars .s.on{color:#e9f4fb;text-shadow:2px 2px 0 #000,0 0 10px rgba(233,244,251,.8)}
 @keyframes blink{50%{opacity:.25}}
-#weaponhud{width:62px;height:62px;border:3px solid #f0b6e2;border-radius:15px;
+#weaponhud{position:relative;width:62px;height:62px;border:3px solid #f0b6e2;border-radius:15px;
   background:rgba(16,6,30,.45);
   box-shadow:0 0 0 2px rgba(0,0,0,.85),inset 0 0 0 2px rgba(0,0,0,.55);
   display:flex;flex-direction:column;align-items:center;justify-content:center}
-#weaponhud svg{width:40px;height:40px;display:block;
+#weapon-name{position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);
+  white-space:nowrap;font-family:'Press Start 2P',monospace;font-size:7px;color:#ffe9b0;
+  text-shadow:1px 1px 0 #000;pointer-events:none}
+#weapon-icon{width:46px;height:46px;display:block;
   filter:drop-shadow(1px 1px 0 rgba(0,0,0,.9))}
-#wicon-pistol{display:none}
 #weapon-ammo{display:none;font-family:'Press Start 2P',monospace;font-size:8px;color:#fff;
   margin-top:1px;text-shadow:1px 1px 0 #000}
 #weapon-ammo.low{color:#ff9ed8}
@@ -314,13 +316,14 @@ body.is-mobile #touch-controls{display:block}
 .touch-btn-primary{border-color:rgba(255,210,74,.72);color:var(--gold)}
 .touch-btn-danger{border-color:rgba(255,46,136,.82);color:#fff;background:rgba(255,46,136,.32)}
 .touch-btn-small{min-width:clamp(44px,7vw,54px);height:clamp(44px,7vw,54px);font-size:clamp(9px,1.7vw,12px)}
-#btn-shoot,#btn-brake,#btn-radio{display:none}
-#btn-shoot.show,#btn-brake.show,#btn-radio.show{display:block}
+#btn-shoot,#btn-brake,#btn-radio,#btn-wpn{display:none}
+#btn-shoot.show,#btn-brake.show,#btn-radio.show,#btn-wpn.show{display:block}
 #btn-shoot,#btn-brake{right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}
 #btn-interact{right:max(24px,calc(env(safe-area-inset-right) + 24px));bottom:max(96px,calc(env(safe-area-inset-bottom) + 96px))}
-#btn-radio{right:max(24px,calc(env(safe-area-inset-right) + 24px));bottom:max(170px,calc(env(safe-area-inset-bottom) + 170px))}
+/* RAD (no carro) e WPN (a pé) ocupam o mesmo canto — nunca aparecem juntos */
+#btn-radio,#btn-wpn{right:max(24px,calc(env(safe-area-inset-right) + 24px));bottom:max(170px,calc(env(safe-area-inset-bottom) + 170px))}
 #btn-pause{right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top))}
-#touch-controls.in-dialog .touch-stick,#touch-controls.in-dialog #btn-shoot,
+#touch-controls.in-dialog .touch-stick,#touch-controls.in-dialog #btn-shoot,#touch-controls.in-dialog #btn-wpn,
 #touch-controls.in-dialog #btn-brake,#touch-controls.in-dialog #btn-radio{opacity:0;pointer-events:none}
 
 #rotate-device{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
@@ -338,8 +341,9 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #health-heart{font-size:14px;margin-right:6px}
   #stars{font-size:16px;letter-spacing:2px}
   #weaponhud{width:46px;height:46px;border-width:2px;border-radius:11px}
-  #weaponhud svg{width:30px;height:30px}
+  #weapon-icon{width:34px;height:34px}
   #weapon-ammo{font-size:6px}
+  #weapon-name{font-size:6px;top:calc(100% + 5px)}
   #carname{font-size:30px;right:max(18px,env(safe-area-inset-right));
     bottom:max(96px,calc(env(safe-area-inset-bottom) + 96px))}
   /* no celular o canto inferior direito tem o stick de câmera: velocímetro

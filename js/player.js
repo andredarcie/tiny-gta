@@ -710,7 +710,7 @@ export function updateFoot(dt){
       }
     }
   }
-  // armado de pistola ou no rampage da bazuca: vira junto com a câmera
+  // armado de pistola ou no rampage do lança-foguetes: vira junto com a câmera
   const armed=refs.isWeaponHeld?.()||false;
   if(armed){
     player.heading=cameraRig.yaw;

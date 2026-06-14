@@ -76,11 +76,16 @@ function sampleKeyframes(){
   cur.exp=a.exp+(b.exp-a.exp)*u;
 }
 
+// Céu completo. O grupo fica exportado por causa dos interiores off-map:
+// o domo tem raio 900 e pode atravessar salas como a loja de armas.
+const skyLayer=new THREE.Group();scene.add(skyLayer);
+export function setSkyHidden(hidden){skyLayer.visible=!hidden;}
+
 // --- Cúpula do céu (gradiente redesenhado conforme a hora) ---
 const skyCanvas=document.createElement('canvas');skyCanvas.width=16;skyCanvas.height=512;
 const skyCtx=skyCanvas.getContext('2d');
 const skyTex=new THREE.CanvasTexture(skyCanvas);skyTex.colorSpace=THREE.SRGBColorSpace;
-scene.add(makeSkyDome(skyTex));
+skyLayer.add(makeSkyDome(skyTex));
 const STOPS=[0,.45,.7,.86,1];
 function drawSky(){
   const g=skyCtx.createLinearGradient(0,0,0,512);
@@ -90,16 +95,16 @@ function drawSky(){
 }
 
 // --- Sol (textura neutra; a cor vem do tint do material) ---
-const {sprite:sunSpr,material:sunMat}=makeSunSprite();scene.add(sunSpr);
+const {sprite:sunSpr,material:sunMat}=makeSunSprite();skyLayer.add(sunSpr);
 
 // --- Lua ---
-const {sprite:moonSpr,material:moonMat}=makeMoonSprite();scene.add(moonSpr);
+const {sprite:moonSpr,material:moonMat}=makeMoonSprite();skyLayer.add(moonSpr);
 
 // --- Brilho do horizonte no nascer/pôr do sol ---
-const {sprite:glowSpr,material:glowMat}=makeHorizonGlow();scene.add(glowSpr);
+const {sprite:glowSpr,material:glowMat}=makeHorizonGlow();skyLayer.add(glowSpr);
 
 // --- Estrelas (hemisfério de pontos com brilho variado) ---
-const {points:starPoints,material:starMat}=makeStarField();scene.add(starPoints);
+const {points:starPoints,material:starMat}=makeStarField();skyLayer.add(starPoints);
 
 for(const c of clouds)c.userData.op0=c.material.opacity;
 

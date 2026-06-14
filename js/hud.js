@@ -8,9 +8,11 @@ const $=id=>document.getElementById(id);
 export const hudMoney=$('money'),hudClock=$('clock'),hudHealth=$('health-val'),
   hudStars=[...document.querySelectorAll('#stars .s')],
   hudCar=$('carname'),hudPrompt=$('prompt'),hudMsg=$('msg'),hudBig=$('bigtext'),
-  wiconFist=$('wicon-fist'),wiconPistol=$('wicon-pistol'),hudWeaponAmmo=$('weapon-ammo'),
+  hudWeaponIcon=$('weapon-icon'),hudWeaponAmmo=$('weapon-ammo'),hudWeaponName=$('weapon-name'),
   hudAmmoNow=$('ammo-now'),hudAmmoMax=$('ammo-max'),hudCrosshair=$('crosshair'),
   hudSpeedo=$('speedo'),hudSpeedoVal=$('speedo-val');
+const weaponIconCtx=hudWeaponIcon&&hudWeaponIcon.getContext('2d');
+let weaponIconKey='';
 
 let shownMoney=250,msgT=0;
 
@@ -52,6 +54,8 @@ export function getInteractAction(){
     if(buy)return buy;
     const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
     if(gym)return gym;
+    const shop=refs.gunShopState?.(); // perto de uma arma dentro da loja de armas
+    if(shop)return shop;
     const ov=refs.overkillNear?.(); // perto do totem do modo overkill
     if(ov)return{label:'OVERKILL',prompt:ov,enabled:true};
   }
@@ -131,6 +135,196 @@ function mmSquare(px,py,size,col){
   mm.fillRect(px-size/2,py-size/2,size,size);
   mm.strokeRect(px-size/2,py-size/2,size,size);
 }
+function mmCircleIcon(px,py,b){
+  const r=8.6;
+  mm.save();
+  mm.translate(px,py);
+  mm.fillStyle='rgba(5,3,8,.9)';
+  mm.beginPath();mm.arc(0,0,r+2,0,Math.PI*2);mm.fill();
+  mm.fillStyle=b.color||'#f5c518';
+  mm.strokeStyle='rgba(255,255,255,.78)';mm.lineWidth=1.15;
+  mm.beginPath();mm.arc(0,0,r,0,Math.PI*2);mm.fill();mm.stroke();
+  mm.fillStyle='#120916';mm.strokeStyle='#120916';mm.lineCap='round';mm.lineJoin='round';
+  switch(b.icon){
+    case'gun':
+      mm.beginPath();
+      mm.moveTo(-6.4,-3.1);mm.lineTo(4.9,-3.1);mm.lineTo(4.9,-1.2);
+      mm.lineTo(1.4,-1.2);mm.lineTo(.6,.5);mm.lineTo(-4.2,.5);
+      mm.lineTo(-4.8,2.3);mm.lineTo(-6.4,2.3);mm.closePath();mm.fill();
+      mm.fillRect(3.9,-4.0,3.0,1.25);
+      mm.beginPath();mm.moveTo(-.7,.6);mm.lineTo(2.4,.6);mm.lineTo(1.1,5.7);
+      mm.lineTo(-2.2,5.7);mm.closePath();mm.fill();
+      mm.strokeStyle='#120916';mm.lineWidth=1.25;
+      mm.beginPath();mm.arc(-1.8,2.0,1.8,-.6,1.55);mm.stroke();
+      break;
+    case'gym':
+      mm.lineWidth=2;mm.beginPath();mm.moveTo(-4.8,0);mm.lineTo(4.8,0);mm.stroke();
+      for(const x of[-6.2,-4.5,4.5,6.2])mm.fillRect(x-.55,-3.8,1.1,7.6);
+      break;
+    case'hospital':
+      mm.fillRect(-2.1,-5.4,4.2,10.8);
+      mm.fillRect(-5.4,-2.1,10.8,4.2);
+      break;
+    case'prison':
+      mm.fillRect(-5.5,-4.7,11,1.35);mm.fillRect(-5.5,3.35,11,1.35);
+      for(const x of[-3.6,0,3.6])mm.fillRect(x-.55,-4.7,1.1,9.4);
+      break;
+    case'club':
+      mm.lineWidth=1.8;
+      mm.beginPath();mm.moveTo(.8,-5.3);mm.lineTo(.8,2.2);mm.stroke();
+      mm.beginPath();mm.moveTo(.8,-5.3);mm.quadraticCurveTo(4.9,-4.7,5.1,-2.6);mm.stroke();
+      mm.beginPath();mm.ellipse(-2.2,3.0,2.6,1.8,-.25,0,Math.PI*2);mm.fill();
+      break;
+    case'house':
+      mm.beginPath();mm.moveTo(-6,.2);mm.lineTo(0,-5.3);mm.lineTo(6,.2);
+      mm.lineTo(4.7,.2);mm.lineTo(4.7,5);mm.lineTo(-4.7,5);mm.lineTo(-4.7,.2);
+      mm.closePath();mm.fill();
+      mm.fillStyle=b.color||'#f5c518';mm.fillRect(-1.2,1.5,2.4,3.5);
+      break;
+    default:
+      mm.lineWidth=1.8;mm.strokeRect(-3.6,-5,7.2,10);
+      mm.beginPath();mm.arc(1.7,.2,.65,0,Math.PI*2);mm.fill();
+  }
+  mm.restore();
+}
+function drawHudWeaponIcon(wh){
+  if(!weaponIconCtx)return;
+  const key=wh.id||wh.name;
+  if(weaponIconKey===key)return;
+  weaponIconKey=key;
+  const c=weaponIconCtx;
+  c.setTransform(1,0,0,1,0,0);
+  c.clearRect(0,0,64,64);
+  const grad=c.createLinearGradient(10,8,54,56);
+  grad.addColorStop(0,'#8ceefb');grad.addColorStop(1,'#ff9bd1');
+  const gold=c.createLinearGradient(12,10,54,56);
+  gold.addColorStop(0,'#fff1a6');gold.addColorStop(1,'#f5a63a');
+  const dark='#09030d';
+  const ink='rgba(9,3,13,.92)';
+  const fillPath=()=>{
+    c.fill();
+    c.strokeStyle=ink;c.lineWidth=2.4;c.stroke();
+  };
+  const gunBody=(scale=1)=>{
+    c.scale(scale,scale);
+    c.beginPath();
+    c.moveTo(-25,-8);c.lineTo(16,-8);c.lineTo(16,-1);
+    c.lineTo(4,-1);c.lineTo(1,6);c.lineTo(-16,6);
+    c.lineTo(-19,13);c.lineTo(-25,13);c.closePath();fillPath();
+    c.fillStyle=grad;c.fillRect(13,-11,10,4);c.strokeRect(13,-11,10,4);
+    c.beginPath();c.moveTo(-1,6);c.lineTo(11,6);c.lineTo(6,25);
+    c.lineTo(-7,25);c.closePath();fillPath();
+    c.strokeStyle=dark;c.lineWidth=2;
+    c.beginPath();c.arc(-8,13,6,-.7,1.55);c.stroke();
+  };
+  c.save();c.translate(32,32);c.fillStyle=grad;c.strokeStyle=ink;
+  c.lineCap='round';c.lineJoin='round';
+  switch(wh.id){
+    case'fist':
+      c.fillStyle=grad;
+      for(const x of[-13,-4,5,14]){
+        c.beginPath();c.arc(x,-9,6,0,Math.PI*2);fillPath();
+      }
+      c.beginPath();c.rect(-18,-6,31,23);fillPath();
+      c.beginPath();c.roundRect?c.roundRect(8,-2,13,17,6):c.rect(8,-2,13,17);
+      fillPath();
+      break;
+    case'bat':
+      c.rotate(-.55);c.strokeStyle=ink;c.lineWidth=9;
+      c.beginPath();c.moveTo(-19,16);c.lineTo(21,-18);c.stroke();
+      c.strokeStyle=grad;c.lineWidth=5.5;
+      c.beginPath();c.moveTo(-19,16);c.lineTo(21,-18);c.stroke();
+      c.fillStyle=gold;c.beginPath();c.arc(23,-20,5,0,Math.PI*2);fillPath();
+      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(-24,20);c.lineTo(-15,12);c.stroke();
+      break;
+    case'pistol':
+      c.fillStyle=grad;gunBody(.86);break;
+    case'uzi':
+      c.fillStyle=grad;
+      c.fillRect(-24,-9,34,14);c.strokeRect(-24,-9,34,14);
+      c.fillRect(8,-12,14,4);c.strokeRect(8,-12,14,4);
+      c.beginPath();c.moveTo(-4,5);c.lineTo(5,5);c.lineTo(1,25);c.lineTo(-7,25);c.closePath();fillPath();
+      c.fillRect(-21,4,7,11);c.strokeRect(-21,4,7,11);
+      c.strokeStyle=dark;c.lineWidth=2;c.beginPath();c.arc(-9,10,5,-.55,1.55);c.stroke();
+      break;
+    case'shotgun':
+      c.fillStyle=grad;
+      c.fillRect(-27,-6,48,5);c.strokeRect(-27,-6,48,5);
+      c.fillRect(-22,1,24,5);c.strokeRect(-22,1,24,5);
+      c.beginPath();c.moveTo(-27,-4);c.lineTo(-18,-14);c.lineTo(-9,-10);c.lineTo(-15,-2);c.closePath();fillPath();
+      c.fillRect(18,-8,8,3);c.strokeRect(18,-8,8,3);
+      break;
+    case'ak47':
+      c.fillStyle=grad;
+      c.rotate(-.05);
+      c.fillRect(-23,-7,35,7);c.strokeRect(-23,-7,35,7);
+      c.fillRect(10,-10,14,3);c.strokeRect(10,-10,14,3);
+      c.beginPath();c.moveTo(-24,-5);c.lineTo(-12,-18);c.lineTo(-6,-14);c.lineTo(-15,-3);c.closePath();fillPath();
+      c.beginPath();c.moveTo(-1,0);c.quadraticCurveTo(7,14,-2,25);c.lineTo(-8,22);
+      c.quadraticCurveTo(-1,12,-7,1);c.closePath();fillPath();
+      c.fillRect(-7,-13,10,4);c.strokeRect(-7,-13,10,4);
+      break;
+    case'm16':
+      c.fillStyle=grad;
+      c.fillRect(-25,-6,41,7);c.strokeRect(-25,-6,41,7);
+      c.fillRect(14,-9,13,3);c.strokeRect(14,-9,13,3);
+      c.beginPath();c.moveTo(-23,-4);c.lineTo(-13,-15);c.lineTo(-5,-11);c.lineTo(-13,-2);c.closePath();fillPath();
+      c.fillRect(-3,1,7,18);c.strokeRect(-3,1,7,18);
+      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(-6,-11);c.quadraticCurveTo(2,-18,10,-10);c.stroke();
+      break;
+    case'sniper':
+      c.fillStyle=grad;
+      c.fillRect(-28,-5,47,5);c.strokeRect(-28,-5,47,5);
+      c.fillRect(18,-7,10,2.7);c.strokeRect(18,-7,10,2.7);
+      c.fillRect(-10,-14,18,5);c.strokeRect(-10,-14,18,5);
+      c.beginPath();c.moveTo(-26,-4);c.lineTo(-15,-14);c.lineTo(-7,-11);c.lineTo(-15,-2);c.closePath();fillPath();
+      c.strokeStyle=ink;c.lineWidth=2.3;c.beginPath();c.moveTo(7,0);c.lineTo(13,18);c.moveTo(12,0);c.lineTo(22,17);c.stroke();
+      break;
+    case'grenade':
+      c.fillStyle=grad;
+      c.beginPath();c.ellipse(0,6,16,19,0,0,Math.PI*2);fillPath();
+      c.fillStyle=gold;c.fillRect(-7,-17,14,9);c.strokeRect(-7,-17,14,9);
+      c.strokeStyle=ink;c.lineWidth=2;
+      c.beginPath();c.arc(8,-16,7,-.35,Math.PI*1.35);c.stroke();
+      c.beginPath();c.moveTo(-11,-1);c.lineTo(11,-1);c.moveTo(-12,9);c.lineTo(12,9);c.moveTo(-4,-11);c.lineTo(-4,22);c.moveTo(5,-10);c.lineTo(5,22);c.stroke();
+      break;
+    case'molotov':
+      c.fillStyle=grad;
+      c.beginPath();c.moveTo(-7,-20);c.lineTo(6,-20);c.lineTo(9,15);
+      c.quadraticCurveTo(0,25,-10,15);c.closePath();fillPath();
+      c.fillStyle=gold;c.fillRect(-9,-16,18,7);c.strokeRect(-9,-16,18,7);
+      c.fillStyle='#ff5a2e';c.beginPath();c.moveTo(4,-24);c.quadraticCurveTo(17,-12,4,-6);
+      c.quadraticCurveTo(-7,-13,4,-24);fillPath();
+      break;
+    case'rocket':
+      c.fillStyle=grad;
+      c.rotate(-.06);
+      c.fillRect(-25,-7,40,14);c.strokeRect(-25,-7,40,14);
+      c.beginPath();c.moveTo(15,-8);c.lineTo(28,0);c.lineTo(15,8);c.closePath();fillPath();
+      c.fillStyle=gold;c.fillRect(-25,-10,8,20);c.strokeRect(-25,-10,8,20);
+      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(-4,7);c.lineTo(-11,22);c.moveTo(7,7);c.lineTo(12,20);c.stroke();
+      break;
+    case'flame':
+      c.fillStyle=grad;
+      c.beginPath();c.ellipse(-12,4,9,19,0,0,Math.PI*2);fillPath();
+      c.fillRect(-2,-7,21,7);c.strokeRect(-2,-7,21,7);
+      c.strokeStyle=ink;c.lineWidth=4;c.beginPath();c.moveTo(-4,8);c.quadraticCurveTo(7,18,18,7);c.stroke();
+      c.fillStyle='#ff5a2e';c.beginPath();c.moveTo(21,-6);c.quadraticCurveTo(34,-1,22,8);
+      c.quadraticCurveTo(27,0,21,-6);fillPath();
+      break;
+    case'detonator':
+      c.fillStyle=grad;
+      c.fillRect(-16,-11,32,28);c.strokeRect(-16,-11,32,28);
+      c.fillStyle=gold;c.beginPath();c.arc(0,0,7,0,Math.PI*2);fillPath();
+      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(10,-12);c.lineTo(22,-25);c.stroke();
+      c.beginPath();c.arc(24,-27,3,0,Math.PI*2);c.fill();
+      c.fillStyle=dark;c.fillRect(-10,10,20,3);
+      break;
+    default:
+      c.fillStyle=grad;gunBody(.86);
+  }
+  c.restore();
+}
 
 const mapWrap=$('mapwrap');
 export function drawMinimap(){
@@ -173,6 +367,10 @@ export function drawMinimap(){
   }
   // Demais objetivos/minigames ficam ESCONDIDOS durante a corrida de rua
   if(!raceOn){
+    for(const b of refs.interiorBlips?.()||[]){
+      const[px,py]=mmBlip(b.x,b.z,pp,scale);
+      mmCircleIcon(px,py,b);
+    }
     const delivery=refs.getDelivery?.();
     if(delivery){
       const[px,py]=mmBlip(delivery.x,delivery.z,pp,scale);
@@ -239,16 +437,19 @@ export function updateHUD(dt){
   hudHealth.textContent=Math.max(0,Math.round(state.health));
   const w=Math.floor(state.wanted);
   hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));
-  if(state.hasGun){
-    const ammo=state.ammo||0,max=state.maxAmmo||0;
-    wiconFist.style.display='none';wiconPistol.style.display='block';
-    hudWeaponAmmo.style.display='block';
-    hudAmmoNow.textContent=ammo;
-    hudAmmoMax.textContent='/'+max;
-    hudWeaponAmmo.classList.toggle('low',ammo<=Math.max(6,Math.ceil(max*.15)));
-  }else{
-    wiconFist.style.display='block';wiconPistol.style.display='none';
-    hudWeaponAmmo.style.display='none';
+  // Painel da arma: ícone (punho p/ melee, pistola p/ o resto), nome e munição
+  // (∞ para punho/lança-chamas/detonador). Lê a arma atual via refs.
+  const wh=refs.getWeaponHud?.();
+  if(wh){
+    drawHudWeaponIcon(wh);
+    if(hudWeaponName){hudWeaponName.textContent=wh.name;hudWeaponName.style.display='block';}
+    if(wh.infinite){hudWeaponAmmo.style.display='none';}
+    else{
+      hudWeaponAmmo.style.display='block';
+      hudAmmoNow.textContent=wh.ammo;
+      hudAmmoMax.textContent='/'+wh.max;
+      hudWeaponAmmo.classList.toggle('low',wh.low);
+    }
   }
   // velocímetro (canto inferior direito): SÓ no modo corrida
   if(hudSpeedo){

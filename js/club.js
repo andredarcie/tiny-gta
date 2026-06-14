@@ -37,4 +37,5 @@ export const club=new ClubInterior({
   door:CLUB_DOOR,spawnOut:CLUB_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:clubFx,enterMsg:'WELCOME TO THE FLAMINGO',enterColor:'var(--pink)',
   exterior:{x:-154,z:-22,r:24}, // fachada: gangue não chega perto
+  mapIcon:{id:'club',label:'THE FLAMINGO',icon:'club',color:'#ff2e88'},
 });

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {state,refs,saveBest} from './state.js';
+import {state,input,refs,saveBest} from './state.js';
 import {scene,camera} from './engine.js';
 import {N,ROAD,BLOCK,SIDE,rand,irand,nodeX,groundHeight,SWIM_BOUND} from './constants.js';
 import {isPark} from './world.js';
@@ -13,16 +13,21 @@ import {cops,officers as copOfficers,killOfficer} from './police.js';
 import {spawnDrop} from './missions.js';
 import {gangPeds,killGangPed} from './gangs.js';
 import {dentCar,poseAiming} from './entities.js';
-import {makeGunModel} from '../assets/models/weapons/player-gun.js';
-import {makeBazookaModel,makeMissileModel} from '../assets/models/weapons/bazooka.js';
+import {makePistolModel} from '../assets/models/weapons/pistol.js';
+import {makeRocketLauncherModel,makeMissileModel} from '../assets/models/weapons/rocket-launcher.js';
+import {makeGrenadeModel} from '../assets/models/weapons/grenade.js';
+import {makeMolotovModel} from '../assets/models/weapons/molotov.js';
 import {makeExplosionModel} from '../assets/models/effects/explosion.js';
 import {makeImpactRing} from '../assets/models/effects/impact-ring.js';
 import {makeBulletModel} from '../assets/models/effects/bullet.js';
+import {makeFireModel} from '../assets/models/effects/fire.js';
+import {makeFlameJetModel} from '../assets/models/effects/flame-jet.js';
 import {makeWeaponTracerLine} from '../assets/models/effects/weapon-tracer.js';
+import {WEAPONS,ARSENAL,FIST,bySlot} from './weapon-catalog.js';
 
 const weaponPickups=[];
 function makeWeaponPickup(x,z){
-  const g=makeGunModel({pickup:true});
+  const g=makePistolModel({pickup:true});
   g.scale.set(1.05,1.05,1.05);
   g.position.set(x,.82,z);
   g.userData.baseY=.82;
@@ -41,46 +46,94 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
 }
 if(!weaponPickups.length)makeWeaponPickup(nodeX(4)+12,nodeX(4)+12);
 
-const heldGun=makeGunModel();
-heldGun.position.set(.43,1.26,.67);
-heldGun.rotation.set(-.03,0,-.03);
-heldGun.visible=false;
-player.g.add(heldGun);
-const muzzlePoint=heldGun.userData.muzzlePoint;
+// ----- INVENTÁRIO -----
+// `owned` é o que o jogador tem (sempre ao menos o punho); `curWeapon` é a
+// selecionada. O modelo na mão vive em `heldHolder` (filho do player) e é
+// reconstruído na troca. O catálogo (js/weapon-catalog.js) define todas as
+// armas como instâncias da classe base Weapon (js/weapon-types.js).
+let owned=[FIST];
+let curWeapon=FIST;
+let heldModel=null,curMuzzle=null;
+const heldHolder=new THREE.Group();
+heldHolder.visible=false;
+player.g.add(heldHolder);
 
-// ----- BAZUCA: item mais potente do jogo, escondida na zona rural -----
+function equip(w){
+  if(!owned.includes(w))return;
+  curWeapon=w;
+  state.weaponHeld=state.mode==='foot'&&w.aimed;
+  if(heldModel){heldHolder.remove(heldModel);heldModel=null;curMuzzle=null;}
+  if(w.makeModel){
+    heldModel=w.makeModel({held:true});
+    heldHolder.add(heldModel);
+    heldHolder.scale.setScalar(w.hold?.scale||1);
+    curMuzzle=heldModel.userData?.muzzlePoint||null;
+  }
+  syncWeaponState();
+}
+
+// Espelha a arma atual nos campos de state que o HUD/áudio/fala já leem.
+function syncWeaponState(){
+  state.hasGun=owned.some(w=>w!==FIST);
+  state.weaponName=curWeapon.name;
+  state.weaponInfinite=curWeapon.infiniteAmmo;
+  state.weaponCategory=curWeapon.category;
+  state.ammo=curWeapon.infiniteAmmo?0:Math.max(0,curWeapon.ammo);
+  state.maxAmmo=curWeapon.infiniteAmmo?0:curWeapon.maxAmmo;
+}
+
+// Troca cíclica (roda do mouse / tecla / botão) entre as armas que possui.
+export function switchWeapon(dir=1){
+  if(state.mode!=='foot'||owned.length<2)return;
+  const i=owned.indexOf(curWeapon);
+  equip(owned[(i+dir+owned.length)%owned.length]);
+  blip([520,640],.05,'square',.1);
+}
+// Seleção direta pela tecla numérica (slot do catálogo).
+export function selectWeaponSlot(slot){
+  if(state.mode!=='foot')return;
+  const w=bySlot(slot);
+  if(w&&owned.includes(w)){equip(w);blip([560,700],.05,'square',.1);}
+}
+export const getWeaponHud=()=>({
+  id:curWeapon.id,name:curWeapon.name,ammo:curWeapon.ammoLabel(),max:curWeapon.maxAmmo,
+  infinite:curWeapon.infiniteAmmo,category:curWeapon.category,
+  low:!curWeapon.infiniteAmmo&&curWeapon.ammo<=Math.max(6,Math.ceil(curWeapon.maxAmmo*.15))
+});
+
+// ----- LANÇA-FOGUETES: item mais potente do jogo, escondida na zona rural -----
 // Encostar nela inicia um rampage estilo Vice City: destruir N carros em
 // T segundos com mísseis (cada míssil destrói um carro de uma vez e a onda
 // de choque mata grupos inteiros). Ganhou, leva o prêmio; perdeu, fica tudo
-// normal. A bazuca só existe durante o rampage e reaparece no campo depois.
+// normal. A lança-foguetes só existe durante o rampage e reaparece no campo depois.
 const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=1000;
 const rampage={active:false,end:0,kills:0};
 const missiles=[];
-const BAZ_X=320,BAZ_Z=0; // fim da estrada de terra, no pé da montanha
-const bazookaPickup=makeBazookaModel({pickup:true});
-bazookaPickup.scale.set(1.4,1.4,1.4);
-bazookaPickup.position.set(BAZ_X,groundHeight(BAZ_X,BAZ_Z)+.95,BAZ_Z);
-scene.add(bazookaPickup);
-let bazRespawnAt=-1;
+const ROCKET_X=320,ROCKET_Z=0; // fim da estrada de terra, no pé da montanha
+const rocketPickup=makeRocketLauncherModel({pickup:true});
+rocketPickup.scale.set(1.4,1.4,1.4);
+rocketPickup.position.set(ROCKET_X,groundHeight(ROCKET_X,ROCKET_Z)+.95,ROCKET_Z);
+scene.add(rocketPickup);
+let rocketRespawnAt=-1;
 
-const heldBazooka=makeBazookaModel();
-heldBazooka.position.set(.43,1.48,.15); // apoiada no ombro direito
-heldBazooka.visible=false;
-player.g.add(heldBazooka);
+const heldRocket=makeRocketLauncherModel();
+heldRocket.position.set(.43,1.48,.15); // apoiada no ombro direito
+heldRocket.visible=false;
+player.g.add(heldRocket);
 
 const rampageEl=document.getElementById('rampage');
 
 function startRampage(){
   rampage.active=true;rampage.end=state.time+RAMPAGE_TIME;rampage.kills=0;
-  bazookaPickup.visible=false;
-  message(`RAMPAGE! DESTROY ${RAMPAGE_GOAL} CARS WITH THE BAZOOKA`,'var(--pink)');
+  rocketPickup.visible=false;
+  message(`RAMPAGE! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
   blip([220,330,440,660],.09,'square',.2);
 }
 
 function endRampage(won){
   rampage.active=false;
   if(rampageEl)rampageEl.style.display='none';
-  bazRespawnAt=state.time+75; // a bazuca volta pro pasto um tempo depois
+  rocketRespawnAt=state.time+75; // a lança-foguetes volta pro pasto um tempo depois
   if(won){
     state.money+=RAMPAGE_REWARD;saveBest();
     message(`RAMPAGE PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
@@ -95,14 +148,27 @@ const explosions=[];
 const tracers=[];
 const impacts=[];
 const bullets=[];
-const MAX_AMMO=90;
+const thrown=[];     // granadas/molotovs em arco
+const flameJets=[];  // jatos do lança-chamas (efeito visual, vida curta)
+const firePools=[];  // poças de fogo (molotov / carga do detonador)
+let plantedBomb=null; // carga do detonador esperando o segundo aperto
 let lastShot=-99;
 let gunKick=0;
-document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ BULLET');
+let meleeAnim=null,punchSide=1;
+const meleeTrails=[];
+document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ ARSENAL');
 
+// Mira/crosshair só pra armas de pontaria (fogo, pesadas, arremesso); punho e
+// detonador atacam sem retículo. O rampage da lança-foguetes também conta como armado.
 export function isWeaponHeld(){
   if(state.mode!=='foot')return false;
-  return rampage.active||!!(state.hasGun&&state.weaponHeld);
+  return rampage.active||(curWeapon.aimed&&state.weaponHeld);
+}
+
+// No modo a pé sempre dá pra atacar (nem que seja com o punho) — usado pelo
+// botão de tiro do mobile e pela lógica de disparo.
+export function canAttack(){
+  return state.mode==='foot'&&!!curWeapon;
 }
 
 export function canPickWeapon(){
@@ -110,28 +176,86 @@ export function canPickWeapon(){
   return !!nearestWeaponPickup(3);
 }
 
-// Dá a arma com pente cheio sem depender de um pickup no chão (o espólio
-// dos telhados em js/doors.js também usa)
+// Concede o arsenal inteiro com munição cheia (o pickup do mundo e o espólio
+// dos telhados em js/doors.js usam isto). Equipa a pistola se vier desarmado.
 export function grantWeapon(){
-  state.hasGun=true;state.weaponHeld=state.mode==='foot';
-  state.ammo=MAX_AMMO;state.maxAmmo=MAX_AMMO;
+  const wasUnarmed=!state.hasGun;
+  owned=[FIST,...ARSENAL];
+  for(const w of ARSENAL)w.refill();
   for(const g of weaponPickups)scene.remove(g);
+  if(wasUnarmed||curWeapon===FIST)equip(byIdSafe('pistol'));
+  else syncWeaponState();
   blip([440,660,880],.07,'square',.14);
 }
+const byIdSafe=id=>WEAPONS.find(w=>w.id===id)||FIST;
+
+// Já tem essa arma? (a loja mostra "OWNED" e bloqueia recompra)
+export function ownsWeapon(id){return owned.some(w=>w.id===id);}
+
+// Compra de UMA arma na loja (js/gun-shop.js): adiciona ao inventário com
+// munição cheia, mantém a ordem do catálogo e equipa se ainda estava só no
+// punho. Quem cobra o dinheiro é a loja; aqui só concede a arma.
+export function buyWeapon(id){
+  const w=WEAPONS.find(x=>x.id===id);
+  if(!w||w===FIST||owned.includes(w))return false;
+  owned.push(w);
+  owned.sort((a,b)=>WEAPONS.indexOf(a)-WEAPONS.indexOf(b));
+  w.refill();
+  if(curWeapon===FIST)equip(w);else syncWeaponState();
+  blip([440,660,880],.07,'square',.14);
+  return true;
+}
+
+let trainingSnapshot=null;
+function restoreTrainingAmmo(){
+  if(!trainingSnapshot)return;
+  for(const s of trainingSnapshot.weapons){
+    s.w.ammo=s.ammo;
+    s.w._last=s.last;
+  }
+  if(plantedBomb){scene.remove(plantedBomb.g);plantedBomb=null;}
+}
+export function beginTrainingWeapon(id){
+  const w=WEAPONS.find(x=>x.id===id);
+  if(!w||w===FIST)return false;
+  if(!trainingSnapshot){
+    trainingSnapshot={owned:owned.slice(),cur:curWeapon,weapons:WEAPONS.map(x=>({
+      w:x,ammo:x.ammo,last:x._last
+    }))};
+  }else restoreTrainingAmmo();
+  owned=[FIST,w];
+  w.reset();
+  equip(w);
+  state.weaponHeld=!!w.aimed;
+  blip([520,660,880],.06,'square',.13);
+  return true;
+}
+export function clearTrainingWeapon(){
+  if(!trainingSnapshot)return false;
+  const snap=trainingSnapshot;
+  restoreTrainingAmmo();
+  trainingSnapshot=null;
+  owned=snap.owned.slice();
+  const restore=snap.cur&&owned.includes(snap.cur)?snap.cur:FIST;
+  equip(restore);
+  blip([300,240],.05,'square',.1);
+  return true;
+}
+export const isTrainingWeaponActive=()=>!!trainingSnapshot;
+export const getTrainingWeaponId=()=>trainingSnapshot&&curWeapon!==FIST?curWeapon.id:null;
 
 export function pickupWeapon(){
   const pickup=nearestWeaponPickup(3);
   if(!pickup)return;
   grantWeapon();
-  message('WEAPON PICKED UP - LEFT CLICK TO SHOOT','var(--gold)');
+  message('WEAPONS PICKED UP - 1-0 / WHEEL TO SWITCH','var(--gold)');
 }
 
 export function confiscateWeapon(){
-  state.hasGun=false;
-  state.weaponHeld=false;
-  state.ammo=0;
-  state.maxAmmo=0;
-  heldGun.visible=false;
+  owned=[FIST];
+  for(const w of ARSENAL)w.ammo=w.infiniteAmmo?Infinity:0;
+  if(plantedBomb){scene.remove(plantedBomb.g);plantedBomb=null;}
+  equip(FIST);
   for(const g of weaponPickups)if(!g.parent)scene.add(g);
 }
 
@@ -175,11 +299,11 @@ function aimRay(range=48){
 }
 
 function getMuzzleWorldPosition(){
-  if(heldBazooka.visible){
-    return heldBazooka.userData.muzzlePoint.getWorldPosition(new THREE.Vector3());
+  if(heldRocket.visible){
+    return heldRocket.userData.muzzlePoint.getWorldPosition(new THREE.Vector3());
   }
-  if(heldGun.visible){
-    return muzzlePoint.getWorldPosition(new THREE.Vector3());
+  if(heldHolder.visible&&curMuzzle){
+    return curMuzzle.getWorldPosition(new THREE.Vector3());
   }
   const right=new THREE.Vector3(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
   return playerPos().clone().addScaledVector(right,.46).setY(playerPos().y+1.12);
@@ -189,8 +313,152 @@ function posePlayerWithGun(){
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
   poseAiming(player.g,gunKick); // pose padrão de mira (mesma de NPCs/polícia)
-  heldGun.position.set(limbs.rightArm.position.x,1.26,.67-gunKick*.75);
-  heldGun.rotation.set(-.03-gunKick*.9,0,-.03);
+  const h=curWeapon.hold||{};
+  heldHolder.position.set(
+    limbs.rightArm.position.x+(h.x||0),
+    1.26+(h.y||0),
+    .67+(h.z||0)-gunKick*.75);
+  heldHolder.rotation.set(-.03-gunKick*.9+(h.rx||0),(h.ry||0),-.03+(h.rz||0));
+}
+
+// Porte parado (arma melee não erguida): segura a arma baixa junto ao corpo e
+// NÃO mexe nos braços, pra animação de andar continuar normal.
+function carryPose(){
+  const limbs=player.g.userData.limbs;
+  if(!limbs?.rightArm)return;
+  const h=curWeapon.hold||{};
+  heldHolder.position.set(limbs.rightArm.position.x+.16+(h.x||0),.96+(h.y||0),.2+(h.z||0));
+  heldHolder.rotation.set(.5+(h.rx||0),(h.ry||0),-.25+(h.rz||0));
+}
+const clamp01=v=>Math.max(0,Math.min(1,v));
+const easeInOut=t=>t*t*(3-2*t);
+const easeOut=t=>1-Math.pow(1-t,3);
+const lerp=(a,b,t)=>a+(b-a)*t;
+function mixArr(a,b,t){return a.map((v,i)=>lerp(v,b[i],t));}
+function setRot(o,r){if(o)o.rotation.set(r[0],r[1],r[2]);}
+
+function spawnMeleeTrail(kind,side){
+  const bat=kind==='bat';
+  const mat=new THREE.MeshBasicMaterial({
+    color:bat?0xffd24a:0x8ceefb,transparent:true,opacity:bat ? .72 : .48,
+    side:THREE.DoubleSide,depthWrite:false
+  });
+  const start=bat?(side>0?-2.2:Math.PI-.9):(side>0?-1.25:Math.PI-.55);
+  const len=bat?2.15:1.25;
+  const geo=new THREE.RingGeometry(bat ? .54 : .20,bat ? .72 : .32,28,1,start,len);
+  const m=new THREE.Mesh(geo,mat);
+  m.position.set(side*(bat ? .08 : .18),bat?1.22:1.14,bat ? .82 : .72);
+  m.rotation.z=side*(bat ? .18 : .08);
+  player.g.add(m);
+  meleeTrails.push({m,t:0,life:bat ? .22 : .14});
+}
+
+function startMeleeAnimation(range,knock,lethal){
+  const bat=curWeapon.id==='bat';
+  const side=bat?1:punchSide;
+  if(!bat)punchSide*=-1;
+  meleeAnim={
+    kind:curWeapon.id,
+    side,
+    t:0,
+    dur:bat ? .58 : .38,
+    hitAt:bat ? .36 : .20,
+    hitDone:false,
+    range:range||curWeapon.range||1.8,
+    knock:knock||curWeapon.knock||7,
+    lethal:lethal!==false
+  };
+  spawnMeleeTrail(curWeapon.id,side);
+}
+
+function resolveMeleeImpact(a){
+  const{origin,dir}=aimRay(a.range);
+  const hit=findWeaponHit(origin,dir,a.range);
+  if(hit.kind==='miss'){thud(2);return;}
+  const pos=origin.clone().addScaledVector(dir,hit.d);
+  thud(a.kind==='bat'?8:6);
+  if(hit.kind==='ped')killPed(hit.target,dir);
+  else if(hit.kind==='gang')killGangPed(hit.target,dir);
+  else if(hit.kind==='officer')killOfficer(hit.target);
+  else if(hit.kind==='story')hit.target.kill();
+  else if(hit.kind==='rangeTarget')hit.target.hit?.();
+  else if(hit.kind==='car'){dentCar(hit.target.g,pos,dir,a.kind==='bat' ? .18 : .1);addWanted(.4,'MELEE ATTACK','melee');}
+}
+
+function applyPunchPose(a,p){
+  const l=player.g.userData.limbs;if(!l)return;
+  const side=a.side;
+  const lead=side>0?l.rightArm:l.leftArm;
+  const guard=side>0?l.leftArm:l.rightArm;
+  const leadFore=side>0?l.rightForearm:l.leftForearm;
+  const guardFore=side>0?l.leftForearm:l.rightForearm;
+  const wind=1-easeOut(clamp01(p/.18));
+  const strike=Math.sin(clamp01((p-.08)/.48)*Math.PI);
+  const recover=easeOut(clamp01((p-.48)/.52));
+  player.heading=cameraRig.yaw;
+  player.g.rotation.y=cameraRig.yaw+side*(.24*wind-.18*strike)*(1-recover);
+  setRot(lead,[
+    -0.52 - 1.05*strike + .48*wind,
+    side*(.30*wind-.18*strike),
+    -side*(.62-.42*strike)
+  ]);
+  setRot(leadFore,[-.88+.74*strike,0,side*.04]);
+  setRot(guard,[-.88+.14*strike,-side*.10,side*.56]);
+  setRot(guardFore,[-.62,0,0]);
+  setRot(l.leftLeg,[-.08*side*strike,0,0]);
+  setRot(l.rightLeg,[.08*side*strike,0,0]);
+}
+
+function applyBatPose(a,p){
+  const l=player.g.userData.limbs;if(!l)return;
+  const hit=easeInOut(clamp01((p-.12)/.40));
+  const recover=easeOut(clamp01((p-.54)/.46));
+  const wind=[-.98,-.46,-1.06],contact=[-1.52,.16,.34],rest=[-.55,0,-.25];
+  const windL=[-1.05,.42,.90],contactL=[-1.38,-.20,-.42],restL=[-.38,0,.25];
+  const windF=[-.72,0,0],contactF=[-.18,0,0],restF=[-.28,0,0];
+  const hitR=mixArr(wind,contact,hit),hitL=mixArr(windL,contactL,hit);
+  const recR=mixArr(hitR,rest,recover),recL=mixArr(hitL,restL,recover);
+  player.heading=cameraRig.yaw;
+  player.g.rotation.y=cameraRig.yaw+lerp(-.32,.34,hit)*(1-recover)+.12*recover;
+  setRot(l.rightArm,recR);setRot(l.leftArm,recL);
+  setRot(l.rightForearm,mixArr(mixArr(windF,contactF,hit),restF,recover));
+  setRot(l.leftForearm,mixArr(mixArr(windF,contactF,hit),restF,recover));
+  setRot(l.leftLeg,[-.16*hit,0,0]);setRot(l.rightLeg,[.10*hit,0,0]);
+
+  const h=curWeapon.hold||{};
+  const windPos=[.34,1.38,.10],hitPos=[.02,1.18,.80],restPos=[.30,.97,.26];
+  const windRot=[-1.55,-.25,-1.20],hitRot=[-.22,.06,.92],restRot=[.52,0,-.28];
+  const pos=mixArr(mixArr(windPos,hitPos,hit),restPos,recover);
+  const rot=mixArr(mixArr(windRot,hitRot,hit),restRot,recover);
+  heldHolder.position.set(pos[0]+(h.x||0),pos[1]+(h.y||0),pos[2]+(h.z||0));
+  heldHolder.rotation.set(rot[0]+(h.rx||0),rot[1]+(h.ry||0),rot[2]+(h.rz||0));
+}
+
+function updateMeleeAnimation(dt){
+  if(!meleeAnim)return false;
+  meleeAnim.t+=dt;
+  const p=clamp01(meleeAnim.t/meleeAnim.dur);
+  if(!meleeAnim.hitDone&&meleeAnim.t>=meleeAnim.hitAt){
+    meleeAnim.hitDone=true;
+    resolveMeleeImpact(meleeAnim);
+  }
+  if(meleeAnim.kind==='bat')applyBatPose(meleeAnim,p);
+  else applyPunchPose(meleeAnim,p);
+  if(p>=1)meleeAnim=null;
+  return true;
+}
+
+function updateMeleeTrails(dt){
+  for(let i=meleeTrails.length-1;i>=0;i--){
+    const s=meleeTrails[i];s.t+=dt;
+    s.m.material.opacity=Math.max(0,s.m.material.opacity*(1-dt*5));
+    s.m.scale.multiplyScalar(1+dt*1.6);
+    if(s.t>=s.life){
+      s.m.parent?.remove(s.m);
+      s.m.geometry.dispose();s.m.material.dispose();
+      meleeTrails.splice(i,1);
+    }
+  }
 }
 
 function findWeaponHit(origin,dir,range=48){
@@ -219,6 +487,10 @@ function findWeaponHit(origin,dir,range=48){
       const d=rayHitXZ(origin,dir,c.g.position,2.1,range);
       if(d!==null&&d<best.d)best={kind:'car',d,target:c,arr};
     }
+  }
+  for(const t of refs.gunShopTargets?.()||[]){
+    const d=rayHitXZ(origin,dir,t,t.r||.8,range);
+    if(d!==null&&d<best.d)best={kind:'rangeTarget',d,target:t};
   }
   return best;
 }
@@ -282,7 +554,7 @@ function blastDamage(pos){
 }
 
 // explosão genérica exposta via refs: police.js detona os mísseis das
-// bazucas dos policiais sem criar import circular com este módulo
+// lança-foguetes dos policiais sem criar import circular com este módulo
 export function explodeAt(pos){
   makeExplosion(pos.clone());
   blastDamage(pos);
@@ -300,18 +572,18 @@ function explodeCar(car,arr){
   addWanted(1.5,'VEHICLE DESTROYED!','vehicle_destroyed');
   state.shake=.7;
   if(arr===traffic)setTimeout(()=>spawnTraffic(),900);
-  // rampage da bazuca: todo carro destruído conta (em cadeia também)
+  // rampage da lança-foguetes: todo carro destruído conta (em cadeia também)
   if(rampage.active){
     rampage.kills++;
     if(rampage.kills>=RAMPAGE_GOAL)endRampage(true);
   }
 }
 
-function damageCar(car,arr,pos,dir){
+function damageCar(car,arr,pos,dir,dmg=1){
   if(!car||car===cur)return;
   if(pos&&dir)dentCar(car.g,pos,dir,.07); // amassadinho onde a bala pegou
   const ud=car.g.userData;
-  ud.bulletHits=(ud.bulletHits||0)+1;
+  ud.bulletHits=(ud.bulletHits||0)+dmg;
   state.shake=Math.max(state.shake,.04);
   addWanted(.35,'SHOT FIRED!','vehicle_shot');
   if(ud.bulletHits>=4)explodeCar(car,arr);
@@ -330,7 +602,7 @@ function addImpact(pos,hit){
   scene.add(ring);impacts.push({ring,t:0});
 }
 
-function makeBullet(origin,dir){
+function makeBullet(origin,dir,{speed=86,range=52,damage=1}={}){
   const g=makeBulletModel();
   g.position.copy(origin);
   g.rotation.y=Math.atan2(dir.x,dir.z);
@@ -338,36 +610,39 @@ function makeBullet(origin,dir){
   scene.add(g);
   bullets.push({
     g,dir:dir.clone(),prev:origin.clone(),
-    speed:86,life:.62,dist:0,range:52
+    speed,life:range/86+.1,dist:0,range,damage
   });
 }
 
-function handleBulletHit(hit,pos,dir){
+function handleBulletHit(hit,pos,dir,damage=1){
   addImpact(pos,hit);
   if(hit.kind==='ped')killPed(hit.target,dir);
   else if(hit.kind==='gang')killGangPed(hit.target,dir);
   else if(hit.kind==='officer')killOfficer(hit.target);
   else if(hit.kind==='story')hit.target.kill();
-  else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir);
-  else addWanted(.25,'SHOT FIRED!','gunfire');
+  else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
+  else if(hit.kind==='rangeTarget')hit.target.hit?.();
+  else if(!refs.inGunShopRange?.())addWanted(.25,'SHOT FIRED!','gunfire');
 }
 
-// Tiro da bazuca: cadência lenta, míssil visível, coice forte; sem munição
-// pra controlar — o limite do rampage é o relógio
-function fireMissile(){
-  if(state.time-lastShot<1.15)return;
-  lastShot=state.time;
-  player.heading=cameraRig.yaw;
-  player.g.rotation.y=cameraRig.yaw;
-  posePlayerWithGun();
-  player.g.updateWorldMatrix(true,true);
+// Spawn do míssil (compartilhado pela lança-foguetes do inventário e pelo rampage).
+function spawnMissile(){
   const{origin,dir}=aimRay(70);
   const g=makeMissileModel();
   g.position.copy(origin);
   g.rotation.y=Math.atan2(dir.x,dir.z);
   scene.add(g);
   missiles.push({g,dir:dir.clone(),dist:0,range:75});
-  thud(7);blip([95,60],.16,'sawtooth',.3); // estampido grave do tubo
+}
+
+// Tiro da lança-foguetes do RAMPAGE: cadência lenta, sem munição pra controlar — o
+// limite é o relógio. A lança-foguetes do inventário passa pela classe RocketWeapon.
+function fireMissile(){
+  if(state.time-lastShot<1.15)return;
+  lastShot=state.time;
+  api.aimPose();
+  spawnMissile();
+  api.boom();
   state.crosshairKick=1;
   state.shake=Math.max(state.shake,.2);
   gunKick=.16;
@@ -378,44 +653,184 @@ function fireMissile(){
 function missileBlast(pos,hit){
   if(hit&&hit.kind==='car')explodeCar(hit.target,hit.arr);
   else{
+    if(hit&&hit.kind==='rangeTarget')hit.target.hit?.();
     makeExplosion(pos.clone());
     blastDamage(pos);
-    addWanted(1,'EXPLOSION!','explosion');
+    if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
   }
   if(hit&&hit.kind==='story')hit.target.kill();
   state.shake=Math.max(state.shake,.4);
 }
 
-export function shootWeapon(){
-  if(!isWeaponHeld())return;
-  if(rampage.active)return fireMissile();
-  if(state.time-lastShot<.18)return;
-  if(state.ammo<=0){message('OUT OF AMMO','var(--pink)');return;}
-  lastShot=state.time;state.ammo--;
-  player.heading=cameraRig.yaw;
-  player.g.rotation.y=cameraRig.yaw;
-  posePlayerWithGun();
-  player.g.updateWorldMatrix(true,true);
-  const{origin,dir}=aimRay();
-  makeBullet(origin,dir);
+// ----- comportamentos de disparo (chamados pelas classes via `api`) -----
+const _up=new THREE.Vector3(0,1,0);
+const _fwd=new THREE.Vector3(0,0,1);
+
+// Uma bala hitscan com espalhamento horizontal opcional (shotgun/automáticas).
+function fireOneBullet({range=52,speed=86,damage=1,spread=0}={}){
+  const{origin,dir}=aimRay(range);
+  if(spread>0){dir.applyAxisAngle(_up,(Math.random()*2-1)*spread);dir.normalize();}
+  makeBullet(origin,dir,{speed,range,damage});
   addTracer(origin,origin.clone().addScaledVector(dir,3.2));
-  gunshot();
+}
+
+// Golpe corpo a corpo: acerta o alvo mais próximo logo à frente.
+function meleeAttack(range,knock,lethal){
+  startMeleeAnimation(range,knock,lethal);
   state.crosshairKick=1;
-  state.shake=Math.max(state.shake,.08);
-  gunKick=.09;
+}
+
+// Jato do lança-chamas: efeito de cone + dano de curto alcance.
+function flameAttack(range){
+  const{origin,dir}=aimRay(range);
+  const jet=makeFlameJetModel();
+  jet.position.copy(origin);
+  jet.quaternion.setFromUnitVectors(_fwd,dir);
+  jet.scale.setScalar(.45+Math.random()*.3);
+  scene.add(jet);flameJets.push({g:jet,t:0});
+  for(const p of peds){
+    if(p.state==='dead'||p.state==='fly')continue;
+    if(rayHitXZ(origin,dir,p.g.position,1.4,range)!==null)killPed(p,dir);
+  }
+  for(const p of gangPeds){
+    if(p.state==='dead'||p.state==='fly')continue;
+    if(rayHitXZ(origin,dir,p.g.position,1.4,range)!==null)killGangPed(p,dir);
+  }
+  for(const o of copOfficers){
+    if(!o.dead&&rayHitXZ(origin,dir,o.g.position,1.4,range)!==null)killOfficer(o);
+  }
+  for(const arr of[traffic,idleCars,cops]){
+    for(const c of arr){
+      if(c===cur||c.plane)continue;
+      if(rayHitXZ(origin,dir,c.g.position,2,range)===null)continue;
+      const ud=c.g.userData;ud.bulletHits=(ud.bulletHits||0)+1;
+      if(ud.bulletHits>=4)explodeCar(c,arr);
+    }
+  }
+}
+
+// Arremesso em arco (granada/molotov).
+function throwProjectile(kind,{power=16,fuse}={}){
+  const{origin,dir}=aimRay(40);
+  const mesh=kind==='molotov'?makeMolotovModel():makeGrenadeModel();
+  mesh.position.copy(origin).addScaledVector(dir,.5);
+  scene.add(mesh);
+  const vel=dir.clone().multiplyScalar(power);vel.y=6.5; // joga pra cima
+  thrown.push({g:mesh,vel,kind,fuse:fuse!=null?fuse:0,
+    spin:new THREE.Vector3(rand(-6,6),rand(-6,6),rand(-6,6)),life:6});
+}
+
+function grenadeExplode(pos){
+  makeExplosion(pos.clone());
+  blastDamage(pos);
+  if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
+  state.shake=Math.max(state.shake,.4);
+}
+
+function molotovImpact(pos){
+  addFirePool(pos);
+  blastDamage(pos);            // estouro inicial pega quem está bem perto
+  if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
+  thud(10);blip([120,80],.18,'sawtooth',.22);
+  state.shake=Math.max(state.shake,.25);
+}
+
+function addFirePool(pos){
+  const g=makeFireModel();
+  g.position.set(pos.x,groundHeight(pos.x,pos.z)+.02,pos.z);
+  scene.add(g);
+  firePools.push({g,t:0,life:4.5,nextTick:0,radius:2.6});
+}
+
+// Detonador: planta a carga no 1º aperto, detona no 2º.
+function detonatorAction(){
+  if(!plantedBomb){
+    const pp=playerPos();
+    const g=makeGrenadeModel();g.scale.setScalar(1.3);
+    g.position.set(pp.x,groundHeight(pp.x,pp.z)+.12,pp.z);
+    scene.add(g);plantedBomb={g};
+    message('BOMB PLANTED - FIRE AGAIN TO DETONATE','var(--gold)');
+    blip([440,520],.08,'square',.14);
+  }else{
+    const pos=plantedBomb.g.position.clone();
+    scene.remove(plantedBomb.g);plantedBomb=null;
+    grenadeExplode(pos);
+    message('DETONATED','var(--pink)');
+  }
+}
+
+// Objeto injetado nas classes de arma (js/weapon-types.js): expõe mira, pose,
+// recuo, sons e os spawns de projétil/efeito sem que as classes importem este
+// módulo (evita ciclo de import).
+const api={
+  get now(){return state.time;},
+  aimPose(){
+    player.heading=cameraRig.yaw;
+    player.g.rotation.y=cameraRig.yaw;
+    if(curWeapon.category!=='melee')posePlayerWithGun();
+    player.g.updateWorldMatrix(true,true);
+  },
+  recoil(r){
+    if(!r)return;
+    if(r.kick)gunKick=Math.max(gunKick,r.kick);
+    state.crosshairKick=r.crosshair??1;
+    if(r.shake)state.shake=Math.max(state.shake,r.shake);
+  },
+  outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
+  gunshot(v){gunshot(v);},
+  bullet(opts){fireOneBullet(opts);},
+  melee(range,knock,lethal){meleeAttack(range,knock,lethal);},
+  swoosh(){blip([200,130],.05,'sawtooth',.1);},
+  missile(){spawnMissile();},
+  boom(){thud(7);blip([95,60],.16,'sawtooth',.3);},
+  flame(range){flameAttack(range);},
+  throwProjectile(kind,opts){throwProjectile(kind,opts);},
+  toss(){blip([320,260],.06,'sine',.12);},
+  detonator(){detonatorAction();}
+};
+
+export function shootWeapon(){
+  if(state.mode!=='foot')return;
+  if(rampage.active)return fireMissile();
+  curWeapon.tryFire(api);
 }
 
 const _missileProbe=new THREE.Vector3();
 
-export function updateWeapons(dt){
-  heldBazooka.visible=rampage.active&&state.mode==='foot';
-  heldGun.visible=isWeaponHeld()&&!rampage.active;
-  if(heldGun.visible||heldBazooka.visible){
-    posePlayerWithGun();
-    gunKick=Math.max(0,gunKick-dt*.55);
-  }
+// Anima detalhes do modelo na mão: chama do molotov, piloto do lança-chamas e
+// a luz pisca-pisca do detonador.
+function animateHeldWeapon(){
+  if(!heldModel||!heldHolder.visible)return;
+  const u=heldModel.userData;
+  if(u.flame)u.flame.scale.setScalar(.8+Math.random()*.5);
+  if(u.pilot)u.pilot.scale.setScalar(.7+Math.random()*.7);
+  if(u.lamp)u.lamp.visible=Math.floor(state.time*(plantedBomb?8:3))%2===0;
+}
 
-  // ----- rampage da bazuca: relógio, placar e fim por morte/prisão -----
+export function updateWeapons(dt){
+  const rampaging=rampage.active&&state.mode==='foot';
+  heldRocket.visible=rampaging;
+  // arma na mão: aparece sempre que está a pé e tem modelo (o punho não tem).
+  const showHeld=state.mode==='foot'&&!rampaging&&!!curWeapon.makeModel;
+  heldHolder.visible=showHeld;
+  // pose de mira pras armas de pontaria; melee tem animação própria de golpe.
+  const meleeAnimating=updateMeleeAnimation(dt);
+  if(!meleeAnimating){
+    if(rampaging||(showHeld&&curWeapon.aimed))posePlayerWithGun();
+    else if(showHeld)carryPose();
+  }
+  gunKick=Math.max(0,gunKick-dt*.55);
+  updateMeleeTrails(dt);
+
+  // fogo automático: segurar o botão mantém o disparo (uzi/ak/m16/lança-chamas)
+  if(input.shootHeld&&curWeapon.automatic&&!rampaging&&state.mode==='foot'&&
+     !state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.controlsLocked)
+    curWeapon.tryFire(api);
+
+  syncWeaponState();
+  animateHeldWeapon();
+
+  // ----- rampage da lança-foguetes: relógio, placar e fim por morte/prisão -----
   if(rampage.active){
     if(state.mode==='cut')endRampage(false); // WASTED/BUSTED encerra o desafio
     else if(state.time>rampage.end)endRampage(false);
@@ -425,14 +840,14 @@ export function updateWeapons(dt){
         `RAMPAGE ${rampage.kills}/${RAMPAGE_GOAL} CARS - ${Math.ceil(rampage.end-state.time)}s`;
     }
   }else{
-    if(!bazookaPickup.visible&&bazRespawnAt>=0&&state.time>bazRespawnAt)
-      bazookaPickup.visible=true;
-    if(bazookaPickup.visible){
-      bazookaPickup.rotation.y+=dt*1.2;
-      bazookaPickup.position.y=groundHeight(BAZ_X,BAZ_Z)+.95+Math.sin(state.time*2.6)*.1;
+    if(!rocketPickup.visible&&rocketRespawnAt>=0&&state.time>rocketRespawnAt)
+      rocketPickup.visible=true;
+    if(rocketPickup.visible){
+      rocketPickup.rotation.y+=dt*1.2;
+      rocketPickup.position.y=groundHeight(ROCKET_X,ROCKET_Z)+.95+Math.sin(state.time*2.6)*.1;
       // pegar é encostar (igual às portas): o rampage começa na hora
       if(state.started&&state.mode==='foot'&&!state.controlsLocked&&
-        playerPos().distanceTo(bazookaPickup.position)<2.6)startRampage();
+        playerPos().distanceTo(rocketPickup.position)<2.6)startRampage();
     }
   }
 
@@ -475,7 +890,7 @@ export function updateWeapons(dt){
     const hit=findWeaponHit(b.g.position,b.dir,step);
     if(hit.kind!=='miss'){
       const hitPos=b.g.position.clone().addScaledVector(b.dir,hit.d);
-      handleBulletHit(hit,hitPos,b.dir);
+      handleBulletHit(hit,hitPos,b.dir,b.damage);
       scene.remove(b.g);
       bullets.splice(i,1);
       continue;
@@ -509,5 +924,68 @@ export function updateWeapons(dt){
     p.ring.scale.set(s,s,s);
     p.ring.material.opacity=Math.max(0,.85-p.t*4);
     if(p.t>.25){scene.remove(p.ring);impacts.splice(i,1);}
+  }
+
+  // ----- arremessáveis em voo (granada/molotov) -----
+  for(let i=thrown.length-1;i>=0;i--){
+    const t=thrown[i];
+    t.life-=dt;
+    t.vel.y-=18*dt; // gravidade
+    t.g.position.addScaledVector(t.vel,dt);
+    t.g.rotation.x+=t.spin.x*dt;t.g.rotation.z+=t.spin.z*dt;
+    const gh=groundHeight(t.g.position.x,t.g.position.z);
+    if(t.kind==='molotov'){
+      const dir=new THREE.Vector3(t.vel.x,0,t.vel.z);
+      const hitTarget=dir.lengthSq()>.0001&&
+        findWeaponHit(t.g.position,dir.normalize(),.8).kind!=='miss';
+      if(t.g.position.y<=gh+.1||hitTarget||t.life<=0){
+        const pos=t.g.position.clone();
+        if(t.g.position.y<=gh+.1)pos.y=gh;
+        molotovImpact(pos);
+        scene.remove(t.g);thrown.splice(i,1);
+      }
+    }else{ // granada: quica no chão e detona pelo tempo (fuse)
+      t.fuse-=dt;
+      if(t.g.position.y<=gh+.1){
+        t.g.position.y=gh+.1;
+        t.vel.y=Math.abs(t.vel.y)*.42;t.vel.x*=.6;t.vel.z*=.6;
+      }
+      if(t.fuse<=0||t.life<=0){
+        grenadeExplode(t.g.position.clone());
+        scene.remove(t.g);thrown.splice(i,1);
+      }
+    }
+  }
+
+  // ----- jatos do lança-chamas (efeito visual de vida curta) -----
+  for(let i=flameJets.length-1;i>=0;i--){
+    const f=flameJets[i];f.t+=dt;
+    f.g.scale.multiplyScalar(1+dt*2.2);
+    f.g.traverse(o=>{if(o.material&&o.material.opacity!=null)
+      o.material.opacity=Math.max(0,o.material.opacity-dt*4.5);});
+    if(f.t>.18){scene.remove(f.g);flameJets.splice(i,1);}
+  }
+
+  // ----- poças de fogo do molotov: dano por tempo a pé/peds/carros -----
+  for(let i=firePools.length-1;i>=0;i--){
+    const fp=firePools[i];fp.t+=dt;fp.nextTick-=dt;
+    for(const fl of fp.g.userData.flames||[])fl.scale.y=.7+Math.random()*.7;
+    if(fp.nextTick<=0){
+      fp.nextTick=.5;
+      const c=fp.g.position;
+      const near=p=>Math.hypot(p.g.position.x-c.x,p.g.position.z-c.z)<fp.radius;
+      for(const p of peds)if(p.state!=='dead'&&p.state!=='fly'&&near(p))killPed(p,_up);
+      for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly'&&near(p))killGangPed(p,_up);
+      for(const arr of[traffic,idleCars,cops])for(const car of arr){
+        if(car===cur||car.plane||!near(car))continue;
+        const ud=car.g.userData;ud.bulletHits=(ud.bulletHits||0)+1;
+        if(ud.bulletHits>=4)explodeCar(car,arr);
+      }
+      if(state.mode==='foot'&&playerPos().distanceTo(c)<fp.radius)getWasted();
+    }
+    if(fp.t>fp.life-1)
+      fp.g.traverse(o=>{if(o.material&&o.material.opacity!=null)
+        o.material.opacity=Math.max(0,o.material.opacity-dt*.9);});
+    if(fp.t>fp.life){scene.remove(fp.g);firePools.splice(i,1);}
   }
 }
