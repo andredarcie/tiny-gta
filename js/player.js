@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import {clamp,rand,nodeX,WATER,SWIM_BOUND,RURAL_X1,RURAL_HALF,groundHeight} from './constants.js';
 import {state,input,carNames,carColors,refs} from './state.js';
 import {scene,camera} from './engine.js';
-import {makeCar,makeMotorcycle,makePed,makePlane,spinWheels,dentCar} from './entities.js';
+import {makeCar,makeMotorcycle,makeBoat,makePed,makePlane,spinWheels,dentCar} from './entities.js';
 import * as Entities from './entities.js';
+import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
 import {thud,blip} from './audio.js';
 import {radioOn,radioOff,radioRandom} from './radio.js';
 import {collideStatics,addWanted} from './physics.js';
@@ -51,6 +52,16 @@ export function spawnPlane(){
   return pl;
 }
 spawnPlane();
+
+// Lancha ancorada no mar ao sul da praia: anda só sobre a água (encalha na areia).
+// É um veículo livre como a moto/avião; o flag `boat` define a física em updateBoat.
+function spawnBoat(color,name,x,z,heading){
+  const b={g:makeBoat(color),heading,speed:0,name,police:false,boat:true,bobT:Math.random()*6};
+  b.g.position.set(x,0,z);b.g.rotation.y=heading;
+  idleCars.push(b);
+  return b;
+}
+spawnBoat(0xff5a3c,'SEA BLASTER',24,WATER+12,Math.PI);
 
 export function playerPos(){return state.mode==='car'?cur.g.position:player.g.position;}
 
@@ -108,6 +119,24 @@ function setRidePose(){
   l.rightArm.rotation.set(-.86,-.1,-.1);
   l.leftForearm?.rotation.set(-.15,0,0);
   l.rightForearm?.rotation.set(-.15,0,0);
+}
+
+// Pose de capitão da lancha: sentado no banco do console, coxas pra frente quase
+// horizontais e canelas pra baixo (pés no piso do cockpit), braços esticados
+// pra frente/baixo até o aro do timão. Valores casados com a geometria do
+// boat.js (piso ~y.06, almofada ~.53, timão em (0,1.18,.5)) e com a proporção do
+// pedestre (ombro 1.26, quadril .55). O reset zera tudo via setDrivePose(false).
+function setBoatPose(){
+  const l=player.g.userData.limbs;if(!l)return;
+  l.leftLeg.visible=l.rightLeg.visible=true;
+  l.leftLeg.rotation.set(-1.3,0,.12);
+  l.rightLeg.rotation.set(-1.3,0,-.12);
+  l.leftCalf?.rotation.set(1.4,0,0);
+  l.rightCalf?.rotation.set(1.4,0,0);
+  l.leftArm.rotation.set(-1.15,0,.30);
+  l.rightArm.rotation.set(-1.15,0,-.30);
+  l.leftForearm?.rotation.set(-.55,0,0);
+  l.rightForearm?.rotation.set(-.55,0,0);
 }
 
 // Tira o jogador de dentro do veículo (reparenta na cena e desfaz a pose)
@@ -193,6 +222,12 @@ function completeEnter(f){
     player.g.position.set(0,BIKE_SEAT,-.06);
     player.g.rotation.set(0,0,0);
     setRidePose();
+  }else if(cur.boat){
+    // lancha: piloto sentado no banco do capitão, mãos no timão do console.
+    // Offset casado com a geometria (pés no piso do cockpit, quadril na almofada)
+    player.g.position.set(0,-.05,-.15);
+    player.g.rotation.set(0,0,0);
+    setBoatPose();
   }else{
     cur.g.userData.driver=player.g; // braços seguem o volante via spinWheels
     if(cur.plane)player.g.position.set(0,-.45,.5);
@@ -436,6 +471,7 @@ export function updateCar(dt){
   if(entering){if(cur)cur.speed=0;return updateEntering(dt);}
   if(exiting){if(cur)cur.speed=0;return updateExiting(dt);}
   if(cur.plane)return updatePlane(dt);
+  if(cur.boat)return updateBoat(dt);
   // No mar o carro perde tração, afunda aos poucos e o jogador escapa nadando
   if(inWater(cur.g.position)){
     const p=cur.g.position;
@@ -520,7 +556,98 @@ export function updateCar(dt){
   if(tail)tail.color.setHex(cur.speed<-.5?0xffd6d6:(th<0||hb)?0xff4444:0xa01515);
 }
 
+// Esteira da lancha: pool de retalhos de espuma na superfície da água. A lancha
+// cospe borrifo pelos lados da proa (jogado pra fora) e um rastro atrás da popa;
+// cada retalho cresce e some. Reciclados num freelist pra não alocar por frame.
+const wake=[];      // ativos: {g,t,life,vx,vz,s0,s1}
+const wakePool=[];  // espuma reaproveitável (já na cena, invisível)
+function spawnPuff(x,y,z,vx,vz,s0,s1,life){
+  const g=wakePool.pop()||makeWakePuff();
+  if(!g.parent)scene.add(g);
+  g.position.set(x,y,z);
+  g.rotation.y=Math.random()*Math.PI; // varia o recorte da textura
+  g.scale.setScalar(s0);
+  g.material.opacity=0;g.visible=true;
+  wake.push({g,t:0,life,vx,vz,s0,s1});
+}
+function updateWake(dt){
+  for(let i=wake.length-1;i>=0;i--){
+    const w=wake[i];w.t+=dt;const k=w.t/w.life;
+    w.g.position.x+=w.vx*dt;w.g.position.z+=w.vz*dt;
+    w.vx*=Math.exp(-2.2*dt);w.vz*=Math.exp(-2.2*dt); // perde força espalhando
+    w.g.scale.setScalar(w.s0+(w.s1-w.s0)*k);
+    // aparece num átimo e desbota até zerar
+    w.g.material.opacity=Math.min(1,k*7)*(1-k)*.9;
+    if(k>=1){w.g.visible=false;wakePool.push(w.g);wake.splice(i,1);}
+  }
+}
+
+// Lancha: o oposto do carro — voa sobre a água e ENCALHA na areia/terra.
+// Quica de leve parada, levanta a proa ao planar e inclina pra dentro da curva.
+const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.js)
+function updateBoat(dt){
+  const c=cur,p=c.g.position;
+  const onWater=inWater(p);
+  const th=input.moveY,st=input.moveX,hb=input.brake;
+  const MAX=48;
+  if(onWater){
+    if(th>0)c.speed+=20*dt*Math.max(.15,1-c.speed/MAX);
+    else if(th<0)c.speed-=26*dt;
+    c.speed*=Math.exp(-(hb?2.0:.4)*dt); // água segura menos que freio
+  }else{
+    // encalhou: arrasto pesado da areia, mal consegue se arrastar de volta
+    c.speed*=Math.exp(-5*dt);
+    if(th>0)c.speed+=3*dt;
+  }
+  c.speed=clamp(c.speed,-13,MAX);
+  // leme só morde com a lancha em movimento (parada não gira)
+  c.heading+=st*1.7*dt*clamp(c.speed/10,-1,1)*(hb?1.5:1);
+  p.x+=Math.sin(c.heading)*c.speed*dt;
+  p.z+=Math.cos(c.heading)*c.speed*dt;
+  // parede invisível bem mar adentro (igual aos demais veículos)
+  p.x=clamp(p.x,-SWIM_BOUND,SWIM_BOUND);
+  p.z=clamp(p.z,-SWIM_BOUND,SWIM_BOUND);
+  // flutua na linha d'água com balança suave; planando, a proa levanta
+  c.bobT=(c.bobT||0)+dt;
+  const plane=clamp(c.speed/MAX,0,1);
+  p.y=SEA_Y+.3+Math.sin(c.bobT*2.2)*.05*(1-plane*.7);
+  c.g.rotation.y=c.heading;
+  c.g.rotation.x=THREE.MathUtils.lerp(c.g.rotation.x,-plane*.13,Math.min(1,4*dt));
+  const leanT=-st*clamp(c.speed/22,0,1)*.3;
+  c.g.rotation.z=THREE.MathUtils.lerp(c.g.rotation.z,leanT,Math.min(1,5*dt));
+  // o aro do timão acompanha o leme (giro visível enquanto o piloto vira)
+  const steer=c.g.userData.steer;
+  if(steer)steer.rotation.z=THREE.MathUtils.lerp(steer.rotation.z,-st*1.1,Math.min(1,8*dt));
+
+  // esteira: borrifo lateral jogado pra fora + rastro de espuma na popa
+  c.wakeT=(c.wakeT||0)+dt;
+  const sp=Math.abs(c.speed);
+  if(onWater&&sp>3){
+    const interval=Math.max(.03,.12-sp*.0016); // mais rápido = mais espuma
+    const fx=Math.sin(c.heading),fz=Math.cos(c.heading);
+    const rx=Math.cos(c.heading),rz=-Math.sin(c.heading);
+    const dir=c.speed>=0?1:-1;
+    while(c.wakeT>=interval){
+      c.wakeT-=interval;
+      // borrifo dos dois lados da proa: nasce junto ao casco e é atirado pra fora
+      for(const s of[-1,1]){
+        const ox=p.x+fx*.7*dir+rx*s*.8;
+        const oz=p.z+fz*.7*dir+rz*s*.8;
+        const out=1.5+sp*.06;
+        spawnPuff(ox,SEA_Y+.02,oz,
+          rx*s*out-fx*sp*.18*dir, rz*s*out-fz*sp*.18*dir, .45,2.2,.7);
+      }
+      // rastro largo atrás da popa (quase parado: a lancha é que se afasta)
+      spawnPuff(p.x-fx*2*dir+(Math.random()-.5)*.5,SEA_Y+.02,
+        p.z-fz*2*dir+(Math.random()-.5)*.5,
+        (Math.random()-.5)*.7,(Math.random()-.5)*.7, .8,3,.95);
+    }
+  }
+  updateWake(dt);
+}
+
 export function updateFoot(dt){
+  if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
   if(dying)return updateDying(dt);
   if(roofFall)return updateRoofFall(dt);
   if(entering)return updateEntering(dt);

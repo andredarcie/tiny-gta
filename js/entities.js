@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {state} from './state.js';
 export {beamMat,makeCar} from '../assets/models/vehicles/car.js';
 export {makeMotorcycle} from '../assets/models/vehicles/motorcycle.js';
+export {makeBoat} from '../assets/models/vehicles/boat.js';
 import {makePed,shirtColors} from '../assets/models/characters/pedestrian.js';
 export {makePed,shirtColors};
 export {makePlane} from '../assets/models/aircraft/plane.js';
