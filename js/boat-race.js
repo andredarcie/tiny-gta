@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize} from './constants.js';
+import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize,smoothPace} from './constants.js';
 import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
@@ -145,6 +145,7 @@ let freezeHeading=0;// direção travada durante a contagem
 const racers=[];    // adversários {g,cp,wpi,speed,finished,bobT}
 let finishedNpcs=0; // quantos rivais já cruzaram a chegada
 const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
+let paceRef=0;      // ritmo de referência suavizado do jogador (rubber banding sutil; ver smoothPace)
 
 // alvos da corrida pro radar: largada quando ocioso, boia atual em prova
 refs.boatRaceBlips=()=>{
@@ -417,7 +418,7 @@ function startRace(){
   buildCpMarkers();
   buildMines(); // bombas aquáticas no meio do percurso
   cur.mineHopV=cur.mineHopY=0; // zera estado de "pulo" de mina
-  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
+  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;paceRef=0;
   startMk.ring.visible=startMk.beacon.visible=false; // some a largada durante a prova
   gate.visible=false;                                // tira o pórtico depois de largar
   // teleporta a lancha do jogador pra linha, virada pra 1ª boia
@@ -570,6 +571,7 @@ function legProgress(cp,x,z){
 function updateRacers(dt){
   const pp=playerPos();
   const playerProg=legProgress(playerCp,pp.x,pp.z);
+  paceRef=smoothPace(paceRef,Math.abs(cur?.speed||0),dt); // sobe rápido, cai devagar
   for(const r of racers){
     if(r.finished)continue;
     const wp=npcPath[r.wpi];
@@ -581,11 +583,12 @@ function updateRacers(dt){
     const c0=r.g.rotation.y;
     let diff=THREE.MathUtils.euclideanModulo(h-c0+Math.PI,Math.PI*2)-Math.PI;
     r.g.rotation.y=c0+diff*Math.min(1,4*dt);
-    // rubber banding (helper compartilhado): velocidade ancorada no ritmo atual
-    // do jogador — rival ATRÁS surta pra colar (fica grudado/visível), rival à
-    // frente alivia pra ser pego; jogador que erra/para é ultrapassado na hora
+    // rubber banding (helper): velocidade ancorada no ritmo de REFERÊNCIA suavizado
+    // do jogador (paceRef) — rival ATRÁS surta pra colar, rival à frente alivia pra
+    // ser pego. Frear NÃO faz o rival frear junto (paceRef cai devagar): quem para
+    // de verdade é ultrapassado depois de ~1-2s, não no mesmo frame.
     const gap=playerProg-legProgress(r.cp,r.g.position.x,r.g.position.z);
-    const spd=rubberSpeed(r.speed,gap,cur?.speed,r.pace);
+    const spd=rubberSpeed(r.speed,gap,paceRef,r.pace);
     let step=Math.min(d,spd*dt);
     if(r.mineStun>0){step*=.2;r.mineStun-=dt;} // batido numa mina: quase parado
     r.g.position.x+=Math.sin(h)*step;

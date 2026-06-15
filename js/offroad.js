@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {groundHeight,rubberSpeed,separateRacers,pick,diminishPrize} from './constants.js';
+import {groundHeight,rubberSpeed,separateRacers,pick,diminishPrize,smoothPace} from './constants.js';
 import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
@@ -83,6 +83,7 @@ let freezeHeading=0;// direção travada do carro/câmera durante a contagem
 const racers=[];    // adversários {g,cp,speed,finished}
 let finishedNpcs=0; // quantos rivais já cruzaram a chegada
 const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
+let paceRef=0;      // ritmo de referência suavizado do jogador (rubber banding sutil; ver smoothPace)
 
 // Cancellable banner-hide timer: a stale hideBig from a previous session must not
 // fire and wipe a banner shown by a new one. scheduleHide always replaces the pending timer.
@@ -189,7 +190,7 @@ function startRace(){
   if(!game.begin())return; // outra sessão de mini game rolando: não larga
   clearTimeout(hideTimer);hideTimer=null; // cancel any stale hide from a previous session
   buildCpMarkers();
-  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
+  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;paceRef=0;
   startMk.ring.visible=startMk.beacon.visible=false; // some o marcador de largada na prova
   // teleporta o carro do jogador pra linha, virado pro 1º checkpoint
   const h0=Math.atan2(route[0].x-start.x,route[0].z-start.z);
@@ -310,6 +311,7 @@ function legProgress(cp,x,z){
 function updateRacers(dt){
   const pp=playerPos();
   const playerProg=legProgress(playerCp,pp.x,pp.z);
+  paceRef=smoothPace(paceRef,Math.abs(cur?.speed||0),dt); // sobe rápido, cai devagar
   for(const r of racers){
     if(r.finished)continue;
     const wp=route[r.cp];
@@ -321,11 +323,12 @@ function updateRacers(dt){
     const c0=r.g.rotation.y;
     let diff=THREE.MathUtils.euclideanModulo(h-c0+Math.PI,Math.PI*2)-Math.PI;
     r.g.rotation.y=c0+diff*Math.min(1,5*dt);
-    // rubber banding (helper compartilhado): velocidade ancorada no ritmo atual
-    // do jogador — rival ATRÁS surta pra colar (fica grudado/visível), rival à
-    // frente alivia pra ser pego; jogador que erra/para é ultrapassado na hora
+    // rubber banding (helper): velocidade ancorada no ritmo de REFERÊNCIA suavizado
+    // do jogador (paceRef) — rival ATRÁS surta pra colar, rival à frente alivia pra
+    // ser pego. Frear NÃO faz o rival frear junto (paceRef cai devagar): quem para
+    // de verdade é ultrapassado depois de ~1-2s, não no mesmo frame.
     const gap=playerProg-legProgress(r.cp,r.g.position.x,r.g.position.z);
-    const spd=rubberSpeed(r.speed,gap,cur?.speed,r.pace);
+    const spd=rubberSpeed(r.speed,gap,paceRef,r.pace);
     const step=Math.min(d,spd*dt);
     r.g.position.x+=Math.sin(h)*step;
     r.g.position.z+=Math.cos(h)*step;

@@ -153,12 +153,24 @@ export const RACE_LEAD_MAX=0.30;     // teto do alívio de quem está à frente 
 // que os ESPALHA ao longo da pista (um na frente, outro atrás) em vez de todos
 // grudados no mesmo ponto. Sem ele, anchor igual pra todos => andam por cima.
 export function rubberSpeed(base,gap,playerSpeed=0,pace=1){
-  // ancora no MAIOR entre a base do rival e o ritmo atual do jogador
+  // ancora no MAIOR entre a base do rival e o ritmo de REFERÊNCIA do jogador
+  // (já suavizado por smoothPace — ver abaixo; NÃO use cur.speed cru aqui)
   const anchor=Math.max(base,Math.abs(playerSpeed));
   const f=gap>=0
     ? 1+Math.min(gap*RACE_CATCHUP_GAIN,RACE_CATCHUP_MAX) // atrás: surto pra colar
     : 1+Math.max(gap*RACE_LEAD_EASE,-RACE_LEAD_MAX);     // à frente: alívio pra ser pego
   return anchor*pace*f;
+}
+
+// Ritmo de REFERÊNCIA do jogador pro rubber banding, suavizado com resposta
+// ASSIMÉTRICA: sobe rápido (acompanha quem acelera, rivais não ficam pra trás) e
+// CAI devagar (frear/levantar o pé NÃO faz o pelotão frear junto — sem isso os
+// rivais espelhavam o acelerador na hora). Cada corrida guarda seu próprio `prev`
+// e passa o retorno como `playerSpeed` pro rubberSpeed, no lugar do cur.speed cru.
+//   prev/target = velocidades (|cur.speed|); dt em segundos.
+export function smoothPace(prev,target,dt){
+  const tau=target>prev?0.35:2.5;       // s: τ curto pra subir, longo pra descer
+  return prev+(target-prev)*(1-Math.exp(-dt/tau));
 }
 
 // Empurrão de separação dos rivais: separa qualquer par mais perto que `sep`
