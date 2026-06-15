@@ -6,6 +6,7 @@ import {scene} from './engine.js';
 import {makeBoat,makePed,shirtColors} from './entities.js';
 import {cur,playerPos,cameraRig} from './player.js';
 import {makeBuoy} from '../assets/models/missions/buoy.js';
+import {makeSeaMine} from '../assets/models/missions/sea-mine.js';
 import {makeBoatRaceGate} from '../assets/models/missions/boat-race-gate.js';
 import {makeDeliveryMarker} from '../assets/models/missions/delivery-marker.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
@@ -45,8 +46,13 @@ const CP_AHEAD=0;       // boias visíveis além da atual (0 = SÓ a próxima bo
 const CP_RADIUS=12;     // raio pra contar a passagem na boia (lancha é rápida/larga)
 const NPC_COUNT=3;      // adversários
 const NPC_REACH=8;      // rivais precisam chegar PERTO da boia pra avançar
-const RIVAL_PACES=[0.9,1.05,1.18]; // ritmo distinto por rival: espalha o pelotão (não anda colado)
+const RIVAL_PACES=[0.80,0.88,0.95]; // per-rival pace, all <1 so a clean run can take the lead; the catch-up surge still makes trailing rivals dangerous
 const SEP=6;            // distância mínima entre duas lanchas: separa quem encosta
+const MINE_MAX=3;       // só ALGUMAS bombas aquáticas por prova
+const MINE_HIT=3.4;     // raio de colisão da mina (lancha é larga): encostou, levou
+const MINE_DODGE=12;    // desvio lateral que os rivais fazem pra contornar a mina
+const HOP_V=7.5;        // impulso vertical do "pulo" ao bater numa mina
+const HOP_G=22;         // gravidade que traz a lancha de volta à água depois do pulo
 const COAST_R=Math.round((WATER+SWIM_BOUND)/2); // raio (Chebyshev) da pista, no meio do mar
 const COAST_ZGAP=RURAL_HALF+22; // folga da península a leste: água só além disso
 const LAT_AMP=20;       // amplitude do slalom: desloca a boia p/ dentro/fora da faixa de água
@@ -125,7 +131,9 @@ let dir=1;          // sentido do percurso ao longo do litoral
 let startS=0;       // posição (arco) da largada no litoral
 let route=[];       // [{x,z}] boias na ordem (a última é a chegada)
 let cpMarkers=[];   // marcadores 3D de cada boia
-let npcPath=[];     // waypoints que os rivais seguem (= as boias, em mar aberto)
+let npcPath=[];     // waypoints que os rivais seguem (boias + desvios das minas)
+let mineSpecs=[];   // posições das bombas aquáticas do percurso (sorteadas por prova)
+let mines=[];       // bombas 3D na cena durante a prova {g,x,z,bobT,cool}
 let playerCp=0;     // próxima boia do jogador
 let raceT=0;        // cronômetro
 let cdT=0;          // contagem regressiva
@@ -181,7 +189,34 @@ function buildRoute(s0,d){
     if(off){const n=coastNormal(s);route.push({x:base.x+n.x*off,z:base.z+n.z*off});}
     else route.push({x:base.x,z:base.z});
   }
-  npcPath=route.map(p=>({x:p.x,z:p.z,cp:true})); // mar aberto: rivais vão direto
+  buildMineSpecs();
+  // waypoints dos rivais: as boias (cp:true) com um DESVIO lateral (cp:false)
+  // inserido antes de cada boia cuja perna tem uma mina — assim os rivais também
+  // contornam a bomba em vez de varar por cima dela (todo mundo desvia).
+  npcPath=[];
+  for(let k=0;k<route.length;k++){
+    const m=mineSpecs.find(s=>s.leg===k);
+    if(m)npcPath.push({x:m.dx,z:m.dz,cp:false}); // ponto de desvio ao lado da mina
+    npcPath.push({x:route[k].x,z:route[k].z,cp:true});
+  }
+}
+
+// Bombas aquáticas: poucas, no MEIO de pernas interiores e EM CIMA da linha reta
+// que as lanchas fazem entre duas boias — todo mundo é obrigado a desviar. Guarda
+// também o ponto de desvio lateral (pro mar aberto) que os rivais usam.
+function buildMineSpecs(){
+  mineSpecs=[];
+  const legs=[];
+  for(let k=2;k<CP_COUNT-1;k++)legs.push(k); // pernas interiores (route[k-1]→route[k])
+  for(let i=legs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[legs[i],legs[j]]=[legs[j],legs[i]];}
+  for(const k of legs.slice(0,Math.min(MINE_MAX,legs.length))){
+    const a=route[k-1],b=route[k];
+    const t=.42+Math.random()*.16;                 // ~meio da perna
+    const mx=a.x+(b.x-a.x)*t,mz=a.z+(b.z-a.z)*t;
+    let tx=b.x-a.x,tz=b.z-a.z;const tl=Math.hypot(tx,tz)||1;tx/=tl;tz/=tl;
+    let nx=tz,nz=-tx;if(nx*mx+nz*mz<0){nx=-nx;nz=-nz;} // perpendicular, pro mar aberto
+    mineSpecs.push({leg:k,x:mx,z:mz,dx:mx+nx*MINE_DODGE,dz:mz+nz*MINE_DODGE});
+  }
 }
 
 // arco do litoral mais próximo de um ponto do mundo (amostragem grossa)
@@ -268,6 +303,38 @@ function clearCpMarkers(){
   cpMarkers=[];
 }
 
+// instancia as bombas aquáticas do percurso atual (só existem durante a prova)
+function buildMines(){
+  for(const s of mineSpecs){
+    const g=makeSeaMine();
+    g.position.set(s.x,SEA_Y,s.z);
+    g.rotation.y=Math.random()*Math.PI*2;
+    scene.add(g);
+    mines.push({g,x:s.x,z:s.z,bobT:Math.random()*6});
+  }
+}
+function clearMines(){
+  for(const m of mines)scene.remove(m.g);
+  mines.length=0;
+}
+
+// "pulo" ao bater numa mina: integra um salto vertical com gravidade. Devolve o
+// deslocamento atual em y (0 quando a lancha já voltou à água). Compartilhado
+// pelo jogador e pelos rivais (cada um carrega seu próprio mineHopV/mineHopY).
+function hopOffset(o,dt){
+  if(!o.mineHopV&&!o.mineHopY)return 0;
+  o.mineHopY=(o.mineHopY||0)+o.mineHopV*dt;
+  o.mineHopV-=HOP_G*dt;
+  if(o.mineHopY<=0){o.mineHopY=0;o.mineHopV=0;}
+  return o.mineHopY;
+}
+
+// borrifo forte ao bater (reusa a espuma das rivais como splash do impacto)
+function mineSplash(x,z){
+  for(let i=0;i<7;i++)spawnRivalPuff(x+(Math.random()-.5)*2,z+(Math.random()-.5)*2,1.2,3.4,.8);
+  blip([170,120,90],.18,'sawtooth',.22); // baque grave do impacto
+}
+
 // senta um "capitão" no banco do console da lancha rival (offset/pose casados com
 // completeEnter/boat.js pra não ficar com a lancha vazia)
 function seatCaptain(boatG,shirt){
@@ -325,6 +392,8 @@ function startRace(){
   if(!game.begin())return; // outra sessão de mini game rolando: não larga
   if(!route.length)prepareRace();
   buildCpMarkers();
+  buildMines(); // bombas aquáticas no meio do percurso
+  cur.mineHopV=cur.mineHopY=0;cur.mineCool=0; // zera estado de "pulo" de mina
   playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
   startMk.ring.visible=startMk.beacon.visible=false; // some a largada durante a prova
   gate.visible=false;                                // tira o pórtico depois de largar
@@ -344,7 +413,7 @@ function startRace(){
 }
 
 function finishRace(){
-  clearRacers();clearCpMarkers();
+  clearRacers();clearCpMarkers();clearMines();
   prepareRace(); // próxima corrida nasce noutro trecho do litoral (ciclo infinito)
   startMk.ring.visible=startMk.beacon.visible=true;
   gate.visible=true;
@@ -493,12 +562,20 @@ function updateRacers(dt){
     // frente alivia pra ser pego; jogador que erra/para é ultrapassado na hora
     const gap=playerProg-legProgress(r.cp,r.g.position.x,r.g.position.z);
     const spd=rubberSpeed(r.speed,gap,cur?.speed,r.pace);
-    const step=Math.min(d,spd*dt);
+    let step=Math.min(d,spd*dt);
+    if(r.mineStun>0){step*=.2;r.mineStun-=dt;} // batido numa mina: quase parado
     r.g.position.x+=Math.sin(h)*step;
     r.g.position.z+=Math.cos(h)*step;
-    // flutuação + proa levantada planando + inclinação pra dentro da curva
+    // bateu numa mina (raro: eles desviam pelos waypoints) → pulo + perda de ritmo
+    r.mineCool=Math.max(0,(r.mineCool||0)-dt);
+    if(r.mineCool<=0)for(const m of mines){
+      if(Math.hypot(r.g.position.x-m.x,r.g.position.z-m.z)<MINE_HIT){
+        r.mineHopV=HOP_V;r.mineStun=.9;r.mineCool=1.3;mineSplash(r.g.position.x,r.g.position.z);break;
+      }
+    }
+    // flutuação + proa levantada planando + inclinação pra dentro da curva + pulo de mina
     r.bobT=(r.bobT||0)+dt;
-    r.g.position.y=SEA_Y+BOAT_FLOAT+Math.sin(r.bobT*2.2)*.05;
+    r.g.position.y=SEA_Y+BOAT_FLOAT+Math.sin(r.bobT*2.2)*.05+hopOffset(r,dt);
     r.g.rotation.x=THREE.MathUtils.lerp(r.g.rotation.x,-.1,Math.min(1,3*dt));
     r.g.rotation.z=THREE.MathUtils.lerp(r.g.rotation.z,-diff*.4,Math.min(1,4*dt));
     // rastro de espuma jogado atrás da popa
@@ -520,6 +597,31 @@ function updateRacers(dt){
     }
   }
   separateRacers(racers,SEP); // duas lanchas nunca andam uma por dentro da outra
+}
+
+// bombas aquáticas: balançam/giram na água e colidem com a lancha do JOGADOR —
+// encostou, ela pula pra cima e perde quase toda a velocidade (os rivais levam o
+// mesmo tranco em updateRacers). Cooldown por lancha evita retrigger ao sobrepor.
+function updateMines(dt){
+  for(const m of mines){
+    m.bobT+=dt;
+    m.g.position.y=SEA_Y+Math.sin(m.bobT*1.6)*.1; // bóia balançando
+    m.g.rotation.y+=.4*dt;
+  }
+  if(!cur)return;
+  const p=cur.g.position;
+  cur.mineCool=Math.max(0,(cur.mineCool||0)-dt);
+  if(cur.mineCool<=0)for(const m of mines){
+    if(Math.hypot(p.x-m.x,p.z-m.z)<MINE_HIT){
+      cur.mineHopV=HOP_V;   // a lancha pula pra cima
+      cur.speed*=.22;       // e perde quase toda a velocidade
+      cur.mineCool=1.3;
+      mineSplash(p.x,p.z);
+      break;
+    }
+  }
+  const off=hopOffset(cur,dt);
+  if(off){p.y+=off;cur.g.rotation.x-=off*.12;} // sobe e empina a proa enquanto no ar
 }
 
 export function updateBoatRace(dt){
@@ -560,6 +662,7 @@ export function updateBoatRace(dt){
   raceT+=dt;
   updateRacers(dt);
   updateCpMarkers(dt);
+  updateMines(dt); // bombas aquáticas balançam + colisão da lancha do jogador
   // todos os rivais cruzaram a chegada antes de você: derrota
   if(finishedNpcs>=NPC_COUNT){loseRace();return;}
   const pp=cur.g.position;
