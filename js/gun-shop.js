@@ -1,12 +1,13 @@
 import {state} from './state.js';
+import {economy} from './economy.js';
 import {playerPos} from './player.js';
 import {message} from './hud.js';
 import {animatePed} from './entities.js';
 import {blip} from './audio.js';
 import {camera} from './engine.js';
 import {Interior} from './interior.js';
-import {buyWeapon,ownsWeapon,beginTrainingWeapon,clearTrainingWeapon,
-  getTrainingWeaponId,isTrainingWeaponActive} from './weapons.js';
+import {buyWeapon,ownsWeapon,weaponAmmoInfo,refillAmmo,beginTrainingWeapon,
+  clearTrainingWeapon,getTrainingWeaponId,isTrainingWeaponActive} from './weapons.js';
 import {GUNSHOP_DOOR,GUNSHOP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
   SHOP_CENTER,RANGE_CENTER,SHOP_BOUNDS,RANGE_BOUNDS,RANGE_ENTRY,RANGE_RETURN,
   RANGE_SPAWN,RANGE_EXIT,GUN_SHOP_ITEMS,GUN_RANGE_ITEMS,GUN_RANGE_TARGETS,
@@ -19,13 +20,21 @@ import {GUNSHOP_DOOR,GUNSHOP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
 // etiqueta do nome fica sempre virada pra câmera.
 //
 // A compra é por CONFIRMAÇÃO em dois toques de E (igual ao prompt de entrar/sair
-// do carro, sem popup): o 1º E pede pra confirmar aquela arma, o 2º E compra.
-// Sair de perto cancela. `pending` guarda o id da arma aguardando confirmação.
+// do carro, sem popup): o 1º E pede pra confirmar, o 2º E compra. Sair de perto
+// cancela. `pending` guarda o id do item aguardando confirmação.
+//
+// O PREÇO aparece sempre — na etiqueta da arma na vitrine (mesmo sem grana) e no
+// prompt do balcão. Já tem a arma? No MESMO balcão a oferta vira RECARGA de
+// MUNIÇÃO (mais barata que a arma), também com confirmação em dois toques.
 
 const BUY_RANGE=2.8; // distância pra liberar a compra de uma arma do balcão
 const TRAIN_RANGE=2.25; // distância pra pegar uma arma de treino no chão
-let pending=null;    // arma aguardando o 2º E (confirmação)
+let pending=null;    // item (arma ou munição) aguardando o 2º E (confirmação)
 let rangeActive=false;
+
+// Preço da recarga de munição de uma arma já possuída: uma fração do preço da
+// arma (recarregar sai bem mais barato que recomprar), com piso pra armas baratas.
+function ammoPrice(weaponPrice){return Math.max(20,Math.round(weaponPrice*0.3));}
 
 class GunShopInterior extends Interior{
   onEnter(){
@@ -174,8 +183,9 @@ export function inGunShopRange(){
 export const gunShopTargets=()=>inGunShopRange()?GUN_RANGE_TARGETS:[];
 
 // Rótulo do HUD (prompt na base, igual ao de entrar/sair do carro). Mostra
-// BUY $X normalmente, vira CONFIRM quando aquela arma está aguardando o 2º E,
-// ou OWNED/NEED $X conforme o caso. Null quando não há arma por perto.
+// BUY $X normalmente, vira CONFIRM aguardando o 2º E, e o preço aparece MESMO
+// sem grana (NEED $X). Já possui a arma? Vira BUY AMMO $X (ou FULL/OWNED).
+// Null quando não há arma por perto.
 export function gunShopState(){
   if(nearRangeExit())
     return{label:'EXIT',prompt:'RETURN TO AMMO DEPOT',enabled:true};
@@ -189,15 +199,27 @@ export function gunShopState(){
   }
   const it=nearItem();
   if(!it)return null;
-  if(ownsWeapon(it.id))return{label:'OWNED',prompt:`${it.name} - ALREADY OWNED`,enabled:false};
-  if(state.money<it.price)return{label:'BUY',prompt:`NEED $${it.price} - ${it.name}`,enabled:false};
+  // já possui: no MESMO balcão a oferta vira RECARGA de munição (não recompra)
+  if(ownsWeapon(it.id)){
+    const info=weaponAmmoInfo(it.id);
+    if(!info||info.infinite)return{label:'OWNED',prompt:`${it.name} - ALREADY OWNED`,enabled:false};
+    if(info.full)return{label:'FULL',prompt:`${it.name} - AMMO FULL`,enabled:false};
+    const ap=ammoPrice(it.price);
+    // preço sempre visível, mesmo sem grana (prompt fica ativo só pra informar)
+    if(state.money<ap)return{label:'AMMO',prompt:`NEED $${ap} FOR ${it.name} AMMO`,enabled:true};
+    if(pending===it.id)return{label:'CONFIRM',prompt:`CONFIRM: ${it.name} AMMO $${ap}`,enabled:true};
+    return{label:'AMMO',prompt:`BUY ${it.name} AMMO $${ap}`,enabled:true};
+  }
+  // não possui: compra a arma — preço SEMPRE visível, mesmo sem grana pra comprar
+  if(state.money<it.price)return{label:'BUY',prompt:`NEED $${it.price} FOR ${it.name}`,enabled:true};
   if(pending===it.id)
     return{label:'CONFIRM',prompt:`CONFIRM: BUY ${it.name} $${it.price}`,enabled:true};
   return{label:'BUY',prompt:`BUY ${it.name} $${it.price}`,enabled:true};
 }
 
 // Interação com a arma (chamada pelo performInteract). 1º E pede confirmação;
-// 2º E (na mesma arma) compra de fato. Devolve true se consumiu a interação.
+// 2º E (no mesmo item) compra de fato. Já possui a arma? Compra MUNIÇÃO em vez
+// de recomprar — mesma confirmação em dois toques. Devolve true se consumiu E.
 export function gunShopBuy(){
   if(nearRangeExit())return exitRangeRoom();
   if(nearRangeEntry())return enterRangeRoom();
@@ -210,7 +232,28 @@ export function gunShopBuy(){
   }
   const it=nearItem();
   if(!it){pending=null;return false;}
-  if(ownsWeapon(it.id)){message(`YOU ALREADY OWN THE ${it.name}`,'var(--pink)');pending=null;return true;}
+  // já possui: compra MUNIÇÃO (recarga) com a mesma confirmação em dois toques
+  if(ownsWeapon(it.id)){
+    const info=weaponAmmoInfo(it.id);
+    if(!info||info.infinite){message(`YOU ALREADY OWN THE ${it.name}`,'var(--pink)');pending=null;return true;}
+    if(info.full){message(`${it.name} AMMO IS ALREADY FULL`,'var(--pink)');pending=null;return true;}
+    const ap=ammoPrice(it.price);
+    if(state.money<ap){message(`NOT ENOUGH MONEY - NEED $${ap}`,'var(--pink)');pending=null;return true;}
+    if(pending!==it.id){ // 1º toque: pede confirmação
+      pending=it.id;
+      message(`BUY ${it.name} AMMO FOR $${ap}? PRESS E TO CONFIRM, WALK AWAY TO CANCEL`,'var(--gold)');
+      blip([440,560],.06,'square',.12);
+      return true;
+    }
+    // 2º toque no mesmo balcão: confirma a recarga
+    pending=null;
+    economy.spend(ap,'ammo');
+    refillAmmo(it.id);
+    message(`${it.name} AMMO REFILLED`,'var(--gold)');
+    blip([330,440,587,660],.09,'square',.16);
+    return true;
+  }
+  // não possui: compra a arma (confirmação em dois toques)
   if(state.money<it.price){message(`NOT ENOUGH MONEY - NEED $${it.price}`,'var(--pink)');pending=null;return true;}
   if(pending!==it.id){ // 1º toque: pede confirmação
     pending=it.id;
@@ -220,7 +263,7 @@ export function gunShopBuy(){
   }
   // 2º toque na mesma arma: confirma a compra
   pending=null;
-  state.money-=it.price;
+  economy.spend(it.price,'weapon');
   buyWeapon(it.id);
   message(`BOUGHT ${it.name}`,'var(--gold)');
   blip([330,440,587,660],.09,'square',.16);

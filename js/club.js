@@ -2,9 +2,12 @@ import {animatePed} from './entities.js';
 import {Interior} from './interior.js';
 import {playerPos} from './player.js';
 import {state} from './state.js';
+import {economy} from './economy.js';
 import {message} from './hud.js';
 import {clubMusicOn,clubMusicOff} from './club-music.js';
 import {openDanceGame,danceGameActive} from './dance-game.js';
+import {openMiniGameIntro,reportMiniGameResult} from './minigame-leaderboard.js';
+import {MiniGameId} from './minigame.js';
 import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
   from '../assets/models/city/nightclub.js';
 
@@ -64,18 +67,20 @@ export function clubDanceState(){
 // Ação na pista (chamada pelo performInteract): abre o mini-game de ritmo.
 export function clubDance(){
   if(!clubDanceNear())return false;
-  openDanceGame({onFinish:onDanceFinish});
+  // briefing com o top 5 antes de dançar; a pista abre quando o jogador "passa"
+  openMiniGameIntro(MiniGameId.DANCE,'Dance Fever',()=>openDanceGame({onFinish:onDanceFinish}));
   return true;
 }
 
 // chamado pelo mini-game ao terminar: gorjeta da casa conforme a nota
 function onDanceFinish(info){
   if(info.reward>0){
-    state.money+=info.reward;
+    economy.earn(info.reward,'dance');
     message(`GRADE ${info.grade}! THE CROWD TIPS YOU $${info.reward}`,'var(--gold)');
   }else if(info.won){
     message(`GRADE ${info.grade} - KEEP PRACTICING FOR A TIP`,'var(--cream)');
   }else{
     message('THE CROWD BOOED YOU OFF THE FLOOR','var(--pink)');
   }
+  reportMiniGameResult(MiniGameId.DANCE,{won:info.won,score:info.score}); // ranking da dança (top 5)
 }

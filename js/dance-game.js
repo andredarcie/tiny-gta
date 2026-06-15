@@ -204,7 +204,7 @@ export function danceGameKey(code){
 }
 
 // Space/Enter/E no banner de fim avança e fecha (PC).
-export function danceGameConfirm(){if(active&&result)finish();}
+export function danceGameConfirm(){if(active&&result){finish();return true;}return false;}
 
 export function pressLane(lane){
   if(!active)return;
@@ -397,7 +397,9 @@ function rr(x,y,w,h,r){
 // seta direcional por pista (0=esq,1=baixo,2=cima,3=dir)
 function arrow(cx,cy,s,lane){
   ctx.save();ctx.translate(cx,cy);
-  ctx.rotate([Math.PI/2,Math.PI,0,-Math.PI/2][lane]); // base aponta pra cima
+  // base aponta pra cima; gira p/ cada pista. No canvas o Y cresce pra BAIXO, então
+  // +θ é horário: lane0 (←) precisa de -π/2 e lane3 (→) de +π/2 (estavam trocados).
+  ctx.rotate([-Math.PI/2,Math.PI,0,Math.PI/2][lane]);
   ctx.beginPath();
   ctx.moveTo(0,-s);ctx.lineTo(s*.8,s*.2);ctx.lineTo(s*.34,s*.2);
   ctx.lineTo(s*.34,s);ctx.lineTo(-s*.34,s);ctx.lineTo(-s*.34,s*.2);

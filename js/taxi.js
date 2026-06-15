@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {N,nodeX,rand,irand,pick,ROAD,clamp} from './constants.js';
 import {state,refs,saveBest} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {makeCar,makePed,animatePed,shirtColors} from './entities.js';
 import {idleCars,cur,playerPos} from './player.js';
@@ -8,6 +9,8 @@ import {parks} from './world.js';
 import {makeDeliveryMarker} from '../assets/models/missions/delivery-marker.js';
 import {message} from './hud.js';
 import {blip} from './audio.js';
+import {MiniGame,MiniGameId} from './minigame.js';
+import {reportMiniGameResult} from './minigame-leaderboard.js';
 
 // Minigame de táxi estilo GTA: um táxi amarelo fica estacionado na rua ao
 // lado de uma praça. Entrou nele, começa o expediente: sempre tem um
@@ -49,6 +52,17 @@ const leaving=[];// passageiros recém-desembarcados indo embora a pé
 let wreckT=0;    // táxi destruído: volta pro ponto depois de um tempo
 let shiftFares=0,shiftEarnings=0,shiftStartedAt=0;
 const taxiHud=document.getElementById('taxihud');
+
+// mini game (sessão): trava o mundo durante o expediente; o alvo é o passageiro
+// (fase pickup) ou o destino da corrida (fase ride)
+const game=new MiniGame({id:MiniGameId.TAXI,name:'Taxi',
+  blips:()=>{
+    if(phase==='pickup'&&fare)
+      return[{x:fare.x,z:fare.z,icon:'person',color:'#5eff8a',label:'PASSENGER',current:true,reveal:false}];
+    if(phase==='ride'&&fare)
+      return[{x:fare.dropX,z:fare.dropZ,icon:'flag',color:'#5eff8a',label:'DROP OFF',current:true,reveal:false}];
+    return[];
+  }});
 
 // blip verde no radar: táxi livre, passageiro ou destino da corrida atual
 refs.taxiTarget=()=>{
@@ -150,6 +164,7 @@ function spawnFare(announce=true){
   const ped=makePed(pick(shirtColors));
   ped.position.set(x,0,z);
   ped.rotation.y=Math.random()*Math.PI*2;
+  scene.add(ped); // passageiro acenando fica visível na rua (boardFare reparenta pro carro)
   fare={ped,x,z,dropX:0,dropZ:0,pay:0,tip:0,rideStart:0,deadline:0};
   setMarker(x,z);
   phase='pickup';
@@ -194,13 +209,17 @@ function dropPassenger(){
 function endShift(text='TAXI SHIFT ENDED',col='var(--cyan)'){
   if(phase==='pickup'&&fare){clearMarker();scene.remove(fare.ped);}
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
+  // ranking: o expediente inteiro conta como UMA sessão (ganho = total da corrida)
+  reportMiniGameResult(game.id,{won:shiftFares>0,score:shiftEarnings});
   fare=null;phase='off';
+  game.end(); // libera a trava do mundo
   hideTaxiHud();
   const summary=shiftFares>0?` - ${shiftFares} FARES / $${shiftEarnings}`:'';
   message(text+summary,col);
 }
 
 function startShift(){
+  if(!game.begin())return; // outra sessão de mini game rolando: não começa
   shiftFares=0;shiftEarnings=0;shiftStartedAt=state.time;
   spawnFare(false);
   message('TAXI SHIFT STARTED - PICK UP THE FARE','var(--gold)');
@@ -221,7 +240,7 @@ function completeRide(){
   const paid=fare.pay+tip;
   clearMarker();
   dropPassenger();
-  state.money+=paid;
+  economy.earn(paid,'taxi');
   state.taxiFares++;
   state.taxiEarnings+=paid;
   shiftFares++;

@@ -6,6 +6,8 @@ import {blip} from './audio.js';
 import {getDay} from './daynight.js';
 import {Interior} from './interior.js';
 import {openGymGame,gymGameActive} from './gym-game.js';
+import {openMiniGameIntro} from './minigame-leaderboard.js';
+import {MiniGameId} from './minigame.js';
 import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
   gymFx,gymInterior} from '../assets/models/city/gym.js';
 
@@ -74,7 +76,8 @@ export function gymTrain(){
   if(!gymTrainNear())return false;
   if(state.armScale>=ARM_MAX-1e-3){message('YOUR ARMS ARE MAXED OUT','var(--pink)');return true;}
   if(getDay()===state.gymDay){message('ALREADY TRAINED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
-  openGymGame({onWin:onSetComplete}); // 2 séries de 6 reps são internas ao mini-game
+  // briefing com o top 5 antes de treinar; o supino abre quando o jogador "passa"
+  openMiniGameIntro(MiniGameId.GYM,'Bench Press',()=>openGymGame({onWin:onSetComplete}));
   return true;
 }
 

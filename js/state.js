@@ -1,6 +1,8 @@
 export const state={
   started:false,paused:false,mode:'foot',money:250,wanted:0,health:100,lastCrime:-99,
+  sixStarT:-999, // instante do último crime que levou/manteve nas 6 estrelas (hold da máxima; ver police.js)
   deliveries:0,taxiFares:0,taxiEarnings:0,bustT:0,cutT:0,cutFn:null,shake:0,time:0,comboN:0,lastHit:-99,dlgActive:false,cine:false,
+  kills:0, // contador monotônico de inimigos/pedestres mortos (usado pelo Rampage)
   hasGun:false,weaponHeld:false,ammo:0,maxAmmo:0,
   crosshairKick:0,crosshairTarget:false,
   mobile:false,orientationBlocked:false,controlsLocked:false,
@@ -13,6 +15,12 @@ export const state={
   danceActive:false, // mini-game da dança aberto (ver js/dance-game.js)
   modShopActive:false, // menu da oficina de custom aberto (ver js/mod-shop.js)
   mapOpen:false, // mapa completo (tecla M) aberto — congela o mundo enquanto visível
+  wheelOpen:false, // roda de seleção de armas (js/weapon-wheel.js) aberta — câmera lenta
+  activeMiniGame:null, // id (MiniGameId) do mini game em curso, ou null — trava "um por vez"
+                       // (ver js/minigame.js); enquanto setado o mapa fica sem outros
+                       // POIs/atividades e não dá pra entrar noutro mini game
+  mgIntro:null,        // id do mini game cujo briefing/ranking está aberto (congela o
+                       // mundo até o jogador "passar"); ver js/minigame-leaderboard.js
   onRoof:null // registro da porta do prédio em cujo telhado o jogador está
 };
 
@@ -39,4 +47,13 @@ export const carColors=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x5b5f6b,0x7a4f9e,0x3aa06b,0x
 
 // Late-binding cross-module refs populated by main.js after all modules initialize.
 // Used only where direct imports would create circular dependencies.
+//
+// REGISTRIES GENÉRICOS (arrays preenchidos pelos próprios módulos de minigame, p/
+// não duplicar bloco a bloco em hud.js/input.js a cada novo minigame):
+//   refs.miniBlips      []  funções ()=>blip[]    — blips no radar e no mapa (M)
+//                            blip={x,z,icon,color,label?,current?,reveal?}
+//                            reveal!==false → POI fixo (aparece perto); reveal===false → alvo ativo (sempre na borda)
+//   refs.zoneActions    []  funções ()=>action|null — ação do botão E numa zona/no chão
+//                            action={label,prompt,enabled,run} e DEVE checar state.mode internamente
+//   refs.carEnterLabels []  funções (c)=>action|null — rótulo do E ao lado de um veículo especial parado
 export const refs={};

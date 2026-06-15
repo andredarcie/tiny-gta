@@ -1,4 +1,5 @@
 import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {playerPos,idleCars} from './player.js';
 import {makeCar,makeMotorcycle} from './entities.js';
 import {message} from './hud.js';
@@ -88,7 +89,7 @@ export function houseBuyState(){
 export function houseBuy(){
   if(!buyNear())return false;
   if(state.money<PRICE){message(`NOT ENOUGH MONEY - NEED $${PRICE}`,'var(--pink)');return true;}
-  state.money-=PRICE;
+  economy.spend(PRICE,'property');
   saved.owned=true;persist();
   message('PROPERTY PURCHASED! THE HOUSE IS YOURS','var(--gold)');
   blip([392,523,659,784],.1,'square',.18);

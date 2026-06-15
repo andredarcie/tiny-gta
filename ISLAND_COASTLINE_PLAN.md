@@ -1,9 +1,17 @@
 # Plano — Costa irregular (ilha de verdade)
 
+> **STATUS: IMPLEMENTADO** (ver progress.md). A costa irregular unificada está no jogo via
+> `js/constants.js` (`isLand`/`cityCoastCheb`/`cityCoastR`/`ruralHalf`/`RURAL_TIP`/`BOAT_SPAWN_*`),
+> `assets/models/terrain/island.js` (`buildIsland`/`updateCoastFoam`), e as integrações em
+> `world.js`/`player.js`/`hud.js`/`boat-race.js`. Verificação: `scripts/island-check.mjs`
+> (ASCII top-down + containment, sem browser). O texto abaixo é o projeto original; alguns
+> detalhes finais divergem (ex.: não foi preciso mexer em SWIM_BOUND nem physics.js — a costa
+> ficou dentro do envelope da prova de lanchas; as pontas se concentram nas diagonais).
+>
 > Objetivo: hoje o mapa é "dois quadrados" (cidade quadrada + península rural retangular)
 > cercados por um disco de mar. Transformar a **borda** numa **costa irregular e realista**
 > (capes, enseadas, pontas de areia, ilhotas), **mantendo todo o conteúdo atual nas posições
-> atuais**. Nada disso foi implementado ainda — só levantamento/projeto. O jogo está intacto.
+> atuais**.
 
 ## Princípio central: aditivo + fonte única de verdade
 - A costa é **ADITIVA**: só acrescenta terra **por fora** do que já existe. Assim **todo** o

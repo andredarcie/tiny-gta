@@ -42,6 +42,7 @@
   <div id="taxihud"></div>
   <div id="vighud"></div>
   <div id="medhud"></div>
+  <div id="ffhud"></div>
   <div id="racehud"></div>
   <div id="radio-hud" class="panel">
     <div id="radio-name"></div>
@@ -63,17 +64,35 @@
   <button id="btn-radio" class="touch-btn touch-btn-small" type="button" aria-label="Change radio">RAD</button>
   <button id="btn-pause" class="touch-btn touch-btn-small" type="button" aria-label="Pause">II</button>
 </div>
+<div id="weapon-wheel" aria-hidden="true"><canvas id="ww-canvas"></canvas></div>
 <div id="rotate-device" role="status" aria-live="polite">ROTATE YOUR PHONE</div>
 <button id="btn-fullscreen" type="button" aria-label="Toggle fullscreen">FULL</button>
-<div id="pauseov">PAUSED</div>
+<div id="pauseov">
+  <div id="pause-title">PAUSED</div>
+  <div id="pause-leaderboard">
+    <div class="lb-head">TOP PLAYERS</div>
+    <ol id="pause-lb-list"><li class="lb-empty">Loading…</li></ol>
+  </div>
+</div>
+
+<div id="mg-intro" aria-hidden="true">
+  <div class="mgi-box">
+    <div class="mgi-sub">MINI GAME</div>
+    <div id="mgi-title">MINI GAME</div>
+    <div class="lb-head">TOP 5</div>
+    <ol id="mgi-list"><li class="lb-empty">Loading…</li></ol>
+    <button id="mgi-go" type="button">PLAY ▶</button>
+    <div class="mgi-hint">Press any key or tap to play</div>
+  </div>
+</div>
 
 <div id="house-tv" aria-hidden="true">
   <div class="house-tv-shell">
-    <iframe id="house-tv-frame" title="Andre OS" loading="lazy" tabindex="-1"
+    <iframe id="house-tv-frame" title="Andre OS" loading="lazy" tabindex="0"
       allow="clipboard-read; clipboard-write; fullscreen; gamepad"></iframe>
   </div>
-  <button id="house-tv-exit" type="button" aria-label="Exit TV">EXIT</button>
-  <div id="house-tv-hint">E - EXIT TV</div>
+  <button id="house-tv-exit" type="button" tabindex="-1" aria-label="Exit TV">EXIT</button>
+  <div id="house-tv-hint">ESC - EXIT TV  ·  TYPE INTO THE TV</div>
 </div>
 
 <div id="gym-game" aria-hidden="true">
@@ -101,6 +120,10 @@
   <div id="modshop-panel">
     <div id="modshop-cats"></div>
     <div id="modshop-opts"></div>
+    <div id="modshop-cart">
+      <span id="modshop-total">CART EMPTY</span>
+      <button id="modshop-buy" type="button" aria-label="Finalize and buy" disabled>FINALIZE &amp; BUY</button>
+    </div>
   </div>
   <div id="modshop-toast"></div>
 </div>
@@ -160,7 +183,7 @@
   <button id="play" type="button">CLICK TO PLAY</button>
   <div id="best"></div>
   <div id="credit">TALK TO DIEGO PENHA ◆ EVADE THE POLICE ◆ DO NOT GET BUSTED</div>
-  <div id="buildver" style="margin-top:8px;font:600 11px 'IBM Plex Mono',monospace;opacity:.55">BUILD 99</div>
+  <div id="buildver" style="margin-top:8px;font:600 11px 'IBM Plex Mono',monospace;opacity:.55">BUILD 100</div>
 </div>
 
 <div id="nickmodal" aria-hidden="true">

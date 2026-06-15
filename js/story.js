@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {nodeX,ROAD,SIDE,BLOCK,N,GROUND,BEACH,rand,irand,pick,MOUNT_X,groundHeight} from './constants.js';
 import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene,camera} from './engine.js';
 import {makePed} from './entities.js';
 import {AC,master,blip,thud} from './audio.js';
@@ -16,6 +17,7 @@ import {makeStoryBox} from '../assets/models/missions/story-box.js';
 import {makeStoryMarker} from '../assets/models/missions/story-marker.js';
 import {makeStoryBeacon} from '../assets/models/missions/story-beacon.js';
 import {makeStoryArrow} from '../assets/models/missions/story-arrow.js';
+import {MiniGame} from './minigame.js';
 
 // ============================================================================
 // STORY: estrutura genérica de missões. Tudo que define uma missão (NPC,
@@ -430,7 +432,7 @@ function killTarget(){
   thud(14);
   if(S.beacon){scene.remove(S.beacon);S.beacon=null;}
   S.phase='completing';
-  if(m.reward)state.money+=m.reward;
+  if(m.reward)economy.earn(m.reward,'story');
   message(m.foundMsg,'var(--pink)');
   setTimeout(()=>showMissionPass(m,advance),1400);
 }
@@ -476,7 +478,7 @@ export function storyInteract(){
   if(S.phase==='returning'){
     S.phase='completing';
     startCutscene(m,a,fillLines(m.outro,S.spot),()=>{
-      if(m.reward)state.money+=m.reward;
+      if(m.reward)economy.earn(m.reward,'story');
       showMissionPass(m,advance);
     });
     return true;
@@ -523,10 +525,31 @@ function storyGoal(){
   return null;
 }
 
+// Objetivo do MINI GAME em curso (tem prioridade sobre a história): a seta 3D
+// passa a apontar EXATAMENTE pro alvo do mini game enquanto a sessão roda.
+//   - táxi/vigilante/paramédico/bombeiro/RC: o alvo atual (passageiro, fugitivo,
+//     ferido, incêndio, carro a destruir) — via MiniGame.activeBlips();
+//   - corrida/lanchas: o checkpoint/boia atual — via refs.raceBlips/boatRaceBlips.
+function miniGameGoal(){
+  if(!state.activeMiniGame)return null;
+  const targets=MiniGame.activeBlips?.()||[];
+  const t=targets.find(b=>b.current)||targets[0];
+  if(t)return{x:t.x,z:t.z,col:t.color||'#ffd24a'};
+  // corridas não expõem blips pela base (desenham o próprio percurso): usa o
+  // checkpoint atual marcado com current:true
+  const rb=[...(refs.raceBlips?.()||[]),...(refs.boatRaceBlips?.()||[])];
+  const cp=rb.find(b=>b.current);
+  if(cp)return{x:cp.x,z:cp.z,col:'#ff8a1e'};
+  return null;
+}
+
 export function updateStory(dt){
   if(cine.on)updateCine(dt);
-  // em ambiente interno a seta 3D de missão não aparece (o objetivo é na cidade)
-  const goal=state.started&&!state.cine&&!state.interior?storyGoal():null;
+  // em ambiente interno a seta 3D de missão não aparece (o objetivo é na cidade).
+  // Dentro de um mini game ela aponta pro objetivo do mini game (prioridade);
+  // fora dele, pro objetivo da história.
+  const goal=state.started&&!state.cine&&!state.interior
+    ?(miniGameGoal()||storyGoal()):null;
   storyArrow.visible=!!goal;
   if(goal){
     const pp=playerPos();

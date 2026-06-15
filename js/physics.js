@@ -36,7 +36,10 @@ export function collideStatics(p,r,bound=BOUND){
 
 export function addWanted(n,why,crime='pursuit'){
   const before=Math.floor(state.wanted);
-  state.wanted=clamp(state.wanted+n,0,5);state.lastCrime=state.time;
+  // teto 6 = estrela MÁXIMA (antes era 5, então a 6ª estrela do HUD nunca acendia).
+  // Chegar nas 6 estrelas convoca o exército (ver js/army.js).
+  state.wanted=clamp(state.wanted+n,0,6);state.lastCrime=state.time;
+  if(state.wanted>=6)state.sixStarT=state.time; // chegou/segue no máximo: (re)arma o hold das 6 estrelas
   if(Math.floor(state.wanted)>before){
     blip([880,660,880],0.08,'square',.14);
     message(why||('WANTED ★'+Math.floor(state.wanted)),'var(--pink)');

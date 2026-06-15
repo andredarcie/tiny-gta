@@ -4,6 +4,7 @@ import {
   performRadioSwitch,performShoot,resetInput
 } from './input.js';
 import {getInteractAction} from './hud.js';
+import {openWheel,closeWheel} from './weapon-wheel.js';
 
 const DEAD=.12,CURVE=1.35,YAW_SPEED=2.4,PITCH_SPEED=1.35;
 
@@ -161,7 +162,8 @@ export function setupTouchControls(){
     input.shootHeld=true;
     performShoot();
   },()=>{input.shootHeld=false;});
-  bindButton($('btn-wpn'),()=>refs.switchWeapon?.(1));
+  // WPN abre a roda de seleção; a própria roda (overlay) trata o toque no setor.
+  bindButton($('btn-wpn'),()=>{state.wheelOpen?closeWheel(false):openWheel();});
   bindButton($('btn-brake'),()=>{
     input.brake=true;
     input.brakeActive=true;

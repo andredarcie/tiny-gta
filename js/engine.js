@@ -10,7 +10,12 @@ const viewportSize=()=>({
   w:Math.round(window.visualViewport?.width||innerWidth),
   h:Math.round(window.visualViewport?.height||innerHeight)
 });
-function pixelRatioLimit(){return isMobileLike()?1.5:2;}
+// Teto do pixel ratio. Desktop também limitado a 1.5 (era 2): em telas HiDPI
+// (DPR≥2) renderizar a 2x = 4x os pixels, e ao varrer a câmera pela cidade o
+// custo de fill-rate/overdraw estourava (medido: pico de 175ms, ~70fps girando).
+// A 1.5x fica suave (pico ~29ms) e, com antialias, ainda nítido. Telas com DPR
+// ≤1.5 (a maioria dos desktops) não mudam nada — Math.min preserva o DPR real.
+function pixelRatioLimit(){return 1.5;}
 const initialSize=viewportSize();
 // Resolução adaptativa: basePR é o teto pelo DPR do aparelho; renderScale
 // (0.72..1) é ajustado em runtime por adaptResolution() (main.js) pra segurar a

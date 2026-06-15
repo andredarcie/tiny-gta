@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF} from './constants.js';
-import {state,refs,saveBest} from './state.js';
+import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers} from './constants.js';
+import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {makeBoat,makePed,shirtColors} from './entities.js';
 import {cur,playerPos,cameraRig} from './player.js';
@@ -12,6 +13,13 @@ import {message,bigText,hideBig} from './hud.js';
 import {blip,raceSiren} from './audio.js';
 import {radioOff} from './radio.js';
 import {raceMusicOn,raceMusicOff} from './race-music.js';
+import {MiniGame,MiniGameId} from './minigame.js';
+import {reportMiniGameResult} from './minigame-leaderboard.js';
+
+// mini game (sessão): trava o mundo durante a prova de lanchas. A corrida desenha
+// suas próprias boias no radar (ver raceOn no hud.js), então não expõe blips de
+// alvo aqui — a trava garante o "um por vez" e o mapa sem outras atividades.
+const game=new MiniGame({id:MiniGameId.BOAT_RACE,name:'Boat Race'});
 
 // Corrida de LANCHAS no mar: mesmo esquema da corrida de rua (race.js), só que na
 // água. Um pórtico flutuante de largada fica numa enseada; chegue de lancha, pare
@@ -33,10 +41,12 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',RACE_BUILD);
 const CP_COUNT=7;       // boias do percurso (a última é a chegada)
 const CP_SPACING=88;    // espaçamento (arco) entre boias — span>1 lado p/ contornar quina
 const LEAD=46;          // da linha de largada até a 1ª boia
-const CP_AHEAD=1;       // boias visíveis além da atual (1 = mostra a próxima p/ antecipar curva)
+const CP_AHEAD=0;       // boias visíveis além da atual (0 = SÓ a próxima boia que o jogador tem que pegar)
 const CP_RADIUS=12;     // raio pra contar a passagem na boia (lancha é rápida/larga)
 const NPC_COUNT=3;      // adversários
 const NPC_REACH=8;      // rivais precisam chegar PERTO da boia pra avançar
+const RIVAL_PACES=[0.9,1.05,1.18]; // ritmo distinto por rival: espalha o pelotão (não anda colado)
+const SEP=6;            // distância mínima entre duas lanchas: separa quem encosta
 const COAST_R=Math.round((WATER+SWIM_BOUND)/2); // raio (Chebyshev) da pista, no meio do mar
 const COAST_ZGAP=RURAL_HALF+22; // folga da península a leste: água só além disso
 const LAT_AMP=20;       // amplitude do slalom: desloca a boia p/ dentro/fora da faixa de água
@@ -96,8 +106,9 @@ function coastNormal(s){
   return{x:nx,z:nz};
 }
 
-// lancha ancorada (ver spawnBoat em player.js): a 1ª largada nasce colada nela
-const BOAT_SPAWN={x:24,z:WATER+12};
+// lancha ancorada (ver spawnBoat em player.js): a 1ª largada nasce colada nela.
+// Mesmo ponto de água garantido (logo além da costa irregular) das constants.
+const BOAT_SPAWN={x:BOAT_SPAWN_X,z:BOAT_SPAWN_Z};
 // largada (enseada inicial ao sul, perto de onde a lancha nasce ancorada)
 const start={x:0,z:0};
 const gate=makeBoatRaceGate({color:ORANGE}); // make* NÃO adiciona à cena
@@ -284,7 +295,7 @@ function spawnRacers(h0){
     g.position.set(start.x+rx*lane+bx*(6+i*3),SEA_Y+BOAT_FLOAT,start.z+rz*lane+bz*(6+i*3));
     g.rotation.y=h0;
     // mais lentos pra dar chance ao jogador; largam escalonados
-    racers.push({g,cp:0,wpi:0,speed:16+i*1.8,finished:false,bobT:Math.random()*6});
+    racers.push({g,cp:0,wpi:0,speed:16+i*1.8,pace:RIVAL_PACES[i%RIVAL_PACES.length],finished:false,bobT:Math.random()*6});
   }
 }
 
@@ -311,6 +322,7 @@ function playerPlace(){
 }
 
 function startRace(){
+  if(!game.begin())return; // outra sessão de mini game rolando: não larga
   if(!route.length)prepareRace();
   buildCpMarkers();
   playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
@@ -338,6 +350,7 @@ function finishRace(){
   gate.visible=true;
   phase='idle';freezePos=null;
   state.controlsLocked=false;
+  game.end(); // libera a trava do mundo
   refs.setGangsHidden?.(false);
   raceMusicOff();
   hideRaceHud();
@@ -345,11 +358,15 @@ function finishRace(){
 
 function abortRace(text='RACE ABANDONED',col='var(--pink)'){
   finishRace();
+  // morte/prisão no meio da prova: o cut de WASTED/BUSTED já assumiu o banner;
+  // não apaga nem sobrescreve com "RACE ABANDONED".
+  if(state.mode==='cut')return;
   hideBig();
   message(text,col);
 }
 
 function loseRace(){
+  reportMiniGameResult(game.id,{won:false,score:0}); // ranking: corrida perdida
   finishRace();
   bigText('YOU LOST','var(--pink)');
   setTimeout(hideBig,2200);
@@ -364,7 +381,9 @@ function completeRace(){
   // bônus de tempo: corrida rápida paga mais
   const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
   const paid=prize+bonus;
-  if(paid>0){state.money+=paid;saveBest();}
+  economy.earn(paid,'boat-race');
+  // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
+  reportMiniGameResult(game.id,{won:place===1,score:paid});
   const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
   finishRace();
   bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');
@@ -396,8 +415,8 @@ function updateRaceHud(){
     <div class="race-row"><span>TIME</span><b>${clock}</b></div>`;
 }
 
-// marcadores: mostra a boia atual (forte) + a próxima (apagada) pra antecipar a
-// curva; elas balançam na água. A chegada tem bandeira tremulando.
+// marcadores: mostra SÓ a boia atual (a próxima que o jogador tem que pegar);
+// ela balança na água. A chegada tem bandeira tremulando.
 function updateCpMarkers(dt){
   for(let i=0;i<cpMarkers.length;i++){
     const m=cpMarkers[i];
@@ -443,7 +462,21 @@ function updateRivalWake(dt){
   }
 }
 
+// progresso ao longo do percurso em "unidades de boia": boias já passadas +
+// fração da perna atual (0..1). Compara jogador e rival de forma contínua pra
+// alimentar o rubber banding.
+function legProgress(cp,x,z){
+  const to=route[cp];
+  if(!to)return route.length;            // já cruzou a chegada
+  const from=cp>0?route[cp-1]:start;
+  const legLen=Math.hypot(to.x-from.x,to.z-from.z)||1;
+  const distToNext=Math.hypot(to.x-x,to.z-z);
+  return cp+THREE.MathUtils.clamp(1-distToNext/legLen,0,1);
+}
+
 function updateRacers(dt){
+  const pp=playerPos();
+  const playerProg=legProgress(playerCp,pp.x,pp.z);
   for(const r of racers){
     if(r.finished)continue;
     const wp=npcPath[r.wpi];
@@ -455,7 +488,12 @@ function updateRacers(dt){
     const c0=r.g.rotation.y;
     let diff=THREE.MathUtils.euclideanModulo(h-c0+Math.PI,Math.PI*2)-Math.PI;
     r.g.rotation.y=c0+diff*Math.min(1,4*dt);
-    const step=Math.min(d,r.speed*dt);
+    // rubber banding (helper compartilhado): velocidade ancorada no ritmo atual
+    // do jogador — rival ATRÁS surta pra colar (fica grudado/visível), rival à
+    // frente alivia pra ser pego; jogador que erra/para é ultrapassado na hora
+    const gap=playerProg-legProgress(r.cp,r.g.position.x,r.g.position.z);
+    const spd=rubberSpeed(r.speed,gap,cur?.speed,r.pace);
+    const step=Math.min(d,spd*dt);
     r.g.position.x+=Math.sin(h)*step;
     r.g.position.z+=Math.cos(h)*step;
     // flutuação + proa levantada planando + inclinação pra dentro da curva
@@ -465,7 +503,7 @@ function updateRacers(dt){
     r.g.rotation.z=THREE.MathUtils.lerp(r.g.rotation.z,-diff*.4,Math.min(1,4*dt));
     // rastro de espuma jogado atrás da popa
     r.wakeT=(r.wakeT||0)+dt;
-    const interval=Math.max(.05,.16-r.speed*.003);
+    const interval=Math.max(.05,.16-spd*.003);
     const fx=Math.sin(r.g.rotation.y),fz=Math.cos(r.g.rotation.y);
     while(r.wakeT>=interval){
       r.wakeT-=interval;
@@ -481,6 +519,7 @@ function updateRacers(dt){
       r.wpi++;
     }
   }
+  separateRacers(racers,SEP); // duas lanchas nunca andam uma por dentro da outra
 }
 
 export function updateBoatRace(dt){

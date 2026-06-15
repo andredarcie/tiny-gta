@@ -1,4 +1,5 @@
 import {state} from './state.js';
+import {economy} from './economy.js';
 import {camera,scene} from './engine.js';
 import {player,playerPos,cameraRig} from './player.js';
 import {nearestDoor} from './interior.js';
@@ -46,7 +47,7 @@ function collectLoot(r){
   if(!r.loot||Math.hypot(pp.x-r.lootX,pp.z-r.lootZ)>1.2)return;
   if(r.loot==='money'){
     const v=irand(60,180);
-    state.money+=v;
+    economy.earn(v,'loot');
     message('+$'+v,'var(--gold)');
     blip([660,880],.07,'square',.14);
   }else{

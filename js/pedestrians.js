@@ -110,9 +110,9 @@ export function updatePeds(dt){
       _rnd.set(rand(-2,2),rand(5,8),rand(-2,2));
       p.vel.copy(_dir).multiplyScalar(activeCur.speed*.4).add(_rnd);
       state.comboN=state.time-state.lastHit<4?state.comboN+1:1;
-      state.lastHit=state.time;
+      state.lastHit=state.time;state.kills++;
       spawnDrop(p.g.position.x,p.g.position.z,irand(20,80)*state.comboN);
-      addWanted(1,'HIT AND RUN! ★'+Math.min(5,Math.floor(state.wanted+1)),'hit_run');
+      addWanted(1,'HIT AND RUN! ★'+Math.min(6,Math.floor(state.wanted+1)),'hit_run');
       if(state.comboN>1)message('COMBO x'+state.comboN+'!','var(--pink)');
       thud(Math.abs(activeCur.speed));state.shake=.35;
       continue;

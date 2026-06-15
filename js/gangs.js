@@ -47,6 +47,18 @@ export const gangs=[
 ];
 for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;g.remaining=GANG_ROSTER;g.defeated=false;}
 
+// REGRA FUNDAMENTAL: nenhum ponto/ícone de mini-game pode cair em território de
+// gangue VIVA. O centro é fixo e o raio só encolhe (e zera ao ser eliminada),
+// então testar o raio atual já basta — o ponto volta a valer sozinho quando a
+// gangue recua. `margin` dá folga extra (a corrida usa pra não largar na divisa).
+export function inGangTerritory(x,z,margin=0){
+  for(const g of gangs){
+    if(g.defeated)continue;
+    if(Math.hypot(x-g.x,z-g.z)<g.r+margin)return true;
+  }
+  return false;
+}
+
 export const gangPeds=[];
 
 // Scratch reaproveitado por frame em updateGangs (laço quente). Aggro e wander
@@ -98,7 +110,7 @@ function gangCasualty(m){
 // chamado por weapons.js quando uma bala acerta um membro
 export function killGangPed(m,dir){
   if(m.state==='dead'||m.state==='fly')return;
-  m.state='fly';
+  m.state='fly';state.kills++;
   m.vel.copy(dir).multiplyScalar(9).add(new THREE.Vector3(rand(-1.5,1.5),rand(5,7),rand(-1.5,1.5)));
   gangCasualty(m);
   addWanted(.4,null,'ped_shot');
@@ -220,6 +232,6 @@ export function updateGangs(dt){
   for(let i=tracers.length-1;i>=0;i--){
     const t=tracers[i];t.t+=dt;
     t.line.material.opacity=Math.max(0,.9-t.t*7);
-    if(t.t>.15){scene.remove(t.line);tracers.splice(i,1);}
+    if(t.t>.15){Entities.disposeGeometries(t.line);scene.remove(t.line);tracers.splice(i,1);}
   }
 }

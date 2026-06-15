@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {state,input,refs,saveBest} from './state.js';
+import {state,input,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene,camera} from './engine.js';
 import {N,ROAD,BLOCK,SIDE,rand,irand,nodeX,groundHeight,SWIM_BOUND} from './constants.js';
 import {isPark} from './world.js';
@@ -12,7 +13,7 @@ import {traffic,spawnTraffic} from './traffic.js';
 import {cops,officers as copOfficers,killOfficer} from './police.js';
 import {spawnDrop} from './missions.js';
 import {gangPeds,killGangPed} from './gangs.js';
-import {dentCar,poseAiming} from './entities.js';
+import {dentCar,poseAiming,disposeGeometries} from './entities.js';
 import {makePistolModel} from '../assets/models/weapons/pistol.js';
 import {makeRocketLauncherModel,makeMissileModel} from '../assets/models/weapons/rocket-launcher.js';
 import {makeGrenadeModel} from '../assets/models/weapons/grenade.js';
@@ -24,6 +25,8 @@ import {makeFireModel} from '../assets/models/effects/fire.js';
 import {makeFlameJetModel} from '../assets/models/effects/flame-jet.js';
 import {makeWeaponTracerLine} from '../assets/models/effects/weapon-tracer.js';
 import {WEAPONS,ARSENAL,FIST,bySlot} from './weapon-catalog.js';
+import {openMiniGameIntro,reportMiniGameResult} from './minigame-leaderboard.js';
+import {MiniGameId} from './minigame.js';
 
 const weaponPickups=[];
 function makeWeaponPickup(x,z){
@@ -62,7 +65,7 @@ function equip(w){
   if(!owned.includes(w))return;
   curWeapon=w;
   state.weaponHeld=state.mode==='foot'&&w.aimed;
-  if(heldModel){heldHolder.remove(heldModel);heldModel=null;curMuzzle=null;}
+  if(heldModel){disposeGeometries(heldModel);heldHolder.remove(heldModel);heldModel=null;curMuzzle=null;}
   if(w.makeModel){
     heldModel=w.makeModel({held:true});
     heldHolder.add(heldModel);
@@ -95,6 +98,25 @@ export function selectWeaponSlot(slot){
   const w=bySlot(slot);
   if(w&&owned.includes(w)){equip(w);blip([560,700],.05,'square',.1);}
 }
+// Inventário atual (na ordem do ciclo) para a roda de seleção (js/weapon-wheel.js).
+export function getInventory(){
+  return owned.map(w=>({
+    id:w.id,name:w.name,category:w.category,
+    infinite:w.infiniteAmmo,
+    ammo:w.infiniteAmmo?Infinity:Math.max(0,w.ammo),
+    max:w.maxAmmo,
+    current:w===curWeapon
+  }));
+}
+// Equipa direto pelo id (a roda chama isto ao soltar/tocar no setor escolhido).
+export function equipWeaponById(id){
+  if(state.mode!=='foot')return false;
+  const w=owned.find(x=>x.id===id);
+  if(!w||w===curWeapon)return false;
+  equip(w);
+  blip([560,720],.05,'square',.1);
+  return true;
+}
 export const getWeaponHud=()=>({
   id:curWeapon.id,name:curWeapon.name,ammo:curWeapon.ammoLabel(),max:curWeapon.maxAmmo,
   infinite:curWeapon.infiniteAmmo,category:curWeapon.category,
@@ -123,10 +145,15 @@ player.g.add(heldRocket);
 
 const rampageEl=document.getElementById('rampage');
 
+// tocar a lança-foguetes mostra o briefing (top 5); a chacina só começa quando o
+// jogador "passa" (igual aos outros mini-games). beginRampage faz o setup de fato.
 function startRampage(){
+  openMiniGameIntro(MiniGameId.ROCKET_RAMPAGE,'Rocket Rampage',beginRampage);
+}
+function beginRampage(){
   rampage.active=true;rampage.end=state.time+RAMPAGE_TIME;rampage.kills=0;
   rocketPickup.visible=false;
-  message(`RAMPAGE! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
+  message(`ROCKET RAMPAGE! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
   blip([220,330,440,660],.09,'square',.2);
 }
 
@@ -134,12 +161,13 @@ function endRampage(won){
   rampage.active=false;
   if(rampageEl)rampageEl.style.display='none';
   rocketRespawnAt=state.time+75; // a lança-foguetes volta pro pasto um tempo depois
+  reportMiniGameResult(MiniGameId.ROCKET_RAMPAGE,{won,score:rampage.kills}); // ranking (top 5)
   if(won){
-    state.money+=RAMPAGE_REWARD;saveBest();
-    message(`RAMPAGE PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
+    economy.earn(RAMPAGE_REWARD,'rocket-rampage');
+    message(`ROCKET RAMPAGE PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
     blip([523,659,784,1047],.09,'sine',.18);
   }else{
-    message('RAMPAGE FAILED','var(--pink)');
+    message('ROCKET RAMPAGE FAILED','var(--pink)');
     blip([220,170,120],.1,'sawtooth',.16);
   }
 }
@@ -189,6 +217,11 @@ export function grantWeapon(){
 }
 const byIdSafe=id=>WEAPONS.find(w=>w.id===id)||FIST;
 
+// DEV: rodando em localhost o jogador já começa com o arsenal completo e munição
+// cheia (atalho de teste pra não ter que caçar a arma no parque). Em qualquer
+// outro host (LAN/produção) nada muda — a arma continua sendo um pickup.
+if(location.hostname==='localhost'||location.hostname==='127.0.0.1')grantWeapon();
+
 // Já tem essa arma? (a loja mostra "OWNED" e bloqueia recompra)
 export function ownsWeapon(id){return owned.some(w=>w.id===id);}
 
@@ -204,6 +237,50 @@ export function buyWeapon(id){
   if(curWeapon===FIST)equip(w);else syncWeaponState();
   blip([440,660,880],.07,'square',.14);
   return true;
+}
+
+// Info de munição de UMA arma (a loja usa pra oferecer recarga a quem já a tem).
+// `full` = não há munição a comprar (arma de munição infinita, ex. punho/bat/
+// detonador, ou já está com o pente cheio).
+export function weaponAmmoInfo(id){
+  const w=WEAPONS.find(x=>x.id===id);
+  if(!w)return null;
+  return{
+    infinite:w.infiniteAmmo,
+    ammo:w.infiniteAmmo?Infinity:Math.max(0,w.ammo),
+    max:w.maxAmmo,
+    full:w.infiniteAmmo||w.ammo>=w.maxAmmo,
+  };
+}
+
+// Recarrega a munição de uma arma JÁ possuída até o máximo (loja: "BUY AMMO").
+// Quem cobra o dinheiro é a loja; aqui só repõe. Devolve false se não há o que
+// repor (arma não possuída ou de munição infinita).
+export function refillAmmo(id){
+  const w=WEAPONS.find(x=>x.id===id);
+  if(!w||w.infiniteAmmo||!owned.includes(w))return false;
+  w.refill();
+  syncWeaponState();
+  blip([440,660,880],.07,'square',.14);
+  return true;
+}
+
+// Pick up ONE weapon from the world (a hidden world pickup): add it to the
+// inventory if missing and ALWAYS refill its ammo (even if already owned, so the
+// pickup doubles as an ammo crate). Equips it if the player was only on fists.
+// Returns true when the weapon was new (lets the caller say "NEW WEAPON").
+export function pickupArsenalWeapon(id){
+  const w=WEAPONS.find(x=>x.id===id);
+  if(!w||w===FIST)return false;
+  const isNew=!owned.includes(w);
+  if(isNew){
+    owned.push(w);
+    owned.sort((a,b)=>WEAPONS.indexOf(a)-WEAPONS.indexOf(b));
+  }
+  w.refill();
+  if(curWeapon===FIST)equip(w);else syncWeaponState();
+  blip([440,660,880],.07,'square',.14);
+  return isNew;
 }
 
 let trainingSnapshot=null;
@@ -248,7 +325,7 @@ export function pickupWeapon(){
   const pickup=nearestWeaponPickup(3);
   if(!pickup)return;
   grantWeapon();
-  message('WEAPONS PICKED UP - 1-0 / WHEEL TO SWITCH','var(--gold)');
+  message('WEAPONS PICKED UP - HOLD TAB (OR WPN) FOR WEAPON WHEEL','var(--gold)');
 }
 
 export function confiscateWeapon(){
@@ -390,6 +467,7 @@ function resolveMeleeImpact(a){
   else if(hit.kind==='officer')killOfficer(hit.target);
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
+  else if(hit.kind==='army')hit.target.hit?.();
   else if(hit.kind==='car'){dentCar(hit.target.g,pos,dir,a.kind==='bat' ? .18 : .1);addWanted(.4,'MELEE ATTACK','melee');}
 }
 
@@ -500,12 +578,16 @@ function findWeaponHit(origin,dir,range=48){
     const d=rayHitXZ(origin,dir,t,t.r||.8,range);
     if(d!==null&&d<best.d)best={kind:'rangeTarget',d,target:t};
   }
+  for(const t of refs.armyTargets?.()||[]){ // soldados do exército desembarcados (★6)
+    const d=rayHitXZ(origin,dir,t.g.position,t.r||1.05,range);
+    if(d!==null&&d<best.d)best={kind:'army',d,target:t};
+  }
   return best;
 }
 
 function killPed(p,dir){
   if(p.state==='dead'||p.state==='fly')return;
-  p.state='fly';
+  p.state='fly';state.kills++;
   p.bloodDropped=true;
   p.vel.copy(dir).multiplyScalar(9).add(new THREE.Vector3(rand(-1.5,1.5),rand(5,7),rand(-1.5,1.5)));
   addBloodPuddle(p.g.position.x,p.g.position.z);
@@ -521,10 +603,13 @@ function makeExplosion(pos){
 
 // Onda de choque da explosão (raio 5): mata quem está perto, amassa e pode
 // detonar carros vizinhos em cadeia
-function blastDamage(pos){
+// opts.noSelf: skip damage/knockback to the player's own vehicle. Used by toy
+// explosions (RC Toyz) whose tiny car is always within the blast radius of its
+// own kills, which otherwise dents and brakes it every hit.
+function blastDamage(pos,opts){
   const bp=pos.clone().setY(.6);
   const pp=playerPos();
-  if(pp.distanceTo(pos)<5){
+  if(!opts?.noSelf&&pp.distanceTo(pos)<5){
     if(state.mode==='foot')getWasted();
     else if(cur){
       const dir=new THREE.Vector3().subVectors(cur.g.position,pos).setY(0).normalize();
@@ -546,6 +631,7 @@ function blastDamage(pos){
   for(const o of copOfficers){ // a onda de choque também derruba a dupla
     if(!o.dead&&o.g.position.distanceTo(pos)<5)killOfficer(o);
   }
+  refs.blastArmy?.(pos); // soldados do exército (★6) caem na explosão
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
       if(c===cur||c.plane)continue;
@@ -563,9 +649,9 @@ function blastDamage(pos){
 
 // explosão genérica exposta via refs: police.js detona os mísseis das
 // lança-foguetes dos policiais sem criar import circular com este módulo
-export function explodeAt(pos){
+export function explodeAt(pos,opts){
   makeExplosion(pos.clone());
-  blastDamage(pos);
+  blastDamage(pos,opts);
 }
 refs.explodeAt=explodeAt;
 
@@ -630,6 +716,7 @@ function handleBulletHit(hit,pos,dir,damage=1){
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
+  else if(hit.kind==='army')hit.target.hit?.();
   else if(!refs.inGunShopRange?.())addWanted(.25,'SHOT FIRED!','gunfire');
 }
 
@@ -835,7 +922,7 @@ export function updateWeapons(dt){
 
   // fogo automático: segurar o botão mantém o disparo (uzi/ak/m16/lança-chamas)
   if(input.shootHeld&&curWeapon.automatic&&!rampaging&&!swimming&&state.mode==='foot'&&
-     !state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.controlsLocked)
+     !state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.controlsLocked&&!state.wheelOpen)
     curWeapon.tryFire(api);
 
   syncWeaponState();
@@ -848,7 +935,7 @@ export function updateWeapons(dt){
     else if(rampageEl){
       rampageEl.style.display='block';
       rampageEl.textContent=
-        `RAMPAGE ${rampage.kills}/${RAMPAGE_GOAL} CARS - ${Math.ceil(rampage.end-state.time)}s`;
+        `ROCKET RAMPAGE ${rampage.kills}/${RAMPAGE_GOAL} CARS - ${Math.ceil(rampage.end-state.time)}s`;
     }
   }else{
     if(!rocketPickup.visible&&rocketRespawnAt>=0&&state.time>rocketRespawnAt)
@@ -869,7 +956,7 @@ export function updateWeapons(dt){
     const hit=findWeaponHit(m.g.position,m.dir,step+1.2);
     if(hit.kind!=='miss'){
       missileBlast(m.g.position.clone().addScaledVector(m.dir,hit.d),hit);
-      scene.remove(m.g);missiles.splice(i,1);continue;
+      disposeGeometries(m.g);scene.remove(m.g);missiles.splice(i,1);continue;
     }
     m.g.position.addScaledVector(m.dir,step);
     m.dist+=step;
@@ -877,7 +964,7 @@ export function updateWeapons(dt){
     if(collideStatics(_missileProbe,.3,SWIM_BOUND)||m.dist>=m.range||
       m.g.position.y<=groundHeight(m.g.position.x,m.g.position.z)){ // encosta da montanha
       missileBlast(m.g.position.clone(),null);
-      scene.remove(m.g);missiles.splice(i,1);continue;
+      disposeGeometries(m.g);scene.remove(m.g);missiles.splice(i,1);continue;
     }
     m.g.userData.flame.scale.setScalar(.7+Math.random()*.6); // chama tremula
     addTracer(m.g.position.clone().addScaledVector(m.dir,-1.1),m.g.position);
@@ -908,7 +995,7 @@ export function updateWeapons(dt){
     if(hit.kind!=='miss'){
       const hitPos=b.g.position.clone().addScaledVector(b.dir,hit.d);
       handleBulletHit(hit,hitPos,b.dir,b.damage);
-      scene.remove(b.g);
+      disposeGeometries(b.g);scene.remove(b.g);
       bullets.splice(i,1);
       continue;
     }
@@ -919,7 +1006,7 @@ export function updateWeapons(dt){
     addTracer(trailEnd,b.g.position);
     if(b.life<=0||b.dist>=b.range){
       addImpact(b.g.position,{kind:'miss'});
-      scene.remove(b.g);
+      disposeGeometries(b.g);scene.remove(b.g);
       bullets.splice(i,1);
     }
   }
@@ -928,19 +1015,19 @@ export function updateWeapons(dt){
     const s=1+e.t*4;
     e.g.scale.set(s,s,s);
     e.g.traverse(o=>{if(o.material)o.material.opacity=Math.max(0,o.material.opacity-dt*1.6);});
-    if(e.t>.75){scene.remove(e.g);explosions.splice(i,1);}
+    if(e.t>.75){disposeGeometries(e.g);scene.remove(e.g);explosions.splice(i,1);}
   }
   for(let i=tracers.length-1;i>=0;i--){
     const t=tracers[i];t.t+=dt;
     t.line.material.opacity=Math.max(0,1-t.t*8);
-    if(t.t>.14){scene.remove(t.line);tracers.splice(i,1);}
+    if(t.t>.14){disposeGeometries(t.line);scene.remove(t.line);tracers.splice(i,1);}
   }
   for(let i=impacts.length-1;i>=0;i--){
     const p=impacts[i];p.t+=dt;
     const s=1+p.t*5;
     p.ring.scale.set(s,s,s);
     p.ring.material.opacity=Math.max(0,.85-p.t*4);
-    if(p.t>.25){scene.remove(p.ring);impacts.splice(i,1);}
+    if(p.t>.25){disposeGeometries(p.ring);scene.remove(p.ring);impacts.splice(i,1);}
   }
 
   // ----- arremessáveis em voo (granada/molotov) -----
@@ -959,7 +1046,7 @@ export function updateWeapons(dt){
         const pos=t.g.position.clone();
         if(t.g.position.y<=gh+.1)pos.y=gh;
         molotovImpact(pos);
-        scene.remove(t.g);thrown.splice(i,1);
+        disposeGeometries(t.g);scene.remove(t.g);thrown.splice(i,1);
       }
     }else{ // granada: quica no chão e detona pelo tempo (fuse)
       t.fuse-=dt;
@@ -969,7 +1056,7 @@ export function updateWeapons(dt){
       }
       if(t.fuse<=0||t.life<=0){
         grenadeExplode(t.g.position.clone());
-        scene.remove(t.g);thrown.splice(i,1);
+        disposeGeometries(t.g);scene.remove(t.g);thrown.splice(i,1);
       }
     }
   }
@@ -980,7 +1067,7 @@ export function updateWeapons(dt){
     f.g.scale.multiplyScalar(1+dt*2.2);
     f.g.traverse(o=>{if(o.material&&o.material.opacity!=null)
       o.material.opacity=Math.max(0,o.material.opacity-dt*4.5);});
-    if(f.t>.18){scene.remove(f.g);flameJets.splice(i,1);}
+    if(f.t>.18){disposeGeometries(f.g);scene.remove(f.g);flameJets.splice(i,1);}
   }
 
   // ----- poças de fogo do molotov: dano por tempo a pé/peds/carros -----
@@ -1003,6 +1090,6 @@ export function updateWeapons(dt){
     if(fp.t>fp.life-1)
       fp.g.traverse(o=>{if(o.material&&o.material.opacity!=null)
         o.material.opacity=Math.max(0,o.material.opacity-dt*.9);});
-    if(fp.t>fp.life){scene.remove(fp.g);firePools.splice(i,1);}
+    if(fp.t>fp.life){disposeGeometries(fp.g);scene.remove(fp.g);firePools.splice(i,1);}
   }
 }

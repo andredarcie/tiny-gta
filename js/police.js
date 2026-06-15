@@ -3,7 +3,7 @@ import {N,clamp,rand,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from './constant
 import {state,refs} from './state.js';
 import {scene} from './engine.js';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
-  attachHandGun,poseAiming} from './entities.js';
+  attachHandGun,poseAiming,disposeGeometries} from './entities.js';
 import {makeHeli} from '../assets/models/police/helicopter.js';
 import {makeRocketLauncherModel,makeMissileModel} from '../assets/models/weapons/rocket-launcher.js';
 import {makeGangTracerLine} from '../assets/models/effects/gang-tracer.js';
@@ -23,6 +23,7 @@ export const officers=[]; // policiais a pé em campo (e corpos, por uns segundo
 export let heli=null;
 
 const COP_BLUE=0x2a3f6e;
+const SIX_STAR_HOLD=30; // segundos que a 6ª estrela (máxima) SEGURA antes de poder cair pra 5
 let lastShout=-99;
 
 export function spawnCop(){
@@ -73,9 +74,9 @@ export function clearCops(){
   while(cops.length)removeCop(cops.pop());
   for(const o of officers)scene.remove(o.g);
   officers.length=0;
-  for(const m of copMissiles)scene.remove(m.g);
+  for(const m of copMissiles){disposeGeometries(m.g);scene.remove(m.g);}
   copMissiles.length=0;
-  for(const t of tracers)scene.remove(t.line);
+  for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
   tracers.length=0;
 }
 refs.clearCops=clearCops;
@@ -83,7 +84,7 @@ refs.clearCops=clearCops;
 // chamado por weapons.js quando bala/explosão do jogador acerta um policial
 export function killOfficer(o){
   if(o.dead)return;
-  o.dead=true;o.deadT=0;
+  o.dead=true;o.deadT=0;state.kills++;
   if(o.car?.officers){
     const i=o.car.officers.indexOf(o);if(i>=0)o.car.officers.splice(i,1);
     if(!o.car.officers.length)o.car.officers=null; // viatura volta à caça
@@ -203,8 +204,15 @@ const _mid=new THREE.Vector3();
 
 export function updateCops(dt){
   const want=Math.floor(state.wanted);
-  if(cops.length<want&&cops.length<5&&Math.random()<dt*.8)spawnCop();
-  while(cops.length>want)removeCop(cops.pop());
+  // 6 estrelas (a MÁXIMA): a polícia se RETIRA — quem responde é o EXÉRCITO
+  // (js/army.js). Sem viatura e sem prisão lá em cima: só o caminhão militar.
+  if(want>=6){
+    while(cops.length)removeCop(cops.pop());
+    for(let i=officers.length-1;i>=0;i--){scene.remove(officers[i].g);officers.splice(i,1);}
+  }else{
+    if(cops.length<want&&cops.length<5&&Math.random()<dt*.8)spawnCop();
+    while(cops.length>want)removeCop(cops.pop());
+  }
   const pp=playerPos();
   let minD=1e9;
   for(const c of cops){
@@ -291,12 +299,12 @@ export function updateCops(dt){
     if(m.left<=0||collideStatics(_missileProbe,.3,SWIM_BOUND)||
       m.g.position.y<=groundHeight(m.g.position.x,m.g.position.z)){
       refs.explodeAt?.(m.g.position.clone());
-      scene.remove(m.g);copMissiles.splice(i,1);
+      disposeGeometries(m.g);scene.remove(m.g);copMissiles.splice(i,1);
     }
   }
   for(let i=tracers.length-1;i>=0;i--){
     const t=tracers[i];t.t+=dt;
-    if(t.t>.15){scene.remove(t.line);tracers.splice(i,1);}
+    if(t.t>.15){disposeGeometries(t.line);scene.remove(t.line);tracers.splice(i,1);}
   }
 
   // cerco: viatura colada OU policial a pé do lado, com o jogador parado/a pé
@@ -310,6 +318,13 @@ export function updateCops(dt){
     if(state.bustT>.4)message('THE POLICE ARE SURROUNDING YOU!','var(--blue)');
     if(state.bustT>1.8){getBusted();return;}
   }else state.bustT=Math.max(0,state.bustT-dt*2);
-  if(state.wanted>0&&state.time-state.lastCrime>9&&(minD>70||!cops.length))
+  // As 6 estrelas (máxima) SEGURAM por um tempo mínimo (SIX_STAR_HOLD) a partir do
+  // último crime que te manteve no 6 — antes caíam rápido demais pro exército nem
+  // chegar a engajar. Passado o hold, valem as regras normais de esfriamento.
+  const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
+  // esfria só sem perseguidor por perto E sem crime há 9s. Nas 6 estrelas a polícia
+  // se retirou, então o EXÉRCITO conta como perseguidor: com o caminhão em cima
+  // (<70m) o procurado também não cai.
+  if(!sixHold&&state.wanted>0&&state.time-state.lastCrime>9&&(minD>70||!cops.length)&&(refs.armyDist?.()??1e9)>70)
     state.wanted=Math.max(0,state.wanted-dt/5);
 }

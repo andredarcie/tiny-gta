@@ -91,6 +91,12 @@ export class Interior{
   // liga a sala e teleporta pra um ponto/heading quaisquer (morte/prisão usam
   // isto pra acordar no hospital/presídio — ver js/hospital.js e js/prison.js)
   enterAt(spawn,heading){
+    // Se o jogador vinha de OUTRO interior (ex.: morreu/foi preso DENTRO da loja de
+    // armas e é admitido no hospital/presídio), desliga o anterior PRIMEIRO — senão
+    // o onExit() dele nunca roda: a arma de treino ficava equipada de graça e o
+    // sistema de "uma arma só" travava ligado pra sempre.
+    const prev=state.interior;
+    if(prev&&prev!==this)prev.leave();
     state.interior=this;
     this.group.visible=true;
     setExteriorWorldHidden(true); // some com mar/céu que cortam salas off-map

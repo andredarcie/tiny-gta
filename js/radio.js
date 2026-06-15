@@ -1,6 +1,5 @@
 import {AC,master} from './audio.js';
 import {state,refs} from './state.js';
-import {RURAL_X0} from './constants.js';
 
 export const STATIONS=[
   {name:'BOOMBEAT RADIO 98.3', tag:'FUNK PARTY',        col:'#ff2e88', id:'batidao'},
@@ -10,25 +9,25 @@ export const STATIONS=[
   {name:'OFF AIR',             tag:'',                   col:'#666666', id:null},
 ];
 export let stationIdx=0;
-let radioActive=false,radioSched=null,radioGain=null,radioNodes=[];
+let radioActive=false,radioGain=null,radioNodes=[];
 let radioHudTimer=null;
-let inRural=false,_savedIdx=null; // troca de estação por zona (cidade ↔ rural)
 
 function getAC(){return AC;}
 function getMaster(){return master;}
 function overkillActive(){return !!refs.getOverkillState?.()?.active;}
+const mtof=m=>440*Math.pow(2,(m-69)/12);            // MIDI -> Hz (intervalos certos)
 
 export function radioInit(){
   const _AC=getAC(),_master=getMaster();
   if(!_AC||radioGain)return;
-  radioGain=_AC.createGain();radioGain.gain.value=.3;radioGain.connect(_master);
+  radioGain=_AC.createGain();radioGain.gain.value=.26;radioGain.connect(_master);
 }
 
 export function radioOff(){
-  clearTimeout(radioSched);radioActive=false;
-  const _AC=getAC();
-  const t=_AC?_AC.currentTime+.1:0;
-  for(const n of radioNodes)try{n.stop(t);}catch(e){}
+  clearTimeout(schedTimer);schedTimer=null;
+  radioActive=false;curStepFn=null;
+  const t=AC?AC.currentTime+.08:0;
+  for(const e of radioNodes)try{e.n.stop(t);}catch(_){}
   radioNodes=[];
   _radioHudHide();
 }
@@ -37,9 +36,9 @@ export function radioOn(){
   if(overkillActive()){radioOff();return;}
   radioInit();radioOff();
   const st=STATIONS[stationIdx];
-  if(!st.id){_radioHudShow();return;}
+  if(!st.id||!radioGain){_radioHudShow();return;}
   radioActive=true;
-  RADIO[st.id]();
+  startSong(SONGS[st.id]);
   _radioHudShow();
 }
 
@@ -48,25 +47,9 @@ export function radioRandom(){
   stationIdx=Math.floor(Math.random()*(STATIONS.length-1));
 }
 
-const sertaoIdx=()=>STATIONS.findIndex(s=>s.id==='sertao'); // COUNTRY ROOTS = rádio rural
-
-// Entrou no carro DENTRO da zona rural toca a country; fora dela, sorteia.
-export function radioEnter(){
-  if(inRural)stationIdx=sertaoIdx();else radioRandom();
-}
-
-// Chamado por frame com a posição do jogador: detecta a troca de zona e, se
-// estiver dirigindo, troca a estação na hora (rural → COUNTRY ROOTS; ao voltar,
-// retoma a estação que tocava antes). radioOn() já mostra o HUD da estação.
-export function radioZone(px){
-  const nowRural=px>RURAL_X0+8; // histerese pequena pra não piscar na fronteira
-  if(nowRural===inRural)return;
-  inRural=nowRural;
-  if(state.mode!=='car'||overkillActive())return;
-  if(nowRural){_savedIdx=stationIdx;stationIdx=sertaoIdx();}
-  else{stationIdx=_savedIdx!=null?_savedIdx:Math.floor(Math.random()*(STATIONS.length-1));_savedIdx=null;}
-  radioOn();
-}
+// Entrou no carro: sorteia uma estação. NÃO força mais a country ao chegar na
+// zona rural — a COUNTRY ROOTS continua na lista pra sintonizar na mão.
+export function radioEnter(){ radioRandom(); }
 
 export function radioSwitch(){
   if(overkillActive()){radioOff();return;}
@@ -102,200 +85,350 @@ function _radioStatic(){
   s.connect(f).connect(g).connect(_master);s.start();
 }
 
-// Synthesis helpers
-function _rk(t,freq=52,vol=.9){
-  const _AC=getAC();
-  const o=_AC.createOscillator(),g=_AC.createGain();
-  o.frequency.setValueAtTime(freq*3,t);
-  o.frequency.exponentialRampToValueAtTime(freq,t+.07);
-  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+.32);
-  o.connect(g).connect(radioGain);o.start(t);o.stop(t+.36);radioNodes.push(o);
+// ===================================================================
+//  FX BUS — criado UMA vez e reaproveitado entre estações (perf):
+//  um delay com realimentação (eco/slap sincronizado ao andamento) e
+//  um reverb por convolução (IR procedural). As vozes mandam sinal via
+//  uma simples conexão (sem nó por nota) — só os melódicos/acordes/caixa
+//  entram no reverb; bumbo/baixo ficam secos pra não embolar o grave.
+// ===================================================================
+let fxDelay=null,fxFeedback=null,fxDelaySend=null,fxDelayWet=null,fxReverbSend=null,fxReverbWet=null;
+
+function makeIR(dur,decay){
+  const rate=AC.sampleRate,len=Math.max(1,Math.floor(rate*dur));
+  const buf=AC.createBuffer(2,len,rate);
+  for(let ch=0;ch<2;ch++){
+    const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);
+  }
+  return buf;
 }
-function _rs(t,vol=.45){
-  const _AC=getAC();
-  const len=Math.floor(_AC.sampleRate*.13),buf=_AC.createBuffer(1,len,_AC.sampleRate);
-  const d=buf.getChannelData(0);
-  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.5);
-  const s=_AC.createBufferSource();s.buffer=buf;
-  const f=_AC.createBiquadFilter();f.type='bandpass';f.frequency.value=1600;f.Q.value=.75;
-  const g=_AC.createGain();g.gain.value=vol;
-  s.connect(f).connect(g).connect(radioGain);s.start(t);radioNodes.push(s);
+function ensureFX(){
+  if(!AC||fxDelaySend)return;
+  // --- delay (eco/slap) ---
+  fxDelaySend=AC.createGain();fxDelaySend.gain.value=1;
+  fxDelay=AC.createDelay(1.5);fxDelay.delayTime.value=.27;
+  const dlp=AC.createBiquadFilter();dlp.type='lowpass';dlp.frequency.value=2400;
+  fxFeedback=AC.createGain();fxFeedback.gain.value=.3;
+  fxDelayWet=AC.createGain();fxDelayWet.gain.value=.14;
+  fxDelaySend.connect(fxDelay);fxDelay.connect(dlp);
+  dlp.connect(fxFeedback);fxFeedback.connect(fxDelay);   // realimentação
+  dlp.connect(fxDelayWet);fxDelayWet.connect(radioGain);
+  // --- reverb (sala curta) ---
+  fxReverbSend=AC.createGain();fxReverbSend.gain.value=1;
+  const conv=AC.createConvolver();conv.buffer=makeIR(1.4,2.4);
+  fxReverbWet=AC.createGain();fxReverbWet.gain.value=.16;
+  fxReverbSend.connect(conv);conv.connect(fxReverbWet);fxReverbWet.connect(radioGain);
 }
-function _rh(t,vol=.1,dur=.038){
-  const _AC=getAC();
-  const len=Math.floor(_AC.sampleRate*dur),buf=_AC.createBuffer(1,len,_AC.sampleRate);
+
+// ===================================================================
+//  VOZES — todas com envelope sem clique (ataque sobe de .0001, nunca
+//  setValueAtTime no volume cheio) e empurradas em radioNodes p/ o
+//  radioOff conseguir parar. {n,end} permite podar nós já mortos.
+// ===================================================================
+function _push(n,end){radioNodes.push({n,end});}
+
+// bumbo: queda de pitch + envelope curto (seco, sem reverb)
+function _rk(t,vol=.9,freq=48){
+  const o=AC.createOscillator(),g=AC.createGain();
+  o.frequency.setValueAtTime(freq*4.5,t);o.frequency.exponentialRampToValueAtTime(freq,t+.07);
+  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+.33);
+  o.connect(g).connect(radioGain);o.start(t);o.stop(t+.36);_push(o,t+.36);
+}
+// caixa: corpo de ruído + estalo tonal (dá "crack"), com reverb
+function _rs(t,vol=.45,bright=1){
+  const len=Math.floor(AC.sampleRate*.16),buf=AC.createBuffer(1,len,AC.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,1.3);
+  const s=AC.createBufferSource();s.buffer=buf;
+  const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=1700*bright;f.Q.value=.7;
+  const g=AC.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+.16);
+  s.connect(f).connect(g).connect(radioGain);if(fxReverbSend)g.connect(fxReverbSend);
+  s.start(t);s.stop(t+.18);_push(s,t+.18);
+  const o=AC.createOscillator();o.type='triangle';
+  o.frequency.setValueAtTime(330,t);o.frequency.exponentialRampToValueAtTime(180,t+.06);
+  const og=AC.createGain();og.gain.setValueAtTime(vol*.5,t);og.gain.exponentialRampToValueAtTime(.001,t+.09);
+  o.connect(og).connect(radioGain);o.start(t);o.stop(t+.1);_push(o,t+.1);
+}
+// chimbal fechado
+function _rh(t,vol=.1,dur=.03){
+  const len=Math.floor(AC.sampleRate*dur),buf=AC.createBuffer(1,len,AC.sampleRate);
   const d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=Math.random()*2-1;
-  const s=_AC.createBufferSource();s.buffer=buf;
-  const f=_AC.createBiquadFilter();f.type='highpass';f.frequency.value=9000;
-  const g=_AC.createGain();g.gain.value=vol;
-  s.connect(f).connect(g).connect(radioGain);s.start(t);radioNodes.push(s);
+  const s=AC.createBufferSource();s.buffer=buf;
+  const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=8800;
+  const g=AC.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur+.005);
+  s.connect(f).connect(g).connect(radioGain);s.start(t);s.stop(t+dur+.02);_push(s,t+dur+.02);
 }
-function _rb(t,freq,dur,vol=.42){
-  const _AC=getAC();
-  const o=_AC.createOscillator();o.type='sawtooth';
-  const f=_AC.createBiquadFilter();f.type='lowpass';f.frequency.value=380;
-  const g=_AC.createGain();o.frequency.value=freq;
-  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  o.connect(f).connect(g).connect(radioGain);o.start(t);o.stop(t+dur+.01);radioNodes.push(o);
+// chimbal aberto (cauda mais longa)
+function _roh(t,vol=.1){
+  const len=Math.floor(AC.sampleRate*.14),buf=AC.createBuffer(1,len,AC.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,.6);
+  const s=AC.createBufferSource();s.buffer=buf;
+  const f=AC.createBiquadFilter();f.type='highpass';f.frequency.value=8000;
+  const g=AC.createGain();g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+.13);
+  s.connect(f).connect(g).connect(radioGain);s.start(t);s.stop(t+.15);_push(s,t+.15);
 }
-function _rn(t,freq,dur,vol=.1,type='triangle'){
-  const _AC=getAC();
-  const o=_AC.createOscillator();o.type=type;o.frequency.value=freq;
-  const g=_AC.createGain();
-  g.gain.setValueAtTime(vol,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  o.connect(g).connect(radioGain);o.start(t);o.stop(t+dur+.01);radioNodes.push(o);
+// palma: 4 estalos de ruído em fila (clap clássico), com reverb
+function _rclap(t,vol=.4){
+  for(const off of[0,.012,.024,.05]){
+    const len=Math.floor(AC.sampleRate*.09),buf=AC.createBuffer(1,len,AC.sampleRate);
+    const d=buf.getChannelData(0);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2.2);
+    const s=AC.createBufferSource();s.buffer=buf;
+    const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=1500;f.Q.value=.9;
+    const g=AC.createGain();const v=off>.03?vol:vol*.6;
+    g.gain.setValueAtTime(v,t+off);g.gain.exponentialRampToValueAtTime(.001,t+off+.09);
+    s.connect(f).connect(g).connect(radioGain);if(fxReverbSend)g.connect(fxReverbSend);
+    s.start(t+off);s.stop(t+off+.1);_push(s,t+off+.1);
+  }
 }
-function _rc(t,freqs,dur,vol=.07,type='triangle'){freqs.forEach(f=>_rn(t,f,dur,vol,type));}
-function _rjit(ms=.005){return(Math.random()-.5)*ms;}
+// baixo: 2 dentes-de-serra desafinadas (corpo gordo) por um passa-baixa com
+// envelope de filtro (abre e fecha = "funk") + sub-seno uma oitava abaixo (peso)
+function _rbass(t,freq,dur,vol=.4,o={}){
+  const {cut=420,q=4,type='sawtooth',spread=6,sub=true}=o;
+  const f=AC.createBiquadFilter();f.type='lowpass';f.Q.value=q;
+  f.frequency.setValueAtTime(Math.min(cut*2.4,7000),t);
+  f.frequency.exponentialRampToValueAtTime(cut,t+dur*.55);
+  const g=AC.createGain();
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  const dts=spread?[-spread,spread]:[0];
+  for(const dt of dts){
+    const osc=AC.createOscillator();osc.type=type;osc.frequency.value=freq;osc.detune.value=dt;
+    osc.connect(f);osc.start(t);osc.stop(t+dur+.03);_push(osc,t+dur+.03);
+  }
+  f.connect(g).connect(radioGain);
+  if(sub){
+    const so=AC.createOscillator();so.type='sine';so.frequency.value=freq/2;
+    const sg=AC.createGain();
+    sg.gain.setValueAtTime(.0001,t);sg.gain.exponentialRampToValueAtTime(vol*.7,t+.012);
+    sg.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    so.connect(sg).connect(radioGain);so.start(t);so.stop(t+dur+.03);_push(so,t+dur+.03);
+  }
+}
+// nota simples com ADSR sem clique (membro de acorde / linha rápida)
+function _rnote(t,freq,dur,vol=.08,type='triangle',rev=0,del=0){
+  const o=AC.createOscillator();o.type=type;o.frequency.value=freq;
+  const g=AC.createGain();
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.008);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g).connect(radioGain);
+  if(rev&&fxReverbSend)g.connect(fxReverbSend);
+  if(del&&fxDelaySend)g.connect(fxDelaySend);
+  o.start(t);o.stop(t+dur+.03);_push(o,t+dur+.03);
+}
+function _rchord(t,midis,dur,vol,type='triangle',rev=0,del=0){
+  for(const m of midis)_rnote(t,mtof(m),dur,vol,type,rev,del);
+}
+// pestana dedilhada: rola as cordas com 9ms entre elas (humaniza o acorde)
+function _rstrum(t,midis,dur,vol,type='triangle',rev=1){
+  midis.forEach((m,k)=>_rnote(t+k*.009,mtof(m),dur,vol,type,rev,0));
+}
+// linha melódica "gorda": 2 osc desafinados (chorus) + sends opcionais
+function _rlead(t,freq,dur,vol=.1,type='sawtooth',rev=0,del=0){
+  const g=AC.createGain();
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.012);
+  g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  for(const dt of[-6,7]){
+    const o=AC.createOscillator();o.type=type;o.frequency.value=freq;o.detune.value=dt;
+    o.connect(g);o.start(t);o.stop(t+dur+.03);_push(o,t+dur+.03);
+  }
+  g.connect(radioGain);
+  if(rev&&fxReverbSend)g.connect(fxReverbSend);
+  if(del&&fxDelaySend)g.connect(fxDelaySend);
+}
+// colchão sustentado (acordes longos): ataque lento + reverb pra encher o fundo
+function _rpad(t,midis,dur,vol=.045,type='sawtooth'){
+  for(const m of midis){
+    const o=AC.createOscillator();o.type=type;o.frequency.value=mtof(m);o.detune.value=Math.random()*8-4;
+    const g=AC.createGain();
+    g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+dur*.3);
+    g.gain.setValueAtTime(vol,t+dur*.7);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+    o.connect(g).connect(radioGain);if(fxReverbSend)g.connect(fxReverbSend);
+    o.start(t);o.stop(t+dur+.05);_push(o,t+dur+.05);
+  }
+}
+// viola/sanfona: nota com vibrato (LFO na frequência) — só notas longas (poucas)
+function _rfiddle(t,freq,dur,vol=.09){
+  const g=AC.createGain();
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.03);
+  g.gain.setValueAtTime(vol,t+dur*.6);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  const o=AC.createOscillator();o.type='sawtooth';o.frequency.value=freq;
+  const lfo=AC.createOscillator();lfo.type='sine';lfo.frequency.value=5.5;
+  const lg=AC.createGain();lg.gain.value=freq*.012;                 // ~12 cents de vibrato
+  lfo.connect(lg).connect(o.frequency);
+  o.connect(g).connect(radioGain);if(fxReverbSend)g.connect(fxReverbSend);
+  o.start(t);o.stop(t+dur+.05);lfo.start(t);lfo.stop(t+dur+.05);
+  _push(o,t+dur+.05);_push(lfo,t+dur+.05);
+}
 
-const RADIO={
-  batidao(){
-    const bpm=140,q=60/bpm,s=q/4,now=getAC().currentTime+.06,BARS=8,S=BARS*16;
-    const roots=[110,87.3,130.8,98, 110,146.8,164.8,110];
-    const bA=[1,0,0,1,0,1,0,0, 1,0,1,0,0,1,0,0];
-    const bB=[1,0,1,0,0,0,1,0, 1,0,0,1,0,0,1,1];
-    const kA=[1,0,0,1,0,0,1,0, 1,0,1,0,0,0,1,0];
-    const kB=[1,0,0,0,1,0,1,0, 1,0,0,0,1,0,1,0];
-    const mA=[220,0,0,196,0,0,220,0, 0,165,0,0,220,0,0,0];
-    const mB=[330,0,294,0,0,330,0,0, 294,0,0,262,0,330,294,0];
-    for(let i=0;i<S;i++){
-      const bar=i>>4,step=i&15,t=now+i*s+_rjit(.004);
-      const isB=bar>=4,root=roots[bar],isLast=bar===BARS-1;
-      const isFill=isLast&&step>=12;
-      _rh(t,step%2===0?.11:.07,(step===3||step===11)?.09:.034);
-      if((isB?kB:kA)[step])_rk(t+_rjit(.003),50,step===0?1.0:.86);
-      if(step===4||step===12)_rs(t+_rjit(.004),isFill?.65:.5);
-      if(isFill&&step>12)_rs(t+s*.5+_rjit(.003),.28);
-      if((isB?bB:bA)[step]){
-        const freq=step<8?root:root*(step%4===0?1.333:1.125);
-        _rb(t,freq,s*1.7,.46);
-      }
-      const mel=isB?mB:mA;
-      if(mel[step%16]){
-        const oct=bar%2===0?1:(isB?1.5:1.25);
-        _rn(t,mel[step%16]*oct,q*.6,.08,'square');
-      }
-      if((bar===3||bar===7)&&step===14)_rn(t,110,q*.25,.1,'square');
-    }
-    if(radioActive)radioSched=setTimeout(()=>RADIO.batidao(),(S*s-.18)*1000);
-  },
+// ===================================================================
+//  LOOKAHEAD SCHEDULER (padrão Chris Wilson "A Tale of Two Clocks").
+//  Em vez de agendar o loop inteiro de uma vez (rajada de centenas de
+//  nós num frame), acorda a cada ~90ms e agenda só os passos dentro de
+//  uma janela de 0.7s. Espalha a criação de nós -> sem hitch. Roda só
+//  com o rádio ligado; tudo o resto é no audio thread (não toca o FPS).
+// ===================================================================
+let curStepFn=null,curStepDur=.1,curStepCount=256,nextStepIdx=0,nextNoteTime=0,schedTimer=null;
+const LOOKAHEAD=.7,SCHED_TICK=90;
 
-  pagode(){
-    const bpm=95,q=60/bpm,s=q/4,now=getAC().currentTime+.06,BARS=8,S=BARS*16;
-    const roots=[146.8,116.5,87.3,130.8, 146.8,110,98,110];
-    const cavV=[
-      [293.7,349.2,440,587.3],[233,293.7,349.2,466.2],[174.6,220,261.6,349.2],[130.8,164.8,196,261.6],
-      [293.7,349.2,440,587.3],[110,138.6,165,220],[196,233,293.7,392],[110,138.6,165,220],
-    ];
-    const tamA=[1,0,0,1,1,0,1,0, 0,1,0,1,1,0,0,1];
-    const tamB=[0,1,0,1,0,1,0,0, 1,0,0,1,0,1,1,0];
-    const bassA=[1,0,1,0,0,0,1,0, 1,0,0,1,0,0,1,0];
-    const bassB=[1,0,0,1,0,1,0,0, 1,0,1,0,0,0,1,1];
-    for(let i=0;i<S;i++){
-      const bar=i>>4,step=i&15,t=now+i*s+_rjit(.006);
-      const isB=bar>=4,root=roots[bar],isLast=bar===BARS-1;
-      const cv=cavV[bar];
-      if((isB?tamB:tamA)[step])_rh(t,step%4===0?.14:.09,(isB?tamB:tamA)[step]&&step%4===0?.1:.05);
-      if(step===0)_rk(t,62,.75);
-      if(step===8&&bar%2===0)_rk(t,58,.6);
-      if(step===10&&isB)_rk(t,55,.45);
-      if(isLast&&step===14)_rk(t,60,.8);
-      if(step===8)_rs(t,.38);
-      if(isLast&&[12,14].includes(step))_rs(t,.28);
-      if((isB?bassB:bassA)[step])_rb(t,root,s*2,.44);
-      if(step===7||step===15)_rb(t,root*1.125,s*.7,.28);
-      const cavBeats=isB?[2,5,10,13]:[2,6,10,14];
-      if(cavBeats.includes(step))_rc(t,cv,s*.75,.076+(bar%2===0?.01:0),'triangle');
-      if(isB&&(step===3||step===11))_rc(t,cv.map(f=>f*1.5),s*.35,.04,'triangle');
-      if(bar===3&&step===12)_rn(t,cv[3],q*.3,.08,'triangle');
-      if(bar===7&&step===12)_rn(t,cv[3]*2,q*.25,.07,'triangle');
-    }
-    if(radioActive)radioSched=setTimeout(()=>RADIO.pagode(),(S*s-.18)*1000);
-  },
+function pruneNodes(now){            // compacta no lugar (sem alocar) nós já mortos
+  let w=0;
+  for(let r=0;r<radioNodes.length;r++){const e=radioNodes[r];if(e.end>now-.1)radioNodes[w++]=e;}
+  radioNodes.length=w;
+}
+function scheduler(){
+  if(!radioActive||!AC||!curStepFn)return;
+  if(radioNodes.length>320)pruneNodes(AC.currentTime);
+  const ahead=AC.currentTime+LOOKAHEAD;
+  while(nextNoteTime<ahead){
+    const idx=nextStepIdx%curStepCount;
+    curStepFn(idx>>4,idx&15,nextNoteTime,idx);
+    nextStepIdx++;nextNoteTime+=curStepDur;
+  }
+  schedTimer=setTimeout(scheduler,SCHED_TICK);
+}
+function startSong(song){
+  ensureFX();
+  curStepFn=song.step;curStepDur=(60/song.bpm)/4;curStepCount=song.bars*16;
+  nextStepIdx=0;nextNoteTime=AC.currentTime+.14;
+  const now=AC.currentTime;
+  fxDelay.delayTime.setValueAtTime(curStepDur*(song.delayDiv||3),now); // delay no tempo
+  fxFeedback.gain.setValueAtTime(song.dfb??.3,now);
+  fxDelayWet.gain.setValueAtTime(song.dwet??.14,now);
+  fxReverbWet.gain.setValueAtTime(song.rwet??.16,now);
+  scheduler();
+}
 
-  groove(){
-    const bpm=105,q=60/bpm,s=q/4,now=getAC().currentTime+.06,BARS=8,S=BARS*16;
-    const roots=[110,87.3,130.8,98, 110,146.8,98,110];
-    const chords=[
-      [220,261.6,330,440],[174.6,220,261.6,349.2],[130.8,164.8,196,261.6],[98,123.5,146.8,196],
-      [220,261.6,330,440],[146.8,174.6,220,293.7],[98,123.5,146.8,196],[220,261.6,330,440],
-    ];
-    const kA=[1,0,0,0,0,0,0,0, 1,0,1,0,0,0,0,0];
-    const kB=[1,0,0,0,0,0,1,0, 1,0,0,0,0,0,1,0];
-    const bassA=[1,0,0,1,0,1,0,0, 1,0,0,0,1,0,1,0];
-    const bassB=[1,0,1,0,0,0,1,0, 0,1,0,0,1,0,0,1];
-    const bassNotes=roots.map(r=>[r,r*1.125,r*1.25,r*1.5]);
-    for(let i=0;i<S;i++){
-      const bar=i>>4,step=i&15,t=now+i*s+_rjit(.005);
-      const isB=bar>=4,root=roots[bar],isLast=bar===BARS-1;
-      const ch=chords[bar],bn=bassNotes[bar];
-      const swing=step%2===0?.003:-.001;
-      _rh(t+swing,.09+(step%4===2?.03:0),(step%8===4)?.07:.034);
-      if((isB?kB:kA)[step])_rk(t+_rjit(.003),55,step===0?1.0:.85);
-      if(step===4||step===12)_rs(t+_rjit(.003),.46);
-      if(step===6&&isB)_rs(t,.13);
-      if(step===14)_rs(t,isLast?.58:.15);
-      if(step===2&&bar%2===0)_rs(t,.11);
-      if((isB?bassB:bassA)[step]){
-        const ni=step<8?0:(step%4===2?2:1);
-        _rb(t,bn[ni],step%8===7?s*.5:s*1.5,.44);
-      }
-      if((step===7||step===15)&&Math.random()<.5)_rb(t,root*1.06,s*.4,.28);
-      if(!isB){
-        if(step===2||step===10)_rc(t,ch,s*.8,.07,'sawtooth');
-      }else{
-        if(step===2||step===6||step===10)_rc(t,ch,s*.65,.08,'sawtooth');
-        if(step===13)_rc(t,chords[(bar+1)%BARS],s*.4,.055,'sawtooth');
-      }
-      if(!isB){
-        if(step===0)_rn(t,root*4,q*.6,.09,'sawtooth');
-        if(bar%2===1&&step===8)_rn(t,root*5,q*.4,.07,'sawtooth');
-      }else{
-        if(step===0)_rn(t,root*4,q*.45,.09,'sawtooth');
-        if(step===4)_rn(t,root*3.56,q*.3,.07,'sawtooth');
-        if(step===8)_rn(t,root*3,q*.5,.09,'sawtooth');
-        if(step===12&&bar%2===0)_rn(t,root*4.5,q*.25,.07,'sawtooth');
-      }
-    }
-    if(radioActive)radioSched=setTimeout(()=>RADIO.groove(),(S*s-.18)*1000);
-  },
+// ===================================================================
+//  MÚSICAS — cada estação é um arranjo de 16 compassos com intro /
+//  verso / refrão (seção = bar<2 intro, <10 verso, senão refrão).
+//  Padrões e vozes ficam em const de módulo (sem alocar por passo).
+// ===================================================================
 
-  sertao(){
-    const bpm=100,q=60/bpm,s=q/4,now=getAC().currentTime+.06,BARS=8,S=BARS*16;
-    const roots=[98,146.8,164.8,130.8, 98,130.8,146.8,98];
-    const phrases=[
-      [392,0,330,0,392,0,440,330, 392,0,330,0,294,330,392,0],
-      [523,0,494,0,440,0,523,494, 440,0,392,0,440,494,523,0],
-      [392,330,294,0,330,0,294,0, 330,0,392,0,440,0,392,0],
-      [440,0,392,0,330,0,294,330, 294,0,330,0,392,440,392,0],
-    ];
-    const bassA=[1,0,1,0,0,0,1,0, 1,0,1,0,0,0,1,0];
-    const bassB=[1,0,0,1,0,0,1,0, 1,0,0,0,1,0,1,0];
-    for(let i=0;i<S;i++){
-      const bar=i>>4,step=i&15,t=now+i*s+_rjit(.005);
-      const isB=bar>=4,root=roots[bar],isLast=bar===BARS-1;
-      if(step%4===0)_rh(t,.11,.065);
-      else if(step%4===2)_rh(t,.07,.04);
-      else _rh(t,.04,.025);
-      if(step===0)_rk(t,60,.72);
-      if(step===8)_rk(t,56,.65);
-      if(isB&&step===5)_rk(t,52,.45);
-      if(isLast&&step===14)_rk(t,60,.85);
-      if(step===4||step===12)_rs(t,.36);
-      if(isLast&&step>=12&&step%2===0)_rs(t,.24);
-      if((isB?bassB:bassA)[step])_rb(t,root,s*1.9,.38);
-      if(step===7)_rb(t,root*1.125,s*.6,.25);
-      if(step===15&&!isLast)_rb(t,roots[bar+1]*.75,s*.55,.22);
-      const phraseIdx=Math.floor(bar/2)%4;
-      const mel=phrases[phraseIdx];
-      if(mel[step]){
-        _rn(t,mel[step],q*.62,.09,'square');
-        _rn(t,mel[step]*1.5,q*.55,.045,'square');
-        if(Math.random()<.45)_rn(t+q*.11,mel[step],q*.4,.05,'square');
-      }
-      if(step===0||step===8)_rc(t,[root,root*1.25,root*1.5],q*.85,.065,'square');
-      if((bar===3||bar===7)&&step===12)_rn(t,mel[0]||392,q*.2,.1,'square');
-    }
-    if(radioActive)radioSched=setTimeout(()=>RADIO.sertao(),(S*s-.18)*1000);
-  },
+// ---- BOOMBEAT 98.3 — funk brasileiro, 130 BPM, vi–IV–I–V (Am F C G) ----
+const BAT_ROOTS=[110,87.3,130.8,98];                 // A F C G (Hz, ciclo de 4 compassos)
+const BAT_CH=[                                        // vozes (MIDI) — encadeamento suave
+  [57,60,64,67],                                      // Am7
+  [53,57,60,64],                                      // Fmaj7
+  [60,64,67,71],                                      // Cmaj7
+  [55,59,62,65],                                      // G7
+];
+const BAT_KICK=[1,0,0,0,0,0,1,0,1,0,0,1,0,1,0,0];     // bumbo sincopado (tamborzão)
+const BAT_RIFF=[76,0,79,76,0,72,74,0, 72,0,69,0,72,74,76,0]; // riff pentatônica de Lá m
+function batidaoStep(bar,step,t){
+  const cyc=bar&3,root=BAT_ROOTS[cyc],ch=BAT_CH[cyc];
+  const sec=bar<2?0:bar<8?1:2,last=bar===15;
+  _rh(t,step%2?.12:.07,step%4===2?.055:.03);          // chimbal 16 avos, acento no contratempo
+  if(step===14)_roh(t,.10);
+  if(BAT_KICK[step])_rk(t,step===0?1:.86);
+  if(sec>0&&(step===4||step===12))_rclap(t,.5);
+  if(sec>0&&step===7&&(bar&1))_rs(t,.16,1.4);         // caixa fantasma
+  if(BAT_KICK[step]||step===4||step===12){
+    const f=(step===11||step===13)?root*1.5:root;
+    _rbass(t,f,step%4===3?.18:.30,.42,{cut:380,q:5});
+  }
+  if(sec>0&&(step===2||step===6||step===10||step===14))
+    _rchord(t,ch,.22,.05,'sawtooth',1,0);             // naipe de stabs no contratempo
+  if(sec===2&&BAT_RIFF[step])
+    _rlead(t,mtof(BAT_RIFF[step]),step%2?.16:.26,.10,'square',1,1);
+  if(last&&step>=8&&step%2===0)_rs(t,.28+(step-8)*.02,1); // virada no fim
+}
+
+// ---- GROOVE FM — funk/soul, 105 BPM, ii–V–I em Dó (com 9ªs/13ª) ----
+const GRV_ROOT=[130.8,110,146.8,98, 130.8,110,146.8,98]; // C A D G (Hz)
+const GRV_CH=[
+  [60,64,67,71,74],   // Cmaj9
+  [57,60,64,67,71],   // Am9
+  [62,65,69,72,76],   // Dm9
+  [55,59,65,69,74],   // G13
+  [60,64,67,71,74],
+  [57,60,64,67,71],
+  [62,65,69,72,76],
+  [55,59,65,69,74],
+];
+const GRV_BASS=[1,0,0,1,0,1,1,0, 1,0,1,1,0,0,1,0];     // slap em 16 avos
+const GRV_LICK=[72,0,0,76,0,79,0,76, 0,74,72,0,69,0,72,0]; // lick pentatônico de Dó
+function grooveStep(bar,step,t){
+  const cyc=bar&7,root=GRV_ROOT[cyc],ch=GRV_CH[cyc];
+  const sec=bar<2?0:bar<10?1:2,last=bar===15;
+  _rh(t+(step%2?.012:0),step%2?.11:.06,step%4===2?.05:.03); // chimbal com swing
+  if(step===14)_roh(t,.09);
+  if(step===0||step===8||(step===6&&(bar&1)))_rk(t,step===0?.95:.8);
+  if(sec>0&&(step===4||step===12))_rclap(t,.5);        // palmas no 2 e 4
+  if(GRV_BASS[step]){
+    const oct=(step===3||step===10||step===14)?2:1;
+    _rbass(t,root*oct,step%4===2?.16:.24,.42,{cut:300,q:7,spread:7}); // baixo slapado
+  }
+  if(sec>0&&(step===2||step===7||step===11))_rchord(t,ch,.3,.05,'triangle',1,0); // Rhodes em stabs
+  if(sec>0&&step===0&&(bar&1)===0)_rpad(t,ch,curStepDur*14,.028,'sawtooth');      // colchão leve
+  if(sec===2&&GRV_LICK[step])_rlead(t,mtof(GRV_LICK[step]),step%2?.14:.22,.085,'sawtooth',0,1); // wah lead
+  if(last&&step>=10&&step%2===0)_rclap(t,.4);
+}
+
+// ---- PAGODE 104.5 — samba/pagode, 95 BPM, roda de acordes em Sol ----
+const PAG_ROOT=[98,123.5,82.4,110, 110,146.8,98,146.8]; // G B E A / A D G D (Hz)
+const PAG_CH=[
+  [67,71,74,78],   // Gmaj7
+  [69,71,74,78],   // Bm7
+  [64,67,71,74],   // Em7
+  [67,69,73,76],   // A7
+  [67,69,72,76],   // Am7
+  [62,66,69,72],   // D7
+  [67,71,74,78],   // Gmaj7
+  [62,66,69,72],   // D7
+];
+const PAG_MEL=[79,0,78,0,76,0,74,0, 71,0,74,76,78,0,79,0]; // frase de cavaco/flauta em Sol
+function pagodeStep(bar,step,t){
+  const cyc=bar&7,root=PAG_ROOT[cyc],ch=PAG_CH[cyc];
+  const sec=bar<2?0:bar<10?1:2;
+  const acc=step%4===0?.12:(step%4===2?.085:.05);     // pandeiro: levada de 16 avos acentuada
+  _rh(t,acc,step%2?.03:.045);
+  if(step===6||step===14)_roh(t,.06);
+  if(step===0)_rk(t,.5,46);                            // surdo
+  if(step===8)_rk(t,.82,42);                           // surdo forte no "2"
+  if(bar===15&&step===12)_rk(t,.7,44);
+  if(sec>0&&(step===4||step===12))_rs(t,.2,1.5);       // tamborim/caixa seca
+  if(step===0||step===8)_rbass(t,root,.5,.34,{type:'triangle',cut:600,q:1.4,spread:0}); // baixo acústico
+  if(step===6||step===14)_rbass(t,root*1.5,.28,.24,{type:'triangle',cut:600,q:1.4,spread:0});
+  if(step===11&&(bar&1))_rbass(t,root*1.335,.2,.2,{type:'triangle',cut:600,q:1.4,spread:0});
+  if(step===2||step===10)_rstrum(t,ch,.26,.05,'sawtooth',1);   // cavaquinho (batida do samba)
+  if(step===6||step===14)_rstrum(t,ch,.2,.045,'sawtooth',1);
+  if(step===3||step===7||step===11||step===15)_rchord(t,ch,.12,.03,'sawtooth',1,0);
+  if(sec===2&&PAG_MEL[step])_rlead(t,mtof(PAG_MEL[step]),step%2?.2:.34,.075,'triangle',1,1);
+}
+
+// ---- COUNTRY ROOTS 107.1 — country/sertanejo, 100 BPM, em Sol maior ----
+const SER_ROOT=[98,130.8,98,146.8, 98,82.4,130.8,146.8]; // G C G D / G E C D (Hz)
+const SER_CH=[
+  [55,59,62,67],   // G
+  [60,64,67,72],   // C
+  [55,59,62,67],   // G
+  [62,66,69,74],   // D
+  [55,59,62,67],   // G
+  [64,67,71,76],   // Em
+  [60,64,67,72],   // C
+  [62,66,69,74],   // D
+];
+const SER_MEL=[                                        // frase de viola/sanfona (Sol maior)
+  [79,0,0,76,74,0,72,0, 74,0,76,0,79,0,76,74],
+  [83,0,81,0,79,0,76,0, 74,76,79,0,81,0,79,0],
+];
+function sertaoStep(bar,step,t){
+  const cyc=bar&7,root=SER_ROOT[cyc],ch=SER_CH[cyc];
+  const sec=bar<2?0:bar<10?1:2;
+  if(step%2===0)_rh(t,step%4===0?.09:.05,.04);         // chimbal escovado
+  if(step===14)_roh(t,.05);
+  if(sec>0&&(step===4||step===12))_rs(t,.22,.8);        // caixa com vassourinha no contratempo
+  if(step===0||step===8)_rbass(t,root,.42,.34,{type:'triangle',cut:520,q:1.4,spread:0});   // "boom"
+  if(step===4||step===12)_rbass(t,root*1.5,.3,.26,{type:'triangle',cut:520,q:1.4,spread:0}); // "chick" (quinta)
+  if(step===2||step===6||step===10||step===14)_rstrum(t,ch,.34,.05,'triangle',1);          // violão dedilhado
+  if((step===3||step===11)&&(bar&1))_rchord(t,ch,.16,.03,'triangle',1,0);
+  if(sec===2){const mel=SER_MEL[bar&1][step];if(mel)_rfiddle(t,mtof(mel),step%2?.22:.4,.09);} // viola c/ vibrato
+  if(bar===15&&step>=12&&step%2===0)_rs(t,.2,.9);       // viradinha
+}
+
+const SONGS={
+  batidao:{bpm:130,bars:16,delayDiv:3,dfb:.30,dwet:.12,rwet:.12,step:batidaoStep},
+  pagode :{bpm:95, bars:16,delayDiv:2,dfb:.20,dwet:.08,rwet:.20,step:pagodeStep},
+  groove :{bpm:105,bars:16,delayDiv:3,dfb:.32,dwet:.14,rwet:.16,step:grooveStep},
+  sertao :{bpm:100,bars:16,delayDiv:3,dfb:.24,dwet:.10,rwet:.18,step:sertaoStep},
 };

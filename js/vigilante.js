@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {N,nodeX,rand,irand,pick,clamp,ROAD,groundHeight,SWIM_BOUND,HALF} from './constants.js';
-import {state,refs,saveBest} from './state.js';
+import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {makeCar,seatDriver,spinWheels,shirtColors,dentCar} from './entities.js';
 import {idleCars,cur,playerPos} from './player.js';
@@ -9,6 +10,8 @@ import {message,bigText,hideBig} from './hud.js';
 import {blip,thud} from './audio.js';
 import {collideStatics} from './physics.js';
 import {PRISON_I,PRISON_J} from '../assets/models/city/prison.js';
+import {MiniGame,MiniGameId} from './minigame.js';
+import {reportMiniGameResult} from './minigame-leaderboard.js';
 
 // Vigilante estilo GTA clássico: uma viatura de polícia fica estacionada na
 // esquina ao lado do presídio. Entrou nela, começa a patrulha: a cada nível
@@ -46,6 +49,11 @@ let busts=0;       // capturas nesta patrulha
 let timeLeft=0;    // cronômetro da patrulha
 let criminal=null; // {g,hp,destX,destZ,heading,speed,ring,beacon,lastHit}
 let wreckT=0;      // viatura destruída: volta ao presídio depois de um tempo
+
+// mini game (sessão): trava o mundo durante a patrulha; o alvo é o fugitivo
+const game=new MiniGame({id:MiniGameId.VIGILANTE,name:'Vigilante',
+  blips:()=>criminal?[{x:criminal.g.position.x,z:criminal.g.position.z,
+    icon:'target',color:'#ff3b56',label:'SUSPECT',current:true,reveal:false}]:[]});
 
 const vigHud=document.getElementById('vighud');
 
@@ -142,6 +150,7 @@ function resetCruiser(){
 }
 
 function startDuty(){
+  if(!game.begin())return; // outra sessão de mini game rolando: não começa
   phase='duty';level=1;busts=0;timeLeft=DUTY_TIME;
   spawnCriminal();
   message('VIGILANTE - RAM THE FLEEING SUSPECT','var(--blue)');
@@ -152,14 +161,17 @@ function startDuty(){
 function endDuty(text='VIGILANTE OFF DUTY',col='var(--cyan)'){
   removeCriminal();
   const summary=busts>0?` - ${busts} BUSTS / LVL ${level}`:'';
+  // ranking: a patrulha inteira é UMA sessão; score = prisões feitas
+  reportMiniGameResult(game.id,{won:busts>0,score:busts});
   phase='off';
+  game.end(); // libera a trava do mundo
   hideVigHud();
   message(text+summary,col);
 }
 
 function bustCriminal(){
   const reward=50*level;
-  state.money+=reward;saveBest();
+  economy.earn(reward,'vigilante');
   busts++;
   message(`CRIMINAL BUSTED +$${reward}`,'var(--gold)');
   bigText('CRIMINAL BUSTED','var(--gold)');
@@ -177,7 +189,12 @@ function failDuty(){
   bigText('SUSPECT GOT AWAY','var(--pink)');
   setTimeout(hideBig,1200);
   blip([330,247,180],.12,'sawtooth',.18);
-  endDuty('VIGILANTE OVER','var(--pink)');
+  // patrulha CONTÍNUA (igual ao expediente do táxi): a fuga zera o nível/streak e o
+  // cronômetro, mas manda outro suspeito sem expulsar o jogador da viatura.
+  level=1;timeLeft=DUTY_TIME;
+  removeCriminal();
+  spawnCriminal();
+  updateVigHud();
 }
 
 // pancada na viatura: tira 1 hp, amassa o bandido no ponto de contato, empurra

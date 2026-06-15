@@ -3,13 +3,12 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '../../../js/engine.js';
 import {rand,irand} from '../../../js/constants.js';
 
-// Lote abandonado no lugar de prédio que não nasceu: entulho, cerca de tábuas
-// caindo, pneus, mato e caçamba de entulho. Mesmo truque do building.js:
+// Lote abandonado no lugar de prédio que não nasceu: entulho, pneus, mato e
+// caçamba de entulho. Mesmo truque do building.js:
 // geometria vai para baldes por material e finalizeAbandonedLots() funde a
 // cidade inteira em ~5 meshes (draw calls).
 
 const concreteM=new THREE.MeshLambertMaterial({color:0x9a958c});
-const woodM=new THREE.MeshLambertMaterial({color:0x7a5c3a});
 const tireM=new THREE.MeshLambertMaterial({color:0x1c1a20});
 const binM=new THREE.MeshLambertMaterial({color:0x55684c});
 const weedM=new THREE.MeshLambertMaterial({color:0x5f8a48});
@@ -17,7 +16,7 @@ const weedM=new THREE.MeshLambertMaterial({color:0x5f8a48});
 // Chunking espacial (LOD por tamanho, igual aos props): entulho é objeto
 // pequeno/médio → distância de corte curta. updateLotCulling esconde os longe.
 const LOT_CHUNK=90, LOT_CULL=200;
-const newBuckets=()=>({concrete:[],wood:[],tire:[],bin:[],weed:[]});
+const newBuckets=()=>({concrete:[],tire:[],bin:[],weed:[]});
 const chunks=new Map();
 function chunkFor(cx,cz){
   const k=Math.round(cx/LOT_CHUNK)+'_'+Math.round(cz/LOT_CHUNK);
@@ -45,29 +44,6 @@ export function addAbandonedLot(cx,cz,w,d,solids){
         new THREE.BoxGeometry(rand(.5,1.3),rand(.16,.45),rand(.4,1.1)),
         px+rand(-.7,.7),rand(.08,.28),pz+rand(-.7,.7),
         rand(0,Math.PI),rand(-.1,.1),rand(-.12,.12));
-  }
-  // cerca de tábuas em 1–2 lados, com buracos e tábuas tortas
-  const order=[[1,0],[-1,0],[0,1],[0,-1]].sort(()=>Math.random()-.5);
-  const nf=irand(1,2);
-  for(let e=0;e<nf;e++){
-    const[ex,ez]=order[e];
-    const alongX=ez!==0; // borda norte/sul: a cerca corre no eixo x
-    const len=(alongX?w:d)-1.2;
-    const bx=alongX?cx:cx+ex*(w/2-.25);
-    const bz=alongX?cz+ez*(d/2-.25):cz;
-    for(let t=-len/2;t<=len/2;t+=.42){
-      if(Math.random()<.28)continue; // tábua que já caiu
-      push(buckets.wood,
-        new THREE.BoxGeometry(alongX?.2:.045,rand(.7,.95),alongX?.045:.2),
-        bx+(alongX?t:0),.42,bz+(alongX?0:t),0,rand(-.08,.08),rand(-.14,.14));
-    }
-    if(Math.random()<.85){ // travessa que sobrou pendurada
-      const rl=len*rand(.4,.9);
-      push(buckets.wood,
-        new THREE.BoxGeometry(alongX?rl:.05,.09,alongX?.05:rl),
-        bx+(alongX?rand(-1,1):0),.6,bz+(alongX?0:rand(-1,1)),
-        0,alongX?0:rand(-.05,.05),alongX?rand(-.05,.05):0);
-    }
   }
   // pneus largados: a maioria deitada, alguns encostados de pé
   for(let k=0;k<irand(2,4);k++){
@@ -113,7 +89,6 @@ export function finalizeAbandonedLots(){
       group.add(m);
     };
     add(b.concrete,concreteM);
-    add(b.wood,woodM);
     add(b.tire,tireM);
     add(b.bin,binM);
     add(b.weed,weedM,false);

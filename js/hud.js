@@ -1,8 +1,12 @@
-import {N,ROAD,BLOCK,GROUND,BEACH,nodeX,WATER,SWIM_BOUND,
-  RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R} from './constants.js';
+import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
+  RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,
+  cityCoastR,isLand} from './constants.js';
 import {state,input,refs} from './state.js';
 import {isPark} from './world.js';
 import {getTod} from './daynight.js';
+import {paintWeaponGlyph} from './weapon-icon.js';
+import {MiniGame} from './minigame.js';
+import {inGangTerritory} from './gangs.js';
 
 const $=id=>document.getElementById(id);
 export const hudMoney=$('money'),hudClock=$('clock'),hudHealth=$('health-val'),
@@ -70,28 +74,39 @@ function computeInteractAction(){
     if(eat)return eat;
     const buy=refs.houseBuyState?.(); // perto da placa FOR SALE da casa de campo
     if(buy)return buy;
-    const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
-    if(gym)return gym;
-    const dance=refs.clubDanceState?.(); // no meio da pista dentro da boate
-    if(dance)return dance;
+    // supino e dança são mini-games: o prompt some durante uma sessão (um por vez)
+    if(!MiniGame.busy){
+      const gym=refs.gymTrainState?.(); // perto do supino dentro da academia
+      if(gym)return gym;
+      const dance=refs.clubDanceState?.(); // no meio da pista dentro da boate
+      if(dance)return dance;
+    }
     const shop=refs.gunShopState?.(); // perto de uma arma dentro da loja de armas
     if(shop)return shop;
-    const ov=refs.overkillNear?.(); // perto do totem do modo overkill
-    if(ov)return{label:'OVERKILL',prompt:ov,enabled:true};
+    if(!MiniGame.busy){ // num mini game não dá pra começar outro (um por vez)
+      const ov=refs.overkillNear?.(); // perto do totem do modo overkill
+      if(ov)return{label:'OVERKILL',prompt:ov,enabled:true};
+    }
   }
   if(state.mode==='foot'){
     const rk=refs.rickNear?.(); // acampamento secreto do Rick (sem blip no mapa)
     if(rk)return{label:'TALK',prompt:'TALK TO '+rk,enabled:true};
     const sn=refs.storyNear?.();
     if(sn)return{label:'TALK',prompt:'TALK TO '+sn,enabled:true};
+    // ações de zona (car-crusher/export/bomba): bloqueadas durante outra sessão
+    if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a)return a;}
   }
   if(state.mode==='foot'){
     const near=refs.nearestCar?.(3.6);
     if(near){
       const c=near.c;
-      if(refs.isTaxiCar?.(c))return{label:'TAXI',prompt:'START TAXI SHIFT',enabled:true};
-      if(refs.isVigilanteCar?.(c))return{label:'VIGILANTE',prompt:'START VIGILANTE DUTY',enabled:true};
-      if(refs.isAmbulanceCar?.(c))return{label:'PARAMEDIC',prompt:'START PARAMEDIC',enabled:true};
+      // entrar em veículo de mini game só fora de outra sessão (um por vez)
+      if(!MiniGame.busy){
+        if(refs.isTaxiCar?.(c))return{label:'TAXI',prompt:'START TAXI SHIFT',enabled:true};
+        if(refs.isVigilanteCar?.(c))return{label:'VIGILANTE',prompt:'START VIGILANTE DUTY',enabled:true};
+        if(refs.isAmbulanceCar?.(c))return{label:'PARAMEDIC',prompt:'START PARAMEDIC',enabled:true};
+        for(const f of refs.carEnterLabels||[]){const a=f(c);if(a)return a;} // veículo especial de minigame
+      }
       return c.boat
         ?{label:'BOAT',prompt:'RIDE THE BOAT',enabled:true}
         :c.bike
@@ -100,12 +115,17 @@ function computeInteractAction(){
     }
   }
   if(state.mode==='car'){
-    if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
-    if(refs.boatRaceNear?.())return{label:'RACE',prompt:'START THE BOAT RACE',enabled:true};
+    if(!MiniGame.busy){ // largar uma corrida só fora de outra sessão (um por vez)
+      if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
+      if(refs.boatRaceNear?.())return{label:'RACE',prompt:'START THE BOAT RACE',enabled:true};
+      if(refs.offroadNear?.())return{label:'RACE',prompt:'START OFF-ROAD',enabled:true};
+    }
     const mod=refs.modShopState?.(); // carro parado na plataforma da oficina de custom
     if(mod)return mod;
     const garage=refs.houseGarageState?.(); // carro parado dentro da garagem da casa
     if(garage)return garage;
+    // ações de zona (car-crusher/export/bomba): bloqueadas durante outra sessão
+    if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a)return a;}
     const c=refs.getCur?.();
     const speed=Math.abs(c?.speed||0);
     return speed<6
@@ -119,14 +139,23 @@ function computeInteractAction(){
 // the center, square blips clamped to the rim
 const mmCanvas=$('minimap');
 export const mm=mmCanvas.getContext('2d');
-const MMW=GROUND+BEACH*2;            // world span covered by the static map
+// Atlas da cidade: cobre a ILHA inteira (inclusive as pontas/diagonais), não o
+// antigo quadrado. Dimensiona pelo alcance real da costa (cityCoastR).
+let _cityAxis=218;
+for(let i=0;i<240;i++){const th=i/240*Math.PI*2,r=cityCoastR(th);
+  _cityAxis=Math.max(_cityAxis,Math.abs(r*Math.cos(th)),Math.abs(r*Math.sin(th)));}
+const MMW=Math.ceil(_cityAxis+10)*2;  // antes: GROUND+BEACH*2 (era um quadrado)
 const MM_C=85,MM_R=80,MM_RANGE=105;  // center px, radius px, radar reach in meters
 const MM_POI_REVEAL=90;              // POIs fixos só aparecem dentro de N metros (declutter)
+const SEA_COL='#2e8a96';             // mesma cor do mar de fundo do radar/mapa
 const mmStatic=document.createElement('canvas');mmStatic.width=512;mmStatic.height=512;
 {
   const x=mmStatic.getContext('2d'),s=512/MMW,M=v=>(v+MMW/2)*s;
-  x.fillStyle='#d8c08a';x.fillRect(0,0,512,512);             // areia da praia
-  x.fillStyle='#e8dcc4';                                      // ruas claras
+  x.fillStyle=SEA_COL;x.fillRect(0,0,512,512);               // mar
+  x.fillStyle='#d8c08a';                                      // areia: costa irregular (isLand)
+  for(let py=0;py<512;py+=2)for(let px=0;px<512;px+=2)
+    if(isLand(px/s-MMW/2,py/s-MMW/2))x.fillRect(px,py,2,2);
+  x.fillStyle='#e8dcc4';                                      // ruas claras (miolo da cidade)
   x.fillRect(M(-GROUND/2),M(-GROUND/2),GROUND*s,GROUND*s);
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     x.fillStyle=isPark(i,j)?'#5d7c3e':'#8a6f4d';              // parque / quarteirão
@@ -134,13 +163,20 @@ const mmStatic=document.createElement('canvas');mmStatic.width=512;mmStatic.heig
   }
 }
 
-// mapa estático da zona rural + montanha (a península fica fora do canvas da cidade)
-const RRW=RURAL_X1-RURAL_X0,RRD=RURAL_HALF*2;
-const mmRural=document.createElement('canvas');mmRural.width=260;mmRural.height=240;
+// Atlas da península: cobre as pontas onduladas (RR_HALF>RURAL_HALF) e o bico
+// afunilado (RURAL_TIP). Pasto recortado pela MESMA costa irregular (isLand).
+const RR_HALF=150,RR_X0=RURAL_X0,RR_X1=RURAL_TIP;
+const RRW=RR_X1-RR_X0,RRD=RR_HALF*2;
+const mmRural=document.createElement('canvas');
+mmRural.width=Math.round(RRW*.8);mmRural.height=Math.round(RRD*.8);
 {
-  const x=mmRural.getContext('2d'),sx=260/RRW,sz=240/RRD;
-  const U=v=>(v-RURAL_X0)*sx,W=v=>(v+RURAL_HALF)*sz;
-  x.fillStyle='#6a9a50';x.fillRect(0,0,260,240);                // pasto
+  const Wp=mmRural.width,Hp=mmRural.height;
+  const x=mmRural.getContext('2d'),sx=Wp/RRW,sz=Hp/RRD;
+  const U=v=>(v-RR_X0)*sx,W=v=>(v+RR_HALF)*sz;
+  x.fillStyle=SEA_COL;x.fillRect(0,0,Wp,Hp);                    // mar
+  x.fillStyle='#6a9a50';                                        // pasto (recorte isLand)
+  for(let py=0;py<Hp;py+=2)for(let px=0;px<Wp;px+=2)
+    if(isLand(RR_X0+px/sx,-RR_HALF+py/sz))x.fillRect(px,py,2,2);
   x.fillStyle='#8a6a3e';                                        // roças
   for(const[a,b,d,e]of[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
     .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]))
@@ -153,6 +189,24 @@ const mmRural=document.createElement('canvas');mmRural.width=260;mmRural.height=
     x.ellipse(U(MOUNT_X),W(0),r*sx,r*sz,0,0,Math.PI*2);x.fill();
   }
 }
+
+// O mapa NUNCA muda depois de gerado, a escala do radar é constante e o radar é
+// north-up (sem rotação). Então pré-renderizamos os atlas UMA vez já na densidade
+// exata do radar (px/m = MM_SCALE): no loop o blit fica 1:1, sem o filtro de
+// reescala que rodava todo frame. Os atlas originais (512px etc.) continuam pro
+// mapa completo (tecla M), que usa outra escala e quer a resolução maior.
+const MM_SCALE=MM_R/MM_RANGE;
+function prescaleRadar(src,worldW,worldH){
+  const c=document.createElement('canvas');
+  c.width=Math.max(1,Math.round(worldW*MM_SCALE));
+  c.height=Math.max(1,Math.round(worldH*MM_SCALE));
+  const x=c.getContext('2d');
+  x.imageSmoothingQuality='high';
+  x.drawImage(src,0,0,c.width,c.height);
+  return c;
+}
+const mmStaticR=prescaleRadar(mmStatic,MMW,MMW);
+const mmRuralR=prescaleRadar(mmRural,RRW,RRD);
 
 // world offset → radar screen offset (north-up), clamped to the rim
 function mmBlip(wx,wz,pp,scale){
@@ -291,6 +345,26 @@ function mmCircleIcon(ctx,px,py,b,scale=1){
       ctx.beginPath();ctx.arc(2.1,-1.2,1.5,0,Math.PI*2);ctx.fill();  // olhos
       ctx.beginPath();ctx.moveTo(0,.4);ctx.lineTo(.9,2.2);ctx.lineTo(-.9,2.2);ctx.closePath();ctx.fill();
       break;
+    case'fire': // chama (bombeiro)
+      ctx.beginPath();
+      ctx.moveTo(0,6);
+      ctx.quadraticCurveTo(-5,2.4,-2.4,-1.6);
+      ctx.quadraticCurveTo(-2,-4.6,0,-6.6);
+      ctx.quadraticCurveTo(2,-4.6,2.4,-1.6);
+      ctx.quadraticCurveTo(5,2.4,0,6);
+      ctx.closePath();ctx.fill();
+      break;
+    case'bomb': // bomba (loja de bombas / 8-Ball)
+      ctx.beginPath();ctx.arc(-.6,1.9,4.5,0,Math.PI*2);ctx.fill();
+      ctx.fillRect(1.1,-3.3,2.1,2.3);                                  // gargalo
+      ctx.lineWidth=1.4;ctx.beginPath();
+      ctx.moveTo(2.2,-3.3);ctx.quadraticCurveTo(5.2,-5.2,4.1,-6.6);ctx.stroke(); // pavio
+      break;
+    case'crusher': // prensa de sucata
+      ctx.fillRect(-5.4,-5.4,10.8,2.3);                                // placa de cima
+      ctx.fillRect(-5.4,3.1,10.8,2.3);                                 // base
+      ctx.fillRect(-1.1,-3.1,2.2,6.2);                                 // pistão
+      break;
     default:
       ctx.lineWidth=1.8;ctx.strokeRect(-3.6,-5,7.2,10);
       ctx.beginPath();ctx.arc(1.7,.2,.65,0,Math.PI*2);ctx.fill();
@@ -305,135 +379,24 @@ function drawHudWeaponIcon(wh){
   const c=weaponIconCtx;
   c.setTransform(1,0,0,1,0,0);
   c.clearRect(0,0,64,64);
-  const grad=c.createLinearGradient(10,8,54,56);
-  grad.addColorStop(0,'#8ceefb');grad.addColorStop(1,'#ff9bd1');
-  const gold=c.createLinearGradient(12,10,54,56);
-  gold.addColorStop(0,'#fff1a6');gold.addColorStop(1,'#f5a63a');
-  const dark='#09030d';
-  const ink='rgba(9,3,13,.92)';
-  const fillPath=()=>{
-    c.fill();
-    c.strokeStyle=ink;c.lineWidth=2.4;c.stroke();
-  };
-  const gunBody=(scale=1)=>{
-    c.scale(scale,scale);
-    c.beginPath();
-    c.moveTo(-25,-8);c.lineTo(16,-8);c.lineTo(16,-1);
-    c.lineTo(4,-1);c.lineTo(1,6);c.lineTo(-16,6);
-    c.lineTo(-19,13);c.lineTo(-25,13);c.closePath();fillPath();
-    c.fillStyle=grad;c.fillRect(13,-11,10,4);c.strokeRect(13,-11,10,4);
-    c.beginPath();c.moveTo(-1,6);c.lineTo(11,6);c.lineTo(6,25);
-    c.lineTo(-7,25);c.closePath();fillPath();
-    c.strokeStyle=dark;c.lineWidth=2;
-    c.beginPath();c.arc(-8,13,6,-.7,1.55);c.stroke();
-  };
-  c.save();c.translate(32,32);c.fillStyle=grad;c.strokeStyle=ink;
-  c.lineCap='round';c.lineJoin='round';
-  switch(wh.id){
-    case'fist':
-      c.fillStyle=grad;
-      for(const x of[-13,-4,5,14]){
-        c.beginPath();c.arc(x,-9,6,0,Math.PI*2);fillPath();
-      }
-      c.beginPath();c.rect(-18,-6,31,23);fillPath();
-      c.beginPath();c.roundRect?c.roundRect(8,-2,13,17,6):c.rect(8,-2,13,17);
-      fillPath();
-      break;
-    case'bat':
-      c.rotate(-.55);c.strokeStyle=ink;c.lineWidth=9;
-      c.beginPath();c.moveTo(-19,16);c.lineTo(21,-18);c.stroke();
-      c.strokeStyle=grad;c.lineWidth=5.5;
-      c.beginPath();c.moveTo(-19,16);c.lineTo(21,-18);c.stroke();
-      c.fillStyle=gold;c.beginPath();c.arc(23,-20,5,0,Math.PI*2);fillPath();
-      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(-24,20);c.lineTo(-15,12);c.stroke();
-      break;
-    case'pistol':
-      c.fillStyle=grad;gunBody(.86);break;
-    case'uzi':
-      c.fillStyle=grad;
-      c.fillRect(-24,-9,34,14);c.strokeRect(-24,-9,34,14);
-      c.fillRect(8,-12,14,4);c.strokeRect(8,-12,14,4);
-      c.beginPath();c.moveTo(-4,5);c.lineTo(5,5);c.lineTo(1,25);c.lineTo(-7,25);c.closePath();fillPath();
-      c.fillRect(-21,4,7,11);c.strokeRect(-21,4,7,11);
-      c.strokeStyle=dark;c.lineWidth=2;c.beginPath();c.arc(-9,10,5,-.55,1.55);c.stroke();
-      break;
-    case'shotgun':
-      c.fillStyle=grad;
-      c.fillRect(-27,-6,48,5);c.strokeRect(-27,-6,48,5);
-      c.fillRect(-22,1,24,5);c.strokeRect(-22,1,24,5);
-      c.beginPath();c.moveTo(-27,-4);c.lineTo(-18,-14);c.lineTo(-9,-10);c.lineTo(-15,-2);c.closePath();fillPath();
-      c.fillRect(18,-8,8,3);c.strokeRect(18,-8,8,3);
-      break;
-    case'ak47':
-      c.fillStyle=grad;
-      c.rotate(-.05);
-      c.fillRect(-23,-7,35,7);c.strokeRect(-23,-7,35,7);
-      c.fillRect(10,-10,14,3);c.strokeRect(10,-10,14,3);
-      c.beginPath();c.moveTo(-24,-5);c.lineTo(-12,-18);c.lineTo(-6,-14);c.lineTo(-15,-3);c.closePath();fillPath();
-      c.beginPath();c.moveTo(-1,0);c.quadraticCurveTo(7,14,-2,25);c.lineTo(-8,22);
-      c.quadraticCurveTo(-1,12,-7,1);c.closePath();fillPath();
-      c.fillRect(-7,-13,10,4);c.strokeRect(-7,-13,10,4);
-      break;
-    case'm16':
-      c.fillStyle=grad;
-      c.fillRect(-25,-6,41,7);c.strokeRect(-25,-6,41,7);
-      c.fillRect(14,-9,13,3);c.strokeRect(14,-9,13,3);
-      c.beginPath();c.moveTo(-23,-4);c.lineTo(-13,-15);c.lineTo(-5,-11);c.lineTo(-13,-2);c.closePath();fillPath();
-      c.fillRect(-3,1,7,18);c.strokeRect(-3,1,7,18);
-      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(-6,-11);c.quadraticCurveTo(2,-18,10,-10);c.stroke();
-      break;
-    case'sniper':
-      c.fillStyle=grad;
-      c.fillRect(-28,-5,47,5);c.strokeRect(-28,-5,47,5);
-      c.fillRect(18,-7,10,2.7);c.strokeRect(18,-7,10,2.7);
-      c.fillRect(-10,-14,18,5);c.strokeRect(-10,-14,18,5);
-      c.beginPath();c.moveTo(-26,-4);c.lineTo(-15,-14);c.lineTo(-7,-11);c.lineTo(-15,-2);c.closePath();fillPath();
-      c.strokeStyle=ink;c.lineWidth=2.3;c.beginPath();c.moveTo(7,0);c.lineTo(13,18);c.moveTo(12,0);c.lineTo(22,17);c.stroke();
-      break;
-    case'grenade':
-      c.fillStyle=grad;
-      c.beginPath();c.ellipse(0,6,16,19,0,0,Math.PI*2);fillPath();
-      c.fillStyle=gold;c.fillRect(-7,-17,14,9);c.strokeRect(-7,-17,14,9);
-      c.strokeStyle=ink;c.lineWidth=2;
-      c.beginPath();c.arc(8,-16,7,-.35,Math.PI*1.35);c.stroke();
-      c.beginPath();c.moveTo(-11,-1);c.lineTo(11,-1);c.moveTo(-12,9);c.lineTo(12,9);c.moveTo(-4,-11);c.lineTo(-4,22);c.moveTo(5,-10);c.lineTo(5,22);c.stroke();
-      break;
-    case'molotov':
-      c.fillStyle=grad;
-      c.beginPath();c.moveTo(-7,-20);c.lineTo(6,-20);c.lineTo(9,15);
-      c.quadraticCurveTo(0,25,-10,15);c.closePath();fillPath();
-      c.fillStyle=gold;c.fillRect(-9,-16,18,7);c.strokeRect(-9,-16,18,7);
-      c.fillStyle='#ff5a2e';c.beginPath();c.moveTo(4,-24);c.quadraticCurveTo(17,-12,4,-6);
-      c.quadraticCurveTo(-7,-13,4,-24);fillPath();
-      break;
-    case'rocket':
-      c.fillStyle=grad;
-      c.rotate(-.06);
-      c.fillRect(-25,-7,40,14);c.strokeRect(-25,-7,40,14);
-      c.beginPath();c.moveTo(15,-8);c.lineTo(28,0);c.lineTo(15,8);c.closePath();fillPath();
-      c.fillStyle=gold;c.fillRect(-25,-10,8,20);c.strokeRect(-25,-10,8,20);
-      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(-4,7);c.lineTo(-11,22);c.moveTo(7,7);c.lineTo(12,20);c.stroke();
-      break;
-    case'flame':
-      c.fillStyle=grad;
-      c.beginPath();c.ellipse(-12,4,9,19,0,0,Math.PI*2);fillPath();
-      c.fillRect(-2,-7,21,7);c.strokeRect(-2,-7,21,7);
-      c.strokeStyle=ink;c.lineWidth=4;c.beginPath();c.moveTo(-4,8);c.quadraticCurveTo(7,18,18,7);c.stroke();
-      c.fillStyle='#ff5a2e';c.beginPath();c.moveTo(21,-6);c.quadraticCurveTo(34,-1,22,8);
-      c.quadraticCurveTo(27,0,21,-6);fillPath();
-      break;
-    case'detonator':
-      c.fillStyle=grad;
-      c.fillRect(-16,-11,32,28);c.strokeRect(-16,-11,32,28);
-      c.fillStyle=gold;c.beginPath();c.arc(0,0,7,0,Math.PI*2);fillPath();
-      c.strokeStyle=ink;c.lineWidth=3;c.beginPath();c.moveTo(10,-12);c.lineTo(22,-25);c.stroke();
-      c.beginPath();c.arc(24,-27,3,0,Math.PI*2);c.fill();
-      c.fillStyle=dark;c.fillRect(-10,10,20,3);
-      break;
-    default:
-      c.fillStyle=grad;gunBody(.86);
-  }
+  c.save();c.translate(32,32);
+  paintWeaponGlyph(c,wh.id); // mesmo glifo usado pela roda de seleção (weapon-icon.js)
   c.restore();
+}
+
+// Desenha SÓ a janela visível de um atlas estático, no espaço-mundo já transformado
+// do radar: recorta a fonte na região que cabe no alcance (vis) e PULA de vez o
+// atlas que está totalmente fora (ex.: o mapa da cidade quando se está no campo, e
+// vice-versa). Antes redesenhávamos os 512px inteiros (+ rural) todo redraw contando
+// só com o clip do círculo — reamostragem cara. Resultado pixel a pixel idêntico:
+// o que fica de fora do recorte já era área clipada/mar.
+function mmBlitVisible(img,minX,minZ,maxX,maxZ,pp,vis){
+  const x0=Math.max(minX,pp.x-vis),x1=Math.min(maxX,pp.x+vis);
+  const z0=Math.max(minZ,pp.z-vis),z1=Math.min(maxZ,pp.z+vis);
+  if(x1<=x0||z1<=z0)return;                                  // fora do alcance
+  const sw=img.width/(maxX-minX),sh=img.height/(maxZ-minZ);  // px-fonte por metro
+  mm.drawImage(img,(x0-minX)*sw,(z0-minZ)*sh,(x1-x0)*sw,(z1-z0)*sh, // recorte na fonte
+    x0,z0,x1-x0,z1-z0);                                       // destino (coords de mundo)
 }
 
 const mapWrap=$('mapwrap');
@@ -448,8 +411,13 @@ export function drawMinimap(){
   const h=refs.getPlayerHeading?.()??cur?.heading??0;
   const th=h-Math.PI,scale=MM_R/MM_RANGE;
   // durante a corrida o radar mostra SÓ a corrida: nenhum outro objetivo/minigame
-  const raceOn=((refs.getRaceState?.()?.phase||'idle')!=='idle')
-    ||((refs.getBoatRaceState?.()?.phase||'idle')!=='idle');
+  const rOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';     // corrida de rua em curso
+  const bOn=(refs.getBoatRaceState?.()?.phase||'idle')!=='idle'; // corrida de lanchas em curso
+  const raceOn=rOn||bOn;
+  // sessão de mini game (não-corrida) em curso: o radar fica só com os alvos dela —
+  // sem POIs, entregas, história ou outros mini games (mapa "limpo"). Ver
+  // state.activeMiniGame / js/minigame.js.
+  const mgActive=!!state.activeMiniGame&&!raceOn;
 
   mm.clearRect(0,0,170,170);
   mm.save();
@@ -459,11 +427,15 @@ export function drawMinimap(){
   mm.save();
   mm.translate(MM_C,MM_C);mm.scale(scale,scale);
   mm.translate(-pp.x,-pp.z);
-  mm.drawImage(mmStatic,-MMW/2,-MMW/2,MMW,MMW);
-  mm.drawImage(mmRural,RURAL_X0,-RURAL_HALF,RRW,RRD);
+  // Só a porção visível de cada atlas (e nada quando está fora do alcance): corta
+  // a reamostragem do redraw. VIS = meia-aresta do quadrado que cobre o círculo
+  // do radar (raio MM_R/scale = MM_RANGE), com folga pra arredondamento.
+  const VIS=MM_RANGE+4;
+  mmBlitVisible(mmStaticR,-MMW/2,-MMW/2,MMW/2,MMW/2,pp,VIS);
+  mmBlitVisible(mmRuralR,RR_X0,-RR_HALF,RR_X1,RR_HALF,pp,VIS);
   // territórios das gangues (círculos coloridos que encolhem conforme você mata)
   const gangsArr=refs.gangs;
-  if(!raceOn&&gangsArr)for(const g of gangsArr){
+  if(!raceOn&&!mgActive&&gangsArr)for(const g of gangsArr){
     if(g.defeated)continue; // gangue eliminada: sem território no radar
     mm.fillStyle=g.cssA;
     mm.beginPath();mm.arc(g.x,g.z,g.r,0,Math.PI*2);mm.fill();
@@ -479,8 +451,21 @@ export function drawMinimap(){
     const[px,py]=mmBlip(c.g.position.x,c.g.position.z,pp,scale);
     mmCircleIcon(mm,px,py,{icon:'cop',color:'#3e7bff'},.78);
   }
+  // Sessão de mini game (não-corrida) em curso: o radar mostra SÓ os alvos dela.
+  // Nada de POIs/entregas/história/outros mini games — o mapa fica limpo.
+  if(mgActive){
+    for(const b of MiniGame.activeBlips()){
+      if(b.reveal!==false){ // POI fixo: só perto, posição direta
+        if(Math.hypot(b.x-pp.x,b.z-pp.z)>MM_POI_REVEAL)continue;
+        mmCircleIcon(mm,MM_C+(b.x-pp.x)*scale,MM_C+(b.z-pp.z)*scale,b);
+      }else{ // alvo ativo: sempre visível, preso na borda do radar
+        const[px,py]=mmBlip(b.x,b.z,pp,scale);
+        mmCircleIcon(mm,px,py,b,b.current?1:.82);
+      }
+    }
+  }
   // Demais objetivos/minigames ficam ESCONDIDOS durante a corrida de rua
-  if(!raceOn){
+  else if(!raceOn){
     // POIs fixos (lojas/serviços): só aparecem quando o jogador chega perto —
     // antes ficavam todos presos na borda e o radar virava uma sopa de ícones.
     // O mapa completo (tecla M) continua listando todos, longe ou perto.
@@ -497,16 +482,16 @@ export function drawMinimap(){
     for(const m of[ov&&{...ov,icon:'skull',color:'#ff2e88'},
       vg&&{...vg,icon:'cop',color:'#3e7bff'},
       pm&&{...pm,icon:'cross',color:'#19e3ff'}]){
-      if(!m||Math.hypot(m.x-pp.x,m.z-pp.z)>MM_POI_REVEAL)continue;
+      if(!m||inGangTerritory(m.x,m.z)||Math.hypot(m.x-pp.x,m.z-pp.z)>MM_POI_REVEAL)continue;
       mmCircleIcon(mm,MM_C+(m.x-pp.x)*scale,MM_C+(m.z-pp.z)*scale,m);
     }
     const delivery=refs.getDelivery?.();
-    if(delivery){
+    if(delivery&&!inGangTerritory(delivery.x,delivery.z)){
       const[px,py]=mmBlip(delivery.x,delivery.z,pp,scale);
       mmCircleIcon(mm,px,py,{icon:'package',color:'#ffd24a'});
     }
     const taxiT=refs.taxiTarget?.(); // táxi livre / passageiro / destino
-    if(taxiT){
+    if(taxiT&&!inGangTerritory(taxiT.x,taxiT.z)){
       const[px,py]=mmBlip(taxiT.x,taxiT.z,pp,scale);
       mmCircleIcon(mm,px,py,{
         icon:taxiT.kind==='taxi'?'taxi':taxiT.kind==='pickup'?'person':'flag',
@@ -526,14 +511,34 @@ export function drawMinimap(){
       const[px,py]=mmBlip(b.x,b.z,pp,scale);
       mmCircleIcon(mm,px,py,{icon:b.letter?'letter':'diamond',letter:b.letter,color:b.col});
     }
+    // minigames registrados (firefighter, rampage, hidden packages, etc.)
+    for(const fn of refs.miniBlips||[])for(const b of fn()){
+      if(inGangTerritory(b.x,b.z))continue; // mini-game nunca em território de gangue
+      if(b.reveal!==false){ // POI fixo: só aparece perto, posição direta
+        if(Math.hypot(b.x-pp.x,b.z-pp.z)>MM_POI_REVEAL)continue;
+        mmCircleIcon(mm,MM_C+(b.x-pp.x)*scale,MM_C+(b.z-pp.z)*scale,b);
+      }else{ // alvo ativo: sempre visível, preso na borda do radar
+        const[px,py]=mmBlip(b.x,b.z,pp,scale);
+        mmCircleIcon(mm,px,py,b,b.current?1:.82);
+      }
+    }
   }
-  // Corrida (rua/lanchas): bandeira no checkpoint atual + próximos como anéis apagados
-  for(const b of[...(refs.raceBlips?.()||[]),...(refs.boatRaceBlips?.()||[])]){
-    const[px,py]=mmBlip(b.x,b.z,pp,scale);
-    if(b.current)mmCircleIcon(mm,px,py,{icon:'flag',color:'#ff8a1e'});
-    else{
-      mm.fillStyle='rgba(255,138,30,.5)';mm.strokeStyle='rgba(20,9,31,.8)';mm.lineWidth=1.4;
-      mm.beginPath();mm.arc(px,py,3.4,0,Math.PI*2);mm.fill();mm.stroke();
+  // Corrida (rua/lanchas): SÓ fora de outra sessão de mini game (regra "um por vez":
+  // estando num mini game, nenhum ícone de corrida aparece no radar). Durante UMA
+  // corrida, a largada ociosa da OUTRA some — antes a de rua mostrava a largada das
+  // lanchas e vice-versa. Bandeira no checkpoint atual + próximos como anéis apagados.
+  if(!mgActive){
+    const rb=[];
+    if(!bOn)rb.push(...(refs.raceBlips?.()||[]));     // corrida de rua: some durante a de lanchas
+    if(!rOn)rb.push(...(refs.boatRaceBlips?.()||[])); // corrida de lanchas: some durante a de rua
+    for(const b of rb){
+      if(!raceOn&&inGangTerritory(b.x,b.z))continue; // largada ociosa nunca em zona de gangue
+      const[px,py]=mmBlip(b.x,b.z,pp,scale);
+      if(b.current)mmCircleIcon(mm,px,py,{icon:'flag',color:'#ff8a1e'});
+      else{
+        mm.fillStyle='rgba(255,138,30,.5)';mm.strokeStyle='rgba(20,9,31,.8)';mm.lineWidth=1.4;
+        mm.beginPath();mm.arc(px,py,3.4,0,Math.PI*2);mm.fill();mm.stroke();
+      }
     }
   }
 
@@ -575,7 +580,7 @@ const fm=fmCanvas&&fmCanvas.getContext('2d');
 // roda num anel no mar (raio ~ (WATER+SWIM_BOUND)/2), então o mapa precisa
 // alcançar além da linha d'água pra mostrar as boias/largada da prova.
 const FM_SEA=Math.round((WATER+SWIM_BOUND)/2)+24;
-const FM_MINX=-FM_SEA,FM_MAXX=RURAL_X1+20,FM_MINZ=-FM_SEA,FM_MAXZ=FM_SEA;
+const FM_MINX=-FM_SEA,FM_MAXX=RURAL_TIP+12,FM_MINZ=-FM_SEA,FM_MAXZ=FM_SEA;
 const FM_WW=FM_MAXX-FM_MINX,FM_WH=FM_MAXZ-FM_MINZ;
 // Resolução interna seguindo a proporção real do mundo (sem barras); o CSS
 // reescala isso pra caber em qualquer tela mantendo a proporção.
@@ -588,14 +593,19 @@ export function drawFullMap(){
   if(!fm)return;
   const{s,ox,oy}=fmFit();
   const P=(wx,wz)=>[ox+(wx-FM_MINX)*s,oy+(wz-FM_MINZ)*s];
+  const rOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
+  const bOn=(refs.getBoatRaceState?.()?.phase||'idle')!=='idle';
+  // sessão de mini game (não-corrida) em curso: o mapa grande mostra SÓ os alvos
+  // dela — sem POIs, gangues nem outros mini games (mapa "limpo").
+  const mgActive=!!state.activeMiniGame&&!rOn&&!bOn;
   fm.setTransform(1,0,0,1,0,0);
   fm.clearRect(0,0,fmCanvas.width,fmCanvas.height);
   fm.fillStyle='#2e8a96';fm.fillRect(0,0,fmCanvas.width,fmCanvas.height); // mar ao fundo
   fm.drawImage(mmStatic,...P(-MMW/2,-MMW/2),MMW*s,MMW*s);
-  fm.drawImage(mmRural,...P(RURAL_X0,-RURAL_HALF),RRW*s,RRD*s);
+  fm.drawImage(mmRural,...P(RR_X0,-RR_HALF),RRW*s,RRD*s);
   // territórios das gangues
   const gangsArr=refs.gangs;
-  if(gangsArr)for(const g of gangsArr){
+  if(!mgActive&&gangsArr)for(const g of gangsArr){
     if(g.defeated)continue; // gangue eliminada: some do mapa
     const[cx,cy]=P(g.x,g.z);
     fm.fillStyle=g.cssA;fm.beginPath();fm.arc(cx,cy,g.r*s,0,Math.PI*2);fm.fill();
@@ -609,33 +619,51 @@ export function drawFullMap(){
   const push=(b,icon,color,label,faded)=>{
     if(b)marks.push({x:b.x,z:b.z,icon,color,label,letter:b.letter,faded});
   };
-  for(const b of refs.interiorBlips?.()||[])marks.push({...b});  // lojas/serviços (já têm label)
-  const ws=refs.workshopBlip?.();if(ws)marks.push({...ws});      // oficina de custom
-  // minigames de ponto fixo
-  push(refs.overkillBlip?.(),'skull','#ff2e88','OVERKILL');
-  push(refs.vigilanteStart?.(),'cop','#3e7bff','VIGILANTE');
-  push(refs.paramedicStart?.(),'cross','#19e3ff','PARAMEDIC');
-  // táxi: livre / passageiro / destino
-  const tx=refs.taxiTarget?.();
-  if(tx)push(tx,tx.kind==='taxi'?'taxi':tx.kind==='pickup'?'person':'flag',
-              tx.kind==='taxi'?'#f5c518':'#5eff8a',
-              tx.kind==='taxi'?'TAXI':tx.kind==='pickup'?'PASSENGER':'DROP OFF');
-  // entrega
-  push(refs.getDelivery?.(),'package','#ffd24a','DELIVERY');
-  // plantões ativos
-  for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPECT');
-  for(const b of refs.paramedicBlips?.()||[])
-    push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PATIENT');
-  // história
-  for(const b of refs.storyBlips?.()||[])push(b,b.letter?'letter':'diamond',b.col,'MISSION');
-  // corridas: largada nomeada quando ociosa; durante a prova, checkpoint atual +
-  // boias seguintes (anel apagado, sem rótulo)
-  const rOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
-  for(const b of refs.raceBlips?.()||[])
-    push(b,'flag','#ff8a1e',rOn?(b.current?'CHECKPOINT':null):'STREET RACE',rOn&&!b.current);
-  const bOn=(refs.getBoatRaceState?.()?.phase||'idle')!=='idle';
-  for(const b of refs.boatRaceBlips?.()||[])
-    push(b,'flag','#1ec8ff',bOn?(b.current?'NEXT BUOY':null):'BOAT RACE',bOn&&!b.current);
+  // ícone de mini-game: igual ao push, mas nunca em território de gangue viva
+  const pushMG=(b,icon,color,label,faded)=>{
+    if(b&&!inGangTerritory(b.x,b.z))push(b,icon,color,label,faded);
+  };
+  if(mgActive){
+    // sessão de mini game em curso: o mapa grande mostra SÓ os alvos dela
+    for(const b of MiniGame.activeBlips())marks.push({...b});
+  }else{
+    const raceOn=rOn||bOn; // numa corrida o mapa grande também fica só com a corrida
+    // POIs/serviços e demais minigames: escondidos durante uma corrida (igual ao
+    // radar e às sessões de mini game). Antes a largada do off-road, o táxi, as
+    // entregas etc. vazavam no mapa enquanto a prova de rua/lanchas rolava.
+    if(!raceOn){
+      for(const b of refs.interiorBlips?.()||[])marks.push({...b});  // lojas/serviços (já têm label)
+      const ws=refs.workshopBlip?.();if(ws)marks.push({...ws});      // oficina de custom
+      // minigames de ponto fixo (nunca em território de gangue)
+      pushMG(refs.overkillBlip?.(),'skull','#ff2e88','OVERKILL');
+      pushMG(refs.vigilanteStart?.(),'cop','#3e7bff','VIGILANTE');
+      pushMG(refs.paramedicStart?.(),'cross','#19e3ff','PARAMEDIC');
+      // táxi: livre / passageiro / destino
+      const tx=refs.taxiTarget?.();
+      if(tx)pushMG(tx,tx.kind==='taxi'?'taxi':tx.kind==='pickup'?'person':'flag',
+                  tx.kind==='taxi'?'#f5c518':'#5eff8a',
+                  tx.kind==='taxi'?'TAXI':tx.kind==='pickup'?'PASSENGER':'DROP OFF');
+      // entrega
+      pushMG(refs.getDelivery?.(),'package','#ffd24a','DELIVERY');
+      // plantões ativos
+      for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPECT');
+      for(const b of refs.paramedicBlips?.()||[])
+        push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PATIENT');
+      // história
+      for(const b of refs.storyBlips?.()||[])push(b,b.letter?'letter':'diamond',b.col,'MISSION');
+      // minigames registrados: o mapa completo mostra TODOS (longe ou perto), menos
+      // os que caem em território de gangue (regra fundamental)
+      for(const fn of refs.miniBlips||[])for(const b of fn())
+        if(!inGangTerritory(b.x,b.z))marks.push({...b});
+    }
+    // corridas: largada nomeada quando ociosa; durante a prova, checkpoint atual +
+    // boias seguintes (anel apagado, sem rótulo). Durante UMA corrida a largada da
+    // OUTRA some (rua x lanchas não vazam uma na outra).
+    if(!bOn)for(const b of refs.raceBlips?.()||[])
+      push(b,'flag','#ff8a1e',rOn?(b.current?'CHECKPOINT':null):'STREET RACE',rOn&&!b.current);
+    if(!rOn)for(const b of refs.boatRaceBlips?.()||[])
+      push(b,'flag','#1ec8ff',bOn?(b.current?'NEXT BUOY':null):'BOAT RACE',bOn&&!b.current);
+  }
 
   for(const m of marks){
     const[px,py]=P(m.x,m.z);
@@ -706,14 +734,15 @@ export function updateHUD(dt){
   // velocímetro (canto inferior direito): SÓ no modo corrida
   if(hudSpeedo){
     const racing=((refs.getRaceState?.()?.phase||'idle')!=='idle')
-      ||((refs.getBoatRaceState?.()?.phase||'idle')!=='idle');
+      ||((refs.getBoatRaceState?.()?.phase||'idle')!=='idle')
+      ||((refs.getOffroadState?.()?.phase||'idle')!=='idle');
     if(racing&&state.mode==='car'){
       const kmh=Math.round(Math.abs(refs.getCur?.()?.speed||0)*5);
       hudSpeedoVal.textContent=kmh;
       hudSpeedo.style.display='flex';
     }else hudSpeedo.style.display='none';
   }
-  const aiming=state.started&&refs.isWeaponHeld?.()&&!state.paused&&!state.dlgActive&&!state.orientationBlocked;
+  const aiming=state.started&&refs.isWeaponHeld?.()&&!state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.wheelOpen;
   hudCrosshair.classList.toggle('show',aiming);
   hudCrosshair.classList.toggle('target',aiming&&state.crosshairTarget);
   hudCrosshair.classList.toggle('shoot',state.crosshairKick>.01);

@@ -83,12 +83,29 @@ export function updateTraffic(dt){
   const pp=playerPos();
   for(const t of traffic){
     const pos=trafficPos(t);
+    // Freia pelo jogador/carro do jogador logo à frente (ponto 5m adiante).
     const ax=pos.x+pos.dx*5,az=pos.z+pos.dz*5;
     let blocked=Math.hypot(ax-pp.x,az-pp.z)<3.8;
+    // Freia por outro carro SÓ quando ele está à frente e na MINHA faixa (cone
+    // estreito via produto escalar/lateral, sem sqrt). A checagem omnidirecional
+    // antiga (raio em volta de um ponto à frente) travava cruzamentos 4-way em
+    // deadlock permanente — cada carro via o transversal e ninguém andava.
     if(!blocked)for(const o of traffic){
-      if(o!==t&&Math.hypot(ax-o.g.position.x,az-o.g.position.z)<3.6){blocked=true;break;}
+      if(o===t)continue;
+      const rx=o.g.position.x-pos.x,rz=o.g.position.z-pos.z;
+      const fwd=rx*pos.dx+rz*pos.dz;            // distância à frente (direção de marcha)
+      if(fwd<=.5||fwd>6.5)continue;             // atrás/sobreposto ou longe: ignora
+      if(Math.abs(rx*pos.dz-rz*pos.dx)<2){blocked=true;break;} // afastamento lateral
     }
     if(t.brakeT>0){t.brakeT-=dt;blocked=true;}
+    // Anti-travamento: parado tempo demais (deadlock de cruzamento) → ignora o
+    // bloqueio por ~0.5s pra desfazer o nó e seguir. Em fila normal o stuckT
+    // zera sozinho (o da frente anda e o cone libera), então só age em impasses.
+    if(blocked){
+      t.stuckT=(t.stuckT||0)+dt;
+      if(t.stuckT>2.5)t.stuckT=0;               // fim da janela: reavalia do zero
+      else if(t.stuckT>2)blocked=false;         // janela de ~0.5s atravessando
+    }else t.stuckT=0;
     // reduz a marcha na esquina pra curva sair suave
     const inCorner=(t.C&&t.t>1-TURN_S)||(t.P&&t.t<TURN_S);
     const target=blocked?0:inCorner?5.5:8.5;

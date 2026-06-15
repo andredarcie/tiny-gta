@@ -87,5 +87,13 @@ export function overkillMusicOn(){
 export function overkillMusicOff(){
   if(!on)return;
   on=false;clearTimeout(sched);sched=null;
-  if(gain)gain.gain.setTargetAtTime(0,AC.currentTime,.12); // fade out -> silencia os já agendados
+  if(gain){
+    // os osciladores já agendados (até ~5.5s à frente) continuam ligados ao gain ANTIGO;
+    // soltamos esse gain (silencia + desconecta depois da fila) e a próxima ativação cria
+    // um gain NOVO em loop() -> reativar rápido não empilha/dobra a trilha.
+    const g=gain;gain=null;
+    g.gain.cancelScheduledValues(AC.currentTime);
+    g.gain.setTargetAtTime(0,AC.currentTime,.05); // fade out rápido do que já foi agendado
+    setTimeout(()=>{try{g.disconnect();}catch(e){}},6000); // limpa após o fim da fila
+  }
 }

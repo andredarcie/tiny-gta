@@ -3,7 +3,7 @@
 //  - recordBest(money): acompanha o maior dinheiro da run
 //  - submitFinal(): envia o melhor score ao sair (uma vez; token é single-use)
 //  - refreshTopPlayers(): desenha o top 5 na tela inicial
-const API = 'https://tiny-gta-backend.vercel.app';
+export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 
 let token = null, bestMoney = 0, lastSent = -1, flushTimer = null;
@@ -11,6 +11,8 @@ let nickname = '';
 try { nickname = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
 
 export function getNickname() { return nickname; }
+// token da sessão atual (single-run), reaproveitado pelos rankings por mini game
+export function getSessionToken() { return token; }
 export function setNickname(n) {
   nickname = n;
   try { localStorage.setItem(NICK_KEY, n); } catch (e) {}
@@ -52,23 +54,26 @@ export function flush() {
 const escapeHtml = s => String(s).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Atualiza o top 5 nas duas listas que usam o mesmo ranking: a tela inicial
+// (#lb-list) e o overlay de pausa (#pause-lb-list).
 export async function refreshTopPlayers() {
-  const el = document.getElementById('lb-list');
-  if (!el) return;
+  const targets = ['lb-list', 'pause-lb-list']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
+  if (!targets.length) return;
   let entries = [];
   try {
     const r = await fetch(API + '/api/scores?limit=5');
     entries = (await r.json()).entries || [];
   } catch (e) {}
-  if (!entries.length) {
-    el.innerHTML = '<li class="lb-empty">Be the first on the board!</li>';
-    return;
-  }
-  el.innerHTML = entries.map(e =>
-    `<li><span class="lb-rank">${e.rank}</span>` +
-    `<span class="lb-name">${escapeHtml(e.name)}</span>` +
-    `<span class="lb-money">$${Number(e.money).toLocaleString('en-US')}</span></li>`
-  ).join('');
+  const html = entries.length
+    ? entries.map(e =>
+        `<li><span class="lb-rank">${e.rank}</span>` +
+        `<span class="lb-name">${escapeHtml(e.name)}</span>` +
+        `<span class="lb-money">$${Number(e.money).toLocaleString('en-US')}</span></li>`
+      ).join('')
+    : '<li class="lb-empty">Be the first on the board!</li>';
+  targets.forEach(el => { el.innerHTML = html; });
 }
 
 // reforço: manda o melhor score ao esconder/fechar a aba

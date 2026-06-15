@@ -8,6 +8,8 @@ export {makePed,shirtColors};
 export {makePlane} from '../assets/models/aircraft/plane.js';
 import {makePistolModel} from '../assets/models/weapons/pistol.js';
 import {makeUziModel} from '../assets/models/weapons/uzi.js';
+import {makeShotgunModel} from '../assets/models/weapons/shotgun.js';
+import {makeAk47Model} from '../assets/models/weapons/ak47.js';
 
 // ---- Empunhadura PADRÃO de arma (jogador, gangues e polícia) ----
 // Não existe mais um "gang gun" próprio: NPCs seguram os MESMOS modelos do
@@ -18,7 +20,9 @@ import {makeUziModel} from '../assets/models/weapons/uzi.js';
 // do animatePed do frame. kick = recuo do tiro (0..~.16), usado pelo jogador.
 const HAND_WEAPONS={
   pistol:{make:makePistolModel,scale:.5,pos:[0,-.55,.08]},
-  uzi:{make:makeUziModel,scale:.55,pos:[0,-.56,.05]}
+  uzi:{make:makeUziModel,scale:.55,pos:[0,-.56,.05]},
+  shotgun:{make:makeShotgunModel,scale:.5,pos:[0,-.52,.12]},
+  ak47:{make:makeAk47Model,scale:.5,pos:[0,-.52,.12]}
 };
 export function attachHandGun(ped,kind='pistol'){
   const arm=ped.userData.limbs?.rightArm;
@@ -77,15 +81,26 @@ export function animatePed(g,phase=0,amount=0){
   }
 }
 
+// Libera as geometrias de um efeito transitório (bala, tracer, explosão, fogo…)
+// ao tirá-lo da cena. SÓ geometria: ela é sempre por-instância e é o que de fato
+// vaza no GPU sem dispose. Materiais NÃO — vários são compartilhados em nível de
+// módulo (dar dispose quebraria os próximos spawns) e o que é por-instância é
+// minúsculo (o programa fica em cache; o GC do JS recolhe o objeto).
+export function disposeGeometries(o){
+  o.traverse(c=>{if(c.geometry)c.geometry.dispose();});
+}
+
 const _dp=new THREE.Vector3(),_dd=new THREE.Vector3(),_dq=new THREE.Quaternion();
-export function dentCar(g,worldPoint,worldDir,strength=.1){
+// opts opcional pra batidas mais destrutivas (carro do jogador): radius alarga a
+// zona amassada e max sobe o teto de deslocamento por vértice (afunda mais fundo).
+export function dentCar(g,worldPoint,worldDir,strength=.1,opts){
   const parts=g.userData.dentable;if(!parts)return;
   g.updateMatrixWorld();
   _dp.copy(worldPoint);g.worldToLocal(_dp);
   _dd.copy(worldDir);_dd.y*=.3;
   if(_dd.lengthSq()<1e-6)return;
   _dd.normalize().applyQuaternion(_dq.copy(g.quaternion).invert());
-  const R=1.4,MAX=.42;
+  const R=opts?.radius??1.4,MAX=opts?.max??.42;
   for(const m of parts){
     const lx=_dp.x-m.position.x,ly=_dp.y-m.position.y,lz=_dp.z-m.position.z;
     if(Math.hypot(lx,ly,lz)>R+2.9)continue;

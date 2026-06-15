@@ -113,22 +113,27 @@ function signTexture(){
   return t;
 }
 
-// Etiqueta do nome da arma (canvas -> textura num plano). A fonte encolhe pra
-// caber nomes longos ("MOLOTOV COCKTAIL") na mesma plaquinha.
-function labelTexture(text){
-  const c=document.createElement('canvas');c.width=256;c.height=64;
+// Etiqueta da arma (canvas -> textura num plano): NOME em cima e PREÇO embaixo,
+// em dourado. O preço fica SEMPRE visível na vitrine, mesmo sem grana pra comprar.
+// A fonte do nome encolhe pra caber nomes longos ("MOLOTOV COCKTAIL").
+function labelTexture(name,price){
+  const c=document.createElement('canvas');c.width=256;c.height=96;
   const x=c.getContext('2d');
   x.textAlign='center';x.textBaseline='middle';
   let fs=30;x.font=`900 ${fs}px monospace`;
-  while(x.measureText(text).width>236&&fs>10){fs-=2;x.font=`900 ${fs}px monospace`;}
-  x.lineWidth=6;x.strokeStyle='#000';x.strokeText(text,128,34);
-  x.fillStyle='#ffe9b0';x.fillText(text,128,34);
+  while(x.measureText(name).width>236&&fs>10){fs-=2;x.font=`900 ${fs}px monospace`;}
+  x.lineWidth=6;x.strokeStyle='#000';x.strokeText(name,128,30);
+  x.fillStyle='#ffe9b0';x.fillText(name,128,30);
+  const pt=`$${price}`;
+  x.font='900 30px monospace';
+  x.lineWidth=6;x.strokeStyle='#000';x.strokeText(pt,128,70);
+  x.fillStyle='#f5c518';x.fillText(pt,128,70); // dourado do AMMO DEPOT
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
-function makeLabel(text){
-  return new THREE.Mesh(new THREE.PlaneGeometry(2.2,.55),
-    new THREE.MeshBasicMaterial({map:labelTexture(text),transparent:true,depthWrite:false}));
+function makeLabel(name,price){
+  return new THREE.Mesh(new THREE.PlaneGeometry(2.2,.82),
+    new THREE.MeshBasicMaterial({map:labelTexture(name,price),transparent:true,depthWrite:false}));
 }
 function panelTexture(lines,{bg='#17130f',fg='#ffe7b0',sub='#f5c518'}={}){
   const arr=String(lines).split('\n');
@@ -526,8 +531,8 @@ export function addGunShop(solids){
     const pivot=displayWeapon(w,x,TOP_Y,z);
     gunShopInterior.add(pivot);
     gunShopFx.displays.push(pivot);
-    const label=makeLabel(w.name);
-    label.position.set(x,TOP_Y+1.15,z);
+    const label=makeLabel(w.name,w.price);
+    label.position.set(x,TOP_Y+1.32,z);
     gunShopInterior.add(label);
     gunShopFx.labels.push(label);
     GUN_SHOP_ITEMS.push({id:w.id,name:w.name,price:w.price,x,z});

@@ -13,6 +13,29 @@ validação do endpoint.
 | `POST` | `/api/session` | — | `{ token, startedAt }` |
 | `POST` | `/api/scores` | `{ name, money, token }` | `{ ok, name, money, rank }` |
 | `GET` | `/api/scores?limit=100` | — | `{ entries: [{ rank, name, money }] }` |
+| `POST` | `/api/minigame` | `{ game, name, won, score, token }` | `{ ok, game, name, rating, rank, stats }` |
+| `GET` | `/api/minigame?game=taxi&limit=5` | — | `{ game, entries: [{ rank, name, rating, plays, wins, earned, best }] }` |
+
+### Ranking por mini game (`/api/minigame`)
+
+Cada mini game (`taxi`, `race`, `boat-race`, `vigilante`, `paramedic`, `firefighter`,
+`rampage`, `rc-toyz`, …) tem o **seu próprio** top 5. O front mostra esse ranking num
+*briefing* no começo de cada sessão; ao concluir uma sessão envia `{ won, score }`
+(score = a métrica natural daquele jogo: dinheiro ganho, kills, resgates…).
+
+Por jogador/jogo guardamos os **acumulados crus** num hash
+(`tinygta:mg:<game>:p:<nome>` → `plays, wins, losses, earned, best`) e, a cada envio,
+recalculamos um **rating justo** que vai pro sorted set `tinygta:mg:<game>`:
+
+```
+rating = ganhoMédio · (0.5 + taxaVitória) · (1 + W·volume)
+  ganhoMédio  = earned / plays            # premia habilidade, não grind vazio
+  taxaVitória = (wins + N·r) / (plays + N) # Bayes: 1 vitória de sorte não domina
+  volume      = log2(1 + plays)            # bônus de dedicação com retorno decrescente
+```
+
+Parâmetros (`MG_PRIOR_N`=5, `MG_PRIOR_RATE`=0.35, `MG_VOLUME_W`=0.5, `MG_SCORE_CAP`)
+são ajustáveis por env. Reaproveita o **token de sessão** e o **rate-limit por IP**.
 
 ### Camadas de segurança
 - **Token de sessão** emitido em `/api/session` no início da partida, exigido e

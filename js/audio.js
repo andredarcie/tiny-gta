@@ -1,6 +1,7 @@
 import {state,input,refs} from './state.js';
 
 export let AC=null,audioEngine=null,siren=null,hornG=null,master=null,screechG=null,heliG=null;
+let fireSirenG=null,hoseG=null; // sirene do caminhão de bombeiros + chiado da mangueira
 
 export function initAudio(){
   if(AC)return;
@@ -28,7 +29,35 @@ export function initAudio(){
   const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=170;
   heliG=AC.createGain();heliG.gain.value=0;
   ns.connect(lp);lp.connect(heliG);heliG.connect(master);
+  // chiado da mangueira: ruído da mesma fonte, passado por um band-pass agudo (a
+  // água "assobia" ao sair). Gate por hoseG (ligado/desligado pelo firefighter).
+  const hoseBP=AC.createBiquadFilter();hoseBP.type='bandpass';hoseBP.frequency.value=3000;hoseBP.Q.value=.5;
+  const hoseHP=AC.createBiquadFilter();hoseHP.type='highpass';hoseHP.frequency.value=1400;
+  hoseG=AC.createGain();hoseG.gain.value=0;
+  ns.connect(hoseBP);hoseBP.connect(hoseHP);hoseHP.connect(hoseG);hoseG.connect(master);
   ns.start();
+  // sirene do caminhão de bombeiros: oscilador "uivando" sozinho via um LFO lento
+  // que modula a frequência (sobe-desce). Só o ganho liga/desliga (setFireSiren).
+  const fo=AC.createOscillator();fo.type='sawtooth';fo.frequency.value=720;
+  const flfo=AC.createOscillator();flfo.type='sine';flfo.frequency.value=.32; // uivo lento
+  const flfoG=AC.createGain();flfoG.gain.value=300;                            // profundidade do uivo
+  flfo.connect(flfoG);flfoG.connect(fo.frequency);
+  const fbp=AC.createBiquadFilter();fbp.type='bandpass';fbp.frequency.value=950;fbp.Q.value=2.2;
+  fireSirenG=AC.createGain();fireSirenG.gain.value=0;
+  fo.connect(fbp);fbp.connect(fireSirenG);fireSirenG.connect(master);
+  fo.start();flfo.start();
+}
+
+// Liga/desliga (com fade suave) a sirene do caminhão de bombeiros — chamada no
+// começo/fim do plantão pelo js/firefighter.js.
+export function setFireSiren(on){
+  if(!AC||!fireSirenG)return;
+  fireSirenG.gain.setTargetAtTime(on?.045:0,AC.currentTime,.15);
+}
+// Liga/desliga (fade rápido) o chiado da mangueira enquanto o jato d'água sai.
+export function setHose(on){
+  if(!AC||!hoseG)return;
+  hoseG.gain.setTargetAtTime(on?.06:0,AC.currentTime,.05);
 }
 
 export function thud(v){

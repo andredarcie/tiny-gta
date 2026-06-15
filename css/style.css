@@ -141,6 +141,27 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .vig-meter,.med-meter{height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.13);overflow:hidden}
 .vig-meter i,.med-meter i{display:block;height:100%;border-radius:2px}
 .vig-meter i{background:#3e7bff}.med-meter i{background:#ff4d6a}
+/* painel do plantão de bombeiro (#ffhud) — mesmo layout dos outros, tema laranja */
+#ffhud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  display:none;width:120px;box-sizing:border-box;padding:6px 7px;
+  border-radius:4px;background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  color:var(--cream);text-shadow:1px 1px 0 #000;border:1px solid rgba(255,122,30,.78)}
+#ffhud.show{display:block}
+.ff-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;line-height:1;color:#ff9a3a}
+.ff-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
+.ff-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffd24a}
+.ff-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.ff-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
+.ff-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffc08a}
+.ff-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.ff-meter{height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.13);overflow:hidden}
+.ff-meter i{display:block;height:100%;border-radius:2px;background:#ffd24a}
+.ff-blaze i{background:#ff5a1e}
+/* tempo acabando: número e barra do tempo piscam em vermelho */
+.ff-row.ff-low b{color:#ff3b3b}
+.ff-meter.ff-low i{background:#ff3b3b}
+.ff-low{animation:ffblink .6s steps(1) infinite}
+@keyframes ffblink{50%{opacity:.45}}
 #msg{position:absolute;left:50%;top:84px;transform:translateX(-50%);
   font-family:'Bowlby One SC';font-size:24px;color:var(--cream);letter-spacing:2px;
   text-shadow:2px 2px 0 #000,0 0 18px rgba(255,46,136,.7);opacity:0;transition:opacity .25s;
@@ -153,8 +174,9 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
   font-family:'Bowlby One SC';font-size:96px;letter-spacing:6px;opacity:0;
   transition:opacity .35s,transform .35s;white-space:nowrap}
 #bigtext.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
-#pauseov{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;
-  background:rgba(10,2,20,.6);font-family:'Bowlby One SC';font-size:64px;color:var(--cyan);
+#pauseov{position:fixed;inset:0;z-index:45;display:none;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+  background:rgba(10,2,20,.6)}
+#pause-title{font-family:'Bowlby One SC';font-size:64px;color:var(--cyan);
   letter-spacing:8px;text-shadow:0 0 24px rgba(25,227,255,.7)}
 #house-tv{position:fixed;inset:0;z-index:64;display:none;align-items:center;justify-content:center;
   padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(48px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));
@@ -169,7 +191,7 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
   pointer-events:none;font:800 12px 'IBM Plex Mono',monospace;letter-spacing:2px;color:var(--gold);
   text-shadow:2px 2px 0 #000,0 0 14px rgba(255,210,74,.65)}
 #house-tv-exit{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));
-  z-index:65;display:none;min-width:74px;height:54px;border-radius:10px;border:2px solid var(--gold);
+  z-index:65;display:block;min-width:74px;height:54px;border-radius:10px;border:2px solid var(--gold);
   background:rgba(20,9,31,.88);color:var(--gold);font-family:'Bowlby One SC';font-size:14px;
   letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,210,74,.42);
   pointer-events:auto;touch-action:none}
@@ -260,6 +282,16 @@ body.dance-game-open #btn-fullscreen{display:none!important}
 .ms-lab{flex:1}
 .ms-price{font-weight:800;font-size:12px;color:var(--gold);letter-spacing:.5px}
 .ms-opt.on .ms-price{color:#9dff2e}
+.ms-price.owned{color:var(--cyan)}
+.ms-price.incart{color:#9dff2e}
+#modshop-cart{display:flex;align-items:center;gap:10px;border-top:2px solid rgba(25,227,255,.25);padding-top:10px}
+#modshop-total{flex:1;font:800 15px 'IBM Plex Mono',monospace;color:var(--gold);letter-spacing:.5px;text-shadow:1px 1px 0 #000}
+#modshop-buy{pointer-events:auto;touch-action:none;min-height:44px;padding:0 16px;border-radius:10px;
+  border:2px solid #9dff2e;background:rgba(20,31,9,.85);color:#9dff2e;
+  font-family:'Bowlby One SC';font-size:13px;letter-spacing:1px;text-shadow:1px 1px 0 #000;
+  box-shadow:0 0 16px rgba(157,255,46,.35);cursor:pointer}
+#modshop-buy:disabled{opacity:.4;border-color:rgba(255,233,201,.3);color:rgba(255,233,201,.5);box-shadow:none;cursor:default}
+#modshop-buy.confirm{border-color:var(--gold);color:var(--gold);background:rgba(31,22,9,.9);box-shadow:0 0 18px rgba(255,210,74,.5)}
 #modshop-toast{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));
   transform:translateX(-50%) translateY(10px);opacity:0;transition:opacity .15s,transform .15s;
   pointer-events:none;font:800 16px 'Bowlby One SC','IBM Plex Mono',monospace;letter-spacing:1px;
@@ -291,17 +323,18 @@ body.mod-shop-open #btn-fullscreen{display:none!important}
   text-shadow:4px 4px 0 var(--pink),8px 8px 0 #5a0e3a,0 0 50px rgba(255,46,136,.55)}
 #logo small{display:block;font-size:.24em;color:var(--cyan);letter-spacing:.6em;
   text-shadow:2px 2px 0 #073a6b,0 0 22px rgba(25,227,255,.8);margin-top:8px}
-/* ----- Ranking global na tela inicial ----- */
-#leaderboard{margin-top:34px;width:min(420px,90vw);background:rgba(20,9,31,.58);
+/* ----- Ranking global na tela inicial (e replicado na pausa) ----- */
+#leaderboard,#pause-leaderboard{margin-top:34px;width:min(420px,90vw);background:rgba(20,9,31,.58);
   border:2px solid var(--cyan);border-radius:14px;padding:14px 16px 12px;
   box-shadow:0 0 18px rgba(25,227,255,.35)}
+#pause-leaderboard{margin-top:0} /* na pausa o espaçamento vem do gap do overlay */
 .lb-head{font-family:'Bowlby One SC';font-size:16px;letter-spacing:2px;color:var(--cyan);
   text-align:center;text-shadow:0 0 12px rgba(25,227,255,.7);margin-bottom:8px}
-#lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
-#lb-list li{display:grid;grid-template-columns:1.6em 1fr auto;align-items:center;gap:8px;
+#lb-list,#pause-lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+#lb-list li,#pause-lb-list li{display:grid;grid-template-columns:1.6em 1fr auto;align-items:center;gap:8px;
   font:700 14px 'IBM Plex Mono',monospace;color:var(--cream);
   padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.05)}
-#lb-list li:nth-child(1){background:rgba(255,210,74,.18);border:1px solid rgba(255,210,74,.6)}
+#lb-list li:nth-child(1),#pause-lb-list li:nth-child(1){background:rgba(255,210,74,.18);border:1px solid rgba(255,210,74,.6)}
 .lb-rank{color:var(--gold);text-align:center;font-weight:800}
 .lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb-money{color:#7CFFB0;font-variant-numeric:tabular-nums}
@@ -309,6 +342,40 @@ body.mod-shop-open #btn-fullscreen{display:none!important}
 .lb-prize{margin-top:10px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.45;
   color:var(--cream);opacity:.85;text-align:center}
 .lb-prize b{color:var(--gold)}
+
+/* Briefing/ranking que aparece no começo de cada mini game (ver js/minigame-leaderboard.js) */
+#mg-intro{position:fixed;inset:0;z-index:46;display:none;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 40%,rgba(10,2,20,.35),rgba(6,1,14,.78) 80%);
+  -webkit-tap-highlight-color:transparent}
+#mg-intro.show{display:flex}
+.mgi-box{width:min(440px,92vw);background:rgba(20,9,31,.82);border:2px solid var(--cyan);
+  border-radius:16px;padding:18px 20px 20px;text-align:center;
+  box-shadow:0 0 26px rgba(25,227,255,.4),0 18px 55px rgba(0,0,0,.6)}
+.mgi-sub{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:4px;color:var(--gold);opacity:.8}
+#mgi-title{font-family:'Bowlby One SC';font-size:30px;line-height:1.1;letter-spacing:1px;color:var(--cream);
+  text-shadow:0 0 18px rgba(255,210,74,.5);margin:2px 0 14px}
+.mgi-box .lb-head{font-size:14px;margin-bottom:8px}
+#mgi-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+#mgi-list li{display:grid;grid-template-columns:1.6em 1fr auto;align-items:center;gap:8px;
+  font:700 14px 'IBM Plex Mono',monospace;color:var(--cream);
+  padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.05);text-align:left}
+#mgi-list li:nth-child(1){background:rgba(255,210,74,.18);border:1px solid rgba(255,210,74,.6)}
+#mgi-list .lb-rank{color:var(--gold);text-align:center;font-weight:800}
+#mgi-list .lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mgi-rating{color:#7CFFB0;font-variant-numeric:tabular-nums;text-align:right;line-height:1.1}
+.mgi-rating small{display:block;font-size:9px;font-weight:600;color:var(--cream);opacity:.55;letter-spacing:.5px}
+#mgi-list .lb-empty{display:block;text-align:center;opacity:.7;font-weight:600}
+#mgi-go{margin-top:16px;font-family:'Bowlby One SC';font-size:20px;letter-spacing:3px;
+  color:var(--ink);background:var(--gold);padding:10px 32px;border:none;border-radius:8px;
+  cursor:pointer;box-shadow:0 0 22px rgba(255,210,74,.6),3px 3px 0 #7a3a00}
+.mgi-hint{margin-top:10px;font:600 11px 'IBM Plex Mono',monospace;color:var(--cream);opacity:.6;letter-spacing:1px}
+@media (max-width:560px){
+  .mgi-box{width:min(360px,94vw);padding:14px 14px 16px}
+  #mgi-title{font-size:24px}
+  #mgi-list li{font-size:12px;padding:4px 7px}
+  #mgi-go{font-size:18px;padding:9px 26px}
+}
+
 #play{margin-top:24px;font-family:'Bowlby One SC';font-size:26px;letter-spacing:5px;
   color:var(--ink);background:var(--gold);padding:12px 38px;border:none;border-radius:8px;
   cursor:pointer;box-shadow:0 0 28px rgba(255,210,74,.7),4px 4px 0 #7a3a00;
@@ -453,6 +520,22 @@ body.is-mobile #touch-controls{display:block}
 #btn-pause{right:max(14px,env(safe-area-inset-right));top:max(12px,env(safe-area-inset-top))}
 #touch-controls.in-dialog .touch-stick,#touch-controls.in-dialog #btn-shoot,#touch-controls.in-dialog #btn-wpn,
 #touch-controls.in-dialog #btn-brake,#touch-controls.in-dialog #btn-radio{opacity:0;pointer-events:none}
+/* Na pausa some com tudo (menos o próprio botão de pause) p/ não cobrir o ranking */
+body.paused #touch-controls .touch-stick,body.paused #touch-controls #btn-shoot,
+body.paused #touch-controls #btn-wpn,body.paused #touch-controls #btn-brake,
+body.paused #touch-controls #btn-radio,body.paused #touch-controls #btn-interact{opacity:0;pointer-events:none}
+
+/* Roda de seleção de armas (segurar Tab/Q / botão WPN) — ver js/weapon-wheel.js.
+   Overlay em tela cheia com blur de fundo; a vinheta de foco agora é desenhada
+   no próprio canvas (faz fade junto com a abertura). No PC o ponteiro fica travado
+   no #game, então a roda NÃO captura ponteiro; no mobile ela captura os toques. */
+#weapon-wheel{position:fixed;inset:0;z-index:56;display:none;pointer-events:none;
+  background:rgba(6,2,12,.22);
+  -webkit-backdrop-filter:blur(3px) saturate(1.05);backdrop-filter:blur(3px) saturate(1.05)}
+#weapon-wheel.open{display:block}
+body.is-mobile #weapon-wheel.open{pointer-events:auto}
+#ww-canvas{display:block;width:100%;height:100%;touch-action:none}
+body.wheel-open #touch-controls{opacity:0;pointer-events:none}
 
 #rotate-device{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
   background:rgba(8,3,16,.88);font-family:'Bowlby One SC';font-size:clamp(28px,9vw,58px);
@@ -489,11 +572,11 @@ body.is-portrait-blocked #rotate-device{display:flex}
   .taxi-label{font-size:8px}.taxi-main{margin-top:4px;gap:4px}
   .taxi-main span{font-size:10px}.taxi-main b{font-size:11px}
   .taxi-meter{height:3px;margin-top:4px}
-  #vighud,#medhud{left:max(8px,env(safe-area-inset-left));top:50%;bottom:auto;width:100px;padding:5px 6px}
-  .vig-label,.med-label{font-size:8px}.vig-main,.med-main{margin-top:4px;gap:4px}
-  .vig-main span,.med-main span{font-size:10px}.vig-main b,.med-main b{font-size:12px}
-  .vig-row,.med-row{margin-top:3px;gap:4px}.vig-row span,.med-row span{font-size:8px}
-  .vig-row b,.med-row b{font-size:10px}.vig-meter,.med-meter{height:3px;margin-top:4px}
+  #vighud,#medhud,#ffhud{left:max(8px,env(safe-area-inset-left));top:50%;bottom:auto;width:100px;padding:5px 6px}
+  .vig-label,.med-label,.ff-label{font-size:8px}.vig-main,.med-main,.ff-main{margin-top:4px;gap:4px}
+  .vig-main span,.med-main span,.ff-main span{font-size:10px}.vig-main b,.med-main b,.ff-main b{font-size:12px}
+  .vig-row,.med-row,.ff-row{margin-top:3px;gap:4px}.vig-row span,.med-row span,.ff-row span{font-size:8px}
+  .vig-row b,.med-row b,.ff-row b{font-size:10px}.vig-meter,.med-meter,.ff-meter{height:3px;margin-top:4px}
   #racehud{right:max(8px,env(safe-area-inset-right));top:50%;bottom:auto;width:100px;padding:5px 6px}
   .race-label{font-size:8px}.race-main{margin-top:4px;gap:4px}
   .race-main span{font-size:10px}.race-main b{font-size:12px}
@@ -503,7 +586,7 @@ body.is-portrait-blocked #rotate-device{display:flex}
     max-width:78vw;white-space:normal;line-height:1.25}
   #rampage{top:max(128px,calc(env(safe-area-inset-top) + 128px));font-size:10px}
   #bigtext{font-size:clamp(38px,11vw,96px);letter-spacing:3px;white-space:normal;text-align:center;max-width:88vw}
-  #pauseov{font-size:clamp(38px,12vw,64px)}
+  #pause-title{font-size:clamp(38px,12vw,64px)}
   .house-tv-shell{width:92vw;height:78vh;border-width:6px}
   #house-tv-hint{display:none}
   #house-tv-exit{display:block}
@@ -513,9 +596,10 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #mp-mission,#mp-respect{max-width:86vw;text-align:center;line-height:1.35}
   #title{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
   #logo{font-size:clamp(46px,11vw,120px)}
-  #leaderboard{margin-top:20px;padding:10px 12px 9px;width:min(360px,92vw)}
+  #leaderboard,#pause-leaderboard{margin-top:20px;padding:10px 12px 9px;width:min(360px,92vw)}
+  #pause-leaderboard{margin-top:0}
   .lb-head{font-size:14px}
-  #lb-list li{font-size:12px;padding:4px 7px}
+  #lb-list li,#pause-lb-list li{font-size:12px;padding:4px 7px}
   .lb-prize{font-size:10px;margin-top:8px}
   #play{margin-top:16px;font-size:clamp(18px,4vw,24px);padding:10px 24px}
   #credit{bottom:max(10px,env(safe-area-inset-bottom));font-size:9px;text-align:center;max-width:90vw}

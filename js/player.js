@@ -1,10 +1,14 @@
 import * as THREE from 'three';
-import {clamp,rand,nodeX,WATER,SWIM_BOUND,RURAL_X1,RURAL_HALF,groundHeight} from './constants.js';
+import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
+  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z} from './constants.js';
 import {state,input,carNames,carColors,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene,camera} from './engine.js';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlane,spinWheels,dentCar} from './entities.js';
 import * as Entities from './entities.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
+import {makeSmokePuff} from '../assets/models/effects/smoke-puff.js';
+import {makeRcController} from '../assets/models/props/rc-controller.js';
 import {thud,blip,splash} from './audio.js';
 import {radioOn,radioOff,radioEnter} from './radio.js';
 import {collideStatics,addWanted} from './physics.js';
@@ -91,9 +95,92 @@ function spawnBoat(color,name,x,z,heading){
   idleCars.push(b);
   return b;
 }
-spawnBoat(0xff5a3c,'SEA BLASTER',24,WATER+12,Math.PI);
+spawnBoat(0xff5a3c,'SEA BLASTER',BOAT_SPAWN_X,BOAT_SPAWN_Z,Math.PI);
 
 export function playerPos(){return state.mode==='car'?cur.g.position:player.g.position;}
+
+// ===== Dano progressivo do carro do jogador: bate -> amassa feio; bate de novo
+// -> solta fumaça; bate mais -> explode. Tudo barato: o contador/timer mora no
+// userData do carro, o amassado reusa o dentCar (sem geometria nova por batida)
+// e a fumaça é um POOL de baforadas recicladas (zero alocação por frame). =====
+const SMOKE_CRASHES=2;   // 2ª batida: motor começa a fumegar
+const HEAVY_CRASHES=3;   // 3ª batida: fumaça densa (prestes a explodir)
+const EXPLODE_CRASHES=4; // 4ª batida: pega fogo e explode
+const CRASH_CD=.7;       // debounce: roçar na parede conta como UMA batida só
+
+const smoke=[];      // baforadas ativas {g,t,life,vx,vy,vz,s0,s1}
+const smokePool=[];  // baforadas recicláveis (já na cena, invisíveis)
+let smokeTimer=0;
+function spawnSmoke(x,y,z,grow){
+  const g=smokePool.pop()||makeSmokePuff();
+  if(!g.parent)scene.add(g);
+  g.position.set(x+rand(-.3,.3),y,z+rand(-.3,.3));
+  const s0=.25,s1=.9+grow*.7;
+  g.scale.setScalar(s0);g.material.opacity=0;g.visible=true;
+  smoke.push({g,t:0,life:rand(1.0,1.5),vx:rand(-.4,.4),vy:rand(.9,1.5),
+    vz:rand(-.4,.4),s0,s1});
+}
+// Chamado todo frame (main.js). Emite do capô do carro DIRIGIDO se ele estiver
+// danificado, e anima as baforadas em voo (continuam mesmo depois de sair/morrer).
+export function updateCarFx(dt){
+  if(cur&&!cur.bike&&!cur.boat&&!cur.plane){
+    const n=cur.g.userData.crashCount||0;
+    if(n>=SMOKE_CRASHES){
+      smokeTimer-=dt;
+      if(smokeTimer<=0){
+        smokeTimer=n>=HEAVY_CRASHES?.10:.22; // mais batido = mais fumaça
+        const p=cur.g.position,h=cur.heading;
+        spawnSmoke(p.x+Math.sin(h)*1.8,p.y+.8,p.z+Math.cos(h)*1.8,n-SMOKE_CRASHES);
+      }
+    }
+  }
+  for(let i=smoke.length-1;i>=0;i--){
+    const s=smoke[i];s.t+=dt;const k=s.t/s.life;
+    s.g.position.x+=s.vx*dt;s.g.position.y+=s.vy*dt;s.g.position.z+=s.vz*dt;
+    s.vy*=Math.exp(-1.4*dt); // sobe e desacelera
+    s.g.scale.setScalar(s.s0+(s.s1-s.s0)*k);
+    s.g.material.opacity=Math.min(1,k*5)*(1-k)*.55; // surge e desbota
+    if(k>=1){s.g.visible=false;smokePool.push(s.g);smoke.splice(i,1);}
+  }
+}
+
+// Zera o dano acumulado de um carro (a oficina chama isto ao reparar o lataria)
+export function resetCarDamage(g){
+  if(!g)return;const ud=g.userData;ud.crashCount=0;ud.crashCd=0;
+}
+
+// O carro DIRIGIDO explode: efeito + onda de choque (mata/empurra ao redor e
+// pode detonar carros vizinhos em cadeia), tira o destroço da cena e mata o
+// jogador (acorda no hospital). Devolve true pro updateCar abortar o frame.
+function explodePlayerCar(){
+  const g=cur.g,pos=g.position.clone();
+  refs.explodeAt?.(pos); // enquanto cur ainda é válido (a onda de choque usa)
+  scene.remove(g);
+  resetCarDamage(g);
+  g.userData.driver=null;
+  cur=null;            // wastedCut não devolve o destroço pra idleCars
+  state.shake=1;
+  getWasted();         // dentro de veículo -> corte WASTED direto
+  return true;
+}
+
+// Uma batida do carro do jogador: amassa BEM mais que um carro qualquer e, por
+// debounce, conta como evento único. Escala: dent maior -> fumaça -> explosão.
+// Devolve true se o carro foi destruído (o chamador deve abortar o frame).
+function registerCrash(speed,pt,dir){
+  if(cur.bike)return false; // moto não amassa/explode (só carro tem lataria)
+  const ud=cur.g.userData;
+  // amassado bem maior: zona ampliada (radius) e afundando mais fundo (max),
+  // crescendo com a velocidade do impacto
+  dentCar(cur.g,pt,dir,Math.min(.7,.34+speed*.012),{radius:2.2,max:.85});
+  if((ud.crashCd||0)>0)return false; // ainda na mesma colisão: não conta de novo
+  ud.crashCd=CRASH_CD;
+  ud.crashCount=(ud.crashCount||0)+1;
+  if(ud.crashCount>=EXPLODE_CRASHES)return explodePlayerCar();
+  if(ud.crashCount===SMOKE_CRASHES)message('ENGINE DAMAGED!','var(--gold)');
+  else if(ud.crashCount===HEAVY_CRASHES)message('ENGINE ON FIRE!','var(--pink)');
+  return false;
+}
 
 const _dentPt=new THREE.Vector3(),_dentDir=new THREE.Vector3();
 // Scratch vectors reaproveitados nos hot loops (evita alocar por frame).
@@ -174,8 +261,32 @@ function setBoatPose(){
   l.rightForearm?.rotation.set(-.55,0,0);
 }
 
+// RC Toyz: the operator holds a remote controller while piloting the bandit. The
+// controller is parented to the ped (fixed in front of the chest — the operator
+// stands still) and both arms are posed gripping it. Built lazily and reused.
+let rcController=null;
+function attachRemoteController(){
+  if(!rcController){rcController=makeRcController();noShadow(rcController);} // match: player casts no shadow
+  if(rcController.parent!==player.g)player.g.add(rcController);
+  rcController.position.set(0,1.02,.36);
+  rcController.rotation.set(-.45,0,0);
+  rcController.visible=true;
+  // pose: both arms forward, elbows bent, hands meeting at the controller; legs neutral
+  const l=player.g.userData.limbs;if(!l)return;
+  l.leftArm.rotation.set(-.7,0,.5);
+  l.rightArm.rotation.set(-.7,0,-.5);
+  l.leftForearm?.rotation.set(-1.0,0,-.3);
+  l.rightForearm?.rotation.set(-1.0,0,.3);
+  l.leftLeg.rotation.set(0,0,0);l.rightLeg.rotation.set(0,0,0);
+  l.leftCalf?.rotation.set(0,0,0);l.rightCalf?.rotation.set(0,0,0);
+}
+function detachRemoteController(){
+  if(rcController&&rcController.parent)rcController.parent.remove(rcController);
+}
+
 // Tira o jogador de dentro do veículo (reparenta na cena e desfaz a pose)
 function unseatPlayer(){
+  detachRemoteController(); // drop the RC controller if we were operating one
   scene.add(player.g);
   player.g.rotation.set(0,player.heading,0);
   setDrivePose(false);
@@ -249,6 +360,26 @@ function completeEnter(f){
   // motorista NPC some do banco (o ejetado/fugitivo é tratado à parte)
   if(c.driver){c.g.remove(c.driver);c.driver=null;}
   state.mode='car';state.weaponHeld=false;
+  // boarded a vehicle (e.g. a boat from the water): drop the swimming state so the
+  // camera/pose aren't stuck in swim mode. Breath then recovers in updateBoat.
+  if(state.swimming){
+    state.swimming=false;
+    player.swimVX=player.swimVZ=0;player.swimPose=0;
+    player.g.rotation.order='XYZ';
+  }
+  // RC Toyz (remote-control toy): the player does NOT board it. Like GTA III's RC
+  // missions, they stay standing where they are — the "operator" by the pad — and
+  // pilot the bandit from afar. The camera follows the car (updateCamera targets
+  // cur.g), so the ped stays put in the scene: no reparent, no seat, no radio.
+  if(cur.remote){
+    player.g.rotation.set(0,player.heading,0);
+    attachRemoteController();                 // stand holding the remote controller
+    cameraRig.yaw=cur.heading;cameraRig.touchLookIdle=1;
+    hudCar.textContent=cur.name;hudCar.style.display='block';
+    blip([330,440],0.07,'triangle',.12);
+    radioOff();
+    return;
+  }
   // jogador sentado no banco do motorista (carro: visível pelo vidro; moto: por cima)
   cur.g.add(player.g);
   if(cur.bike){
@@ -295,6 +426,18 @@ export function exitCar(){
 }
 
 function completeExit(){
+  if(cur.remote){
+    // RC Toyz operator: never boarded, so just stop piloting and stay standing
+    // right where we are (don't teleport beside the faraway bandit).
+    detachRemoteController();
+    setDrivePose(false);              // drop the controller grip, back to neutral
+    cur.g.userData.driver=null;
+    player.g.visible=true;
+    idleCars.push(cur);
+    cur=null;state.mode='foot';state.weaponHeld=!!state.hasGun;hudCar.style.display='none';
+    radioOff();
+    return;
+  }
   player.heading=cur.heading;
   cur.g.userData.driver=null;
   unseatPlayer();
@@ -328,9 +471,7 @@ function updateExiting(dt){
 
 export const inWater=p=>{
   if(state.interior)return false; // interiores ficam fora do mapa, mas são chão seco
-  if(Math.max(Math.abs(p.x),Math.abs(p.z))<=WATER)return false;
-  // península rural a leste é terra firme
-  return !(p.x>WATER&&p.x<=RURAL_X1&&Math.abs(p.z)<=RURAL_HALF);
+  return !isLand(p.x,p.z);        // costa irregular da ilha (mesma fonte do visual)
 };
 
 export function startCut(text,col,fn){
@@ -344,8 +485,9 @@ export function getBusted(){
   cancelEntering();
   startCut('BUSTED','#3e7bff',()=>{
     state.onRoof=null;roofFall=null; // presídio fica no chão, não no telhado
-    state.money=Math.floor(state.money*.85);state.wanted=0;state.bustT=0;
+    economy.penalty(.85,'busted');state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
+    refs.clearArmy?.(); // caminhão + soldados do exército (★6)
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
     player.g.visible=true;
@@ -359,8 +501,10 @@ export function getBusted(){
 function wastedCut(){
   startCut('WASTED','#ff2e88',()=>{
     state.onRoof=null;roofFall=null;
-    state.money=Math.floor(state.money*.8);state.wanted=0;state.bustT=0;
+    state.health=100; // wake up at the hospital fully healed
+    economy.penalty(.8,'wasted');state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
+    refs.clearArmy?.(); // caminhão + soldados do exército (★6)
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
     unseatPlayer();
     player.g.visible=true;
@@ -538,6 +682,7 @@ export function updateCar(dt){
   // voltou pra terra firme: cancela o afundamento, senão o carro some na
   // próxima saída (completeExit remove veículo com sinkT marcado)
   cur.sinkT=0;
+  if(cur.g.userData.crashCd>0)cur.g.userData.crashCd-=dt; // debounce de batida
   const th=input.moveY;
   const st=input.moveX;
   const hb=input.brake;
@@ -555,13 +700,14 @@ export function updateCar(dt){
   p.x+=Math.sin(cur.heading)*cur.speed*dt;
   p.z+=Math.cos(cur.heading)*cur.speed*dt;
   if(collideStatics(p,1.3,SWIM_BOUND)){
-    if(Math.abs(cur.speed)>4){
+    const spd=Math.abs(cur.speed);
+    if(spd>4){
       // até batida leve já amassa feio; em alta velocidade destrói a frente
-      if(Math.abs(cur.speed)>6){thud(Math.abs(cur.speed));state.shake=Math.min(.6,Math.abs(cur.speed)*.02);}
+      if(spd>6){thud(spd);state.shake=Math.min(.6,spd*.02);}
       const fwd=cur.speed>0?1:-1;
       _dentPt.set(p.x+Math.sin(cur.heading)*2.2*fwd,p.y+.65,p.z+Math.cos(cur.heading)*2.2*fwd);
       _dentDir.set(-Math.sin(cur.heading)*fwd,0,-Math.cos(cur.heading)*fwd);
-      dentCar(cur.g,_dentPt,_dentDir,Math.min(.32,.18+Math.abs(cur.speed)*.004));
+      if(registerCrash(spd,_dentPt,_dentDir))return; // bateu demais: carro explodiu
     }
     cur.speed*=-.25;
   }
@@ -572,11 +718,12 @@ export function updateCar(dt){
     if(d<2.9&&d>.001){
       const push=new THREE.Vector3().subVectors(p,c.g.position).setY(0).normalize();
       p.addScaledVector(push,2.9-d);
-      if(Math.abs(cur.speed)>6){
-        thud(Math.abs(cur.speed));state.shake=.3;
+      const spd=Math.abs(cur.speed);
+      if(spd>6){
+        thud(spd);state.shake=.3;
         const mid=new THREE.Vector3().addVectors(p,c.g.position).multiplyScalar(.5).setY(.6);
-        dentCar(cur.g,mid,push,.2);
-        dentCar(c.g,mid,push.clone().negate(),.2);
+        dentCar(c.g,mid,push.clone().negate(),.2); // o carro batido amassa normal
+        if(registerCrash(spd,mid,push))return;     // o nosso amassa feio / explode
       }
       cur.speed*=.5;
     }
@@ -631,6 +778,9 @@ const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.js)
 function updateBoat(dt){
   const c=cur,p=c.g.position;
   const onWater=inWater(p);
+  // boarding a boat gets the player out of the water: breath recovers just like
+  // stepping back onto land (see updateFoot).
+  if(state.swimAir<1)state.swimAir=Math.min(1,state.swimAir+dt*.55);
   const th=input.moveY,st=input.moveX,hb=input.brake;
   const MAX=48;
   if(onWater){

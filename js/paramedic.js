@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {N,nodeX,rand,irand,pick,clamp} from './constants.js';
-import {state,refs,saveBest} from './state.js';
+import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {makePed,shirtColors} from './entities.js';
 import {idleCars,cur,playerPos} from './player.js';
@@ -9,6 +10,8 @@ import {makeAmbulance} from '../assets/models/vehicles/ambulance.js';
 import {message,bigText,hideBig} from './hud.js';
 import {blip} from './audio.js';
 import {HOSP_I,HOSP_J} from '../assets/models/city/hospital.js';
+import {MiniGame,MiniGameId} from './minigame.js';
+import {reportMiniGameResult} from './minigame-leaderboard.js';
 
 // Side-mission de paramédico estilo GTA (Vigilante/Paramedic): uma ambulância
 // fica estacionada na esquina do hospital. Entrou nela, começa o plantão: feridos
@@ -40,6 +43,14 @@ const patients=[]; // {g,x,z,ring,beacon,loaded}
 let hospMk=null;   // marcador do hospital quando todos a bordo
 let wreckT=0;      // ambulância destruída: volta pro ponto depois de um tempo
 let runRescues=0;  // pacientes entregues no plantão (resumo)
+
+// mini game (sessão): trava o mundo durante o plantão; os alvos são os feridos
+// (fase rescue) ou o hospital (fase hospital)
+const game=new MiniGame({id:MiniGameId.PARAMEDIC,name:'Paramedic',
+  blips:()=>phase==='hospital'
+    ?[{x:dropX,z:dropZ,icon:'cross',color:'#19e3ff',label:'HOSPITAL',current:true,reveal:false}]
+    :patients.filter(p=>!p.loaded).map(p=>({x:p.x,z:p.z,icon:'cross',color:'#5eff8a',
+      label:'PATIENT',current:true,reveal:false}))});
 
 const _v=new THREE.Vector3(); // scratch pra contas por frame (sem new no loop)
 const medHud=document.getElementById('medhud');
@@ -120,6 +131,7 @@ function startLevel(announce=true){
 }
 
 function startDuty(){
+  if(!game.begin())return; // outra sessão de mini game rolando: não começa
   level=1;runRescues=0;
   message('PARAMEDIC DUTY STARTED','var(--gold)');
   startLevel(false);
@@ -131,7 +143,10 @@ function endDuty(text='PARAMEDIC DUTY ENDED',col='var(--cyan)'){
   clearPatients();
   clearHospMk();
   const summary=runRescues>0?` - ${runRescues} PATIENTS SAVED`:'';
+  // ranking: o plantão inteiro é UMA sessão; score = pacientes salvos
+  reportMiniGameResult(game.id,{won:runRescues>0,score:runRescues});
   phase='off';onboard=0;needed=0;timeLeft=0;
+  game.end(); // libera a trava do mundo
   hideMedHud();
   message(text+summary,col);
 }
@@ -155,7 +170,7 @@ function loadPatient(p){
 
 function deliver(){
   const reward=30*onboard+40*level;
-  state.money+=reward;saveBest();
+  economy.earn(reward,'paramedic');
   runRescues+=onboard;
   clearHospMk();
   clearPatients();
@@ -171,8 +186,14 @@ function deliver(){
 function timeout(){
   message('PATIENTS LOST - OUT OF TIME','var(--pink)');
   blip([220,165,110],.12,'sawtooth',.16);
-  endDuty('PARAMEDIC DUTY FAILED','var(--pink)');
-  // o jogador segue na ambulância → o loop reinicia no nível 1 no frame seguinte
+  // Keep the session alive (do NOT call endDuty/game.end): the player is still in
+  // the ambulance, so ending here would re-open the leaderboard briefing overlay
+  // every timeout. Mirror taxi/vigilante: reset to level 1 and respawn in place.
+  clearPatients();
+  clearHospMk();
+  level=1;
+  startLevel(false);
+  message(`LEVEL 1: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
 }
 
 // ----- ambulância destruída: reaparece no ponto do hospital -----

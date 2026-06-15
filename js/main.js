@@ -2,20 +2,30 @@ import * as THREE from 'three';
 import {state,input,refs} from './state.js';
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from './engine.js';
 import {updateAudio} from './audio.js';
-import {radioZone} from './radio.js';
 import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,updateDrivenShadow} from './player.js';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,updateDrivenShadow,updateCarFx} from './player.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
 import {updateBeach} from './world.js';
 import {cops,heli,updateCops,updateHeli} from './police.js';
+import {updateArmy} from './army.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
 import {updateTaxi} from './taxi.js';
 import {updateRace} from './race.js';
 import {updateBoatRace} from './boat-race.js';
+import {updateOffroad} from './offroad.js'; // 3ª corrida: circuito off-road na pradaria rural
 import {updateVigilante} from './vigilante.js'; // side-mission: viatura caça criminosos
 import {updateParamedic} from './paramedic.js'; // side-mission: ambulância salva feridos
+import {updateFirefighter} from './firefighter.js';        // GTA: caminhão de bombeiros apaga incêndios
+import {updateRampage} from './rampage.js';                // GTA: caveira dá arsenal + caça por tempo
+import {updateHiddenPackages} from './hidden-packages.js'; // GTA: 24 pacotes escondidos pela cidade
+import {updateStuntJumps} from './stunt-jumps.js';         // GTA: rampas de salto insano
+import {updateCarCrusher} from './car-crusher.js';         // GTA: prensa de sucata
+import {updateImportExport} from './import-export.js';     // GTA: garagem que compra/exporta carros
+import {updateBombShop} from './bomb-shop.js';             // GTA: 8-Ball arma o carro-bomba
+import {updateRcToyz} from './rc-toyz.js';                 // GTA: carrinho de controle destrói alvos
+import {updateWeaponPickups} from './weapon-pickups.js';  // GTA: as 12 armas escondidas pelo mapa
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
@@ -23,6 +33,7 @@ import {setupInput,updateKeyboardInput,performShoot} from './input.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud} from './weapons.js';
+import {setupWheel,updateWeaponWheel} from './weapon-wheel.js';
 import {updateDayNight} from './daynight.js';
 import {updateInteriors,interiors} from './interior.js';
 import {updateSpeech,updateStreetChatter} from './speech.js';
@@ -44,6 +55,11 @@ import {updateCityCulling} from '../assets/models/city/building.js';
 import {updatePropCulling} from '../assets/models/props/prop-merge.js';
 import {updateLotCulling} from '../assets/models/city/abandoned-lot.js';
 import * as P from './profiler.js'; // profiler embutido (tecla ` ou ?prof na URL)
+import {warmupShaders} from './warmup.js'; // pré-compila shaders no boot (anti-hitch)
+
+// Diagnóstico de hitches: anexa posição/modo/interior do jogador a cada queda de FPS.
+P.setContext(()=>{const p=playerPos();return(state.interior?'INT:'+state.interior.constructor.name
+  :state.mode)+' '+Math.round(p.x)+','+Math.round(p.z);});
 
 // Populate late-binding refs so cross-module code can access these without circular imports
 refs.playerPos=playerPos;
@@ -112,6 +128,7 @@ spawnInitialGangs();
 
 setupInput();
 setupTouchControls();
+setupWheel(); // roda de seleção de armas (overlay próprio; ver js/weapon-wheel.js)
 
 const clock=new THREE.Clock();
 let shadowTick=0;
@@ -134,6 +151,7 @@ function step(dt){
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
   if(state.mapOpen){renderer.render(scene,camera);return;} // mapa completo (tecla M) congela o mundo
+  if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
   state.time+=dt;
 
@@ -167,6 +185,7 @@ function step(dt){
   P.begin('peds');updatePeds(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('cops');if(state.mode!=='cut'&&!state.cine)updateCops(dt);P.end();
+  P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: exército
   P.begin('misc');
   updateHeli(dt);
   updatePickups(dt);
@@ -175,6 +194,19 @@ function step(dt){
   updateParamedic(dt); // ambulância: plantão de paramédico (resgate de feridos)
   updateRace(dt);
   updateBoatRace(dt);
+  updateOffroad(dt); // corrida off-road (circuito de terra na zona rural)
+  // Minigames estilo GTA III (cada um se auto-registra em refs; ver os módulos).
+  // Rodam DEPOIS do update do jogador/carro (acima), então o stunt-jumps pode
+  // sobrescrever a altura do carro pra desenhar o arco do salto.
+  updateFirefighter(dt);
+  updateRampage(dt);
+  updateHiddenPackages(dt);
+  updateStuntJumps(dt);
+  updateCarCrusher(dt);
+  updateImportExport(dt);
+  updateBombShop(dt);
+  updateRcToyz(dt);
+  updateWeaponPickups(dt);
   P.end();
   P.begin('weapons');updateWeapons(dt);P.end();
   P.begin('misc');
@@ -185,6 +217,7 @@ function step(dt){
   updateDoors(); // portas por toque: interiores e telhados dos prédios
   if(input.shootHeld)performShoot();
 
+  updateCarFx(dt);      // fumaça do carro batido (emite do dirigido + anima baforadas em voo)
   updateDrivenShadow(); // sombra some do carro/moto que o jogador está dirigindo
   if(cur)blinkBar(cur.g);
   for(const c of idleCars)blinkBar(c.g);
@@ -204,7 +237,6 @@ function step(dt){
   if(mmAccum>=MM_INTERVAL){mmAccum=0;P.begin('minimap');drawMinimap();P.end();}
 
   const pp=playerPos();
-  radioZone(pp.x); // troca a rádio ao cruzar entre cidade e zona rural
   P.begin('culling');
   updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
@@ -236,12 +268,15 @@ function adaptResolution(ms){
 }
 window.__renderScale=getRenderScale; // debug/profiler
 
+const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo GTA V)
 function frame(){
   requestAnimationFrame(frame);
   P.frameStart(); // marca o início do frame pro profiler (limpa acumuladores)
   tickFps(); // antes dos early-returns: mede até pausado/tela de título
   const raw=clock.getDelta();
-  step(Math.min(raw,.05));
+  const dt=Math.min(raw,.05);
+  step(state.wheelOpen?dt*WHEEL_TIMESCALE:dt); // câmera lenta enquanto a roda está aberta
+  updateWeaponWheel(dt); // a roda anima/redesenha em tempo real (não desacelera)
   adaptResolution(raw*1000);
   P.frameEnd(); // fecha o frame: atualiza FPS/ms/overlay do profiler
 }
@@ -259,6 +294,7 @@ window.render_game_to_text=()=>{
     started:state.started,
     paused:state.paused,
     mode:state.mode,
+    activeMiniGame:state.activeMiniGame, // mini game em curso (trava "um por vez")
     interior:state.interior?.constructor?.name||null,
     money:state.money,
     wanted:state.wanted,
@@ -267,8 +303,17 @@ window.render_game_to_text=()=>{
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
     boatRace:refs.getBoatRaceState?.()||null,
+    offroad:refs.getOffroadState?.()||null,
     vigilante:refs.getVigilanteState?.()||null,
     paramedic:refs.getParamedicState?.()||null,
+    firefighter:refs.getFirefighterState?.()||null,
+    rampage:refs.getRampageState?.()||null,
+    hiddenPackages:refs.getHiddenPackagesState?.()||null,
+    stuntJumps:refs.getStuntJumpsState?.()||null,
+    carCrusher:refs.getCarCrusherState?.()||null,
+    importExport:refs.getImportExportState?.()||null,
+    bombShop:refs.getBombShopState?.()||null,
+    rcToyz:refs.getRcToyzState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
@@ -278,9 +323,11 @@ window.render_game_to_text=()=>{
     rick:refs.getRickState?.()||null,
   });
 };
-// Pré-compila todos os shaders/materiais da cena montada ANTES do loop: sem
-// isso, o primeiro frame que revela um material novo (andar revela chunks da
-// cidade) trava ~100ms compilando o programa. Custa um pouco no boot e elimina
-// esses engasgos em jogo.
-try{renderer.compile(scene,camera);}catch(e){}
+// Pré-compila TODOS os shaders ANTES do loop: tanto os materiais da cena montada
+// (chunks da cidade revelados ao andar) quanto os modelos que só nascem em jogo
+// (efeitos de combate, arma na mão, heli, props de minigame). Sem isso o THREE
+// compila o programa na 1ª aparição de cada material — síncrono no render — e o
+// frame congela centenas de ms ("grandes quedas de FPS do nada"; ver warmup.js).
+// O custo migra pro boot (tela de título), onde é invisível.
+try{warmupShaders();}catch(e){}
 frame();

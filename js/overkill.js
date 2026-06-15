@@ -1,10 +1,17 @@
 import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {playerPos} from './player.js';
 import {message} from './hud.js';
 import {blip} from './audio.js';
 import {overkillMusicOn,overkillMusicOff} from './overkill-music.js';
 import {makeOverkillTotem} from '../assets/models/props/overkill-totem.js';
+import {MiniGame,MiniGameId} from './minigame.js';
+
+// modo livre (não trava o mundo: o overkill é justamente correr a cidade inteira
+// sendo caçado). Registra a identidade no enum/registro de mini games; o totem
+// some do radar enquanto uma sessão de outro mini game roda.
+new MiniGame({id:MiniGameId.OVERKILL,name:'Overkill',exclusive:false});
 
 // ============================================================================
 // MODO OVERKILL (multiplicador de "heat") — opcional, ligado por um item.
@@ -106,7 +113,7 @@ export function updateOverkill(dt){
   const rate=Math.min(MAX_RATE,w*ok.mult*K);
   ok.rate=rate;
   ok.acc+=rate*dt;
-  if(ok.acc>=1){const add=Math.floor(ok.acc);ok.acc-=add;state.money+=add;ok.earned+=add;}
+  if(ok.acc>=1){const add=Math.floor(ok.acc);ok.acc-=add;economy.earn(add,'overkill',{persist:false});ok.earned+=add;}
 
   if(hudEl){
     hudEl.classList.add('show');

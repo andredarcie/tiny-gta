@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import {N,nodeX,irand,pick,groundHeight} from './constants.js';
-import {state,refs,carColors,saveBest} from './state.js';
+import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers} from './constants.js';
+import {state,refs,carColors} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {makeCar,spinWheels,seatDriver,shirtColors} from './entities.js';
 import {cur,playerPos,cameraRig} from './player.js';
@@ -12,6 +13,13 @@ import {message,bigText,hideBig} from './hud.js';
 import {blip,raceSiren} from './audio.js';
 import {radioOff} from './radio.js';
 import {raceMusicOn,raceMusicOff} from './race-music.js';
+import {MiniGame,MiniGameId} from './minigame.js';
+import {reportMiniGameResult} from './minigame-leaderboard.js';
+
+// mini game (sessão): trava o mundo durante a prova. A corrida desenha seus
+// próprios checkpoints no radar (ver raceOn no hud.js), então não expõe blips de
+// alvo aqui — a trava só garante o "um por vez" e o mapa sem outras atividades.
+const game=new MiniGame({id:MiniGameId.RACE,name:'Street Race'});
 
 // Minigame de corrida estilo GTA 3D: um pórtico de largada xadrez fica numa
 // esquina da cidade. Chegue de carro, pare embaixo dele e a corrida começa:
@@ -31,6 +39,8 @@ const CP_RADIUS=8;     // raio pra contar a passagem no checkpoint
 const CP_AHEAD=0;      // checkpoints à frente visíveis além do atual (0 = só o atual)
 const NPC_COUNT=3;     // adversários
 const NPC_REACH=3.5;   // rivais precisam passar PERTO do ponto pra avançar (nada de burlar)
+const RIVAL_PACES=[0.9,1.05,1.18]; // ritmo distinto por rival: espalha o pelotão (não anda colado)
+const SEP=3.8;         // distância mínima entre dois rivais (carro ~1.7 largo): separa quem encosta
 const TURN_MIN=-0.1;   // produto escalar mínimo entre trechos: proíbe curva de ré/180
 const GANG_MARGIN=8;   // folga extra além do raio do território
 const ORANGE=0xff8a1e;
@@ -209,7 +219,7 @@ function spawnRacers(h0){
     g.position.set(start.x+rx*lane+bx*(4+i*2.2),0,start.z+rz*lane+bz*(4+i*2.2));
     g.rotation.y=h0;
     // mais lentos que antes pra dar chance ao jogador; largam escalonados
-    racers.push({g,cp:0,wpi:0,speed:11+i*1.4,finished:false});
+    racers.push({g,cp:0,wpi:0,speed:11+i*1.4,pace:RIVAL_PACES[i%RIVAL_PACES.length],finished:false});
   }
 }
 
@@ -236,6 +246,7 @@ function playerPlace(){
 }
 
 function startRace(){
+  if(!game.begin())return; // outra sessão de mini game rolando: não larga
   if(!route.length)prepareRace(); // garante percurso (já vem pré-montado)
   buildCpMarkers();
   playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
@@ -263,6 +274,7 @@ function finishRace(){
   gate.visible=true; // pórtico de largada reaparece no novo ponto
   phase='idle';freezePos=null;
   state.controlsLocked=false;
+  game.end(); // libera a trava do mundo
   refs.setGangsHidden?.(false); // gangues voltam quando a corrida acaba
   raceMusicOff();
   hideRaceHud();
@@ -270,11 +282,15 @@ function finishRace(){
 
 function abortRace(text='RACE ABANDONED',col='var(--pink)'){
   finishRace();
+  // morte/prisão no meio da corrida: o cut de WASTED/BUSTED já assumiu o banner;
+  // não apaga nem sobrescreve com "RACE ABANDONED".
+  if(state.mode==='cut')return;
   hideBig();
   message(text,col);
 }
 
 function loseRace(){
+  reportMiniGameResult(game.id,{won:false,score:0}); // ranking: corrida perdida
   finishRace();
   bigText('YOU LOST','var(--pink)');
   setTimeout(hideBig,2200);
@@ -289,7 +305,9 @@ function completeRace(){
   // bônus de tempo: corrida rápida paga mais (some por volta de ~2min)
   const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
   const paid=prize+bonus;
-  if(paid>0){state.money+=paid;saveBest();}
+  economy.earn(paid,'race');
+  // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
+  reportMiniGameResult(game.id,{won:place===1,score:paid});
   const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
   finishRace();
   bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');
@@ -340,7 +358,21 @@ function updateCpMarkers(dt){
   }
 }
 
+// progresso ao longo do percurso em "unidades de checkpoint": checkpoints já
+// passados + fração da perna atual (0..1). Compara jogador e rival de forma
+// contínua pra alimentar o rubber banding.
+function legProgress(cp,x,z){
+  const to=route[cp];
+  if(!to)return route.length;            // já cruzou a chegada
+  const from=cp>0?route[cp-1]:start;
+  const legLen=Math.hypot(to.x-from.x,to.z-from.z)||1;
+  const distToNext=Math.hypot(to.x-x,to.z-z);
+  return cp+THREE.MathUtils.clamp(1-distToNext/legLen,0,1);
+}
+
 function updateRacers(dt){
+  const pp=playerPos();
+  const playerProg=legProgress(playerCp,pp.x,pp.z);
   for(const r of racers){
     if(r.finished)continue;
     const wp=npcPath[r.wpi];
@@ -352,11 +384,16 @@ function updateRacers(dt){
     const c0=r.g.rotation.y;
     let diff=THREE.MathUtils.euclideanModulo(h-c0+Math.PI,Math.PI*2)-Math.PI;
     r.g.rotation.y=c0+diff*Math.min(1,6*dt);
-    const step=Math.min(d,r.speed*dt);
+    // rubber banding (helper compartilhado): velocidade ancorada no ritmo atual
+    // do jogador — rival ATRÁS surta pra colar (fica grudado/visível), rival à
+    // frente alivia pra ser pego; jogador que erra/para é ultrapassado na hora
+    const gap=playerProg-legProgress(r.cp,r.g.position.x,r.g.position.z);
+    const spd=rubberSpeed(r.speed,gap,cur?.speed,r.pace);
+    const step=Math.min(d,spd*dt);
     r.g.position.x+=Math.sin(h)*step;
     r.g.position.z+=Math.cos(h)*step;
     r.g.position.y=groundHeight(r.g.position.x,r.g.position.z);
-    spinWheels(r.g,r.speed,dt);
+    spinWheels(r.g,spd,dt);
     // só avança quando REALMENTE chegou no ponto (raio curto = não corta caminho)
     if(d<NPC_REACH){
       if(wp.cp){
@@ -366,6 +403,7 @@ function updateRacers(dt){
       r.wpi++;
     }
   }
+  separateRacers(racers,SEP); // dois carros nunca andam um por dentro do outro
 }
 
 export function updateRace(dt){

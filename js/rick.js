@@ -1,5 +1,6 @@
 import {scene} from './engine.js';
 import {state,refs} from './state.js';
+import {economy} from './economy.js';
 import {groundHeight,rand} from './constants.js';
 import {playerPos} from './player.js';
 import {solids} from './world.js';
@@ -122,7 +123,7 @@ export function rickInteract(){
   if(phase==='returning'){
     phase='done';
     playCutscene(rick,RICK_VOICE,OUTRO,()=>{
-      state.money+=REWARD;
+      economy.earn(REWARD,'rick');
       message('SECRET MISSION COMPLETE  +$'+REWARD,'var(--gold)');
       blip([523,659,784,1047],.1,'sine',.18);
     });

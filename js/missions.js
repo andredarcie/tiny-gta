@@ -1,11 +1,13 @@
 import {N,nodeX,irand,rand} from './constants.js';
 import {state,saveBest} from './state.js';
+import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {blip} from './audio.js';
 import {message} from './hud.js';
 import {playerPos,cur} from './player.js';
 import {makeMoneyDrop} from '../assets/models/missions/money-drop.js';
 import {makeDeliveryMarker} from '../assets/models/missions/delivery-marker.js';
+import {inGangTerritory} from './gangs.js';
 
 // Money pickups
 export const drops=[];
@@ -51,7 +53,7 @@ export function spawnDelivery(){
   if(delivery){scene.remove(delivery.g,delivery.beacon);}
   const px=playerPos();let x,z,tries=0;
   do{x=nodeX(irand(0,N))+rand(-3.5,3.5);z=nodeX(irand(0,N))+rand(-3.5,3.5);tries++;}
-  while(Math.hypot(x-px.x,z-px.z)<90&&tries<30);
+  while((Math.hypot(x-px.x,z-px.z)<90||inGangTerritory(x,z))&&tries<30);
   const {ring,beacon}=makeDeliveryMarker(0x19e3ff);
   ring.rotation.x=Math.PI/2;ring.position.set(x,.4,z);scene.add(ring);
   beacon.position.set(x,30,z);scene.add(beacon);
@@ -72,8 +74,8 @@ export function updatePickups(dt){
     d.g.rotation.y+=3*dt;d.g.position.y=.5+Math.sin(d.t*4)*.12;
     if(d.t>25){scene.remove(d.g);drops.splice(i,1);continue;}
     if(pp.distanceTo(d.g.position)<2.6){
-      state.money+=d.val;blip([660,990],0.07,'sine',.15);
-      scene.remove(d.g);drops.splice(i,1);saveBest();
+      economy.earn(d.val,'cash-drop');blip([660,990],0.07,'sine',.15);
+      scene.remove(d.g);drops.splice(i,1);
     }
   }
   if(delivery){
@@ -84,7 +86,7 @@ export function updatePickups(dt){
     if(!inPlane&&pp.y<3&&Math.hypot(pp.x-delivery.x,pp.z-delivery.z)<3.2){
       const base=curMission?curMission.reward:150;
       const fast=Math.max(0,Math.round(120-(state.time-delivery.t0)*4));
-      state.money+=base+fast;state.deliveries++;
+      economy.earn(base+fast,'delivery');state.deliveries++;
       message(fast>0?`DELIVERY +$${base+fast} - SPEED BONUS!`:`DELIVERY COMPLETE  +$${base}`,'var(--gold)');
       blip([523,659,784,1047],0.09,'sine',.18);
       saveBest();spawnDelivery();

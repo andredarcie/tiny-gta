@@ -1,16 +1,21 @@
 import {state,input,keys,refs} from './state.js';
+import {economy} from './economy.js';
 import {camera} from './engine.js';
-import {playerPos} from './player.js';
+import {playerPos,resetCarDamage} from './player.js';
 import {blip} from './audio.js';
+import {message} from './hud.js';
 import {WORKSHOP_PAD,workshopFx} from '../assets/models/city/workshop.js';
 import {applyPaint,setRims,setSpoiler,setHood,setNeon,repairCar} from
   '../assets/models/vehicles/car-customs.js';
 
 // Oficina de custom "MOD GARAGE": menu DOM aberto ao parar o carro na plataforma
 // do galpão (assets/models/city/workshop.js). Estilo GTA/TransFender: categorias
-// de mods, cada opção com preço, aplicada AO VIVO no carro do jogador; paga na
-// hora (sem reembolso). O carro gira numa "turntable" e o mundo congela enquanto
-// o menu está aberto (js/main.js dá o early-return via updateModShop).
+// de mods, cada opção aplicada AO VIVO no carro só como PRÉVIA (não cobra). As
+// escolhas novas entram num CARRINHO com o total; só FINALIZE & BUY (em dois
+// toques, p/ confirmar) cobra de verdade e instala. O que já está pago aparece
+// como OWNED e nunca é cobrado de novo. Sair sem finalizar descarta as prévias.
+// O carro gira numa "turntable" e o mundo congela enquanto o menu está aberto
+// (js/main.js dá o early-return via updateModShop).
 
 const $=id=>document.getElementById(id);
 const PAD_RANGE=4.6;
@@ -38,7 +43,8 @@ const CATS=[
      {id:0x15171c,label:'Midnight',price:140,sw:'#15171c'},
      {id:0x3f6b3a,label:'Army',price:120,sw:'#3f6b3a'},
    ],
-   apply(g,o){applyPaint(g,o.id);repairCar(g);state.wanted=0;state.lastCrime=-99;}},
+   preview(g,o){applyPaint(g,o.id);},
+   commit(g,o){repairCar(g);state.wanted=0;state.lastCrime=-99;}}, // reparo/perder a polícia só ao PAGAR
 
   {id:'rims',label:'RIMS',
    cur:g=>sel(g).rims,
@@ -50,7 +56,7 @@ const CATS=[
      {id:'red',label:'Red',price:180,hub:0xc2293f,sw:'#c2293f'},
      {id:'blue',label:'Blue',price:180,hub:0x2a6cff,sw:'#2a6cff'},
    ],
-   apply(g,o){setRims(g,o.hub);sel(g).rims=o.id;}},
+   preview(g,o){setRims(g,o.hub);sel(g).rims=o.id;}},
 
   {id:'spoiler',label:'SPOILER',
    cur:g=>sel(g).spoiler,
@@ -60,7 +66,7 @@ const CATS=[
      {id:'wing',label:'Sport Wing',price:280},
      {id:'gt',label:'GT Wing',price:380},
    ],
-   apply(g,o){setSpoiler(g,o.id);sel(g).spoiler=o.id;}},
+   preview(g,o){setSpoiler(g,o.id);sel(g).spoiler=o.id;}},
 
   {id:'neon',label:'NEON',note:'Underglow that lights up the night',
    cur:g=>sel(g).neon,
@@ -73,7 +79,7 @@ const CATS=[
      {id:'purple',label:'Purple',price:220,color:0x8a3ff0,sw:'#8a3ff0'},
      {id:'red',label:'Red',price:220,color:0xff3b3b,sw:'#ff3b3b'},
    ],
-   apply(g,o){setNeon(g,o.color);sel(g).neon=o.id;}},
+   preview(g,o){setNeon(g,o.color);sel(g).neon=o.id;}},
 
   {id:'hood',label:'HOOD',
    cur:g=>sel(g).hood,
@@ -82,7 +88,7 @@ const CATS=[
      {id:'scoop',label:'Scoop',price:170},
      {id:'vents',label:'Vents',price:210},
    ],
-   apply(g,o){setHood(g,o.id);sel(g).hood=o.id;}},
+   preview(g,o){setHood(g,o.id);sel(g).hood=o.id;}},
 
   {id:'engine',label:'ENGINE',note:'More top speed & quicker pickup',
    cur:g=>sel(g).engine,
@@ -92,14 +98,46 @@ const CATS=[
      {id:'sport',label:'Sport',price:950,mul:1.26},
      {id:'race',label:'Race',price:1700,mul:1.42},
    ],
-   apply(g,o){g.userData.speedMul=o.mul;sel(g).engine=o.id;}},
+   preview(g,o){sel(g).engine=o.id;}, // motor não muda o visual; só marca a escolha
+   commit(g,o){g.userData.speedMul=o.mul;}}, // o ganho de velocidade só vale ao PAGAR
 ];
 
 let active=false,activeCat=0,spin=0,t=0;
 let prevControlsLocked=false,prevFov=62,prevHeading=0,toastT=0;
+let baseline=null;    // config JÁ PAGA quando a oficina abriu {paint,rims,spoiler,neon,hood,engine}
+let confirmBuy=false; // 2º toque do FINALIZE confirma a compra
 
 const overlay=$('modshop'),catsEl=$('modshop-cats'),optsEl=$('modshop-opts'),
-  moneyEl=$('modshop-money'),toastEl=$('modshop-toast');
+  moneyEl=$('modshop-money'),toastEl=$('modshop-toast'),
+  totalEl=$('modshop-total'),buyEl=$('modshop-buy');
+
+// snapshot da seleção atual do carro (o que está visível/instalado agora)
+function snapshot(g){const s=sel(g);
+  return{paint:g.userData.color,rims:s.rims,spoiler:s.spoiler,neon:s.neon,hood:s.hood,engine:s.engine};}
+// itens do CARRINHO: categorias cuja escolha atual difere do que já está pago (e custa >0)
+function cartItems(){
+  const g=refs.getCur?.()?.g;if(!g||!baseline)return[];
+  const out=[];
+  for(const cat of CATS){
+    const curId=cat.cur(g);
+    if(curId!==baseline[cat.id]){
+      const opt=cat.options.find(o=>o.id===curId);
+      if(opt&&opt.price>0)out.push({cat,opt});
+    }
+  }
+  return out;
+}
+function cartTotal(){return cartItems().reduce((s,it)=>s+it.opt.price,0);}
+// desfaz as prévias não pagas: volta cada categoria pro que estava pago
+function revertToBaseline(){
+  const g=refs.getCur?.()?.g;if(!g||!baseline)return;
+  for(const cat of CATS){
+    if(cat.cur(g)===baseline[cat.id])continue;
+    const opt=cat.options.find(o=>o.id===baseline[cat.id]);
+    if(opt)cat.preview(g,opt);
+    else if(cat.id==='paint')applyPaint(g,baseline.paint); // cor fora do catálogo: restaura direto
+  }
+}
 
 function zeroInput(){
   input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
@@ -148,17 +186,54 @@ function renderOptions(){
   }
   const grid=document.createElement('div');grid.className='ms-grid';
   for(const opt of cat.options){
-    const isCur=carG&&cat.cur(carG)===opt.id;
+    const isCur=carG&&cat.cur(carG)===opt.id;             // prévia visível agora
+    const isOwned=carG&&baseline&&baseline[cat.id]===opt.id; // já pago
     const btn=document.createElement('button');
     btn.className='ms-opt'+(isCur?' on':'');
     if(opt.sw){const sw=document.createElement('span');sw.className='ms-sw';sw.style.background=opt.sw;btn.appendChild(sw);}
     const lab=document.createElement('span');lab.className='ms-lab';lab.textContent=opt.label;btn.appendChild(lab);
     const pr=document.createElement('span');pr.className='ms-price';
-    pr.textContent=isCur?'ACTIVE':(opt.price>0?'$'+opt.price:'FREE');btn.appendChild(pr);
+    if(isOwned){pr.textContent='OWNED';pr.classList.add('owned');}
+    else if(isCur){pr.textContent=opt.price>0?'IN CART':'SELECTED';pr.classList.add('incart');}
+    else pr.textContent=opt.price>0?'$'+opt.price:'FREE';
+    btn.appendChild(pr);
     btn.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();choose(opt.id);});
     grid.appendChild(btn);
   }
   optsEl.appendChild(grid);
+}
+
+// barra do carrinho: total + botão FINALIZE (com confirmação no 2º toque)
+function renderCart(){
+  const total=cartTotal();
+  if(totalEl)totalEl.textContent=total>0?`CART  $${total}`:'CART EMPTY';
+  if(buyEl){
+    buyEl.disabled=total<=0;
+    buyEl.textContent=confirmBuy&&total>0?`CONFIRM  $${total}`:'FINALIZE & BUY';
+    buyEl.classList.toggle('confirm',confirmBuy&&total>0);
+  }
+}
+
+function finalizeBuy(){
+  const c=refs.getCur?.();if(!c)return;
+  const items=cartItems();
+  const total=items.reduce((s,it)=>s+it.opt.price,0);
+  if(total<=0){toast('NOTHING TO BUY',true);confirmBuy=false;renderCart();return;}
+  if(state.money<total){
+    toast(`NEED $${total}`,true);blip([180,130],.12,'sawtooth',.18);confirmBuy=false;renderCart();return;
+  }
+  if(!confirmBuy){ // 1º toque: pede confirmação
+    confirmBuy=true;renderCart();
+    toast('PRESS BUY AGAIN TO CONFIRM');blip([440,560],.06,'square',.12);return;
+  }
+  // 2º toque: cobra o carrinho de uma vez e instala de vez (vira "owned")
+  economy.spend(total,'mod-shop');
+  for(const {cat,opt} of items)cat.commit?.(c.g,opt);
+  baseline=snapshot(c.g);
+  confirmBuy=false;
+  toast(`PURCHASED  -$${total}`);
+  blip([523,659,784,1047],.08,'square',.18);
+  renderMoney();renderOptions();renderCart();
 }
 
 function buildMenu(){
@@ -171,22 +246,19 @@ function buildMenu(){
     b.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();activeCat=i;buildMenu();});
     catsEl.appendChild(b);
   });
-  renderOptions();
+  renderOptions();renderCart();
 }
 
+// clicar numa opção só APLICA A PRÉVIA (visual) e mexe no carrinho — não cobra.
 function choose(optId){
   const cat=CATS[activeCat],c=refs.getCur?.();
   if(!c)return;
   const opt=cat.options.find(o=>o.id===optId);if(!opt)return;
-  if(cat.cur(c.g)===opt.id){toast('ALREADY INSTALLED',true);return;}
-  if(opt.price>0&&state.money<opt.price){
-    toast(`NEED $${opt.price}`,true);blip([180,130],.12,'sawtooth',.18);return;
-  }
-  if(opt.price>0)state.money-=opt.price;
-  cat.apply(c.g,opt);
-  toast(opt.price>0?`INSTALLED  -$${opt.price}`:'INSTALLED');
-  blip([523,659,880],.07,'square',.16);
-  renderMoney();renderOptions();
+  if(cat.cur(c.g)===opt.id)return; // já é o que está no carro: nada a fazer
+  confirmBuy=false;                // mexeu na seleção: cancela a confirmação pendente
+  cat.preview(c.g,opt);            // aplica SÓ o visual; o preço entra no carrinho
+  blip([523,659,880],.06,'square',.16);
+  renderOptions();renderCart();
 }
 
 export function openModShop(){
@@ -196,17 +268,22 @@ export function openModShop(){
   prevControlsLocked=state.controlsLocked;prevFov=camera.fov;prevHeading=c.g.rotation.y;
   state.controlsLocked=true;c.speed=0;spin=0;t=0;activeCat=0;
   sel(c.g); // garante a seleção inicial
+  baseline=snapshot(c.g); // o que JÁ está pago/instalado: nunca cobra de novo
+  confirmBuy=false;
   zeroInput();
   document.exitPointerLock?.();
   document.body.classList.add('mod-shop-open');
   overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
-  buildMenu();renderMoney();
+  buildMenu();renderMoney();renderCart();
   blip([294,392,523],.08,'square',.16);
   return true;
 }
 
 export function closeModShop(){
   if(!active)return false;
+  const hadCart=cartTotal()>0;
+  revertToBaseline(); // sair sem finalizar descarta as prévias: nada é comprado
+  confirmBuy=false;
   active=false;state.modShopActive=false;
   state.controlsLocked=prevControlsLocked;
   camera.fov=prevFov;camera.updateProjectionMatrix();
@@ -217,6 +294,7 @@ export function closeModShop(){
   overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');
   if(state.started&&!state.mobile&&!input.touchActive)
     document.getElementById('game')?.requestPointerLock?.();
+  if(hadCart)message('LEFT THE GARAGE - UNPAID CHANGES DISCARDED','var(--pink)');
   return true;
 }
 
@@ -246,4 +324,8 @@ export function updateModShop(dt){
 // botão DONE / sair
 $('modshop-exit')?.addEventListener('pointerdown',e=>{
   e.preventDefault();e.stopPropagation();closeModShop();
+});
+// botão FINALIZE & BUY (2 toques: confirma e cobra o carrinho)
+$('modshop-buy')?.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();finalizeBuy();
 });

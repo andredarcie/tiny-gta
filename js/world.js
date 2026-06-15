@@ -24,7 +24,7 @@ import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
 import {makeTexturedPlane} from '../assets/models/terrain/textured-plane.js';
-import {addShallowsAndWaves} from '../assets/models/terrain/shallows-waves.js';
+import {buildIsland,updateCoastFoam} from '../assets/models/terrain/island.js';
 import {addBeachRock} from '../assets/models/terrain/beach-rock.js';
 import {makeMountain} from '../assets/models/terrain/mountain.js';
 import {addMountainRock} from '../assets/models/terrain/mountain-rock.js';
@@ -145,40 +145,11 @@ finalizeBuildings();     // funde a cidade inteira em ~18 meshes (draw calls)
 finalizeAbandonedLots(); // e todos os lotes abandonados em ~5
 finalizeDoorArrows();    // todas as setinhas de porta num único mesh
 
-// Beach ring around the whole city: sand plane slightly below the city ground,
-// foam painted on the outer edge where it meets the sea
-{
-  const W=GROUND+BEACH*2;
-  const c=document.createElement('canvas');c.width=1024;c.height=1024;
-  const x=c.getContext('2d');
-  x.fillStyle='#ecd9a4';x.fillRect(0,0,1024,1024);
-  for(let k=0;k<2600;k++){
-    x.fillStyle=`rgba(${irand(195,238)},${irand(168,208)},${irand(118,158)},.16)`;
-    x.fillRect(Math.random()*1024,Math.random()*1024,irand(2,6),irand(2,6));
-  }
-  // wet sand: darkens gradually toward the water line
-  for(let k=0;k<24;k++){
-    x.strokeStyle=`rgba(146,118,80,${.4*(1-k/24)})`;
-    x.lineWidth=2;
-    x.strokeRect(k*1.5,k*1.5,1024-k*3,1024-k*3);
-  }
-  // shells and starfish specks scattered on the dry band
-  for(let k=0;k<240;k++){
-    const e=irand(0,3),a=Math.random()*1024,d=rand(14,80);
-    const px=e<2?a:(e===2?d:1024-d),py=e<2?(e===0?d:1024-d):a;
-    x.fillStyle=pick(['rgba(255,244,235,.85)','rgba(255,170,185,.8)','rgba(255,214,140,.8)','rgba(190,235,255,.75)']);
-    x.fillRect(px,py,irand(1,3),irand(1,3));
-  }
-  // organic foam blobs at the water line
-  for(let k=0;k<900;k++){
-    const e=irand(0,3),a=Math.random()*1024,d=Math.pow(Math.random(),2)*9;
-    const px=e<2?a:(e===2?d:1024-d),py=e<2?(e===0?d:1024-d):a;
-    x.fillStyle=`rgba(255,255,255,${rand(.2,.55)})`;
-    x.beginPath();x.arc(px,py,rand(1.2,4.5),0,7);x.fill();
-  }
-  const st=new THREE.CanvasTexture(c);st.colorSpace=THREE.SRGBColorSpace;
-  scene.add(makeTexturedPlane(W,W,st,-.06));
-}
+// Ilha de verdade: a areia, o raso turquesa e a espuma seguem UMA costa irregular
+// contínua (cidade + península), no lugar da antiga praia quadrada / anéis
+// quadrados / bordas retangulares. Mesmo contorno do gameplay (isLand). A espuma
+// pulsa via updateBeach. Ver assets/models/terrain/island.js.
+const coastFoam=buildIsland();
 
 function beachSpot(margin=4){
   const inner=GROUND/2+3,outer=GROUND/2+BEACH-margin;
@@ -212,8 +183,6 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   addLifeguard(-LG,0,Math.PI/2); // o posto leste saiu: lá agora é zona rural
 }
 
-// turquoise shallows fading into the deep sea color, plus animated foam waves
-const waves=addShallowsAndWaves(GROUND/2,BEACH);
 // ----- Zona rural: península a leste, da saída da cidade até a montanha-mirante -----
 {
   const RW=RURAL_X1-RURAL_X0,RD=RURAL_HALF*2;
@@ -242,20 +211,16 @@ const waves=addShallowsAndWaves(GROUND/2,BEACH);
     x.fillStyle=`rgba(${irand(140,180)},${irand(105,135)},${irand(70,95)},.5)`;
     x.fillRect(rand(u(RURAL_X0),u(MOUNT_X-MOUNT_R+16)),rand(w(-3.4),w(3.4)),irand(2,6),irand(1,3));
   }
-  // borda de praia onde o pasto encontra o mar: faixa de areia (~12 un) nos
-  // lados norte/sul e na ponta leste, com areia molhada escura rente à água
-  const SZ=26,SX=47; // 12 unidades em px nos eixos z e x do canvas
-  x.fillStyle='#e3cf9c';
-  x.fillRect(0,0,1024,SZ);x.fillRect(0,512-SZ,1024,SZ);x.fillRect(1024-SX,0,SX,512);
-  for(let k=0;k<800;k++){ // transição irregular pasto→areia + grão
-    x.fillStyle=`rgba(${irand(205,238)},${irand(178,212)},${irand(128,162)},.5)`;
+  // A orla irregular (areia/raso/espuma) agora vem da ilha (island.js); o pasto
+  // só leva uma transição suave de grama mais clara/seca na linha de vegetação,
+  // pra casar com a faixa de praia que assoma além da borda do gramado.
+  for(let k=0;k<900;k++){
+    x.fillStyle=`rgba(${irand(150,195)},${irand(168,205)},${irand(110,150)},.5)`;
     const e=irand(0,2);
-    if(e===0)x.fillRect(Math.random()*1024,SZ-7+Math.random()*14,irand(3,8),irand(2,5));
-    else if(e===1)x.fillRect(Math.random()*1024,512-SZ-7+Math.random()*14,irand(3,8),irand(2,5));
-    else x.fillRect(1024-SX-12+Math.random()*24,Math.random()*512,irand(2,5),irand(3,8));
+    if(e===0)x.fillRect(Math.random()*1024,Math.random()*16,irand(3,8),irand(2,5));
+    else if(e===1)x.fillRect(Math.random()*1024,512-16+Math.random()*16,irand(3,8),irand(2,5));
+    else x.fillRect(1024-16+Math.random()*16,Math.random()*512,irand(2,5),irand(3,8));
   }
-  x.fillStyle='rgba(146,116,78,.6)'; // areia úmida na linha d'água
-  x.fillRect(0,0,1024,8);x.fillRect(0,512-8,1024,8);x.fillRect(1024-15,0,15,512);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   // Chão rural com colinas suaves no corredor. Mesma orientação do
   // makeTexturedPlane (plano XY girado -90° no X): o relevo vai no Z local, que
@@ -316,13 +281,8 @@ addHayBales();
   addSummitFlag(MOUNT_X,MOUNT_H,0);
 }
 
-export function updateBeach(time){
-  for(const w of waves){
-    const s=1+w.amp*(.5+.5*Math.sin(time*w.spd+w.ph));
-    w.m.scale.set(s,s,1);
-    w.m.material.opacity=.05+.3*Math.max(0,Math.sin(time*w.spd+w.ph+1.2));
-  }
-}
+// espuma da costa (anéis polares da cidade + tiras da península) — ver island.js
+export function updateBeach(time){updateCoastFoam(coastFoam,time);}
 
 // Street poles
 // Luz dos postes: mesmo truque dos faróis dos carros — texturas aditivas em
