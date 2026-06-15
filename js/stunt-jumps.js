@@ -107,7 +107,10 @@ export function updateStuntJumps(dt){
       cur.g.position.y=groundHeight(cur.g.position.x,cur.g.position.z);
       cur.g.rotation.x=0;
       state.shake=Math.max(state.shake,.35); // baque do pouso
-      const v=Math.max(0,Math.round(jumpSpeed*20));
+      // valor pela velocidade do salto, com teto: capado pra um stunt NUNCA pagar
+      // mais que vencer uma corrida ($700). O destaque é o bônus de inédito (+400);
+      // a repetição (v puro a cada 30s) fica baixa de propósito (anti-farm).
+      const v=Math.min(300,Math.max(0,Math.round(jumpSpeed*8)));
       if(jumpRamp&&!jumpRamp.done){
         // primeira vez nesta rampa: bônus de descoberta
         jumpRamp.done=true;jumpRamp.paidAt=state.time;

@@ -30,7 +30,8 @@ const ROUND_TIME=120;  // GTA III: 2 minutes, counts straight down, no time bonu
 const POOL=5;          // gang cars roaming at once (refilled as they are destroyed)
 const HIT_RANGE=2.2;   // RC→car distance that auto-detonates on contact (RC is tiny)
 const BLAST=5;         // blast radius (matches weapons.blastDamage) — a cluster chains
-const PER_KILL=150;    // cash per wrecked car (in-scale w/ car-crusher; GTA III paid $1000)
+const PER_KILL=100;    // cash per wrecked car (below car-crusher's ~$190: the chain
+                       // blast wrecks several fast, so per-kill pays less to compensate)
 const SPAWN_MIN=18, SPAWN_MAX=72; // target spawn distance from the player/pad
 
 // One gang color per round so the targets read as "a single gang's cars".

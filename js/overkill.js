@@ -24,13 +24,17 @@ new MiniGame({id:MiniGameId.OVERKILL,name:'Overkill',exclusive:false});
 //
 // CUIDADO COM O BACKEND: o ranking (backend/lib/scores.js) só aceita score até
 // BASE_MONEY + MONEY_PER_SEC(=200)/s ACUMULADO desde o início da run. Por isso a
-// renda do overkill é limitada a MAX_RATE=150/s — fica abaixo do teto e deixa
+// renda do overkill é limitada a MAX_RATE=75/s — fica BEM abaixo do teto e deixa
 // folga pro resto da renda (delivery/taxi), então o cumulativo não estoura e a
 // submissão não é rejeitada como implausible_score.
+//
+// BALANCEAMENTO: o overkill é high-risk (segurar estrela alta, morte/prisão tira
+// 15–20%), então paga melhor que tudo — mas com teto e K moderados pra não virar
+// a ÚNICA fonte de renda que vale a pena (antes ~$9k/min eclipsava todo o resto).
 // ============================================================================
 
 export const TOTEM={x:20,z:9}; // calçada norte do quarteirão do spawn (bem visível)
-const RANGE=3, MAX_MULT=8, CLIMB=0.5, DECAY=1.2, K=3.75, MAX_RATE=150;
+const RANGE=3, MAX_MULT=8, CLIMB=0.5, DECAY=1.2, K=2, MAX_RATE=75;
 
 const hudEl=document.getElementById('overkill');
 let totem=null;
