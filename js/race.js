@@ -254,6 +254,7 @@ function playerPlace(){
 
 function startRace(){
   if(!game.begin())return; // outra sessão de mini game rolando: não larga
+  clearTimeout(hideTimer);hideTimer=null; // cancel any stale hide from a previous session
   if(!route.length)prepareRace(); // garante percurso (já vem pré-montado)
   buildCpMarkers();
   playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
@@ -319,7 +320,7 @@ function completeRace(){
   const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
   finishRace();
   bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');
-  setTimeout(hideBig,2200);
+  scheduleHide(2200);
   message(paid>0?`${ord} OF ${total} - +$${paid}${bonus>0?' SPEED BONUS!':''}`
     :`${ord} OF ${total} - NO PRIZE`,paid>0?'var(--gold)':'var(--pink)');
   blip(place===1?[523,659,784,1047]:[440,330],.09,'sine',.18);
@@ -439,7 +440,7 @@ export function updateRace(dt){
       if(n!==lastCdShown){lastCdShown=n;blip([523],.12,'square',.18);} // bip por número
     }else{
       phase='racing';freezePos=null;state.controlsLocked=false;
-      bigText('GO!','var(--gold)');setTimeout(hideBig,700);
+      bigText('GO!','var(--gold)');scheduleHide(700);
       blip([784,1047],.14,'square',.22);
       raceMusicOn();
     }

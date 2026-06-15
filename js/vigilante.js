@@ -57,6 +57,11 @@ const game=new MiniGame({id:MiniGameId.VIGILANTE,name:'Vigilante',
 
 const vigHud=document.getElementById('vighud');
 
+// Cancellable banner-hide timer: a stale hideBig from a previous session must not
+// fire and wipe a banner shown by a new one. scheduleHide always replaces the pending timer.
+let hideTimer=null;
+function scheduleHide(ms){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{hideTimer=null;hideBig();},ms);}
+
 // scratch reaproveitado nos cálculos por frame (zero alocação no loop)
 const _v0=new THREE.Vector3(),_dir=new THREE.Vector3();
 
@@ -152,6 +157,7 @@ function resetCruiser(){
 
 function startDuty(){
   if(!game.begin())return; // outra sessão de mini game rolando: não começa
+  clearTimeout(hideTimer);hideTimer=null; // cancel any stale hide from a previous session
   phase='duty';level=1;busts=0;timeLeft=DUTY_TIME;
   spawnCriminal();
   message('VIGILANTE - RAM THE FLEEING SUSPECT','var(--blue)');
@@ -176,7 +182,7 @@ function bustCriminal(){
   busts++;
   message(`CRIMINAL BUSTED +$${reward}`,'var(--gold)');
   bigText('CRIMINAL BUSTED','var(--gold)');
-  setTimeout(hideBig,1100);
+  scheduleHide(1100);
   blip([523,659,784,1047],.09,'square',.2);
   removeCriminal();
   level++;
@@ -188,7 +194,7 @@ function bustCriminal(){
 function failDuty(){
   message('SUSPECT GOT AWAY','var(--pink)');
   bigText('SUSPECT GOT AWAY','var(--pink)');
-  setTimeout(hideBig,1200);
+  scheduleHide(1200);
   blip([330,247,180],.12,'sawtooth',.18);
   // patrulha CONTÍNUA (igual ao expediente do táxi): a fuga zera o nível/streak e o
   // cronômetro, mas manda outro suspeito sem expulsar o jogador da viatura.

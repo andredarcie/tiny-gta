@@ -25,8 +25,8 @@ import {makeFireModel} from '../assets/models/effects/fire.js';
 import {makeFlameJetModel} from '../assets/models/effects/flame-jet.js';
 import {makeWeaponTracerLine} from '../assets/models/effects/weapon-tracer.js';
 import {WEAPONS,ARSENAL,FIST,bySlot} from './weapon-catalog.js';
-import {openMiniGameIntro,reportMiniGameResult} from './minigame-leaderboard.js';
-import {MiniGameId} from './minigame.js';
+import {reportMiniGameResult} from './minigame-leaderboard.js';
+import {MiniGame,MiniGameId} from './minigame.js';
 
 const weaponPickups=[];
 function makeWeaponPickup(x,z){
@@ -130,6 +130,9 @@ export const getWeaponHud=()=>({
 // normal. A lança-foguetes só existe durante o rampage e reaparece no campo depois.
 const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=1000;
 const rampage={active:false,end:0,kills:0};
+// mini game (sessão): igual à chacina das caveiras (js/rampage.js), trava o mundo
+// (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.
+const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Rampage'});
 const missiles=[];
 const ROCKET_X=320,ROCKET_Z=0; // fim da estrada de terra, no pé da montanha
 const rocketPickup=makeRocketLauncherModel({pickup:true});
@@ -145,12 +148,13 @@ player.g.add(heldRocket);
 
 const rampageEl=document.getElementById('rampage');
 
-// tocar a lança-foguetes mostra o briefing (top 5); a chacina só começa quando o
-// jogador "passa" (igual aos outros mini-games). beginRampage faz o setup de fato.
-function startRampage(){
-  openMiniGameIntro(MiniGameId.ROCKET_RAMPAGE,'Rocket Rampage',beginRampage);
-}
+// tocar a lança-foguetes começa a chacina (igual à das caveiras em js/rampage.js):
+// pega a trava do mundo via rampageGame.begin(), que também abre o briefing (top 5)
+// e congela até o jogador "passar". Aborta se outra sessão de mini game já roda.
 function beginRampage(){
+  if(!rampageGame.begin())return;      // outra sessão rolando: não começa
+  // NB: rockets are fired via fireMissile() while rampage.active (see updateWeapons),
+  // independent of the weapon inventory — so no weapon is granted/altered here.
   rampage.active=true;rampage.end=state.time+RAMPAGE_TIME;rampage.kills=0;
   rocketPickup.visible=false;
   message(`ROCKET RAMPAGE! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
@@ -158,10 +162,12 @@ function beginRampage(){
 }
 
 function endRampage(won){
+  if(!rampage.active)return;            // guarda: nunca finaliza duas vezes
   rampage.active=false;
   if(rampageEl)rampageEl.style.display='none';
   rocketRespawnAt=state.time+75; // a lança-foguetes volta pro pasto um tempo depois
-  reportMiniGameResult(MiniGameId.ROCKET_RAMPAGE,{won,score:rampage.kills}); // ranking (top 5)
+  reportMiniGameResult(rampageGame.id,{won,score:rampage.kills}); // ranking (top 5)
+  rampageGame.end();                   // libera a trava do mundo (idempotente)
   if(won){
     economy.earn(RAMPAGE_REWARD,'rocket-rampage');
     message(`ROCKET RAMPAGE PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
@@ -966,9 +972,10 @@ export function updateWeapons(dt){
     if(rocketPickup.visible){
       rocketPickup.rotation.y+=dt*1.2;
       rocketPickup.position.y=groundHeight(ROCKET_X,ROCKET_Z)+.95+Math.sin(state.time*2.6)*.1;
-      // pegar é encostar (igual às portas): o rampage começa na hora
-      if(state.started&&state.mode==='foot'&&!state.controlsLocked&&
-        playerPos().distanceTo(rocketPickup.position)<2.6)startRampage();
+      // pegar é encostar (igual às portas): o rampage começa na hora — mas só se
+      // nenhuma outra sessão de mini game estiver rolando (não concede arma/trava antes).
+      if(state.started&&state.mode==='foot'&&!state.controlsLocked&&!MiniGame.busy&&
+        playerPos().distanceTo(rocketPickup.position)<2.6)beginRampage();
     }
   }
 

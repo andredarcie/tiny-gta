@@ -84,6 +84,11 @@ const racers=[];    // adversários {g,cp,speed,finished}
 let finishedNpcs=0; // quantos rivais já cruzaram a chegada
 const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
 
+// Cancellable banner-hide timer: a stale hideBig from a previous session must not
+// fire and wipe a banner shown by a new one. scheduleHide always replaces the pending timer.
+let hideTimer=null;
+function scheduleHide(ms){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{hideTimer=null;hideBig();},ms);}
+
 // mini game (sessão exclusiva): trava o mundo durante a prova. Os blips dos
 // checkpoints saem por aqui (MiniGame.activeBlips) e o hud.js desenha SÓ eles no
 // radar/mapa enquanto a sessão roda — mapa limpo, sem editar os loops do hud.
@@ -182,6 +187,7 @@ function playerPlace(){
 
 function startRace(){
   if(!game.begin())return; // outra sessão de mini game rolando: não larga
+  clearTimeout(hideTimer);hideTimer=null; // cancel any stale hide from a previous session
   buildCpMarkers();
   playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
   startMk.ring.visible=startMk.beacon.visible=false; // some o marcador de largada na prova
@@ -223,7 +229,7 @@ function loseRace(){
   reportMiniGameResult(game.id,{won:false,score:0}); // ranking: corrida perdida
   finishRace();
   bigText('YOU LOST','var(--pink)');
-  setTimeout(hideBig,2200);
+  scheduleHide(2200);
   message('THE RIVALS FINISHED FIRST - NO PRIZE','var(--pink)');
   blip([330,247,196],.12,'sawtooth',.18);
 }
@@ -242,7 +248,7 @@ function completeRace(){
   const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
   finishRace();
   bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');
-  setTimeout(hideBig,2200);
+  scheduleHide(2200);
   message(paid>0?`${ord} OF ${total} - +$${paid}${bonus>0?' SPEED BONUS!':''}`
     :`${ord} OF ${total} - NO PRIZE`,paid>0?'var(--gold)':'var(--pink)');
   blip(place===1?[523,659,784,1047]:[440,330],.09,'sine',.18);
@@ -358,7 +364,7 @@ export function updateOffroad(dt){
       if(n!==lastCdShown){lastCdShown=n;blip([523],.12,'square',.18);} // bip por número
     }else{
       phase='racing';freezePos=null;state.controlsLocked=false;
-      bigText('GO!','var(--gold)');setTimeout(hideBig,700);
+      bigText('GO!','var(--gold)');scheduleHide(700);
       blip([784,1047],.14,'square',.22);
       raceMusicOn();
     }
