@@ -47,7 +47,7 @@ const CP_AHEAD=0;       // boias visíveis além da atual (0 = SÓ a próxima bo
 const CP_RADIUS=12;     // raio pra contar a passagem na boia (lancha é rápida/larga)
 const NPC_COUNT=3;      // adversários
 const NPC_REACH=8;      // rivais precisam chegar PERTO da boia pra avançar
-const RIVAL_PACES=[0.86,0.97,1.06]; // per-rival pace: the fastest (>1) can genuinely win if you slack; a clean run still beats them. The catch-up surge keeps trailing rivals dangerous.
+const RIVAL_PACES=[0.82,0.90,0.96]; // per-rival pace, all <1 so a CLEAN run wins; the catch-up surge keeps trailing rivals dangerous if you slack (a sloppy run can still drop to 2nd/3rd).
 const SEP=6;            // distância mínima entre duas lanchas: separa quem encosta
 const MINE_MAX=3;       // só ALGUMAS bombas aquáticas por prova
 const MINE_HIT=3.4;     // raio de colisão da mina (lancha é larga): encostou, levou

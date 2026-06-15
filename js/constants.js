@@ -145,9 +145,9 @@ export const wrapA=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.P
 export const RACE_CATCHUP_GAIN=0.60; // surto por checkpoint de ATRASO
 export const RACE_CATCHUP_MAX=0.95;  // teto do surto de quem está atrás (+95% do ritmo)
 export const RACE_LEAD_EASE=0.45;    // alívio por checkpoint de DIANTEIRA
-export const RACE_LEAD_MAX=0.20;     // teto do alívio de quem está à frente (−20% do ritmo):
-// baixo de propósito pra um rival LÍDER seguir rumo à chegada (e te ganhar se você
-// vacilar) em vez de quase parar esperando — antes (−34%) era impossível ficar em 2º.
+export const RACE_LEAD_MAX=0.30;     // teto do alívio de quem está à frente (−30% do ritmo):
+// um rival líder alivia o suficiente pra ser alcançável (uma corrida limpa VENCE),
+// mas se você vacilar o surto de quem vem atrás (RACE_CATCHUP_MAX) ainda te pega.
 // `pace` é o multiplicador PERSISTENTE de cada rival (ex.: .9 / 1.0 / 1.1): mesmo
 // ancorados no mesmo ritmo do jogador, cada inimigo corre num passo diferente, o
 // que os ESPALHA ao longo da pista (um na frente, outro atrás) em vez de todos

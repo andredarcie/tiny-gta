@@ -39,7 +39,7 @@ const CP_RADIUS=9;     // raio pra contar a passagem no checkpoint (off-road é 
 const CP_AHEAD=0;      // checkpoints visíveis além do atual (0 = SÓ o próximo que o jogador tem que cruzar)
 const NPC_COUNT=3;     // adversários
 const NPC_REACH=4.5;   // rivais precisam chegar PERTO do ponto pra avançar (sem cortar caminho)
-const RIVAL_PACES=[0.86,0.97,1.06]; // per-rival pace: the fastest (>1) can genuinely win if you slack; a clean run still beats them. The catch-up surge keeps trailing rivals dangerous.
+const RIVAL_PACES=[0.82,0.90,0.96]; // per-rival pace, all <1 so a CLEAN run wins; the catch-up surge keeps trailing rivals dangerous if you slack (a sloppy run can still drop to 2nd/3rd).
 const SEP=3.8;         // distância mínima entre dois rivais: separa quem encosta
 const offColors=[0x2e6f3a,0xc9a227,0x8a3b2b]; // verde-mato, mostarda e barro (carro do jogador é o seu)
 

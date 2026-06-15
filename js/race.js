@@ -39,7 +39,7 @@ const CP_RADIUS=8;     // raio pra contar a passagem no checkpoint
 const CP_AHEAD=0;      // checkpoints à frente visíveis além do atual (0 = só o atual)
 const NPC_COUNT=3;     // adversários
 const NPC_REACH=3.5;   // rivais precisam passar PERTO do ponto pra avançar (nada de burlar)
-const RIVAL_PACES=[0.86,0.97,1.06]; // per-rival pace: the fastest (>1) can genuinely win if you slack; a clean run still beats them. The catch-up surge keeps trailing rivals dangerous.
+const RIVAL_PACES=[0.82,0.90,0.96]; // per-rival pace, all <1 so a CLEAN run wins; the catch-up surge keeps trailing rivals dangerous if you slack (a sloppy run can still drop to 2nd/3rd).
 const SEP=3.8;         // distância mínima entre dois rivais (carro ~1.7 largo): separa quem encosta
 const TURN_MIN=-0.1;   // produto escalar mínimo entre trechos: proíbe curva de ré/180
 const GANG_MARGIN=8;   // folga extra além do raio do território
