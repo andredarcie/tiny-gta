@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {groundHeight,rubberSpeed,separateRacers,pick} from './constants.js';
+import {groundHeight,rubberSpeed,separateRacers,pick,diminishPrize} from './constants.js';
 import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
@@ -39,7 +39,7 @@ const CP_RADIUS=9;     // raio pra contar a passagem no checkpoint (off-road é 
 const CP_AHEAD=0;      // checkpoints visíveis além do atual (0 = SÓ o próximo que o jogador tem que cruzar)
 const NPC_COUNT=3;     // adversários
 const NPC_REACH=4.5;   // rivais precisam chegar PERTO do ponto pra avançar (sem cortar caminho)
-const RIVAL_PACES=[0.80,0.88,0.95]; // per-rival pace, all <1 so a clean run can take the lead; the catch-up surge still makes trailing rivals dangerous
+const RIVAL_PACES=[0.86,0.97,1.06]; // per-rival pace: the fastest (>1) can genuinely win if you slack; a clean run still beats them. The catch-up surge keeps trailing rivals dangerous.
 const SEP=3.8;         // distância mínima entre dois rivais: separa quem encosta
 const offColors=[0x2e6f3a,0xc9a227,0x8a3b2b]; // verde-mato, mostarda e barro (carro do jogador é o seu)
 
@@ -82,6 +82,7 @@ let freezePos=null; // posição travada do carro durante a contagem
 let freezeHeading=0;// direção travada do carro/câmera durante a contagem
 const racers=[];    // adversários {g,cp,speed,finished}
 let finishedNpcs=0; // quantos rivais já cruzaram a chegada
+const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
 
 // mini game (sessão exclusiva): trava o mundo durante a prova. Os blips dos
 // checkpoints saem por aqui (MiniGame.activeBlips) e o hud.js desenha SÓ eles no
@@ -232,7 +233,8 @@ function completeRace(){
   const prize=[700,350,150,0][place-1]??0;
   // bônus de tempo: volta rápida paga mais (some por volta de ~2min)
   const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
-  const paid=prize+bonus;
+  // anti-farm: refazer a prova em loop paga cada vez menos (recupera com o tempo)
+  const paid=diminishPrize(prizeState,prize+bonus,state.time);
   economy.earn(paid,'offroad');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
   reportMiniGameResult(game.id,{won:place===1,score:paid});

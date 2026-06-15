@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers} from './constants.js';
+import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize} from './constants.js';
 import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
@@ -47,7 +47,7 @@ const CP_AHEAD=0;       // boias visíveis além da atual (0 = SÓ a próxima bo
 const CP_RADIUS=12;     // raio pra contar a passagem na boia (lancha é rápida/larga)
 const NPC_COUNT=3;      // adversários
 const NPC_REACH=8;      // rivais precisam chegar PERTO da boia pra avançar
-const RIVAL_PACES=[0.80,0.88,0.95]; // per-rival pace, all <1 so a clean run can take the lead; the catch-up surge still makes trailing rivals dangerous
+const RIVAL_PACES=[0.86,0.97,1.06]; // per-rival pace: the fastest (>1) can genuinely win if you slack; a clean run still beats them. The catch-up surge keeps trailing rivals dangerous.
 const SEP=6;            // distância mínima entre duas lanchas: separa quem encosta
 const MINE_MAX=3;       // só ALGUMAS bombas aquáticas por prova
 const MINE_HIT=3.4;     // raio de colisão da mina (lancha é larga): encostou, levou
@@ -144,6 +144,7 @@ let freezePos=null; // posição travada da lancha durante a contagem
 let freezeHeading=0;// direção travada durante a contagem
 const racers=[];    // adversários {g,cp,wpi,speed,finished,bobT}
 let finishedNpcs=0; // quantos rivais já cruzaram a chegada
+const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
 
 // alvos da corrida pro radar: largada quando ocioso, boia atual em prova
 refs.boatRaceBlips=()=>{
@@ -471,7 +472,8 @@ function completeRace(){
   const prize=[700,350,150,0][place-1]??0;
   // bônus de tempo: corrida rápida paga mais
   const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
-  const paid=prize+bonus;
+  // anti-farm: refazer a prova em loop paga cada vez menos (recupera com o tempo)
+  const paid=diminishPrize(prizeState,prize+bonus,state.time);
   economy.earn(paid,'boat-race');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
   reportMiniGameResult(game.id,{won:place===1,score:paid});

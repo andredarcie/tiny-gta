@@ -145,7 +145,9 @@ export const wrapA=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.P
 export const RACE_CATCHUP_GAIN=0.60; // surto por checkpoint de ATRASO
 export const RACE_CATCHUP_MAX=0.95;  // teto do surto de quem está atrás (+95% do ritmo)
 export const RACE_LEAD_EASE=0.45;    // alívio por checkpoint de DIANTEIRA
-export const RACE_LEAD_MAX=0.34;     // teto do alívio de quem está à frente (−34% do ritmo)
+export const RACE_LEAD_MAX=0.20;     // teto do alívio de quem está à frente (−20% do ritmo):
+// baixo de propósito pra um rival LÍDER seguir rumo à chegada (e te ganhar se você
+// vacilar) em vez de quase parar esperando — antes (−34%) era impossível ficar em 2º.
 // `pace` é o multiplicador PERSISTENTE de cada rival (ex.: .9 / 1.0 / 1.1): mesmo
 // ancorados no mesmo ritmo do jogador, cada inimigo corre num passo diferente, o
 // que os ESPALHA ao longo da pista (um na frente, outro atrás) em vez de todos
@@ -177,4 +179,21 @@ export function separateRacers(racers,sep){
       }
     }
   }
+}
+
+// Anti-farm para PRÊMIO de corrida (rua/lancha/off-road): vitórias repetidas da
+// MESMA prova pagam cada vez menos, e a penalidade se RECUPERA com o tempo — então
+// pune o grind em loop (largar a prova e refazer pra ganhar $700 de novo) sem
+// estragar quem corre de vez em quando. `s` é um estado {streak,last} que o módulo
+// da corrida cria e passa de volta toda vez. base<=0 (sem pódio) passa direto e NÃO
+// conta como tick (perder não vira anti-farm). `now` = state.time (segundos).
+//   streak 0->1->2... = 100% / 55% / 30% / 17%... do prêmio; recupera 1 passo a
+//   cada `recover`s longe da pista.
+export function diminishPrize(s,base,now,decay=0.55,recover=180){
+  if(!(base>0))return 0;
+  if(Number.isFinite(s.last))
+    s.streak=Math.max(0,s.streak-Math.floor((now-s.last)/recover));
+  const paid=Math.round(base*Math.pow(decay,s.streak));
+  s.last=now;s.streak++;
+  return paid;
 }

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers} from './constants.js';
+import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers,diminishPrize} from './constants.js';
 import {state,refs,carColors} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
@@ -39,7 +39,7 @@ const CP_RADIUS=8;     // raio pra contar a passagem no checkpoint
 const CP_AHEAD=0;      // checkpoints à frente visíveis além do atual (0 = só o atual)
 const NPC_COUNT=3;     // adversários
 const NPC_REACH=3.5;   // rivais precisam passar PERTO do ponto pra avançar (nada de burlar)
-const RIVAL_PACES=[0.80,0.88,0.95]; // per-rival pace, all <1 so a clean run can take the lead; the catch-up surge still makes trailing rivals dangerous
+const RIVAL_PACES=[0.86,0.97,1.06]; // per-rival pace: the fastest (>1) can genuinely win if you slack; a clean run still beats them. The catch-up surge keeps trailing rivals dangerous.
 const SEP=3.8;         // distância mínima entre dois rivais (carro ~1.7 largo): separa quem encosta
 const TURN_MIN=-0.1;   // produto escalar mínimo entre trechos: proíbe curva de ré/180
 const GANG_MARGIN=8;   // folga extra além do raio do território
@@ -101,6 +101,7 @@ let freezePos=null; // posição travada do carro durante a contagem
 let freezeHeading=0; // direção travada do carro/câmera durante a contagem
 const racers=[];    // adversários {g,cp,speed,finished}
 let finishedNpcs=0; // quantos adversários já cruzaram a chegada
+const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
 const raceHud=document.getElementById('racehud');
 
 // alvos da corrida pro radar: largada quando ocioso, checkpoints à frente em prova
@@ -304,7 +305,8 @@ function completeRace(){
   const prize=[700,350,150,0][place-1]??0;
   // bônus de tempo: corrida rápida paga mais (some por volta de ~2min)
   const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
-  const paid=prize+bonus;
+  // anti-farm: refazer a corrida em loop paga cada vez menos (recupera com o tempo)
+  const paid=diminishPrize(prizeState,prize+bonus,state.time);
   economy.earn(paid,'race');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
   reportMiniGameResult(game.id,{won:place===1,score:paid});
