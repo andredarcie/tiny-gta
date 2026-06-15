@@ -578,7 +578,7 @@ function findWeaponHit(origin,dir,range=48){
     const d=rayHitXZ(origin,dir,t,t.r||.8,range);
     if(d!==null&&d<best.d)best={kind:'rangeTarget',d,target:t};
   }
-  for(const t of refs.armyTargets?.()||[]){ // soldados do exército desembarcados (★6)
+  for(const t of refs.armyTargets?.()||[]){ // dismounted army soldiers (★6)
     const d=rayHitXZ(origin,dir,t.g.position,t.r||1.05,range);
     if(d!==null&&d<best.d)best={kind:'army',d,target:t};
   }
@@ -631,7 +631,7 @@ function blastDamage(pos,opts){
   for(const o of copOfficers){ // a onda de choque também derruba a dupla
     if(!o.dead&&o.g.position.distanceTo(pos)<5)killOfficer(o);
   }
-  refs.blastArmy?.(pos); // soldados do exército (★6) caem na explosão
+  refs.blastArmy?.(pos); // army soldiers (★6) caught in the blast
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
       if(c===cur||c.plane)continue;

@@ -185,7 +185,7 @@ function step(dt){
   P.begin('peds');updatePeds(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('cops');if(state.mode!=='cut'&&!state.cine)updateCops(dt);P.end();
-  P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: exército
+  P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
   updateHeli(dt);
   updatePickups(dt);

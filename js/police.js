@@ -23,7 +23,7 @@ export const officers=[]; // policiais a pé em campo (e corpos, por uns segundo
 export let heli=null;
 
 const COP_BLUE=0x2a3f6e;
-const SIX_STAR_HOLD=30; // segundos que a 6ª estrela (máxima) SEGURA antes de poder cair pra 5
+const SIX_STAR_HOLD=30; // seconds the 6th star (max) HOLDS before it can drop to 5
 let lastShout=-99;
 
 export function spawnCop(){
@@ -204,8 +204,8 @@ const _mid=new THREE.Vector3();
 
 export function updateCops(dt){
   const want=Math.floor(state.wanted);
-  // 6 estrelas (a MÁXIMA): a polícia se RETIRA — quem responde é o EXÉRCITO
-  // (js/army.js). Sem viatura e sem prisão lá em cima: só o caminhão militar.
+  // 6 stars (the MAX): the police WITHDRAW — the ARMY takes over (js/army.js).
+  // No cruisers and no arrest up there: only the military truck.
   if(want>=6){
     while(cops.length)removeCop(cops.pop());
     for(let i=officers.length-1;i>=0;i--){scene.remove(officers[i].g);officers.splice(i,1);}
@@ -318,13 +318,13 @@ export function updateCops(dt){
     if(state.bustT>.4)message('THE POLICE ARE SURROUNDING YOU!','var(--blue)');
     if(state.bustT>1.8){getBusted();return;}
   }else state.bustT=Math.max(0,state.bustT-dt*2);
-  // As 6 estrelas (máxima) SEGURAM por um tempo mínimo (SIX_STAR_HOLD) a partir do
-  // último crime que te manteve no 6 — antes caíam rápido demais pro exército nem
-  // chegar a engajar. Passado o hold, valem as regras normais de esfriamento.
+  // 6 stars (max) HOLD for a minimum time (SIX_STAR_HOLD) from the last crime that
+  // kept you at 6 — before, they dropped too fast for the army to even engage. Once
+  // the hold passes, the normal cool-down rules apply.
   const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
-  // esfria só sem perseguidor por perto E sem crime há 9s. Nas 6 estrelas a polícia
-  // se retirou, então o EXÉRCITO conta como perseguidor: com o caminhão em cima
-  // (<70m) o procurado também não cai.
+  // cool down only with no pursuer nearby AND no crime for 9s. At 6 stars the police
+  // withdrew, so the ARMY counts as a pursuer: with the truck on top of you (<70m)
+  // the wanted level also won't drop.
   if(!sixHold&&state.wanted>0&&state.time-state.lastCrime>9&&(minD>70||!cops.length)&&(refs.armyDist?.()??1e9)>70)
     state.wanted=Math.max(0,state.wanted-dt/5);
 }

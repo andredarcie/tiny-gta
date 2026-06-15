@@ -487,7 +487,7 @@ export function getBusted(){
     state.onRoof=null;roofFall=null; // presídio fica no chão, não no telhado
     economy.penalty(.85,'busted');state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
-    refs.clearArmy?.(); // caminhão + soldados do exército (★6)
+    refs.clearArmy?.(); // army truck + soldiers (★6)
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
     player.g.visible=true;
@@ -504,7 +504,7 @@ function wastedCut(){
     state.health=100; // wake up at the hospital fully healed
     economy.penalty(.8,'wasted');state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
-    refs.clearArmy?.(); // caminhão + soldados do exército (★6)
+    refs.clearArmy?.(); // army truck + soldiers (★6)
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
     unseatPlayer();
     player.g.visible=true;

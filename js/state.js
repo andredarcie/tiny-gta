@@ -1,6 +1,6 @@
 export const state={
   started:false,paused:false,mode:'foot',money:250,wanted:0,health:100,lastCrime:-99,
-  sixStarT:-999, // instante do último crime que levou/manteve nas 6 estrelas (hold da máxima; ver police.js)
+  sixStarT:-999, // time of the last crime that reached/held 6 stars (max-star hold; see police.js)
   deliveries:0,taxiFares:0,taxiEarnings:0,bustT:0,cutT:0,cutFn:null,shake:0,time:0,comboN:0,lastHit:-99,dlgActive:false,cine:false,
   kills:0, // contador monotônico de inimigos/pedestres mortos (usado pelo Rampage)
   hasGun:false,weaponHeld:false,ammo:0,maxAmmo:0,
