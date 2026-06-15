@@ -3,10 +3,11 @@ import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,ru
 import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
-import {makeBoat,makePed,shirtColors} from './entities.js';
+import {makeBoat,makePed,shirtColors,disposeGeometries} from './entities.js';
 import {cur,playerPos,cameraRig} from './player.js';
 import {makeBuoy} from '../assets/models/missions/buoy.js';
 import {makeSeaMine} from '../assets/models/missions/sea-mine.js';
+import {makeExplosionModel} from '../assets/models/effects/explosion.js';
 import {makeBoatRaceGate} from '../assets/models/missions/boat-race-gate.js';
 import {makeDeliveryMarker} from '../assets/models/missions/delivery-marker.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
@@ -133,7 +134,8 @@ let route=[];       // [{x,z}] boias na ordem (a última é a chegada)
 let cpMarkers=[];   // marcadores 3D de cada boia
 let npcPath=[];     // waypoints que os rivais seguem (boias + desvios das minas)
 let mineSpecs=[];   // posições das bombas aquáticas do percurso (sorteadas por prova)
-let mines=[];       // bombas 3D na cena durante a prova {g,x,z,bobT,cool}
+let mines=[];       // bombas 3D na cena durante a prova {g,x,z,bobT}
+const blasts=[];    // explosões ativas das minas detonadas {g,t}
 let playerCp=0;     // próxima boia do jogador
 let raceT=0;        // cronômetro
 let cdT=0;          // contagem regressiva
@@ -314,7 +316,7 @@ function buildMines(){
   }
 }
 function clearMines(){
-  for(const m of mines)scene.remove(m.g);
+  for(const m of mines){scene.remove(m.g);disposeGeometries(m.g);}
   mines.length=0;
 }
 
@@ -329,10 +331,30 @@ function hopOffset(o,dt){
   return o.mineHopY;
 }
 
-// borrifo forte ao bater (reusa a espuma das rivais como splash do impacto)
-function mineSplash(x,z){
-  for(let i=0;i<7;i++)spawnRivalPuff(x+(Math.random()-.5)*2,z+(Math.random()-.5)*2,1.2,3.4,.8);
-  blip([170,120,90],.18,'sawtooth',.22); // baque grave do impacto
+// detona a mina: explode (modelo de explosão reaproveitado), SOME da cena e do
+// percurso e levanta uma coluna de água. Quem bateu já recebeu o pulo/freada em
+// updateMines/updateRacers. Uma mina só explode uma vez (é removida na hora).
+function detonateMine(m){
+  spawnMineBlast(m.x,m.z);
+  scene.remove(m.g);disposeGeometries(m.g);
+  const i=mines.indexOf(m);if(i>=0)mines.splice(i,1);
+}
+function spawnMineBlast(x,z){
+  const g=makeExplosionModel();
+  g.position.set(x,SEA_Y+1,z);
+  scene.add(g);
+  blasts.push({g,t:0});
+  for(let i=0;i<8;i++) // borrifo/espuma do estouro
+    spawnRivalPuff(x+(Math.random()-.5)*2.5,z+(Math.random()-.5)*2.5,1.4,4,.9);
+  blip([150,90,55],.2,'sawtooth',.3); // estouro grave
+}
+function updateBlasts(dt){
+  for(let i=blasts.length-1;i>=0;i--){
+    const b=blasts[i];b.t+=dt;const s=1+b.t*4;
+    b.g.scale.set(s,s,s);
+    b.g.traverse(o=>{if(o.material)o.material.opacity=Math.max(0,o.material.opacity-dt*1.6);});
+    if(b.t>.75){scene.remove(b.g);disposeGeometries(b.g);blasts.splice(i,1);}
+  }
 }
 
 // senta um "capitão" no banco do console da lancha rival (offset/pose casados com
@@ -393,7 +415,7 @@ function startRace(){
   if(!route.length)prepareRace();
   buildCpMarkers();
   buildMines(); // bombas aquáticas no meio do percurso
-  cur.mineHopV=cur.mineHopY=0;cur.mineCool=0; // zera estado de "pulo" de mina
+  cur.mineHopV=cur.mineHopY=0; // zera estado de "pulo" de mina
   playerCp=0;raceT=0;cdT=3;lastCdShown=-1;
   startMk.ring.visible=startMk.beacon.visible=false; // some a largada durante a prova
   gate.visible=false;                                // tira o pórtico depois de largar
@@ -566,11 +588,11 @@ function updateRacers(dt){
     if(r.mineStun>0){step*=.2;r.mineStun-=dt;} // batido numa mina: quase parado
     r.g.position.x+=Math.sin(h)*step;
     r.g.position.z+=Math.cos(h)*step;
-    // bateu numa mina (raro: eles desviam pelos waypoints) → pulo + perda de ritmo
-    r.mineCool=Math.max(0,(r.mineCool||0)-dt);
-    if(r.mineCool<=0)for(const m of mines){
+    // bateu numa mina (raro: eles desviam pelos waypoints) → pulo + perda de ritmo;
+    // a mina explode e some na hora
+    for(const m of mines){
       if(Math.hypot(r.g.position.x-m.x,r.g.position.z-m.z)<MINE_HIT){
-        r.mineHopV=HOP_V;r.mineStun=.9;r.mineCool=1.3;mineSplash(r.g.position.x,r.g.position.z);break;
+        r.mineHopV=HOP_V;r.mineStun=.9;detonateMine(m);break;
       }
     }
     // flutuação + proa levantada planando + inclinação pra dentro da curva + pulo de mina
@@ -610,13 +632,11 @@ function updateMines(dt){
   }
   if(!cur)return;
   const p=cur.g.position;
-  cur.mineCool=Math.max(0,(cur.mineCool||0)-dt);
-  if(cur.mineCool<=0)for(const m of mines){
+  for(const m of mines){
     if(Math.hypot(p.x-m.x,p.z-m.z)<MINE_HIT){
       cur.mineHopV=HOP_V;   // a lancha pula pra cima
       cur.speed*=.22;       // e perde quase toda a velocidade
-      cur.mineCool=1.3;
-      mineSplash(p.x,p.z);
+      detonateMine(m);      // a mina explode e some
       break;
     }
   }
@@ -626,6 +646,7 @@ function updateMines(dt){
 
 export function updateBoatRace(dt){
   if(rwake.length)updateRivalWake(dt); // espuma das rivais some mesmo após a prova
+  if(blasts.length)updateBlasts(dt);   // explosões das minas terminam mesmo após a prova
   // anel da largada pulsando quando ocioso
   if(phase==='idle'){
     if(startMk.ring.visible){
