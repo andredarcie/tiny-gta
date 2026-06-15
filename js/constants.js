@@ -173,23 +173,27 @@ export function smoothPace(prev,target,dt){
   return prev+(target-prev)*(1-Math.exp(-dt/tau));
 }
 
-// Empurrão de separação dos rivais: separa qualquer par mais perto que `sep`
-// (metade pra cada lado), pra dois carros/lanchas nunca andarem um por dentro do
-// outro. Mexe só em x/z — o y é reassentado no próximo frame de movimento. Puro
-// (sem THREE): só lê/escreve r.g.position.{x,z}. Usado pelas 3 corridas.
-export function separateRacers(racers,sep){
+// Empurrão de separação: afasta dois corpos mais perto que `sep` (metade pra cada
+// lado) mexendo só em x/z — o y é reassentado no próximo frame de movimento.
+function pushApart(pa,pb,sep){
+  const dx=pb.x-pa.x,dz=pb.z-pa.z,d=Math.hypot(dx,dz);
+  if(d>1e-4&&d<sep){
+    const push=(sep-d)/2,nx=dx/d,nz=dz/d;
+    pa.x-=nx*push;pa.z-=nz*push;pb.x+=nx*push;pb.z+=nz*push;
+  }
+}
+// Separação dos competidores: dois carros/lanchas nunca andam um por dentro do
+// outro. Se `player` (o carro/lancha do jogador {g}) é passado, ele também colide
+// com os rivais — o motorista é empurrado junto, então ninguém atravessa ninguém.
+// Puro (sem THREE): só lê/escreve .g.position.{x,z}. Usado pelas 3 corridas.
+export function separateRacers(racers,sep,player=null){
   for(let a=0;a<racers.length;a++){
     const ra=racers[a];if(ra.finished)continue;
     for(let b=a+1;b<racers.length;b++){
       const rb=racers[b];if(rb.finished)continue;
-      const dx=rb.g.position.x-ra.g.position.x,dz=rb.g.position.z-ra.g.position.z;
-      const d=Math.hypot(dx,dz);
-      if(d>1e-4&&d<sep){
-        const push=(sep-d)/2,nx=dx/d,nz=dz/d;
-        ra.g.position.x-=nx*push;ra.g.position.z-=nz*push;
-        rb.g.position.x+=nx*push;rb.g.position.z+=nz*push;
-      }
+      pushApart(ra.g.position,rb.g.position,sep);
     }
+    if(player&&player.g)pushApart(ra.g.position,player.g.position,sep); // colide com o motorista
   }
 }
 

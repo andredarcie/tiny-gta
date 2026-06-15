@@ -623,7 +623,7 @@ function updateRacers(dt){
       r.wpi++;
     }
   }
-  separateRacers(racers,SEP); // duas lanchas nunca andam uma por dentro da outra
+  separateRacers(racers,SEP,cur); // ninguém anda por dentro de ninguém (inclui a lancha do jogador)
 }
 
 // bombas aquáticas: balançam/giram na água e colidem com a lancha do JOGADOR —

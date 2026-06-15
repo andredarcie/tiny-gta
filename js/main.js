@@ -1,9 +1,11 @@
 import * as THREE from 'three';
-import {state,input,refs} from './state.js';
+import {state,input,refs,keys} from './state.js';
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from './engine.js';
 import {updateAudio} from './audio.js';
 import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,updateDrivenShadow,updateCarFx} from './player.js';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from './player.js';
+import {groundHeight} from './constants.js';
+import {MiniGame} from './minigame.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
@@ -29,7 +31,7 @@ import {updateWeaponPickups} from './weapon-pickups.js';  // GTA: as 12 armas es
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
-import {setupInput,updateKeyboardInput,performShoot} from './input.js';
+import {setupInput,updateKeyboardInput,performShoot,performInteract} from './input.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud} from './weapons.js';
@@ -322,6 +324,45 @@ window.render_game_to_text=()=>{
     houseTv:refs.getHouseTvState?.()||null,
     rick:refs.getRickState?.()||null,
   });
+};
+// Test/debug hook (same spirit as advanceTime / render_game_to_text): lets the
+// browser test harness in test/support/game.js reach a few live internals to set
+// up scenarios deterministically (entering/placing the car, reading the current
+// race checkpoint). The game itself never uses it. See test/support/game.js and
+// the Testing section in CLAUDE.md / README.
+window.__test={
+  enterCar:()=>{
+    if(state.mode!=='foot')return state.mode;
+    const f=nearestCar(1e9);                 // nearest car at any distance
+    if(f)player.g.position.set(f.c.g.position.x,player.g.position.y,f.c.g.position.z+2.2);
+    enterCar();                              // the real entry (walk-to-door anim + seat)
+    return state.mode;
+  },
+  exitCar:()=>{exitCar();return state.mode;},
+  // Trigger the context action (same as pressing E): enter/exit car, start a race
+  // under a gate, pick up, etc. Reliable regardless of OS keyboard focus.
+  interact:()=>{performInteract();return state.mode;},
+  // Drive by writing the SAME normalized key state a real keydown produces, so
+  // gameplay reads it through the unmodified input pipeline (updateKeyboardInput).
+  setKey:(code,down)=>{keys[code]=!!down;},
+  clearKeys:()=>{for(const k of['KeyW','KeyA','KeyS','KeyD','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space','ShiftLeft','ShiftRight'])keys[k]=false;},
+  // Place the current vehicle at (x,z) facing (fx,fz), stopped. Test scaffolding
+  // to reach an activity's start without a long cross-map drive — the activity
+  // itself is then played for real through the keyboard.
+  placeVehicle:(x,z,fx,fz)=>{
+    if(!cur)return false;
+    const h=Math.atan2(fx-x,fz-z);
+    cur.g.position.set(x,groundHeight(x,z),z);
+    cur.heading=h;cur.g.rotation.set(0,h,0);cur.speed=0;cameraRig.yaw=h;
+    return true;
+  },
+  // Current race checkpoint world coords (street / boat / off-road), for autopilots.
+  raceTarget:()=>{
+    const b=MiniGame.activeBlips?.()||[];
+    if(b[0])return{x:b[0].x,z:b[0].z};
+    const r=refs.raceBlips?.()||refs.boatRaceBlips?.()||[];
+    return r[0]?{x:r[0].x,z:r[0].z}:null;
+  },
 };
 // Pré-compila TODOS os shaders ANTES do loop: tanto os materiais da cena montada
 // (chunks da cidade revelados ao andar) quanto os modelos que só nascem em jogo

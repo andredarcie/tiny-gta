@@ -14,9 +14,10 @@ npm run dev        # dev server at http://localhost:5173 (exposed on LAN via hos
 npm run build      # production build → dist/
 npm run preview    # serve the production build
 node --check js/<file>.js   # syntax-check a single module (the de-facto per-file validation)
+npm test           # browser end-to-end tests (Playwright) — see "Testing" below
 ```
 
-There is **no test framework and no linter**. Validation in this repo means `node --check` on the files you touched, plus a build. Do **not** run Playwright / browser automation unless the user explicitly asks for it in the current request — the project history records a standing instruction against it.
+There is **no unit-test framework and no linter**. Quick validation is still `node --check` on the files you touched, plus a build. For *gameplay* changes there is now a browser test harness (`npm test`) that drives the real game — see the Testing section. Do not stand up new ad-hoc Playwright scripts; use the shared harness in `test/`.
 
 ## Architecture
 
@@ -34,7 +35,29 @@ There is **no test framework and no linter**. Validation in this repo means `nod
 - `js/**` — gameplay systems (`player`, `traffic`, `police`, `gangs`, `weapons`, `missions`, `taxi`, `story`, `pedestrians`, `daynight`, `hud`, …) that *orchestrate* models. They must not define geometry/materials.
 - Many model modules expose `add*()` that push into per-material buckets, with a `finalize*()` called once in `world.js` to merge geometry (`mergeGeometries`) — the whole city renders in ~18 draw calls instead of ~900. Keep this batching intact when editing world/building code.
 
-**Debug hooks** on `window`: `render_game_to_text()` (JSON snapshot of game state) and `advanceTime(ms)` (steps the loop deterministically).
+**Debug hooks** on `window`: `render_game_to_text()` (JSON snapshot of game state), `advanceTime(ms)` (steps the loop deterministically), and `__test` (test scaffolding used by the browser harness — `enterCar`/`exitCar`/`interact`/`placeVehicle`/`setKey`/`clearKeys`/`raceTarget`). The game never uses `__test`; it only exists so tests can set up scenarios on the live instance.
+
+## Testing (browser end-to-end)
+
+Gameplay is tested by driving the **real game in a real Chromium** (real Three.js/WebGL, real game loop, real input pipeline) via Playwright — there is no headless-stub/mock layer. This is the one sanctioned way to test the game; do not invent per-test browser scripts.
+
+```bash
+npx playwright install chromium   # one-time: download the browser
+npm test                          # runs test/*.spec.js HEADED (a window opens; you watch it play)
+HEADLESS=1 npm test               # no window (CI / agents on a machine with no display)
+npm test -- test/race.spec.js     # run one spec
+```
+
+- **Config:** `playwright.config.js` auto-starts `npm run dev` and points tests at it. Headed by default (set `HEADLESS=1` to hide the window). Real-time *driving* tests (races, chases) should run **headed** — headless Chromium throttles `requestAnimationFrame`, starving the control loop (a race autopilot wanders and loses); `HEADLESS=1` is best for boot/state assertions, not live driving.
+- **Driver:** `test/support/game.js` exports a Playwright `test`/`expect` where every spec gets a booted `game` (a `GameDriver`). Write specs as `test/*.spec.js` and `import { test, expect } from './support/game.js'`. Key driver methods:
+  - `boot(nick)` — title → nickname → play (auto-run by the fixture).
+  - `snapshot()` — parsed `render_game_to_text()` (mode, money, vehicle, per-minigame state, …).
+  - `enterCar()` / `placeVehicle(x,z,faceX,faceZ)` — get in a car / set up at an activity's start.
+  - `startRaceByKey(stateKey)` — press **E** to start a race and pass the leaderboard briefing.
+  - `driveRace(stateKey)` — hold throttle + steer toward the live checkpoint to the finish; returns `{finished, place, cpReached, moneyGain, lostByRivals}`.
+  - `down/up/tap` (real keyboard), `waitForState(pred)`, `inPage(fn)`.
+- **Why a `window.__test` hook (and not `import()` in the page):** Playwright's `page.evaluate` runs `import('/js/*.js')` as a *separate* module instance from the running game, so it can't touch the live singletons. Only `window`-attached hooks (`render_game_to_text`, `advanceTime`, `__test`) reach the real instance — that is why setup goes through `__test`.
+- **Ready example:** `test/race.spec.js` — the AI enters the car, presses E, and drives the off-road circuit to the finish (open terrain → reliable autopilot). Use it as the template for new gameplay tests.
 
 ## Conventions & gotchas
 

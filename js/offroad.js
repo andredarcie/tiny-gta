@@ -340,7 +340,7 @@ function updateRacers(dt){
       if(r.cp>=route.length){r.finished=true;finishedNpcs++;}
     }
   }
-  separateRacers(racers,SEP); // dois carros nunca andam um por dentro do outro
+  separateRacers(racers,SEP,cur); // ninguém anda por dentro de ninguém (inclui o carro do jogador)
 }
 
 export function updateOffroad(dt){

@@ -415,7 +415,7 @@ function updateRacers(dt){
       r.wpi++;
     }
   }
-  separateRacers(racers,SEP); // dois carros nunca andam um por dentro do outro
+  separateRacers(racers,SEP,cur); // ninguém anda por dentro de ninguém (inclui o carro do jogador)
 }
 
 export function updateRace(dt){
