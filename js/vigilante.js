@@ -4,7 +4,7 @@ import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene} from './engine.js';
 import {makeCar,seatDriver,spinWheels,shirtColors,dentCar} from './entities.js';
-import {idleCars,cur,playerPos} from './player.js';
+import {idleCars,cur,playerPos,resetCarDamage} from './player.js';
 import {makeDeliveryMarker} from '../assets/models/missions/delivery-marker.js';
 import {message,bigText,hideBig} from './hud.js';
 import {blip,thud} from './audio.js';
@@ -144,6 +144,7 @@ function updateVigHud(){
 function resetCruiser(){
   cruiser.speed=0;cruiser.sinkT=0;cruiser.heading=spawn.heading;
   cruiser.g.userData.bulletHits=0;
+  resetCarDamage(cruiser.g); // also clear crashCount/crashCd so the fresh cruiser doesn't carry stale crash damage
   cruiser.g.position.set(spawn.x,0,spawn.z);
   cruiser.g.rotation.set(0,spawn.heading,0);
   for(const d of cruiser.g.userData.doors||[])d.rotation.y=0;

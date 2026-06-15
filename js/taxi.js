@@ -85,10 +85,18 @@ refs.getTaxiState=()=>({
 });
 
 function pickSpot(minD,fx,fz){
-  let x,z,tries=0;
-  do{x=nodeX(irand(0,N))+rand(-3.5,3.5);z=nodeX(irand(0,N))+rand(-3.5,3.5);tries++;}
-  while(Math.hypot(x-fx,z-fz)<minD&&tries<30);
-  return[x,z];
+  // Sample candidate spots and return the first that is at least minD away.
+  // If none clears the threshold within the try budget, return the FARTHEST
+  // sampled candidate (not the last one), so pickup->dropoff stays as far
+  // apart as the samples allow and trivial near-zero-distance fares can't occur.
+  let bestX=0,bestZ=0,bestD=-1;
+  for(let tries=0;tries<30;tries++){
+    const x=nodeX(irand(0,N))+rand(-3.5,3.5),z=nodeX(irand(0,N))+rand(-3.5,3.5);
+    const d=Math.hypot(x-fx,z-fz);
+    if(d>=minD)return[x,z];      // good enough, take it immediately
+    if(d>bestD){bestD=d;bestX=x;bestZ=z;} // track the farthest fallback
+  }
+  return[bestX,bestZ];
 }
 
 function setMarker(x,z){
@@ -182,8 +190,12 @@ function boardFare(){
   const[dx,dz]=pickSpot(80,fare.x,fare.z);
   fare.dropX=dx;fare.dropZ=dz;
   const dist=Math.hypot(dx-fare.x,dz-fare.z);
-  fare.pay=Math.round(28+dist*.42); // corrida longa paga mais
-  fare.tip=Math.round(16+dist*.24);
+  // Base pay scales with the REAL pickup->dropoff distance so trivial fares
+  // pay little. Small flat floor ($6) keeps the shortest fares worthwhile but
+  // far below the old guaranteed ~$28, killing the chain-short-fares exploit.
+  // Tip stays distance-scaled and is paid out via the time-decaying currentTip().
+  fare.pay=Math.round(6+dist*.42); // longer rides pay much more
+  fare.tip=Math.round(8+dist*.18);
   fare.rideStart=state.time;
   fare.deadline=state.time+clamp(24+dist/10,38,120);
   setMarker(dx,dz);

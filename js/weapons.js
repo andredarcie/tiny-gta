@@ -321,6 +321,29 @@ export function clearTrainingWeapon(){
 export const isTrainingWeaponActive=()=>!!trainingSnapshot;
 export const getTrainingWeaponId=()=>trainingSnapshot&&curWeapon!==FIST?curWeapon.id:null;
 
+// ----- Snapshot/restore arsenal (session-temporary grants) -----
+// Capture the full inventory state so a mini-game (rampage) can hand the player a
+// temporary arsenal via grantWeapon() and roll it back on EVERY exit. Records the
+// owned set, the current selection and per-weapon ammo/cooldown so nothing leaks
+// (no permanent weapons, no free ammo refills). Standalone: any caller can pair
+// snapshotArsenal() before granting with restoreArsenal() after.
+export function snapshotArsenal(){
+  return{
+    owned:owned.slice(),
+    cur:curWeapon,
+    weapons:WEAPONS.map(w=>({w,ammo:w.ammo,last:w._last})),
+  };
+}
+export function restoreArsenal(snap){
+  if(!snap)return false;
+  for(const s of snap.weapons){s.w.ammo=s.ammo;s.w._last=s.last;}
+  owned=snap.owned.slice();
+  // re-select a still-owned weapon (fall back to fists if the prior one is gone)
+  const restore=snap.cur&&owned.includes(snap.cur)?snap.cur:FIST;
+  equip(restore);
+  return true;
+}
+
 export function pickupWeapon(){
   const pickup=nearestWeaponPickup(3);
   if(!pickup)return;

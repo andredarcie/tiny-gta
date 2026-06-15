@@ -111,7 +111,8 @@ refs.getOffroadState=()=>({
 });
 // Largada SÓ por interação (tecla E / botão): de carro, parado embaixo do pórtico
 refs.offroadNear=()=>{
-  if(phase!=='idle'||state.mode!=='car'||!cur)return false;
+  // Only a road vehicle (car/motorcycle) can start this race — reject plane/boat/RC toy.
+  if(phase!=='idle'||state.mode!=='car'||!cur||cur.plane||cur.boat||cur.remote)return false;
   const p=playerPos();
   return Math.hypot(p.x-start.x,p.z-start.z)<6&&Math.abs(cur.speed)<3;
 };

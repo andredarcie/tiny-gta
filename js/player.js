@@ -657,8 +657,13 @@ export function updateCar(dt){
   if(exiting){if(cur)cur.speed=0;return updateExiting(dt);}
   if(cur.plane)return updatePlane(dt);
   if(cur.boat)return updateBoat(dt);
-  // No mar o carro perde tração, afunda aos poucos e o jogador escapa nadando
-  if(inWater(cur.g.position)){
+  // The RC toy is immune to the sea: it can never sink, and the player (who stays
+  // standing by the pad) is never unseated/teleported by the water code. Deep water
+  // is treated as a wall — see the shoreline guard at the move step below.
+  if(cur.remote){
+    cur.sinkT=0;
+  }else if(inWater(cur.g.position)){
+    // No mar o carro perde tração, afunda aos poucos e o jogador escapa nadando
     const p=cur.g.position;
     if(!cur.sinkT){cur.sinkT=1e-6;message('YOUR CAR IS SINKING!','var(--pink)');thud(8);}
     cur.sinkT+=dt;
@@ -697,8 +702,15 @@ export function updateCar(dt){
   cur.speed=clamp(cur.speed,bike?-8:-11,MAX);
   cur.heading+=st*(bike?2.4:2.0)*dt*clamp(cur.speed/(bike?9:11),-1,1)*(hb?1.55:1);
   const p=cur.g.position;
+  const px0=p.x,pz0=p.z; // pre-move position (used by the RC shoreline guard)
   p.x+=Math.sin(cur.heading)*cur.speed*dt;
   p.z+=Math.cos(cur.heading)*cur.speed*dt;
+  // RC toy: the sea is a wall. If this step would land in deep water, revert to the
+  // shoreline and kill the velocity — a tiny remote car simply can't drive into it.
+  if(cur.remote&&inWater(p)){
+    p.x=px0;p.z=pz0;
+    cur.speed=0;
+  }
   if(collideStatics(p,1.3,SWIM_BOUND)){
     const spd=Math.abs(cur.speed);
     if(spd>4){

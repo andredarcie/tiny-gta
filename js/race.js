@@ -104,6 +104,11 @@ let finishedNpcs=0; // quantos adversários já cruzaram a chegada
 const prizeState={streak:0,last:-Infinity}; // anti-farm: prêmio decresce em vitórias seguidas
 const raceHud=document.getElementById('racehud');
 
+// Cancellable banner-hide timer: a stale hideBig from a previous session must not
+// fire and wipe a banner shown by a new one. scheduleHide always replaces the pending timer.
+let hideTimer=null;
+function scheduleHide(ms){clearTimeout(hideTimer);hideTimer=setTimeout(()=>{hideTimer=null;hideBig();},ms);}
+
 // alvos da corrida pro radar: largada quando ocioso, checkpoints à frente em prova
 refs.raceBlips=()=>{
   if(phase==='idle')return[{x:start.x,z:start.z,current:true}];
@@ -122,7 +127,8 @@ refs.getRaceState=()=>({
 });
 // Largada SÓ por interação (tecla E / botão): de carro, parado embaixo do pórtico
 refs.raceNear=()=>{
-  if(phase!=='idle'||state.mode!=='car'||!cur)return false;
+  // Only a road vehicle (car/motorcycle) can start this race — reject plane/boat/RC toy.
+  if(phase!=='idle'||state.mode!=='car'||!cur||cur.plane||cur.boat||cur.remote)return false;
   const p=playerPos();
   return Math.hypot(p.x-start.x,p.z-start.z)<5&&Math.abs(cur.speed)<3;
 };
@@ -294,7 +300,7 @@ function loseRace(){
   reportMiniGameResult(game.id,{won:false,score:0}); // ranking: corrida perdida
   finishRace();
   bigText('YOU LOST','var(--pink)');
-  setTimeout(hideBig,2200);
+  scheduleHide(2200);
   message('THE RIVALS FINISHED FIRST - NO PRIZE','var(--pink)');
   blip([330,247,196],.12,'sawtooth',.18);
 }

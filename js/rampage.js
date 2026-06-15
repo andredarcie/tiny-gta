@@ -5,7 +5,7 @@ import {playerPos} from './player.js';
 import {message,bigText,hideBig} from './hud.js';
 import {blip} from './audio.js';
 import {N,nodeX,irand,groundHeight} from './constants.js';
-import {grantWeapon} from './weapons.js';
+import {grantWeapon,snapshotArsenal,restoreArsenal} from './weapons.js';
 import {makeRampageSkull} from '../assets/models/props/rampage-skull.js';
 import {inGangTerritory} from './gangs.js';
 import {MiniGame,MiniGameId} from './minigame.js';
@@ -31,6 +31,7 @@ const BASE_GOAL=12;     // meta base de kills
 
 let pads=[];            // {x,z,g,alive,cooldown}
 let active=false, timeLeft=0, startKills=0, killed=0, goal=0;
+let arsenalSnapshot=null; // pre-rampage inventory, restored on every end path
 let lastKilled=-1, lastSec=-1; // guardas anti-spam do message() (kills E segundos)
 let endFlash=0;        // animação curta de flourish no fim (verde=sucesso, vermelho=falha)
 let endOk=false;
@@ -75,7 +76,8 @@ refs.getRampageState=()=>({active,timeLeft:+timeLeft.toFixed(1),killed,goal,leve
 // ---------- helpers --------------------------------------------------------
 function startRampage(pad){
   if(!game.begin())return;             // outra sessão de mini game rolando: não começa
-  grantWeapon();                       // arsenal completo + munição cheia
+  arsenalSnapshot=snapshotArsenal();   // guarda o inventário pré-rampage (restaurado no fim)
+  grantWeapon();                       // arsenal completo + munição cheia (temporário)
   active=true;
   timeLeft=DURATION;
   goal=BASE_GOAL+level;
@@ -96,6 +98,11 @@ function startRampage(pad){
 function finishRampage(success,silent=false){
   if(!active)return;                   // guarda: nunca finaliza duas vezes
   active=false;
+  // arsenal concedido era só da sessão: devolve o inventário pré-rampage em TODA
+  // saída (sucesso, tempo esgotado, abortar, morte/prisão). Sem isto o jogador
+  // mantinha o arsenal e munição cheia de graça após uma única chacina.
+  restoreArsenal(arsenalSnapshot);
+  arsenalSnapshot=null;
   // ranking: cada chacina é UMA sessão; vitória = meta batida, score = kills feitas
   reportMiniGameResult(game.id,{won:success,score:killed});
   game.end();                          // libera a trava do mundo (idempotente)
