@@ -13,10 +13,40 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g,
 
 const num = n => Number(n || 0).toLocaleString('en-US');
 
+// Métrica natural de CADA mini game (o `score`/`earned` reportado por sessão). É
+// a peça que muda por jogo no cálculo do rating (o número de desempenho do top
+// 5). Chaveado pelos ids string (= valores de MiniGameId) de propósito: evita
+// importar MiniGameId daqui e criar ciclo com minigame.js (que importa este
+// módulo). Jogos sem métrica conhecida não mostram descrição.
+const MG_METRIC = {
+  taxi: 'fare money',
+  race: 'prize money',
+  'boat-race': 'prize money',
+  offroad: 'prize money',
+  vigilante: 'arrests',
+  paramedic: 'rescues',
+  firefighter: 'fires put out',
+  rampage: 'kills',
+  'rocket-rampage': 'cars wrecked',
+  'rc-toyz': 'cars wrecked',
+  gym: 'lift points',
+  dance: 'dance points',
+};
+
+// Texto que explica COMO o número de desempenho é calculado para este mini game.
+// O rating (ver backend/lib/scores.js miniGameRating) é a MÉDIA da métrica por
+// partida, ponderada pela taxa de vitória e pela dedicação (nº de partidas).
+function scoreDescHtml(id) {
+  const m = MG_METRIC[id];
+  if (!m) return '';
+  return `Score = your average <b>${m}</b> per game, boosted by win rate and games played.`;
+}
+
 // ---- INTRO (overlay com o top 5 antes de cada mini game) -------------------
 const ov = document.getElementById('mg-intro');
 const elTitle = document.getElementById('mgi-title');
 const elList = document.getElementById('mgi-list');
+const elDesc = document.getElementById('mgi-desc');
 const elGo = document.getElementById('mgi-go');
 let openedAt = 0;        // pra ignorar o input que ABRIU o intro (held key/tap)
 let reqSeq = 0;          // descarta respostas de fetch fora de ordem
@@ -59,6 +89,7 @@ export function openMiniGameIntro(id, name, onStart = null) {
   pendingStart = onStart || null;
   openedAt = performance.now();
   if (elTitle) elTitle.textContent = name || id;
+  if (elDesc) elDesc.innerHTML = scoreDescHtml(id); // explica o número de desempenho
   ov.classList.add('show');
   ov.setAttribute('aria-hidden', 'false');
   loadBoard(id);

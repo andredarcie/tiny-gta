@@ -371,6 +371,10 @@ body.mod-shop-open #btn-fullscreen{display:none!important}
 #mgi-go{margin-top:16px;font-family:'Bowlby One SC';font-size:20px;letter-spacing:3px;
   color:var(--ink);background:var(--gold);padding:10px 32px;border:none;border-radius:8px;
   cursor:pointer;box-shadow:0 0 22px rgba(255,210,74,.6),3px 3px 0 #7a3a00}
+.mgi-desc{margin-top:12px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.45;
+  color:var(--cream);opacity:.78;text-align:center}
+.mgi-desc:empty{display:none}
+.mgi-desc b{color:var(--gold)}
 .mgi-hint{margin-top:10px;font:600 11px 'IBM Plex Mono',monospace;color:var(--cream);opacity:.6;letter-spacing:1px}
 @media (max-width:560px){
   .mgi-box{width:min(360px,94vw);padding:14px 14px 16px}
