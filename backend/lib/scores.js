@@ -54,6 +54,11 @@ export function sanitizeSave(raw, maxMoney) {
   if (!out || typeof out !== 'object' || Array.isArray(out)) return null;
   const money = Math.floor(Number(out.money));
   out.money = Number.isFinite(money) ? Math.min(Math.max(money, 0), Math.max(0, maxMoney)) : 0;
+  // teto de tamanho total: um save legítimo tem <1KB (poucas armas + 24 pacotes
+  // + 5 rampas + casa). Acima de 8KB é forja/bug — não guarda, pra um cliente
+  // adulterado não encher o Redis com blobs gigantes (o limite por nó acima já
+  // barra o pior caso; este fecha a soma).
+  if (JSON.stringify(out).length > 8192) return null;
   return out;
 }
 
