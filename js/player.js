@@ -9,6 +9,7 @@ import * as Entities from './entities.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
 import {makeSmokePuff} from '../assets/models/effects/smoke-puff.js';
 import {makeRcController} from '../assets/models/props/rc-controller.js';
+import {SEAT_OFFSET,poseRider} from './vehicle-pose.js';
 import {thud,blip,splash} from './audio.js';
 import {radioOn,radioOff,radioEnter} from './radio.js';
 import {collideStatics,addWanted} from './physics.js';
@@ -64,8 +65,8 @@ export const idleCars=[playerCar];
 
 // Motos estacionadas pela cidade: veículos livres como o playerCar (`bike`).
 // Montar/descer é direto (sem porta), o piloto fica visível por cima inclinando
-// nas curvas. Ver updateBike/setRidePose e o flag bike em completeEnter/updateCar.
-const BIKE_SEAT=.3; // altura local do piloto sentado no banco da moto
+// nas curvas. A pose/offset de quem monta vive em vehicle-pose.js (poseRider),
+// junto com a da lancha e do avião. Ver o flag bike em completeEnter/updateCar.
 function spawnBike(color,name,x,z,heading){
   const b={g:makeMotorcycle(color),heading,speed:0,name,police:false,bike:true};
   b.g.position.set(x,0,z);b.g.rotation.y=heading;
@@ -209,7 +210,11 @@ export function nearestCar(maxD){
   return best?{c:best,kind}:null;
 }
 
-// Pose de motorista: sentado com as coxas pra frente, pés no piso, mãos no volante
+// Pose de motorista do CARRO: sentado com as coxas pra frente, pés no piso, mãos
+// no volante. Fica aqui (e não em vehicle-pose.js como moto/lancha/avião) porque
+// spinWheels reescreve os braços do motorista sobre o volante a cada frame — o
+// carro não dá pra posar uma vez e largar. setDrivePose(false) também é o reset
+// neutro usado ao sair de QUALQUER veículo (zera todos os ossos dos membros).
 function setDrivePose(on){
   const l=player.g.userData.limbs;if(!l)return;
   l.leftLeg.visible=l.rightLeg.visible=true; // pernas sempre visíveis (cabine é oca)
@@ -227,41 +232,6 @@ function setDrivePose(on){
     for(const k of['leftArm','rightArm','leftForearm','rightForearm',
       'leftLeg','rightLeg','leftCalf','rightCalf'])l[k]?.rotation.set(0,0,0);
   }
-}
-
-// Pose de piloto de moto: sentado no banco, mãos esticadas pra frente/baixo no
-// guidão, pernas abertas dobradas pra trás (pés nas pedaleiras). Valores
-// ajustados visualmente; o reset volta tudo a zero via setDrivePose(false).
-function setRidePose(){
-  const l=player.g.userData.limbs;if(!l)return;
-  l.leftLeg.visible=l.rightLeg.visible=true;
-  l.leftLeg.rotation.set(-.35,0,.22);
-  l.rightLeg.rotation.set(-.35,0,-.22);
-  l.leftCalf?.rotation.set(.9,0,0);
-  l.rightCalf?.rotation.set(.9,0,0);
-  // braços esticados pra frente/baixo até o guidão erguido (alcance ~.62)
-  l.leftArm.rotation.set(-.86,.1,.1);
-  l.rightArm.rotation.set(-.86,-.1,-.1);
-  l.leftForearm?.rotation.set(-.15,0,0);
-  l.rightForearm?.rotation.set(-.15,0,0);
-}
-
-// Pose de capitão da lancha: sentado no banco do console, coxas pra frente quase
-// horizontais e canelas pra baixo (pés no piso do cockpit), braços esticados
-// pra frente/baixo até o aro do timão. Valores casados com a geometria do
-// boat.js (piso ~y.06, almofada ~.53, timão em (0,1.18,.5)) e com a proporção do
-// pedestre (ombro 1.26, quadril .55). O reset zera tudo via setDrivePose(false).
-function setBoatPose(){
-  const l=player.g.userData.limbs;if(!l)return;
-  l.leftLeg.visible=l.rightLeg.visible=true;
-  l.leftLeg.rotation.set(-1.3,0,.12);
-  l.rightLeg.rotation.set(-1.3,0,-.12);
-  l.leftCalf?.rotation.set(1.4,0,0);
-  l.rightCalf?.rotation.set(1.4,0,0);
-  l.leftArm.rotation.set(-1.15,0,.30);
-  l.rightArm.rotation.set(-1.15,0,-.30);
-  l.leftForearm?.rotation.set(-.55,0,0);
-  l.rightForearm?.rotation.set(-.55,0,0);
 }
 
 // RC Toyz: the operator holds a remote controller while piloting the bandit. The
@@ -385,22 +355,19 @@ function completeEnter(f){
   }
   // jogador sentado no banco do motorista (carro: visível pelo vidro; moto: por cima)
   cur.g.add(player.g);
-  if(cur.bike){
-    // moto não tem volante: piloto montado por cima, sem userData.driver (os
-    // braços não devem seguir o "volante" no spinWheels), mãos no guidão
-    player.g.position.set(0,BIKE_SEAT,-.06);
+  if(cur.bike||cur.boat||cur.plane){
+    // Moto/lancha/avião: piloto totalmente à vista. Offset (banco) + pose (membros
+    // sobre os controles) vivem em vehicle-pose.js, casados com o corpo atual.
+    // A moto não usa userData.driver (spinWheels não deve mexer nos braços); o
+    // avião pode receber driver (não tem rodas esterçadas, então é inócuo).
+    const kind=cur.bike?'bike':cur.boat?'boat':'plane';
+    if(cur.plane)cur.g.userData.driver=player.g;
+    player.g.position.fromArray(SEAT_OFFSET[kind]);
     player.g.rotation.set(0,0,0);
-    setRidePose();
-  }else if(cur.boat){
-    // lancha: piloto sentado no banco do capitão, mãos no timão do console.
-    // Offset casado com a geometria (pés no piso do cockpit, quadril na almofada)
-    player.g.position.set(0,-.05,-.15);
-    player.g.rotation.set(0,0,0);
-    setBoatPose();
+    poseRider(player.g.userData.limbs,kind);
   }else{
     cur.g.userData.driver=player.g; // braços seguem o volante via spinWheels
-    if(cur.plane)player.g.position.set(0,-.45,.5);
-    else player.g.position.set(-.38,-.52,-.15); // sentado no banco do motorista
+    player.g.position.set(-.38,-.52,-.15); // sentado no banco do motorista
     player.g.rotation.set(0,0,0);
     setDrivePose(true);
   }
