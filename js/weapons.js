@@ -7,7 +7,7 @@ import {isPark} from './world.js';
 import {blip,thud,gunshot} from './audio.js';
 import {message} from './hud.js';
 import {addWanted,collideStatics} from './physics.js';
-import {player,playerPos,cameraRig,idleCars,cur,getWasted} from './player.js';
+import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from './player.js';
 import {peds,addBloodPuddle} from './pedestrians.js';
 import {traffic,spawnTraffic} from './traffic.js';
 import {cops,officers as copOfficers,killOfficer} from './police.js';
@@ -24,6 +24,7 @@ import {makeBulletModel} from '../assets/models/effects/bullet.js';
 import {makeFireModel} from '../assets/models/effects/fire.js';
 import {makeFlameJetModel} from '../assets/models/effects/flame-jet.js';
 import {makeWeaponTracerLine} from '../assets/models/effects/weapon-tracer.js';
+import {makeFpHands} from '../assets/models/characters/fp-hands.js';
 import {WEAPONS,ARSENAL,FIST,bySlot} from './weapon-catalog.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 import {MiniGame,MiniGameId} from './minigame.js';
@@ -57,6 +58,7 @@ if(!weaponPickups.length)makeWeaponPickup(nodeX(4)+12,nodeX(4)+12);
 let owned=[FIST];
 let curWeapon=FIST;
 let heldModel=null,curMuzzle=null;
+let heldBaseScale=1; // hold.scale captured at equip (restored when leaving first person)
 const heldHolder=new THREE.Group();
 heldHolder.visible=false;
 player.g.add(heldHolder);
@@ -69,7 +71,8 @@ function equip(w){
   if(w.makeModel){
     heldModel=w.makeModel({held:true});
     heldHolder.add(heldModel);
-    heldHolder.scale.setScalar(w.hold?.scale||1);
+    heldBaseScale=w.hold?.scale||1;
+    heldHolder.scale.setScalar(heldBaseScale);
     curMuzzle=heldModel.userData?.muzzlePoint||null;
   }
   syncWeaponState();
@@ -124,7 +127,7 @@ export const getWeaponHud=()=>({
 });
 
 // ----- LANÇA-FOGUETES: item mais potente do jogo, escondida na zona rural -----
-// Encostar nela inicia um rampage estilo Vice City: destruir N carros em
+// Encostar nela inicia um rampage estilo mundo aberto: destruir N carros em
 // T segundos com mísseis (cada míssil destrói um carro de uma vez e a onda
 // de choque mata grupos inteiros). Ganhou, leva o prêmio; perdeu, fica tudo
 // normal. A lança-foguetes só existe durante o rampage e reaparece no campo depois.
@@ -132,7 +135,7 @@ const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=1000;
 const rampage={active:false,end:0,kills:0};
 // mini game (sessão): igual à chacina das caveiras (js/rampage.js), trava o mundo
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.
-const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Rampage'});
+const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Frenzy'});
 const missiles=[];
 const ROCKET_X=320,ROCKET_Z=0; // fim da estrada de terra, no pé da montanha
 const rocketPickup=makeRocketLauncherModel({pickup:true});
@@ -157,7 +160,7 @@ function beginRampage(){
   // independent of the weapon inventory — so no weapon is granted/altered here.
   rampage.active=true;rampage.end=state.time+RAMPAGE_TIME;rampage.kills=0;
   rocketPickup.visible=false;
-  message(`ROCKET RAMPAGE! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
+  message(`ROCKET FRENZY! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
   blip([220,330,440,660],.09,'square',.2);
 }
 
@@ -170,10 +173,10 @@ function endRampage(won){
   rampageGame.end();                   // libera a trava do mundo (idempotente)
   if(won){
     economy.earn(RAMPAGE_REWARD,'rocket-rampage');
-    message(`ROCKET RAMPAGE PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
+    message(`ROCKET FRENZY PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
     blip([523,659,784,1047],.09,'sine',.18);
   }else{
-    message('ROCKET RAMPAGE FAILED','var(--pink)');
+    message('ROCKET FRENZY FAILED','var(--pink)');
     blip([220,170,120],.1,'sawtooth',.16);
   }
 }
@@ -471,6 +474,82 @@ function carryPose(){
   const h=curWeapon.hold||{};
   heldHolder.position.set(limbs.rightArm.position.x+.16+(h.x||0),.96+(h.y||0),.2+(h.z||0));
   heldHolder.rotation.set(.5+(h.rx||0),(h.ry||0),-.25+(h.rz||0));
+}
+
+// ----- FIRST-PERSON WEAPON VIEWMODEL (Counter-Strike style) -----------------
+// In first person the body is hidden, so the held weapon is reparented from the
+// body to the CAMERA and placed in the lower-right of the view with idle breathing,
+// a walk bob and a recoil kick — the same heldHolder/heldModel built on equip, only
+// the parent and transform change. engine.js adds the camera to the scene so its
+// children render. Weapon models point their barrel down +Z, so a Y-flip (π) aims it
+// into the screen (the camera looks down its own -Z).
+const VM_SCALE=.6;              // shrink vs. the body-held scale (a gun fills less view)
+const VM_POS=[.21,-.135,-.52];  // camera-local anchor: right / down / forward
+const VM_ROCKET_BODY={pos:[.43,1.48,.15],rot:[0,0,0]}; // heldRocket's static body pose
+
+// FP viewmodel hands: two arms gripping the gun. Parented to heldHolder so they
+// recoil/bob WITH the weapon; a Y-flip cancels the holder's own flip so the arms
+// sit in camera-aligned space, and a counter-scale keeps them unit-sized whatever
+// the gun's hold.scale is. Hidden unless first person is the active view.
+const fpHands=makeFpHands({sleeve:0x19e3ff}); // matches the player's cyan shirt
+fpHands.rotation.y=Math.PI;
+fpHands.visible=false;
+heldHolder.add(fpHands);
+
+const fpHolderActive=()=>isFirstPerson()&&state.mode==='foot';
+
+// Reparent a holder to the camera (FP) or back to the body, restoring the body
+// scale/placement when leaving FP. Idempotent: only acts on an actual parent change.
+function syncHolderParent(obj,toCamera,bodyScale,bodyReset){
+  if(toCamera){
+    if(obj.parent!==camera)camera.add(obj);
+  }else if(obj.parent!==player.g){
+    player.g.add(obj);
+    obj.scale.setScalar(bodyScale);
+    if(bodyReset){obj.position.set(...bodyReset.pos);obj.rotation.set(...bodyReset.rot);}
+  }
+}
+
+// Keep both holders parented correctly for the current view (called before posing,
+// so the per-frame body pose writes into the right coordinate space).
+function syncViewModel(){
+  const onCam=fpHolderActive();
+  syncHolderParent(heldHolder,onCam,heldBaseScale,null); // body pose resets it each frame
+  syncHolderParent(heldRocket,onCam,1,VM_ROCKET_BODY);   // static on the shoulder in 3rd person
+  // hands only in FP; the parent heldHolder's own visibility still gates them (no
+  // hands for fists/rampage, where heldHolder is hidden)
+  fpHands.visible=onCam;
+}
+
+// Place the active viewmodel in view space (after the body pose ran). Adds walk bob,
+// idle breathing, the recoil kick (gunKick) and a forward jab for a melee swing.
+function applyViewModel(){
+  if(!fpHolderActive())return;
+  const holder=heldRocket.visible?heldRocket:(heldHolder.visible?heldHolder:null);
+  if(!holder)return;
+  const gunScale=(holder===heldRocket?1:heldBaseScale)*VM_SCALE;
+  holder.scale.setScalar(gunScale);
+  // keep the hands unit-sized regardless of the gun's hold.scale (they ride heldHolder)
+  fpHands.scale.setScalar(1/(heldBaseScale*VM_SCALE));
+  const fp=curWeapon.hold?.fp||null; // optional per-weapon nudge (none defined yet)
+  let px=VM_POS[0]+(fp?.x||0),py=VM_POS[1]+(fp?.y||0),pz=VM_POS[2]+(fp?.z||0);
+  let rx=fp?.rx||0,ry=Math.PI+(fp?.ry||0),rz=fp?.rz||0;
+  if(input.moveX||input.moveY){           // walk bob: sways with the stride (player.bob)
+    px+=Math.sin(player.bob)*.012;
+    py-=Math.abs(Math.sin(player.bob))*.014;
+  }else{                                  // idle: a gentle breathing drift
+    py+=Math.sin(state.time*1.6)*.004;
+    px+=Math.sin(state.time*.9)*.003;
+  }
+  if(meleeAnim){                          // melee swing: thrust the viewmodel forward
+    const p=clamp01(meleeAnim.t/meleeAnim.dur);
+    const strike=Math.sin(clamp01((p-.06)/.5)*Math.PI);
+    pz-=strike*.34;rx-=strike*.45;px-=strike*.1*meleeAnim.side;
+  }
+  pz+=gunKick*.3;                         // recoil: kick back toward the viewer...
+  rx-=gunKick*.5;                         // ...and tip the muzzle up
+  holder.position.set(px,py,pz);
+  holder.rotation.set(rx,ry,rz);
 }
 const clamp01=v=>Math.max(0,Math.min(1,v));
 const easeInOut=t=>t*t*(3-2*t);
@@ -947,7 +1026,10 @@ const api={
   aimPose(){
     player.heading=cameraRig.yaw;
     player.g.rotation.y=cameraRig.yaw;
-    if(curWeapon.category!=='melee')posePlayerWithGun();
+    // FP: place the viewmodel (its muzzle is what the shot reads); body pose would
+    // put the holder in body-space and throw off the muzzle world position.
+    if(fpHolderActive())applyViewModel();
+    else if(curWeapon.category!=='melee')posePlayerWithGun();
     player.g.updateWorldMatrix(true,true);
   },
   recoil(r){
@@ -996,12 +1078,17 @@ export function updateWeapons(dt){
   // arma na mão: aparece sempre que está a pé e tem modelo (o punho não tem).
   const showHeld=state.mode==='foot'&&!rampaging&&!swimming&&!!curWeapon.makeModel;
   heldHolder.visible=showHeld;
+  // first person: reparent the held weapon to the camera BEFORE posing, so the body
+  // pose below writes into the correct space (and the body keeps it when not in FP).
+  syncViewModel();
   // pose de mira pras armas de pontaria; melee tem animação própria de golpe.
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
   if(!swimming&&!meleeAnimating){
     if(rampaging||(showHeld&&curWeapon.aimed))posePlayerWithGun();
     else if(showHeld)carryPose();
   }
+  // first person: override the holder with its Counter-Strike-style viewmodel pose.
+  applyViewModel();
   gunKick=Math.max(0,gunKick-dt*.55);
   updateMeleeTrails(dt);
 
@@ -1020,7 +1107,7 @@ export function updateWeapons(dt){
     else if(rampageEl){
       rampageEl.style.display='block';
       rampageEl.textContent=
-        `ROCKET RAMPAGE ${rampage.kills}/${RAMPAGE_GOAL} CARS - ${Math.ceil(rampage.end-state.time)}s`;
+        `ROCKET FRENZY ${rampage.kills}/${RAMPAGE_GOAL} CARS - ${Math.ceil(rampage.end-state.time)}s`;
     }
   }else{
     if(!rocketPickup.visible&&rocketRespawnAt>=0&&state.time>rocketRespawnAt)

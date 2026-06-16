@@ -49,6 +49,10 @@ export const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xcfe2ee,120,430);
 export const camera=new THREE.PerspectiveCamera(62,initialSize.w/initialSize.h,.1,2000);
 camera.position.set(0,60,120);
+// The camera is part of the scene graph so objects parented to it render — used by
+// the first-person weapon viewmodel (js/weapons.js), which hangs the held gun off
+// the camera. A camera with no children just traverses as an empty node otherwise.
+scene.add(camera);
 
 export function resizeRenderer(){
   const {w,h}=viewportSize();

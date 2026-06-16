@@ -9,6 +9,7 @@ import * as Entities from './entities.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
 import {makeSmokePuff} from '../assets/models/effects/smoke-puff.js';
 import {makeRcController} from '../assets/models/props/rc-controller.js';
+import {buildCarInteriorFp} from '../assets/models/vehicles/car-interior-fp.js';
 import {SEAT_OFFSET,poseRider} from './vehicle-pose.js';
 import {thud,blip,splash} from './audio.js';
 import {radioOn,radioOff,radioEnter} from './radio.js';
@@ -58,7 +59,7 @@ export const cameraRig={
   touchLookIdle:0,
 };
 
-export const playerCar={g:makeCar(0xff2e88,false),heading:Math.PI/2,speed:0,name:'PINK BANSHEE',police:false};
+export const playerCar={g:makeCar(0xff2e88,false),heading:Math.PI/2,speed:0,name:'PINK COMET',police:false};
 playerCar.g.position.set(nodeX(4)+3.5,0,nodeX(4)+16);
 playerCar.g.rotation.y=playerCar.heading;
 export const idleCars=[playerCar];
@@ -81,7 +82,7 @@ export let cur=null;
 
 // Avião estacionado na praia oeste; a faixa de areia é a pista de decolagem
 export function spawnPlane(){
-  const pl={g:makePlane(),heading:Math.PI,speed:0,name:'SKY DUSTER',police:false,
+  const pl={g:makePlane(),heading:Math.PI,speed:0,name:'CROP HOPPER',police:false,
     plane:true,vy:0};
   pl.g.position.set(-202,0,40);pl.g.rotation.y=pl.heading;
   idleCars.push(pl);
@@ -340,7 +341,7 @@ function completeEnter(f){
     player.swimVX=player.swimVZ=0;player.swimPose=0;
     player.g.rotation.order='XYZ';
   }
-  // RC Toyz (remote-control toy): the player does NOT board it. Like GTA III's RC
+  // RC Toyz (remote-control toy): the player does NOT board it. Like the genre's classic RC
   // missions, they stay standing where they are — the "operator" by the pad — and
   // pilot the bandit from afar. The camera follows the car (updateCamera targets
   // cur.g), so the ped stays put in the scene: no reparent, no seat, no radio.
@@ -1063,6 +1064,9 @@ function fpEligible(){
     return !state.swimming&&!dying&&!roofFall&&!entering&&!exiting&&!state.dlgActive;
   return false;
 }
+// Whether the FP camera is actually driving the view this frame. Used by weapons.js
+// to decide when to show the first-person weapon viewmodel.
+export function isFirstPerson(){return fpEligible();}
 
 // Toggle handler for the C key (wired in input.js). Flips the flag, recenters the
 // look forward and lets the car view settle instead of snapping, plus a little SFX.
@@ -1092,11 +1096,12 @@ export function updateCamera(dt){
   // instant FP isn't the active view — including story cut-scenes (fpEligible is
   // false during state.cine), where story.js controls the camera but shows the ped.
   player.g.visible=!fp;
+  updateFpCarInterior(dt,fp); // load/unload the detailed cockpit (FP + car + player only)
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
   let tgt,heading,dist,baseH;
   if(state.mode==='car'||state.mode==='cut'&&cur){
     tgt=cur?cur.g.position:player.g.position;heading=cur?cur.heading:player.heading;
-    // carro: câmera colada e baixa, estilo GTA; avião continua afastado
+    // carro: câmera colada e baixa, estilo open-world; avião continua afastado
     dist=cur?.plane?15.5:7.2;baseH=cur?.plane?1.95:1.1;
   }else{
     tgt=player.g.position;heading=player.heading;
@@ -1156,6 +1161,38 @@ export function updateCamera(dt){
   camera.lookAt(focus.x+forward.x*2.4,focus.y,focus.z+forward.z*2.4);
 }
 
+// Detailed first-person CAR cockpit: a single shared model that exists in the scene
+// ONLY while the PLAYER is in first person inside a car (not bike/boat/plane/RC). It
+// is built lazily once, attached to the player's car (so it rides along), and removed
+// the instant FP ends, the car is left, or the player dies — with the stock low-poly
+// steering wheel hidden behind the detailed one while it is loaded.
+let fpInterior=null,fpInteriorCar=null,fpHiddenSteer=null;
+function updateFpCarInterior(dt,fp){
+  const inCar=fp&&cur&&!cur.bike&&!cur.boat&&!cur.plane&&!cur.remote;
+  const want=inCar?cur.g:null;
+  if(want!==fpInteriorCar){
+    if(fpInterior&&fpInterior.parent)fpInterior.parent.remove(fpInterior); // unload
+    if(fpHiddenSteer){fpHiddenSteer.visible=true;fpHiddenSteer=null;}       // restore stock wheel
+    if(want){                                                              // load into the car
+      if(!fpInterior){fpInterior=buildCarInteriorFp();noShadow(fpInterior);}
+      want.add(fpInterior);
+      const steer=want.userData.steer;
+      if(steer){steer.visible=false;fpHiddenSteer=steer;}
+    }
+    fpInteriorCar=want;
+  }
+  // live cockpit: the wheel turns with steering input, the speedo needle sweeps with speed
+  if(fpInteriorCar&&fpInterior){
+    const u=fpInterior.userData;
+    if(u.steerWheel)
+      u.steerWheel.rotation.z+=(-input.moveX*.7-u.steerWheel.rotation.z)*Math.min(1,10*dt);
+    if(u.speedNeedle){
+      const tgtN=2.2-Math.min(1,Math.abs(cur.speed)/40)*4.4;
+      u.speedNeedle.rotation.z+=(tgtN-u.speedNeedle.rotation.z)*Math.min(1,6*dt);
+    }
+  }
+}
+
 // First-person positioning: the eye sits at the head (on foot) or in the driver's
 // seat (in a vehicle), and the view rotates with yaw + fpPitch. The eye is parented
 // in spirit to the body, so it follows the same bob/terrain motion the ped already
@@ -1169,11 +1206,12 @@ function updateCameraFP(dt,tgt){
     // view rotates with the look — the head stays put in the seat.
     const ch=cur.heading,cf=Math.sin(ch),cfz=Math.cos(ch);
     const crx=Math.cos(ch),crz=-Math.sin(ch);
-    // Heights/offsets tuned to each cabin: eye just below the roof (~1.37 on the car),
-    // pushed forward to the windshield (~z1.05) so we look out over the dash with only
-    // a sliver of roof up top and little of our own hood.
-    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:1.15;
-    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:.5;
+    // Heights/offsets per cabin. For a CAR the eye sits at the driver's seat, BEHIND
+    // the wheel, so the detailed cockpit (dash + wheel + gauges) reads in front of you
+    // and the road shows through the windshield. Open vehicles (bike/boat/plane) keep
+    // the eye further forward since they have no cabin to look into.
+    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:1.09;
+    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:.12;
     const sideOff=(cur.bike||cur.boat||cur.plane)?0:-.36; // cars: sit on the driver (left) seat
     _fpEye.set(tgt.x+cf*fwd+crx*sideOff,tgt.y+up,tgt.z+cfz*fwd+crz*sideOff);
   }else{
