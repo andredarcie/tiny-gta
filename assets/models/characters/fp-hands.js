@@ -6,10 +6,10 @@ import * as THREE from 'three';
 // origin, palm facing -Z (toward what it grips) and fingers reaching +Y then curling
 // over the front; `side` (+1 right / -1 left) puts the thumb on the inner edge.
 
-const palmGeo  =new THREE.BoxGeometry(.085,.05,.03);
-const knuckGeo =new THREE.BoxGeometry(.082,.024,.032);
-const fingerGeo=new THREE.BoxGeometry(.017,.055,.024);
-const thumbGeo =new THREE.BoxGeometry(.022,.05,.026);
+const palmGeo  =new THREE.BoxGeometry(.068,.044,.022);
+const knuckGeo =new THREE.BoxGeometry(.065,.018,.024);
+const fingerGeo=new THREE.BoxGeometry(.013,.05,.019);
+const thumbGeo =new THREE.BoxGeometry(.016,.044,.02);
 
 // A bare hand (no sleeve). Reused by the gun viewmodel and the steering grip.
 export function buildHand(skinMat,side=1){
@@ -20,12 +20,12 @@ export function buildHand(skinMat,side=1){
   h.add(k);
   for(let i=0;i<4;i++){                                   // four fingers, curling over the front (-Z)
     const f=new THREE.Mesh(fingerGeo,skinMat);
-    f.position.set((-1.5+i)*.021,.04,-.03);
+    f.position.set((-1.5+i)*.017,.038,-.028);
     f.rotation.x=-1.25;
     h.add(f);
   }
   const t=new THREE.Mesh(thumbGeo,skinMat);               // thumb on the inner side
-  t.position.set(side*.05,0,-.006);
+  t.position.set(side*.04,0,-.006);
   t.rotation.set(-.3,0,side*.8);
   h.add(t);
   return h;
