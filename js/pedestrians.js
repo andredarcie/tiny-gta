@@ -46,7 +46,7 @@ for(let k=0;k<42;k++){
   const bi=irand(0,N-1),bj=irand(0,N-1);
   peds.push({g:makePed(pick(shirtColors)),block:[bi,bj],corner:irand(0,3),
     dir:Math.random()<.5?1:-1,state:'walk',vel:new THREE.Vector3(),t:0,speed:rand(1,1.8),
-    bloodDropped:false});
+    bloodDropped:false,punchHits:0,lastPunchT:-99}); // punchHits: non-lethal fist counter
   const p=peds[k];
   const c=pedCorner(p);p.g.position.set(c[0]+rand(-2,2),0,c[1]+rand(-2,2));
 }
@@ -91,7 +91,7 @@ export function updatePeds(dt){
       if(p.t>3)setOpacity(p.g,Math.max(0,1-(p.t-3)/.8));
       if(p.t>3.8){
         p.block=[irand(0,N-1),irand(0,N-1)];p.corner=irand(0,3);p.state='walk';
-        p.bloodDropped=false;
+        p.bloodDropped=false;p.punchHits=0;p.lastPunchT=-99; // fresh respawn: clear punch counter
         p.g.rotation.set(0,0,0);setOpacity(p.g,1);
         Entities.animatePed?.(p.g,0,0);
         const c=pedCorner(p);p.g.position.set(c[0]+rand(-2,2),.0,c[1]+rand(-2,2));

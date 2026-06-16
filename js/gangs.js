@@ -12,6 +12,7 @@ import {addBloodPuddle} from './pedestrians.js';
 import {spawnDrop} from './missions.js';
 import {interiors} from './interior.js';
 import {makeGangTracerLine} from '../assets/models/effects/gang-tracer.js';
+import {MiniGameId} from './minigame.js';
 
 // Prédios especiais (boate/academia/hospital/presídio) registram uma zona de fachada
 // em interiors[].exterior; gangue não nasce nem fica dentro dela.
@@ -68,10 +69,25 @@ const _gdir=new THREE.Vector3();
 
 // Durante a corrida de rua as gangues somem (ficam invisíveis e congeladas) e
 // voltam quando a prova termina — ver js/race.js. Não destrói ninguém: só pausa.
-let gangsHidden=false;
+// Além das corridas, QUALQUER sessão de mini game exclusiva (vigilante, bombeiro,
+// paramédico, RC, táxi...) também pausa as gangues — não faz sentido a gangue
+// atirar no bombeiro/policial nem fuzilar o jogador parado pilotando o RC. A
+// ÚNICA exceção é o rampage (matança pontuada por state.kills): lá a gangue é
+// alvo válido, então continua ativa.
+let gangsHidden=false;     // pausa explícita das corridas (setGangsHidden)
+let gangsPaused=false;     // estado efetivo aplicado à visibilidade (corrida OU sessão)
 export function setGangsHidden(h){
   gangsHidden=h;
-  for(const m of gangPeds)m.g.visible=!h;
+  applyGangsVisibility();
+}
+// Aplica a visibilidade só na MUDANÇA de estado (evita churn por frame). Pausa =
+// corrida escondendo OU sessão de mini game (menos rampage) em curso.
+function applyGangsVisibility(){
+  const sessionPausesGangs=!!state.activeMiniGame&&state.activeMiniGame!==MiniGameId.RAMPAGE;
+  const paused=gangsHidden||sessionPausesGangs;
+  if(paused===gangsPaused)return;
+  gangsPaused=paused;
+  for(const m of gangPeds)m.g.visible=!paused;
 }
 
 function spawnMember(gang){
@@ -85,7 +101,8 @@ function spawnMember(gang){
     if(Math.hypot(x-pp.x,z-pp.z)>26&&!inSpecialZone(x,z))break;
   }
   const m={g:makePed(gang.color,gang.pants),gang,state:'walk',vel:new THREE.Vector3(),
-    t:0,bob:0,shootT:rand(.6,1.6),tgt:null,tgtT:0};
+    t:0,bob:0,shootT:rand(.6,1.6),tgt:null,tgtT:0,
+    punchHits:0,lastPunchT:-99}; // punchHits: non-lethal fist counter
   m.g.position.set(x,0,z);
   collideStatics(m.g.position,.4);
   repelFromZones(m.g.position);
@@ -141,7 +158,9 @@ function memberShoot(m,pp,dist){
 }
 
 export function updateGangs(dt){
-  if(gangsHidden)return; // corrida de rua em andamento: gangues pausadas/escondidas
+  // pausa (corrida OU sessão de mini game, menos rampage): esconde/congela e sai
+  applyGangsVisibility();
+  if(gangsPaused)return;
   const pp=playerPos();
   const c=refs.getCur?.();
   const danger=state.mode==='car'&&c&&Math.abs(c.speed)>6;

@@ -24,7 +24,7 @@ import {makeDetonatorModel} from '../assets/models/weapons/detonator.js';
 // Melee --------------------------------------------------------------------
 export const FIST=new MeleeWeapon({
   id:'fist',name:'FIST',slot:1,fireRate:.5,
-  extra:{range:1.5,knock:5,lethal:true}});
+  extra:{range:1.5,knock:5,lethal:false}}); // punches stagger/knock back; several down a person
 
 const BAT=new MeleeWeapon({
   id:'bat',name:'BASEBALL BAT',slot:2,fireRate:.55,price:25,

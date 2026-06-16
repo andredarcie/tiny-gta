@@ -171,13 +171,22 @@ function hudRound(){
 }
 
 function startRound(){
+  // first round of the session? (begin() reuses an already-active session on
+  // restarts, so capture the flag BEFORE begin() to only brief once)
+  const firstRound=!game.active;
   if(!game.begin())return; // another mini-game session is running: don't start
   active=true;timeLeft=ROUND_TIME;destroyed=0;
   gangColor=GANG_COLORS[irand(0,GANG_COLORS.length-1)];
   clearTargets();
   for(let i=0;i<POOL;i++)spawnTarget();
-  message('RC TOYZ - WRECK AS MANY CARS AS YOU CAN','var(--cyan)');
   blip([523,659,784],.08,'square',.16);
+  // Clear, short instructions on the FIRST round only (don't spam on restarts and
+  // don't fight the per-frame hudRound, which owns message() during the round).
+  // The RC is a remote-piloted mobile bomb: people don't know to detonate it.
+  if(firstRound){
+    bigText('PILOT THE RC: RAM A CAR OR PRESS FIRE TO BLOW IT UP','var(--cyan)');
+    setTimeout(hideBig,3200);
+  }
 }
 
 // keepIfDriving=true on finish: the player stays in the bandit, so we don't yank

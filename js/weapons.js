@@ -513,12 +513,40 @@ function startMeleeAnimation(range,knock,lethal){
   spawnMeleeTrail(curWeapon.id,side);
 }
 
+// Non-lethal melee (FISTS): a punch only staggers + knocks back; it takes several
+// hits to down a person. punchHits accumulates per target; PUNCH_DECAY resets it
+// if the same target isn't punched again soon (no cross-encounter carry-over).
+const PUNCH_TO_DOWN_PED=3;   // punches to drop a pedestrian
+const PUNCH_TO_DOWN_TOUGH=4; // gang members / officers are tougher
+const PUNCH_DECAY=4;         // seconds: counter resets if not punched again in time
+const PUNCH_SHOVE=.9;        // metres a punch shoves the target along the swing
+
+// Register one non-lethal punch on a person target; returns true once it should be
+// downed (counter reached the threshold). Resets the counter on a stale timeout.
+function tallyPunch(target,threshold){
+  if(state.time-(target.lastPunchT||-99)>PUNCH_DECAY)target.punchHits=0;
+  target.punchHits=(target.punchHits||0)+1;
+  target.lastPunchT=state.time;
+  return target.punchHits>=threshold;
+}
+
 function resolveMeleeImpact(a){
   const{origin,dir}=aimRay(a.range);
   const hit=findWeaponHit(origin,dir,a.range);
   if(hit.kind==='miss'){thud(2);return;}
   const pos=origin.clone().addScaledVector(dir,hit.d);
   thud(a.kind==='bat'?8:6);
+  // FISTS are non-lethal: stagger + shove the person and only down them after
+  // enough punches. The BAT (lethal) and firearms keep their one/two-shot kill.
+  const punch=a.lethal===false&&(hit.kind==='ped'||hit.kind==='gang'||hit.kind==='officer');
+  if(punch){
+    const tp=hit.target.g.position;
+    tp.x+=dir.x*PUNCH_SHOVE;tp.z+=dir.z*PUNCH_SHOVE; // knock back along the swing
+    if(hit.kind==='ped'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_PED))killPed(hit.target,dir);}
+    else if(hit.kind==='gang'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_TOUGH))killGangPed(hit.target,dir);}
+    else if(tallyPunch(hit.target,PUNCH_TO_DOWN_TOUGH))killOfficer(hit.target);
+    return;
+  }
   if(hit.kind==='ped')killPed(hit.target,dir);
   else if(hit.kind==='gang')killGangPed(hit.target,dir);
   else if(hit.kind==='officer')killOfficer(hit.target);

@@ -26,12 +26,12 @@ const VIG_BUILD=' ◆ VIGILANTE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',VIG_BUILD);
 
 const RED=0xff3b56;
-const DUTY_TIME=60;      // tempo inicial da patrulha (segundos)
-const BUST_BONUS=15;     // segundos adicionados a cada captura
-const HIT_RANGE=3.0;     // distância da viatura ao criminoso pra registrar pancada
-const HIT_SPEED=8;       // velocidade mínima da viatura pra a pancada valer
-const HIT_COOLDOWN=.6;   // intervalo mínimo entre pancadas
-const JUKE_RANGE=14;     // jogador perto: o criminoso re-escolhe destino pra fintar
+const DUTY_TIME=75;      // initial patrol time (seconds)
+const BUST_BONUS=20;     // seconds added per capture
+const HIT_RANGE=4.6;     // distance from cruiser to suspect to register a ram
+const HIT_SPEED=4;       // minimum cruiser speed for a ram to count
+const HIT_COOLDOWN=.6;   // minimum interval between rams
+const JUKE_RANGE=6;      // player nearby: the suspect re-picks a destination to juke
 
 // viatura estacionada na interseção ao lado do presídio (centro de cruzamento =
 // sempre asfalto livre). Reposicionada aqui no respawn também.
@@ -114,11 +114,11 @@ function spawnCriminal(){
   const[dx,dz]=pickDest(pp.x,pp.z);
   const heading=Math.atan2(dx-x,dz-z);
   g.rotation.y=heading;
-  // velocidade do fugitivo SEMPRE abaixo do teto da viatura (32) — senão níveis
-  // altos viravam impossíveis (ele desgarrava em reta). Como ele não desacelera
-  // nas curvas (a viatura sim), mesmo ~29 já é desafiador de alcançar.
-  criminal={g,hp:3,destX:dx,destZ:dz,heading,
-    speed:Math.min(29,22+level*1.1),lastHit:-99};
+  // Suspect speed stays well under the cruiser top speed (32) so the cruiser can
+  // always close the gap. The suspect does not slow down in turns (the cruiser
+  // does), so keeping it slower here keeps the chase catchable at every level.
+  criminal={g,hp:2,destX:dx,destZ:dz,heading,
+    speed:Math.min(22,15+level*0.8),lastHit:-99};
   setCrimMarker();
 }
 

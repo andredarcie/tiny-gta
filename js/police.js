@@ -44,6 +44,7 @@ function deployOfficers(c){
   for(const side of[1.3,-1.3]){
     const o={g:makePed(COP_BLUE),car:c,bob:rand(0,6),shootT:rand(.5,1.1),
       mode:'hunt',dead:false,deadT:0,
+      punchHits:0,lastPunchT:-99, // punchHits: non-lethal fist counter
       rocket:Math.floor(state.wanted)>=5}; // 5 estrelas: esquadrão de lança-foguetes
     o.g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     if(o.rocket){

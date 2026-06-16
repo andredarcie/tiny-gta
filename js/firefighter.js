@@ -38,15 +38,15 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',FF_BUILD);
 const ORANGE=0xff7a1e;
 // GTA III: o tempo de cada incêndio é proporcional à DISTÂNCIA (correr pela
 // cidade) + uma base pra apagar, e ACUMULA no relógio (sobra vai pro próximo).
-const TIME_PER_M=.18;      // segundos concedidos por metro até o fogo
-const FIRE_BASE=12;        // base por incêndio (apagar depois de chegar)
-const TIME_MIN=14,TIME_MAX=42; // piso/teto do tempo concedido por incêndio
+const TIME_PER_M=.12;      // segundos concedidos por metro até o fogo
+const FIRE_BASE=8;         // base por incêndio (apagar depois de chegar)
+const TIME_MIN=12,TIME_MAX=30; // piso/teto do tempo concedido por incêndio
 const START_BUFFER=6;      // folga extra só no 1º incêndio (dar partida)
 const LOW_TIME=8;          // abaixo disso o HUD pisca vermelho e bipa
 const FLAME_AT=10;         // incêndios apagados que liberam o LANÇA-CHAMAS (GTA III)
-const SPRAY_RANGE=15;      // alcance do canhão d'água (m): chegou perto, já borrifa
-const DOUSE_RATE=1.0;      // "vida" do fogo apagada por segundo de jato
-const REGEN_RATE=0.4;      // "vida" recuperada por segundo quando ninguém borrifa
+const SPRAY_RANGE=11;      // alcance do canhão d'água (m): chegou perto, já borrifa
+const DOUSE_RATE=0.7;      // "vida" do fogo apagada por segundo de jato
+const REGEN_RATE=0.6;      // "vida" recuperada por segundo quando ninguém borrifa
 const WRECK_RESPAWN=20;    // caminhão destruído: volta à esquina depois disso (s)
 
 // caminhão estacionado na interseção x=nodeX(3)=-44, z=nodeX(6)=88 (asfalto livre,
@@ -211,7 +211,7 @@ function spawnFire(initial){
   ring.position.set(x,gy+.4,z);
   beacon.position.set(x,gy+30,z);
   scene.add(group,ring,beacon);
-  const maxHp=1.8+level*0.35;
+  const maxHp=2.4+level*0.5;
   fire={x,z,gy,group,ring,beacon,car,hp:maxHp,maxHp,startT:state.time};
   // tempo ~ distância (GTA III) + base; acumula no relógio (sobra carrega)
   const dist=Math.hypot(x-pp.x,z-pp.z);
