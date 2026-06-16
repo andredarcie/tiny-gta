@@ -25,16 +25,23 @@ export function collectSave() {
   };
 }
 
+// Trava de idempotência do DINHEIRO: o restore do saldo NÃO é idempotente (usa o
+// "gap" sobre INITIAL_MONEY pra somar o ganho do boot). Se applySave rodar 2x na
+// mesma run (ex.: duplo-toque no LOGIN dispara beginRun 2x), o 2º cálculo veria o
+// saldo JÁ restaurado como "ganho do boot" e DOBRARIA o dinheiro. Aplica uma vez só.
+let moneyRestored = false;
+
 // Aplica um blob restaurado do backend ao jogo (chamado uma vez ao abrir a run).
 export function applySave(blob) {
   if (!blob || typeof blob !== 'object') return;
-  if (Number.isFinite(blob.money) && blob.money >= 0) {
+  if (!moneyRestored && Number.isFinite(blob.money) && blob.money >= 0) {
     // applySave chega async (depois do startSession): o jogo já rodou alguns
     // frames e o jogador pode ter ganho/gasto algo. Some esse delta sobre o saldo
     // restaurado em vez de descartá-lo — senão um pickup nos primeiros instantes
     // sumia ao restaurar. (Para run nova sem ganho, delta=0 → comportamento igual.)
     const gap = Math.floor(state.money) - INITIAL_MONEY;
     state.money = Math.max(0, Math.floor(blob.money) + gap);
+    moneyRestored = true;
     saveBest();
   }
   refs.restoreWeapons?.(blob.weapons);

@@ -221,7 +221,13 @@ function nickShake(){
 // Fecha o modal e ENTRA na partida. Este caminho roda dentro do clique/tap do
 // usuário (gesto), então vale pra áudio/fullscreen/pointer-lock. Abre a sessão do
 // ranking (não bloqueia o start) e RESTAURA o save: dinheiro, armas, casa, etc.
+//
+// IDEMPOTENTE (guarda por state.started): os botões LOG IN / CREATE ACCOUNT /
+// convidado + Enter ficam todos ativos durante o accountRequest assíncrono, então
+// um duplo-toque (comum no celular) chamava beginRun 2x → 2x startSession/applySave.
+// O 2º applySave reaplicava o "gap" sobre o saldo já restaurado e DOBRAVA o dinheiro.
 function beginRun(){
+  if(state.started)return; // já entrou na partida: 2º toque não reabre sessão nem re-restaura
   document.getElementById('nickmodal')?.classList.remove('open');
   startGameFromUserGesture({mobile:isMobileEnv()});
   startSession().then(save=>{
