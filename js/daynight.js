@@ -10,19 +10,30 @@ import {makeMoonSprite} from '../assets/models/daynight/moon.js';
 import {makeHorizonGlow} from '../assets/models/daynight/horizon-glow.js';
 import {makeStarField} from '../assets/models/daynight/star-field.js';
 
-// Ciclo completo em segundos. tod: 0=meia-noite, .25=nascer do sol, .5=meio-dia, .75=pôr do sol
-const DAY_LEN=300;
-// O dia corre 3x mais devagar e a noite 3x mais rápido que antes
-const DAY_MULT=1/3;
-const NIGHT_MULT=6.6;
-// ?tod=0..1 na URL força o horário inicial (debug); padrão início da tarde,
-// o primeiro pôr do sol chega em ~1 min
+// tod (time of day) in [0,1): 0=midnight, .25=sunrise, .5=noon, .75=sunset.
+// The in-game clock mirrors real Brasília time (America/Sao_Paulo): if it is
+// night in Brazil it is night in Tiny GTA, and the HUD clock reads Brasília time.
+const brasiliaFmt=new Intl.DateTimeFormat('en-US',{
+  timeZone:'America/Sao_Paulo',hour12:false,
+  hour:'2-digit',minute:'2-digit',second:'2-digit'});
+function brasiliaTod(){
+  let h=0,m=0,s=0;
+  for(const p of brasiliaFmt.formatToParts(new Date())){
+    if(p.type==='hour')h=+p.value%24;        // some engines emit '24' at midnight
+    else if(p.type==='minute')m=+p.value;
+    else if(p.type==='second')s=+p.value;
+  }
+  return (h*3600+m*60+s)/86400;
+}
+// ?tod=0..1 in the URL pins the clock to a fixed time of day (debug/screenshots),
+// overriding the live Brasília clock; otherwise we start from the real time.
 const urlTod=parseFloat(new URLSearchParams(location.search).get('tod'));
-let tod=isNaN(urlTod)?.55:((urlTod%1)+1)%1;
+const fixedTod=isNaN(urlTod)?null:((urlTod%1)+1)%1;
+let tod=fixedTod??brasiliaTod();
 export const getTod=()=>tod;
 export const setTod=v=>{tod=((v%1)+1)%1;};
-// Contador de dias: sobe toda vez que o relógio cruza a meia-noite. Usado pela
-// academia (js/gym.js) pra liberar o treino só uma vez por dia.
+// Day counter: bumps every time the clock wraps past midnight. Used by the gym
+// (js/gym.js) to allow training only once per day.
 let dayCount=0;
 export const getDay=()=>dayCount;
 
@@ -119,17 +130,18 @@ scene.add(headSpot);scene.add(headSpot.target);
 const _fwd=new THREE.Vector3();
 
 let twinkleT=0;
-// O céu muda ao longo de minutos (DAY_LEN=300s). Redesenhar o gradiente no
-// canvas e re-subir a textura pra GPU todo frame era desperdício; a ~12fps a
-// transição continua suave. As luzes/fog seguem por frame (baratas e precisam
-// ser suaves). skyAccum começa alto pra forçar o primeiro desenho.
+// The sky changes slowly over the real day, so redrawing the gradient canvas and
+// re-uploading the texture to the GPU every frame was wasteful; at ~12fps the
+// transition still looks smooth. Lights/fog follow per frame (cheap and need to
+// stay smooth). skyAccum starts high to force the first draw.
 let skyAccum=1;
 export function updateDayNight(dt){
-  // em cut-scene o tempo para (story.js força meio-dia ao entrar na cena)
-  if(!state.cine){
+  // Sync to real Brasília time every frame. Time only stops during a cut-scene
+  // (story.js pins it to noon) or when ?tod= pins a fixed time for debugging.
+  if(!state.cine&&fixedTod===null){
     const before=tod;
-    tod=(tod+dt*(tod<.24||tod>.76?NIGHT_MULT:DAY_MULT)/DAY_LEN)%1;
-    if(tod<before)dayCount++; // cruzou a meia-noite: novo dia
+    tod=brasiliaTod();
+    if(before>.9&&tod<.1)dayCount++; // clock wrapped past midnight: new day
   }
   twinkleT+=dt;
   sampleKeyframes();
