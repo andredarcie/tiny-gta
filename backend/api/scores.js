@@ -62,11 +62,17 @@ async function submit(req, res) {
   if (money > maxAllowed)
     return res.status(422).json({error: 'implausible_score', maxAllowed: Math.floor(maxAllowed)});
 
-  // 5) guarda só se for melhor que o recorde atual do nome (GT)
+  // 5) leaderboard: guarda só se for melhor que o recorde atual do nome (GT).
+  //    Aqui `money` é o PICO da partida (ranking público é "maior dinheiro").
   await redis.zadd(C.LEADERBOARD_KEY, {gt: true}, {score: money, member: name});
-  // 6) salva o progresso por (id, nick) — restaurado no próximo /api/session.
-  //    Também só sobe (GT), então o save acompanha o melhor saldo do jogador.
-  if (pid) await redis.zadd(C.SAVE_KEY, {gt: true}, {score: money, member: C.saveMember(pid, name)});
+  // 6) save por (id, nick): o blob de progresso (dinheiro ATUAL + itens),
+  //    restaurado no próximo /api/session. Higienizado e com o dinheiro cravado
+  //    no teto de plausibilidade. Inflar o save só afeta o jogo privado do dono;
+  //    o ranking competitivo continua protegido pelo GT + plausibilidade acima.
+  if (pid && body.save) {
+    const blob = C.sanitizeSave(body.save, maxAllowed);
+    if (blob) await redis.set(C.SAVE_PREFIX + C.saveMember(pid, name), blob);
+  }
   const rank = await redis.zrevrank(C.LEADERBOARD_KEY, name);
   res.status(200).json({ok: true, name, money, rank: rank == null ? null : rank + 1});
 }

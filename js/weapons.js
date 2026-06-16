@@ -289,6 +289,32 @@ export function pickupArsenalWeapon(id){
   return isNew;
 }
 
+// ----- SAVE: inventário persistente (js/save.js) -----
+// Serializa as armas possuídas (sem o punho) + munição atual, pra restaurar na
+// próxima sessão. Salvamos a munição pra não dar recarga grátis nem devolver a
+// arma vazia. Armas de munição infinita guardam só o id.
+function getInventorySave(){
+  return owned.filter(w=>w!==FIST).map(w=>
+    w.infiniteAmmo?{id:w.id}:{id:w.id,ammo:Math.max(0,Math.floor(w.ammo))});
+}
+function restoreInventory(list){
+  if(!Array.isArray(list))return;
+  for(const it of list){
+    const id=typeof it==='string'?it:(it&&it.id);
+    const w=WEAPONS.find(x=>x.id===id);
+    if(!w||w===FIST||owned.includes(w))continue;
+    owned.push(w);
+    if(!w.infiniteAmmo){
+      const a=(it&&Number.isFinite(it.ammo))?Math.max(0,Math.min(w.maxAmmo,Math.floor(it.ammo))):w.maxAmmo;
+      w.ammo=a;
+    }
+  }
+  owned.sort((a,b)=>WEAPONS.indexOf(a)-WEAPONS.indexOf(b));
+  if(curWeapon===FIST&&owned.length>1)equip(owned[1]);else syncWeaponState();
+}
+refs.getWeaponsSave=getInventorySave;
+refs.restoreWeapons=restoreInventory;
+
 let trainingSnapshot=null;
 function restoreTrainingAmmo(){
   if(!trainingSnapshot)return;

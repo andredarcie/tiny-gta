@@ -71,6 +71,20 @@ refs.getStuntJumpsState=()=>({
   airborne,
 });
 
+// ----- SAVE: rampas já completadas (js/save.js) -----
+// Guarda os ÍNDICES das rampas concluídas (os locais são fixos). Restaurar só
+// marca `done` (impede repagar o bônus de primeira vez); o salto em si continua
+// rendendo o pagamento normal por velocidade.
+refs.getStuntsSave=()=>{
+  const a=[];
+  for(let i=0;i<ramps.length;i++)if(ramps[i].done)a.push(i);
+  return a;
+};
+refs.restoreStunts=arr=>{
+  if(!Array.isArray(arr))return;
+  for(const v of arr)if(Number.isInteger(v)&&v>=0&&v<ramps.length)ramps[v].done=true;
+};
+
 // Encerra o salto SEM premiar (jogador largou o carro, morreu, entrou num
 // interior, ou o veículo sumiu no meio do arco). Apenas solta o estado e zera a
 // pose; nada de dinheiro nem letreiro de "stunt".

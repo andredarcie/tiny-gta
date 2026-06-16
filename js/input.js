@@ -1,4 +1,4 @@
-import {state,keys,input,refs,saveBest} from './state.js';
+import {state,keys,input,refs} from './state.js';
 import {initAudio,AC} from './audio.js';
 import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
@@ -17,6 +17,7 @@ import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} fr
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from './weapon-wheel.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
 import {getNickname,setNickname,startSession,refreshTopPlayers} from './leaderboard.js';
+import {applySave} from './save.js';
 import {hasProfanity} from './profanity.js';
 import {MiniGame} from './minigame.js';
 
@@ -189,13 +190,12 @@ function confirmNick(){
   setNickname(name);
   document.getElementById('nickmodal')?.classList.remove('open');
   startGameFromUserGesture({mobile:isMobileEnv()});
-  // abre a sessão do ranking (não bloqueia o start) e RESTAURA o dinheiro salvo
-  // desse jogador (mesmo id + nick), continuando de onde parou.
-  startSession().then(saved=>{
-    if(saved>0&&state.money<saved){
-      state.money=saved;saveBest();
-      message('WELCOME BACK - $'+saved.toLocaleString('en-US'),'var(--gold)');
-    }
+  // abre a sessão do ranking (não bloqueia o start) e RESTAURA o save desse
+  // jogador (mesmo id + nick): dinheiro, armas, músculo, casa e coletáveis.
+  startSession().then(save=>{
+    if(!save)return;
+    applySave(save);
+    if(save.money>0)message('WELCOME BACK - $'+Math.floor(save.money).toLocaleString('en-US'),'var(--gold)');
   });
 }
 

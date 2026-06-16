@@ -182,3 +182,24 @@ export function initProperty(){
 export function getHouseState(){
   return{owned:saved.owned,active:house.active,car:saved.car};
 }
+
+// ----- SAVE: posse da casa + carro da garagem (js/save.js) -----
+// A posse e o carro guardado já viviam em localStorage; aqui espelhamos no save
+// do backend pra sobreviver à limpeza de dados / troca de dispositivo. O restore
+// só ACRESCENTA (nunca tira a casa de quem já tem) e cria o carro da garagem se
+// vier um e ainda não existir.
+function sanitizeCar(c){
+  if(!c||typeof c!=='object')return null;
+  const type=c.type==='bike'?'bike':'car';
+  const color=Number.isFinite(c.color)?c.color:(type==='bike'?0xd11f3a:0xff2e88);
+  const name=(typeof c.name==='string'&&c.name)?c.name.slice(0,20):(type==='bike'?'GARAGE BIKE':'GARAGE CAR');
+  return{type,color,name};
+}
+refs.getPropertySave=()=>({owned:!!saved.owned,car:saved.car||null});
+refs.restoreProperty=s=>{
+  if(!s||typeof s!=='object')return;
+  let changed=false;
+  if(s.owned&&!saved.owned){saved.owned=true;changed=true;}
+  if(s.car&&!saved.car){const c=sanitizeCar(s.car);if(c){saved.car=c;changed=true;}}
+  if(changed){persist();if(saved.owned&&saved.car)spawnGarageCar();}
+};

@@ -7,9 +7,10 @@ import * as C from '../lib/scores.js';
 // O jogo chama isto ao INICIAR uma partida. Devolve um token de sessão único e
 // de vida curta (exigido no envio do score, dificulta replay/spam e dá ao
 // servidor a duração real da partida para a checagem de plausibilidade) e —
-// quando o cliente manda sua identidade (id estável + nick) — o SALDO SALVO,
-// para o jogador continuar de onde parou. Esse saldo vira a "base" da sessão,
-// que o /api/scores soma ao teto de plausibilidade.
+// quando o cliente manda sua identidade (id estável + nick) — o SAVE do jogador
+// (dinheiro atual + armas + músculo + casa + coletáveis), para continuar de onde
+// parou. O dinheiro salvo vira a "base" da sessão, que o /api/scores soma ao
+// teto de plausibilidade.
 export default async function handler(req, res) {
   if (cors(req, res)) return;
   if (req.method !== 'POST') { res.status(405).json({error: 'method_not_allowed'}); return; }
@@ -18,14 +19,21 @@ export default async function handler(req, res) {
   const body = jsonBody(req);
   const pid = C.sanitizePid(body.pid);
   const name = C.sanitizeName(body.name);
-  let money = 0;
+  let save = null;
   if (pid && name) {
-    const saved = await redis.zscore(C.SAVE_KEY, C.saveMember(pid, name));
-    money = Math.max(0, Math.floor(Number(saved) || 0));
+    const member = C.saveMember(pid, name);
+    const blob = await redis.get(C.SAVE_PREFIX + member);
+    if (blob && typeof blob === 'object') save = blob;
+    else {
+      // migração: jogadores que só têm o save antigo (sorted set só-dinheiro)
+      const legacy = await redis.zscore(C.SAVE_LEGACY_KEY, member);
+      if (legacy != null) save = {money: Math.max(0, Math.floor(Number(legacy) || 0))};
+    }
   }
+  const money = save && Number.isFinite(save.money) ? Math.max(0, Math.floor(save.money)) : 0;
 
   const token = randomUUID();
   const startedAt = Date.now();
   await redis.set(C.SESSION_PREFIX + token, {at: startedAt, base: money}, {ex: C.SESSION_TTL});
-  res.status(200).json({token, startedAt, money});
+  res.status(200).json({token, startedAt, money, save});
 }

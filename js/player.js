@@ -4,7 +4,7 @@ import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
 import {state,input,carNames,carColors,refs} from './state.js';
 import {economy} from './economy.js';
 import {scene,camera} from './engine.js';
-import {makeCar,makeMotorcycle,makeBoat,makePed,makePlane,spinWheels,dentCar} from './entities.js';
+import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from './entities.js';
 import * as Entities from './entities.js';
 import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
 import {makeSmokePuff} from '../assets/models/effects/smoke-puff.js';
@@ -42,7 +42,7 @@ export function updateDrivenShadow(){
 
 // Campos de nado (ver updateSwim): velocidade própria com inércia, mistura de
 // pose boiando↔crawl, fase/cadência da braçada e marcador da última braçada.
-export const player={g:makePed(0x19e3ff),heading:0,bob:0,
+export const player={g:makePlayerPed(0x19e3ff),heading:0,bob:0,
   swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
 noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)

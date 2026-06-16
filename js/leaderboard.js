@@ -1,13 +1,14 @@
 // Cliente do ranking global (backend Vercel + Upstash). O front só faz fetch:
-//  - startSession(): abre a sessão e RESTAURA o dinheiro salvo do jogador
-//  - recordBest(money): acompanha o maior dinheiro da run
-//  - flush(): envia o melhor score (e salva o progresso) ao sair
+//  - startSession(): abre a sessão e RESTAURA o save do jogador (dinheiro+itens)
+//  - recordBest(money): acompanha o maior dinheiro da run (pico = ranking)
+//  - flush(): envia o pico (ranking) E o save de progresso (saldo atual+itens)
 //  - refreshTopPlayers(): desenha o top 5 na tela inicial
+import { refs } from './state.js';
 export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 const PID_KEY = 'tinygta_pid';
 
-let token = null, bestMoney = 0, lastSent = -1, flushTimer = null;
+let token = null, bestMoney = 0, lastSig = '', flushTimer = null;
 let nickname = '';
 try { nickname = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
 
@@ -36,12 +37,12 @@ export function setNickname(n) {
   try { localStorage.setItem(NICK_KEY, n); } catch (e) {}
 }
 
-// Abre a sessão e devolve o DINHEIRO SALVO desse (id, nick) — o chamador usa
-// pra restaurar o saldo da partida. O servidor já conhece esse valor (é a base
-// da sessão), então não reenviamos de cara: bestMoney/lastSent começam nele.
+// Abre a sessão e devolve o SAVE desse (id, nick) — o chamador (js/save.js via
+// input.js) restaura dinheiro + itens. O pico do ranking começa no saldo salvo
+// (GT protege o recorde por nome de qualquer jeito).
 export async function startSession() {
-  token = null; bestMoney = 0; lastSent = -1;
-  let savedMoney = 0;
+  token = null; bestMoney = 0; lastSig = '';
+  let save = null;
   try {
     const r = await fetch(API + '/api/session', {
       method: 'POST',
@@ -50,35 +51,41 @@ export async function startSession() {
     });
     const data = await r.json();
     token = data.token;
-    savedMoney = Math.max(0, Math.floor(Number(data.money) || 0));
+    save = data.save || (data.money > 0 ? { money: Math.floor(data.money) } : null);
   } catch (e) {}
-  if (savedMoney > 0) { bestMoney = savedMoney; lastSent = savedMoney; }
-  return savedMoney;
+  const m = save && Number.isFinite(save.money) ? Math.max(0, Math.floor(save.money)) : 0;
+  if (m > 0) bestMoney = m;
+  return save;
 }
 
-// Acompanha o maior dinheiro da run e agenda um envio ~3s após o último ganho.
+// Acompanha o maior dinheiro da run (pico = ranking) e mantém um envio agendado.
+// Chamado todo frame; o setTimeout guardado por flushTimer faz o throttle (~3s),
+// e o flush() só posta de fato quando algo mudou (assinatura — dedupe).
 export function recordBest(money) {
-  if (typeof money !== 'number' || money <= bestMoney) return;
-  bestMoney = money;
-  if (!flushTimer) flushTimer = setTimeout(() => { flushTimer = null; flush(); }, 3000);
+  if (typeof money === 'number' && money > bestMoney) bestMoney = money;
+  if (token && nickname && !flushTimer)
+    flushTimer = setTimeout(() => { flushTimer = null; flush(); }, 3000);
 }
 
-// Envia o melhor score (se subiu desde o último envio). O token vale a sessão
-// toda; o servidor guarda só o melhor (GT). keepalive sobrevive ao unload.
+// Envia ao backend: `money` = PICO da partida (ranking, GT no servidor) e `save`
+// = blob de progresso (saldo ATUAL + itens). Dedupe por assinatura pra não
+// repostar igual. keepalive sobrevive ao unload (pagehide/visibilitychange).
 export function flush() {
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
   if (!token || !nickname) return;
-  const money = Math.round(bestMoney);
-  if (money <= 0 || money <= lastSent) return;
-  lastSent = money; // otimista; em erro volta pra -1 e tenta de novo depois
+  const money = Math.max(0, Math.round(bestMoney));
+  const save = refs.collectSave?.() || null;
+  const sig = money + '#' + (save ? JSON.stringify(save) : '');
+  if (sig === lastSig) return;       // nada mudou desde o último envio
+  lastSig = sig;                     // otimista; em erro volta pra '' e tenta de novo
   try {
     fetch(API + '/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nickname, money, token, pid }),
+      body: JSON.stringify({ name: nickname, money, token, pid, save }),
       keepalive: true,
-    }).then(r => { if (!r.ok) lastSent = -1; }).catch(() => { lastSent = -1; });
-  } catch (e) { lastSent = -1; }
+    }).then(r => { if (!r.ok) lastSig = ''; }).catch(() => { lastSig = ''; });
+  } catch (e) { lastSig = ''; }
 }
 
 const escapeHtml = s => String(s).replace(/[&<>"']/g,

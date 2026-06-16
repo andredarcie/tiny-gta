@@ -1,4 +1,4 @@
-import {state} from './state.js';
+import {state,refs} from './state.js';
 import {player,playerPos} from './player.js';
 import {message} from './hud.js';
 import {animatePed} from './entities.js';
@@ -96,3 +96,15 @@ function applyArmScale(){
   l.leftArm.scale.x=l.leftArm.scale.z=s;
   l.rightArm.scale.x=l.rightArm.scale.z=s;
 }
+
+// ----- SAVE: músculo persistente (js/save.js) -----
+// Guarda o engrossamento do braço e o dia do último treino (limita 1/dia). No
+// restore aplicamos de imediato; o update() do interior também reaplica todo
+// frame, então o boneco já nasce no tamanho salvo.
+refs.getGymSave=()=>({s:state.armScale,d:state.gymDay});
+refs.restoreGym=a=>{
+  if(!a||typeof a!=='object')return;
+  if(Number.isFinite(a.s))state.armScale=state.armTarget=Math.min(ARM_MAX,Math.max(1,a.s));
+  if(Number.isFinite(a.d))state.gymDay=a.d;
+  applyArmScale();
+};

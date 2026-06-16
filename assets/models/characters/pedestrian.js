@@ -31,6 +31,10 @@ const mouthG=new THREE.BoxGeometry(.15,.025,.018);
 const browG=new THREE.BoxGeometry(.12,.025,.02);
 const beardG=new THREE.SphereGeometry(.18,8,5);
 const hairG=new THREE.SphereGeometry(.255,8,5);
+// Toon (Schedule I-style) eyes — used only by the player ped (buildPed{toon:true}):
+// a big pale eyeball with a small dark pupil, instead of the tiny dark eye dot.
+const toonScleraG=new THREE.SphereGeometry(.07,12,10);
+const toonPupilG=new THREE.SphereGeometry(.03,10,8);
 
 const skinColors=[0xf0c08b,0xd9a06b,0xb8754c,0x8f5637,0x6f3e2a];
 const pantsColors=[0x202435,0x263454,0x2e2a24,0x3d3f46,0x18191f];
@@ -39,6 +43,7 @@ const facialHairColors=[0x17100c,0x2a1911,0x4a2b18,0x6b5137,0x0d0d12];
 export const shirtColors=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x3aa06b,0xd96fae,0xe8e3d2,0x7a4f9e,0x40c8c0];
 
 const EYE_COLOR=0x101018,MOUTH_COLOR=0x6b1220;
+const SCLERA_COLOR=0xf2efe6,PUPIL_COLOR=0x15101e;
 
 const _p=new THREE.Vector3(),_q=new THREE.Quaternion(),_s=new THREE.Vector3(),
   _e=new THREE.Euler(),_c=new THREE.Color();
@@ -63,38 +68,55 @@ function tinted(geo,m,c){
 
 function pickOf(arr){return arr[Math.floor(Math.random()*arr.length)];}
 
-export function buildPed({color=shirtColors[0],pantsColor}={}){
+export function buildPed({color=shirtColors[0],pantsColor,toon=false}={}){
   const g=new THREE.Group();
   const skin=pickOf(skinColors);
   const pants=pantsColor??pickOf(pantsColors);
   const shoe=pickOf(shoeColors);
   const hairColor=pickOf(facialHairColors);
   const bodyScale=.92+Math.random()*.18;
-  const hsx=1+Math.random()*.14,hsy=.92+Math.random()*.18,hsz=1+Math.random()*.08;
+  // Toon (Schedule I) tuning — only the player passes toon:true. Every multiplier
+  // is 1 for normal peds, so their geometry stays byte-for-byte unchanged.
+  const headK=toon?1.04:1;     // slightly oversized rounded head
+  const torsoK=toon?.85:1;     // slimmer torso/hips (lanky build)
+  const shoulderK=toon?.9:1;   // narrower shoulders
+  const armThin=toon?.82:1;    // thinner arms
+  const legThin=toon?.84:1;    // thinner legs
+  const hsx=(1+Math.random()*.14)*headK,hsy=(.92+Math.random()*.18)*headK,hsz=(1+Math.random()*.08)*headK;
 
   const mat=new THREE.MeshStandardMaterial({roughness:.9,vertexColors:true});
 
   // ----- corpo + cabeça + rosto: um mesh só -----
   const headM=partM([0,1.62,0],null,[hsx,hsy,hsz]);
   const onHead=(p,r,s)=>headM.clone().multiply(partM(p,r,s));
-  const noseS=.85+Math.random()*.45;
+  const noseS=toon?.5:.85+Math.random()*.45;   // toon: barely-there nose
   const bodyParts=[
-    tinted(pedHipG,partM([0,.55,0],null,[bodyScale,1,1]),pants),
-    tinted(pedAbdomenG,partM([0,.78,0],null,[.94*bodyScale,1,1]),color),
+    tinted(pedHipG,partM([0,.55,0],null,[bodyScale*torsoK,1,1]),pants),
+    tinted(pedAbdomenG,partM([0,.78,0],null,[.94*bodyScale*torsoK,1,1]),color),
     tinted(pedThoraxG,partM([0,1.11,0],null,
-      [bodyScale,.95+Math.random()*.12,.92+Math.random()*.16]),color),
+      [bodyScale*torsoK,.95+Math.random()*.12,.92+Math.random()*.16]),color),
     tinted(pedNeckG,partM([0,1.37,0]),skin),
     tinted(pedHeadG,headM,skin),
-    tinted(noseG,onHead([0,-.015,.255],[Math.PI/2,0,0],[noseS,noseS,noseS]),skin),
+    tinted(noseG,onHead([0,toon?-.03:-.015,toon?.248:.255],[Math.PI/2,0,0],[noseS,noseS,noseS]),skin),
   ];
   for(const sx of[-1,1]){
-    bodyParts.push(tinted(eyeG,onHead([sx*.085,.045,.225]),EYE_COLOR));
-    if(Math.random()<.65)bodyParts.push(tinted(browG,
-      onHead([sx*.085,.105,.22],[0,0,-sx*Math.random()*.25]),hairColor));
+    if(toon){
+      // The signature Schedule I face: a big pale eyeball with a small dark pupil
+      // sitting low for that blank, wide-eyed stare; one angled brow above it.
+      bodyParts.push(tinted(toonScleraG,onHead([sx*.086,.048,.198],null,[.85,1.05,.45]),SCLERA_COLOR));
+      bodyParts.push(tinted(toonPupilG,onHead([sx*.086,.032,.233],null,[.85,.9,.5]),PUPIL_COLOR));
+      bodyParts.push(tinted(browG,onHead([sx*.086,.134,.196],[0,0,-sx*.14]),hairColor));
+    }else{
+      bodyParts.push(tinted(eyeG,onHead([sx*.085,.045,.225]),EYE_COLOR));
+      if(Math.random()<.65)bodyParts.push(tinted(browG,
+        onHead([sx*.085,.105,.22],[0,0,-sx*Math.random()*.25]),hairColor));
+    }
   }
-  if(Math.random()<.58)bodyParts.push(tinted(beardG,
+  // toon player gets a clean protagonist look (hair, no beard); normal peds keep
+  // the random beard/hair mix
+  if(!toon&&Math.random()<.58)bodyParts.push(tinted(beardG,
     onHead([0,-.115,.165],null,[.82+Math.random()*.35,.42+Math.random()*.3,.26]),hairColor));
-  if(Math.random()<.74)bodyParts.push(tinted(hairG,
+  if(toon||Math.random()<.74)bodyParts.push(tinted(hairG,
     onHead([0,.13,-.005],null,[1.02,.42+Math.random()*.22,1]),hairColor));
 
   const body=new THREE.Mesh(mergeGeometries(bodyParts,false),mat);
@@ -104,7 +126,7 @@ export function buildPed({color=shirtColors[0],pantsColor}={}){
   const mouthMat=new THREE.MeshBasicMaterial({color:MOUTH_COLOR});
   const mouth=new THREE.Mesh(mouthG,mouthMat);
   mouth.position.set(0,1.62-.12*hsy,.228*hsz);
-  mouth.scale.x=(.75+Math.random()*.55)*hsx;
+  mouth.scale.x=(toon?.72:.75+Math.random()*.55)*hsx;
   g.add(mouth);
   g.userData.mouth=mouth;
 
@@ -123,8 +145,9 @@ export function buildPed({color=shirtColors[0],pantsColor}={}){
   const limbs={};
   for(const side of[-1,1]){
     const arm=new THREE.Group();
-    arm.position.set(side*.34*bodyScale,1.26,0);
+    arm.position.set(side*.34*bodyScale*shoulderK,1.26,0);
     const armMesh=new THREE.Mesh(armGeo,mat);
+    armMesh.scale.set(armThin,1,armThin);
     arm.add(armMesh);
     const forearm=new THREE.Group();
     forearm.position.y=-.30;
@@ -137,6 +160,7 @@ export function buildPed({color=shirtColors[0],pantsColor}={}){
       tinted(pedThumbG,partM([-side*.06,-.33,.04]),skin),
     ],false);
     const foreMesh=new THREE.Mesh(foreGeo,mat);
+    foreMesh.scale.set(armThin,1,armThin);
     forearm.add(foreMesh);
     arm.add(forearm);
     g.add(arm);
@@ -146,10 +170,12 @@ export function buildPed({color=shirtColors[0],pantsColor}={}){
     const leg=new THREE.Group();
     leg.position.set(side*.15,.52,0);
     const thighMesh=new THREE.Mesh(thighGeo,mat);
+    thighMesh.scale.set(legThin,1,legThin);
     leg.add(thighMesh);
     const calf=new THREE.Group();
     calf.position.y=-.30;
     const calfMesh=new THREE.Mesh(calfGeo,mat);
+    calfMesh.scale.set(legThin,1,legThin);
     calf.add(calfMesh);
     leg.add(calf);
     g.add(leg);
@@ -169,4 +195,11 @@ export default {category:'Characters',label:'Pedestrian',build:buildPed};
 // Compat: gameplay usa makePed(color,pantsColor) e espera o ped já na cena.
 export function makePed(color,pantsColor){
   const g=buildPed({color,pantsColor});scene.add(g);return g;
+}
+
+// Player-only variant: the Schedule I "toon" look (big eyes, lanky build). Same
+// rig as a normal ped (userData.limbs/mouth/fadeMats), so animatePed, the driving
+// and aiming poses, and attachHandGun all keep working unchanged.
+export function makePlayerPed(color,pantsColor){
+  const g=buildPed({color,pantsColor,toon:true});scene.add(g);return g;
 }

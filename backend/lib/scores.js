@@ -8,13 +8,54 @@ export const SESSION_PREFIX = 'tinygta:sess:';
 export const RL_PREFIX = 'tinygta:rl:';
 
 // ----- SAVE / PROGRESSO POR JOGADOR -----------------------------------------
-// Sorted set onde guardamos o saldo salvo de cada jogador para restaurar a
-// partida seguinte. O membro é a identidade (id estável do cliente + nick), o
-// score é o MELHOR dinheiro já salvo (GT, igual ao leaderboard). Chavear por
-// (pid, nick) — e não só pelo nick público — impede que alguém digite o apelido
-// alheio e herde o dinheiro: o pid é um UUID secreto no localStorage do dono.
-export const SAVE_KEY = 'tinygta:save';
+// Cada jogador tem um BLOB JSON de progresso (dinheiro atual + armas + músculo +
+// casa + coletáveis) numa chave string `tinygta:save:<pid>|<nick>`, restaurado na
+// partida seguinte. Chavear por (pid, nick) — e não só pelo nick público —
+// impede que alguém digite o apelido alheio e herde o progresso: o pid é um UUID
+// secreto no localStorage do dono.
+export const SAVE_PREFIX = 'tinygta:save:';
+// Sorted set ANTIGO (save só-dinheiro). Mantido só para migração: se ainda não
+// existir o blob novo, o /api/session lê o saldo daqui.
+export const SAVE_LEGACY_KEY = 'tinygta:save';
 export const saveMember = (pid, name) => pid + '|' + name;
+
+// Higieniza o blob de progresso vindo do cliente antes de gravar: limita
+// profundidade/tamanho (evita guardar lixo gigante) e crava o dinheiro no teto
+// de plausibilidade. Genérico de propósito — o backend não precisa conhecer o
+// formato de cada "slot" (armas/casa/...); só impõe limites de segurança.
+function sanitizeValue(v, depth) {
+  if (depth > 4 || v == null) return null;
+  const t = typeof v;
+  if (t === 'number') return Number.isFinite(v) ? v : 0;
+  if (t === 'boolean') return v;
+  if (t === 'string') return v.slice(0, 32);
+  if (Array.isArray(v)) {
+    const a = [];
+    for (let i = 0; i < v.length && a.length < 64; i++) {
+      const s = sanitizeValue(v[i], depth + 1);
+      if (s !== null) a.push(s);
+    }
+    return a;
+  }
+  if (t === 'object') {
+    const o = {}; let n = 0;
+    for (const k of Object.keys(v)) {
+      if (n++ >= 32) break;
+      if (k.length > 24) continue;
+      const s = sanitizeValue(v[k], depth + 1);
+      if (s !== null) o[k] = s;
+    }
+    return o;
+  }
+  return null;
+}
+export function sanitizeSave(raw, maxMoney) {
+  const out = sanitizeValue(raw, 0);
+  if (!out || typeof out !== 'object' || Array.isArray(out)) return null;
+  const money = Math.floor(Number(out.money));
+  out.money = Number.isFinite(money) ? Math.min(Math.max(money, 0), Math.max(0, maxMoney)) : 0;
+  return out;
+}
 
 // pid do jogador: UUID v4 gerado no cliente. Aceita só o formato canônico para
 // não poluir o set com chave forjada/lixo.

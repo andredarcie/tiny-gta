@@ -116,6 +116,28 @@ for(let idx=0;idx<positions.length;idx++){
 // Debug hook.
 refs.getHiddenPackagesState=()=>({found,total:TOTAL});
 
+// ----- SAVE: pacotes coletados (js/save.js) -----
+// Guarda os ÍNDICES coletados (as posições são determinísticas — semente fixa —
+// então o índice k é sempre o mesmo lugar). Restaurar só MARCA como coletado
+// (sem repagar dinheiro/bônus) e tira o pacote da cena.
+refs.getPackagesSave=()=>{
+  const a=[];
+  for(let i=0;i<packs.length;i++)if(packs[i].taken)a.push(i);
+  return a;
+};
+refs.restorePackages=arr=>{
+  if(!Array.isArray(arr))return;
+  let changed=false;
+  for(const v of arr){
+    if(!Number.isInteger(v)||v<0||v>=packs.length)continue;
+    const p=packs[v];
+    if(p.taken)continue;
+    p.taken=true;found++;changed=true;
+    if(p.g.parent)scene.remove(p.g);
+  }
+  if(changed)saveTaken();
+};
+
 // Dispara o efeito de "pop" no lugar do pacote coletado: o group reaproveitado
 // cresce e some em ~0.4s. Reaproveitamos o próprio modelo (já na cena) pra não
 // criar geometria nova; só reanimamos escala antes de remover de vez.
