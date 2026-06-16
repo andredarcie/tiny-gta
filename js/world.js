@@ -23,6 +23,9 @@ import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
 import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
+import {addFenceRun} from '../assets/models/rural/fence.js';
+import {addWell} from '../assets/models/rural/well.js';
+import {addMarketStall} from '../assets/models/rural/market-stall.js';
 import {makeTexturedPlane} from '../assets/models/terrain/textured-plane.js';
 import {buildIsland,updateCoastFoam} from '../assets/models/terrain/island.js';
 import {addBeachRock} from '../assets/models/terrain/beach-rock.js';
@@ -247,24 +250,85 @@ addBarnWithSilo(solids);
 // casa de campo comprável (safehouse): fachada + garagem aqui, interior a ~600m
 addRanchHouse(solids);
 
-// pinheiros pela zona rural e encostas baixas da montanha
+// Pine forest across the rural peninsula and the lower mountain slopes. A pine
+// is a tiny merged prop (~4 meshes folded into the shared chunk meshes), so a
+// dense forest costs almost nothing extra in draw calls — it just merges into
+// more geometry per chunk. We seed a handful of CLUSTER centres (groves) and
+// drop most trees near them with a falloff, so the wood reads as clumped stands
+// of forest rather than an even grid of dots; a thinner scatter fills the gaps.
 {
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
     .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
+  // A pine spot is valid only off the road, off rock, clear of the ranch and the
+  // ploughed fields (trees in a field would look wrong).
+  const okPine=(px,pz)=>{
+    if(px<RURAL_X0+6||px>RURAL_X1-8||Math.abs(pz)>RURAL_HALF-6)return false;
+    if(Math.abs(pz)<7&&px<MOUNT_X)return false;            // dirt road
+    if(groundHeight(px,pz)>18)return false;                 // high slope is rock
+    if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)return false;  // ranch yard/porch/sign
+    if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)return false; // garage approach
+    if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))return false;
+    return true;
+  };
   let placed=0,guard=0;
-  while(placed<44&&guard++<400){
+  // grove centres: two thick stands on the north and south flanks plus a band of
+  // forest creeping up the wooded foot of the mountain.
+  const groves=[
+    [240+RURAL_GAP, 92, 26, 34],[300+RURAL_GAP, 96, 24, 30],
+    [232+RURAL_GAP,-96, 26, 32],[296+RURAL_GAP,-100,24, 30],
+    [MOUNT_X-MOUNT_R-10, 60, 30, 26],[MOUNT_X-MOUNT_R-10,-60, 30, 26],
+    [350+RURAL_GAP, 70, 22, 26],[350+RURAL_GAP,-70, 22, 26],
+  ];
+  for(const[gx,gz,rx,rz]of groves){
+    let n=0,g2=0;
+    while(n<26&&g2++<120){
+      // gaussian-ish clump: sum of two uniforms biases toward the centre
+      const ox=(Math.random()+Math.random()-1)*rx, oz=(Math.random()+Math.random()-1)*rz;
+      const px=gx+ox,pz=gz+oz;
+      if(!okPine(px,pz))continue;
+      addPine(px,pz);n++;placed++;
+    }
+  }
+  // light scatter to fill the open pasture between the groves and the fields
+  while(placed<200&&guard++<1400){
     const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
-    if(Math.abs(pz)<7&&px<MOUNT_X)continue;            // estrada de terra
-    if(groundHeight(px,pz)>18)continue;                 // encosta alta é rocha
-    if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)continue;  // quintal/varanda/placa
-    if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)continue; // entrada da garagem
-    if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))continue;
+    if(!okPine(px,pz))continue;
     addPine(px,pz);placed++;
+  }
+  // a row of pines lining each side of the dirt road on the way out of town
+  for(let px=RURAL_X0+24;px<MOUNT_X-MOUNT_R-6;px+=rand(9,13)){
+    for(const sz of[-1,1]){
+      const pz=sz*rand(10,13);
+      if(okPine(px,pz))addPine(px,pz);
+    }
   }
 }
 
 // fardos de feno nas roças
 addHayBales();
+
+// ----- Farming hamlet detailing: post-and-rail fences round the field plots and
+// the ranch, plus a little green (well + market stall + extra produce) to make
+// the cluster of farmhouses read as a lived-in country village, not loose boxes.
+{
+  const G=RURAL_GAP;
+  // enclose each ploughed field with a rail fence (decorative; low rails)
+  const fences=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
+    .map(f=>[f[0]+G,f[1]+G,f[2],f[3]]);
+  for(const[a,b,d,e]of fences){
+    addFenceRun(a,d,b,d);addFenceRun(b,d,b,e);addFenceRun(b,e,a,e);addFenceRun(a,e,a,d);
+  }
+  // paddock fence around the ranch yard (leave the garage approach open)
+  addFenceRun(RANCH_CX-16,RANCH_CZ-16,RANCH_CX+16,RANCH_CZ-16);
+  addFenceRun(RANCH_CX+16,RANCH_CZ-16,RANCH_CX+16,RANCH_CZ+16);
+  addFenceRun(RANCH_CX+16,RANCH_CZ+16,RANCH_CX-2,RANCH_CZ+16);
+  // village green between the front-row farmhouses (~x 236-258+G, z ~10): a well
+  // as the centrepiece and a market stall facing the road, with a couple of hay
+  // bales/wood already covered by addHayBales nearby.
+  solids.push(addWell(246+G,2));
+  solids.push(addMarketStall(232+G,2,Math.PI));   // counter opens south toward the road
+  solids.push(addMarketStall(262+G,2,Math.PI));
+}
 
 // montanha low poly: a malha usa a MESMA grade/triangulação da groundHeight
 // da física (vértices = nós da grade), então colisão e visual batem 1:1
