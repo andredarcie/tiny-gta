@@ -1,16 +1,34 @@
 // Cliente do ranking global (backend Vercel + Upstash). O front só faz fetch:
-//  - startSession(): pega um token no início da partida (vida da run)
+//  - startSession(): abre a sessão e RESTAURA o dinheiro salvo do jogador
 //  - recordBest(money): acompanha o maior dinheiro da run
-//  - submitFinal(): envia o melhor score ao sair (uma vez; token é single-use)
+//  - flush(): envia o melhor score (e salva o progresso) ao sair
 //  - refreshTopPlayers(): desenha o top 5 na tela inicial
 export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
+const PID_KEY = 'tinygta_pid';
 
 let token = null, bestMoney = 0, lastSent = -1, flushTimer = null;
 let nickname = '';
 try { nickname = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
 
+// id estável do jogador (UUID guardado no localStorage). Combinado ao nick, é a
+// identidade que o backend usa pra restaurar o saldo — assim ninguém herda o
+// dinheiro de outro só digitando o apelido público.
+function makeId() {
+  try { if (crypto?.randomUUID) return crypto.randomUUID(); } catch (e) {}
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+let pid = '';
+try {
+  pid = localStorage.getItem(PID_KEY) || '';
+  if (!pid) { pid = makeId(); localStorage.setItem(PID_KEY, pid); }
+} catch (e) { pid = makeId(); }
+
 export function getNickname() { return nickname; }
+export function getPlayerId() { return pid; }
 // token da sessão atual (single-run), reaproveitado pelos rankings por mini game
 export function getSessionToken() { return token; }
 export function setNickname(n) {
@@ -18,12 +36,24 @@ export function setNickname(n) {
   try { localStorage.setItem(NICK_KEY, n); } catch (e) {}
 }
 
+// Abre a sessão e devolve o DINHEIRO SALVO desse (id, nick) — o chamador usa
+// pra restaurar o saldo da partida. O servidor já conhece esse valor (é a base
+// da sessão), então não reenviamos de cara: bestMoney/lastSent começam nele.
 export async function startSession() {
   token = null; bestMoney = 0; lastSent = -1;
+  let savedMoney = 0;
   try {
-    const r = await fetch(API + '/api/session', { method: 'POST' });
-    token = (await r.json()).token;
+    const r = await fetch(API + '/api/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pid, name: nickname }),
+    });
+    const data = await r.json();
+    token = data.token;
+    savedMoney = Math.max(0, Math.floor(Number(data.money) || 0));
   } catch (e) {}
+  if (savedMoney > 0) { bestMoney = savedMoney; lastSent = savedMoney; }
+  return savedMoney;
 }
 
 // Acompanha o maior dinheiro da run e agenda um envio ~3s após o último ganho.
@@ -45,7 +75,7 @@ export function flush() {
     fetch(API + '/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nickname, money, token }),
+      body: JSON.stringify({ name: nickname, money, token, pid }),
       keepalive: true,
     }).then(r => { if (!r.ok) lastSent = -1; }).catch(() => { lastSent = -1; });
   } catch (e) { lastSent = -1; }

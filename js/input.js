@@ -1,4 +1,4 @@
-import {state,keys,input,refs} from './state.js';
+import {state,keys,input,refs,saveBest} from './state.js';
 import {initAudio,AC} from './audio.js';
 import {radioSwitch} from './radio.js';
 import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
@@ -189,7 +189,14 @@ function confirmNick(){
   setNickname(name);
   document.getElementById('nickmodal')?.classList.remove('open');
   startGameFromUserGesture({mobile:isMobileEnv()});
-  startSession(); // abre a sessão do ranking pra esta run (não bloqueia o start)
+  // abre a sessão do ranking (não bloqueia o start) e RESTAURA o dinheiro salvo
+  // desse jogador (mesmo id + nick), continuando de onde parou.
+  startSession().then(saved=>{
+    if(saved>0&&state.money<saved){
+      state.money=saved;saveBest();
+      message('WELCOME BACK - $'+saved.toLocaleString('en-US'),'var(--gold)');
+    }
+  });
 }
 
 // Usado pelo touch-controls: tocar pra jogar abre o modal de nickname.

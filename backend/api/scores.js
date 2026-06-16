@@ -32,6 +32,7 @@ async function submit(req, res) {
   const name = C.sanitizeName(body.name);
   const money = Number(body.money);
   const token = typeof body.token === 'string' ? body.token : '';
+  const pid = C.sanitizePid(body.pid); // id estável do cliente (save por jogador)
 
   // 1) validação básica do payload
   if (!name) return res.status(400).json({error: 'invalid_name'});
@@ -49,18 +50,23 @@ async function submit(req, res) {
   //    toda a run (não é consumido), pra permitir enviar o melhor score várias
   //    vezes ao longo da partida. A segurança fica no teto de plausibilidade
   //    por tempo (abaixo) + rate-limit por IP + GT (só melhora).
-  const startedAtRaw = await redis.get(C.SESSION_PREFIX + token);
-  if (startedAtRaw == null) return res.status(403).json({error: 'invalid_session'});
-  const seconds = (Date.now() - Number(startedAtRaw)) / 1000;
+  const sess = C.parseSession(await redis.get(C.SESSION_PREFIX + token));
+  if (!sess || !sess.at) return res.status(403).json({error: 'invalid_session'});
+  const seconds = (Date.now() - sess.at) / 1000;
   if (seconds < C.MIN_RUN_SECONDS) return res.status(403).json({error: 'run_too_short'});
 
-  // 4) plausibilidade: dinheiro não pode passar do teto pelo tempo de partida
-  const maxAllowed = C.maxPlausibleMoney(seconds);
+  // 4) plausibilidade: dinheiro não pode passar do teto pelo tempo de partida,
+  //    SOMADO ao saldo restaurado no início (sess.base) — quem volta rico pode
+  //    reenviar o que já estava salvo sem cair no teto por tempo.
+  const maxAllowed = C.maxPlausibleMoney(seconds) + sess.base;
   if (money > maxAllowed)
     return res.status(422).json({error: 'implausible_score', maxAllowed: Math.floor(maxAllowed)});
 
   // 5) guarda só se for melhor que o recorde atual do nome (GT)
   await redis.zadd(C.LEADERBOARD_KEY, {gt: true}, {score: money, member: name});
+  // 6) salva o progresso por (id, nick) — restaurado no próximo /api/session.
+  //    Também só sobe (GT), então o save acompanha o melhor saldo do jogador.
+  if (pid) await redis.zadd(C.SAVE_KEY, {gt: true}, {score: money, member: C.saveMember(pid, name)});
   const rank = await redis.zrevrank(C.LEADERBOARD_KEY, name);
   res.status(200).json({ok: true, name, money, rank: rank == null ? null : rank + 1});
 }

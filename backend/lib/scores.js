@@ -7,6 +7,35 @@ export const LEADERBOARD_KEY = 'tinygta:leaderboard';
 export const SESSION_PREFIX = 'tinygta:sess:';
 export const RL_PREFIX = 'tinygta:rl:';
 
+// ----- SAVE / PROGRESSO POR JOGADOR -----------------------------------------
+// Sorted set onde guardamos o saldo salvo de cada jogador para restaurar a
+// partida seguinte. O membro é a identidade (id estável do cliente + nick), o
+// score é o MELHOR dinheiro já salvo (GT, igual ao leaderboard). Chavear por
+// (pid, nick) — e não só pelo nick público — impede que alguém digite o apelido
+// alheio e herde o dinheiro: o pid é um UUID secreto no localStorage do dono.
+export const SAVE_KEY = 'tinygta:save';
+export const saveMember = (pid, name) => pid + '|' + name;
+
+// pid do jogador: UUID v4 gerado no cliente. Aceita só o formato canônico para
+// não poluir o set com chave forjada/lixo.
+export function sanitizePid(raw) {
+  if (typeof raw !== 'string') return null;
+  const s = raw.trim().toLowerCase();
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s) ? s : null;
+}
+
+// Valor da sessão: instante de início + saldo restaurado (base de plausibilidade
+// do /api/scores — um jogador que volta rico pode reenviar o saldo já salvo sem
+// estourar o teto por tempo). Aceita o formato antigo (só o timestamp) para não
+// quebrar sessões em voo durante o deploy.
+export function parseSession(raw) {
+  if (raw == null) return null;
+  if (typeof raw === 'object') return { at: Number(raw.at) || 0, base: Math.max(0, Number(raw.base) || 0) };
+  const s = String(raw);
+  if (s[0] === '{') { try { const o = JSON.parse(s); return { at: Number(o.at) || 0, base: Math.max(0, Number(o.base) || 0) }; } catch {} }
+  return { at: Number(s) || 0, base: 0 };
+}
+
 // ----- Leaderboards POR MINI GAME -------------------------------------------
 // Cada mini game tem o seu próprio ranking. Por jogo guardamos:
 //   - um SORTED SET  tinygta:mg:<game>      member=nome  score=RATING calculado
