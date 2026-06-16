@@ -296,6 +296,7 @@ window.render_game_to_text=()=>{
     started:state.started,
     paused:state.paused,
     mode:state.mode,
+    firstPerson:!!state.firstPerson, // câmera em primeira pessoa (tecla C) ligada
     activeMiniGame:state.activeMiniGame, // mini game em curso (trava "um por vez")
     interior:state.interior?.constructor?.name||null,
     money:state.money,

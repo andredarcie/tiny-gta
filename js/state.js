@@ -15,6 +15,7 @@ export const state={
   danceActive:false, // mini-game da dança aberto (ver js/dance-game.js)
   modShopActive:false, // menu da oficina de custom aberto (ver js/mod-shop.js)
   mapOpen:false, // mapa completo (tecla M) aberto — congela o mundo enquanto visível
+  firstPerson:false, // first-person camera (key C) — see js/player.js updateCamera
   wheelOpen:false, // roda de seleção de armas (js/weapon-wheel.js) aberta — câmera lenta
   activeMiniGame:null, // id (MiniGameId) do mini game em curso, ou null — trava "um por vez"
                        // (ver js/minigame.js); enquanto setado o mapa fica sem outros

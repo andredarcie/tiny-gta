@@ -50,6 +50,7 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ CAM-R 
 export const cameraRig={
   yaw:player.heading,
   pitch:.34,
+  fpPitch:0,        // first-person look pitch (rad): +down / -up after the sign flip below
   sensitivity:.0024,
   invertY:false,
   shoulder:.28,
@@ -188,6 +189,8 @@ const _dentPt=new THREE.Vector3(),_dentDir=new THREE.Vector3();
 const _footF=new THREE.Vector3(),_footR=new THREE.Vector3(),_footMv=new THREE.Vector3();
 // updateCamera: forward/right/focus/want vivem juntos -> 4 instâncias distintas.
 const _camFwd=new THREE.Vector3(),_camRight=new THREE.Vector3(),_camFocus=new THREE.Vector3(),_camWant=new THREE.Vector3();
+// First-person: eye position + look direction (live together -> 2 distinct instances).
+const _fpEye=new THREE.Vector3(),_fpDir=new THREE.Vector3();
 
 export function nearestCar(maxD){
   let best=null,bd=maxD,kind=null;
@@ -1081,7 +1084,47 @@ export function updateFoot(dt){
   }else player.g.rotation.y=player.heading;
 }
 
+// First-person view is a *mode of the same camera*, toggled by C. It only takes
+// over while the player has normal control on foot or in a vehicle — every special
+// state (cut-scenes, death, the roof fall, swimming, entering/leaving a car, the RC
+// operator) gracefully falls back to the polished third-person camera, so those
+// animations stay visible and nothing fights the FP positioning.
+function fpEligible(){
+  if(!state.firstPerson||state.cine)return false;
+  if(state.mode==='car')return !!cur&&!cur.remote;
+  if(state.mode==='foot')
+    return !state.swimming&&!dying&&!roofFall&&!entering&&!exiting&&!state.dlgActive;
+  return false;
+}
+
+// Toggle handler for the C key (wired in input.js). Flips the flag, recenters the
+// look forward and lets the car view settle instead of snapping, plus a little SFX.
+export function toggleFirstPerson(){
+  state.firstPerson=!state.firstPerson;
+  cameraRig.fpPitch=0;            // enter/exit looking straight ahead
+  cameraRig.touchLookIdle=1;      // don't immediately yank the yaw on the toggle frame
+  blip(state.firstPerson?[660,990]:[520,330],.06,'triangle',.1);
+  message(state.firstPerson?'FIRST PERSON':'THIRD PERSON','var(--cyan)');
+}
+
+// Mouse-look (pointer lock) routed through here so the delta updates the RIGHT
+// pitch — the wide FP pitch when first-person is live, the orbit pitch otherwise.
+export function applyMouseLook(dx,dy){
+  cameraRig.yaw-=dx*cameraRig.sensitivity;
+  const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity;
+  if(fpEligible())cameraRig.fpPitch=clamp(cameraRig.fpPitch+dp,-1.3,1.3);
+  else cameraRig.pitch=clamp(cameraRig.pitch+dp,.18,.82);
+  cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
+}
+
 export function updateCamera(dt){
+  const fp=fpEligible();
+  // The player ped IS the first-person head: hide it so we never see inside our own
+  // model (this also hides the held weapon, which is parented to the ped). Driven
+  // every frame BEFORE the cut-scene early-out so the body always reappears the
+  // instant FP isn't the active view — including story cut-scenes (fpEligible is
+  // false during state.cine), where story.js controls the camera but shows the ped.
+  player.g.visible=!fp;
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
   let tgt,heading,dist,baseH;
   if(state.mode==='car'||state.mode==='cut'&&cur){
@@ -1098,21 +1141,25 @@ export function updateCamera(dt){
     // (forward = (sin yaw, cos yaw); keyboard A is moveX=+1; mouse-right does yaw-=),
     // so turning right requires subtracting, same as the pointer-lock mouse path.
     cameraRig.yaw-=input.lookX*dt;
-    cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
+    // FP uses a separate, wider look pitch so toggling never clamps the orbit pitch.
+    if(fp)cameraRig.fpPitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
+    else cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
     cameraRig.touchLookIdle=0;
   }else cameraRig.touchLookIdle+=dt;
   // Auto-follow atrás do carro: assim que o jogador para de mexer a câmera por um
   // instante, ela volta suavemente pra trás do carro (mesmo com pointer-lock do
   // mouse), pra não precisar reajustar o tempo todo dirigindo. A pé continua como
-  // antes (só recentra quando não há pointer-lock nem toque ativo).
+  // antes (só recentra quando não há pointer-lock nem toque ativo). Em FP a pé NÃO
+  // recentra (a mira é livre); em FP no carro ela ainda volta a olhar pra frente.
   const idle=cameraRig.touchLookIdle>.45;
-  const autoFollow=state.mode==='car'
-    ?idle
-    :(!document.pointerLockElement&&!input.touchActive);
+  const autoFollow=fp
+    ?(state.mode==='car'&&idle)
+    :(state.mode==='car'?idle:(!document.pointerLockElement&&!input.touchActive));
   if(autoFollow){
     const diff=THREE.MathUtils.euclideanModulo(heading-cameraRig.yaw+Math.PI,Math.PI*2)-Math.PI;
     cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:.7));
   }
+  if(fp)return updateCameraFP(dt,tgt);
   cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
   const forward=_camFwd.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
   const right=_camRight.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
@@ -1140,4 +1187,47 @@ export function updateCamera(dt){
     state.shake=Math.max(0,state.shake-dt*1.6);
   }
   camera.lookAt(focus.x+forward.x*2.4,focus.y,focus.z+forward.z*2.4);
+}
+
+// First-person positioning: the eye sits at the head (on foot) or in the driver's
+// seat (in a vehicle), and the view rotates with yaw + fpPitch. The eye is parented
+// in spirit to the body, so it follows the same bob/terrain motion the ped already
+// has — no separate smoothing that could lag behind or clip through the head.
+function updateCameraFP(dt,tgt){
+  cameraRig.fpPitch=clamp(cameraRig.fpPitch,-1.3,1.3);
+  const yaw=cameraRig.yaw,pitch=cameraRig.fpPitch;
+  if(state.mode==='car'&&cur){
+    // Eye fixed to the cabin: offset toward the driver side and the windshield using
+    // the VEHICLE heading, then lifted to head height (per vehicle kind). Only the
+    // view rotates with the look — the head stays put in the seat.
+    const ch=cur.heading,cf=Math.sin(ch),cfz=Math.cos(ch);
+    const crx=Math.cos(ch),crz=-Math.sin(ch);
+    // Heights/offsets tuned to each cabin: eye just below the roof (~1.37 on the car),
+    // pushed forward to the windshield (~z1.05) so we look out over the dash with only
+    // a sliver of roof up top and little of our own hood.
+    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:1.15;
+    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:.5;
+    const sideOff=(cur.bike||cur.boat||cur.plane)?0:-.36; // cars: sit on the driver (left) seat
+    _fpEye.set(tgt.x+cf*fwd+crx*sideOff,tgt.y+up,tgt.z+cfz*fwd+crz*sideOff);
+  }else{
+    // Standing/walking: eyes near the crown of the head. tgt.y already carries the
+    // step bob and terrain height, so the view bobs naturally with the stride.
+    _fpEye.set(tgt.x,tgt.y+1.58,tgt.z);
+  }
+  // Snap the eye to the head: zero follow-lag (most responsive), and it can never
+  // interpolate through a wall the way a trailing camera could.
+  camera.position.copy(_fpEye);
+  const tf=state.mode==='car'&&cur?68+Math.abs(cur.speed)/32*14:70;
+  camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
+  camera.updateProjectionMatrix();
+  if(state.shake>0){
+    camera.position.x+=rand(-1,1)*state.shake;
+    camera.position.y+=rand(-1,1)*state.shake*.5;
+    state.shake=Math.max(0,state.shake-dt*1.6);
+  }
+  // Look direction from yaw + pitch. Sign matches third person and the mouse path:
+  // dragging the look DOWN (fpPitch grows) tilts the view down (-Y).
+  const cosP=Math.cos(pitch);
+  _fpDir.set(Math.sin(yaw)*cosP,-Math.sin(pitch),Math.cos(yaw)*cosP);
+  camera.lookAt(camera.position.x+_fpDir.x,camera.position.y+_fpDir.y,camera.position.z+_fpDir.z);
 }

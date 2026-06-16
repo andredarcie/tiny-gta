@@ -1,7 +1,7 @@
 import {state,keys,input,refs} from './state.js';
 import {initAudio,AC} from './audio.js';
 import {radioSwitch} from './radio.js';
-import {enterCar,exitCar,cur,player,cameraRig} from './player.js';
+import {enterCar,exitCar,cur,player,cameraRig,toggleFirstPerson,applyMouseLook} from './player.js';
 import {storyInteract,advanceCine} from './story.js';
 import {gymTrain} from './gym.js';
 import {gymGameActive,gymGamePress,closeGymGame} from './gym-game.js';
@@ -209,10 +209,9 @@ export function setupInput(){
     // Roda de armas aberta: o mouse mira o setor, não move a câmera.
     if(state.wheelOpen){wheelPointerDelta(e.movementX,e.movementY);return;}
     if(state.paused||state.mapOpen||state.dlgActive)return;
-    cameraRig.yaw-=e.movementX*cameraRig.sensitivity;
-    cameraRig.pitch+=(cameraRig.invertY?-1:1)*e.movementY*cameraRig.sensitivity;
-    cameraRig.pitch=Math.max(.18,Math.min(.82,cameraRig.pitch));
-    cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
+    // Routed through player.js so the delta drives the correct pitch (wide FP look
+    // when first-person is active, the third-person orbit pitch otherwise).
+    applyMouseLook(e.movementX,e.movementY);
   });
   // Desktop: o 1º clique trava o ponteiro; com o ponteiro travado, segurar o
   // botão esquerdo dispara (e mantém o fogo automático via input.shootHeld).
@@ -299,6 +298,7 @@ export function setupInput(){
     if(e.code==='KeyP'){performPauseToggle();return;}
     if(e.code==='KeyF'&&e.shiftKey){performFullscreenToggle();return;}
     if(e.code==='KeyR'){performRadioSwitch();return;} // rádio saiu do Tab (agora da roda de armas)
+    if(e.code==='KeyC'){toggleFirstPerson();return;}  // alterna câmera em primeira pessoa
     if(/^Digit[0-9]$/.test(e.code)){selectWeaponSlot(e.code==='Digit0'?10:+e.code.slice(5));return;}
     // Roda de armas: TAB é o padrão de mercado (GTA V); Q segue valendo de alternativa.
     if(e.code==='Tab'||e.code==='KeyQ'){if(!e.repeat)openWheel();return;} // segurar abre a roda; soltar equipa (keyup)
