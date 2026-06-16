@@ -19,6 +19,14 @@ export const SAVE_PREFIX = 'tinygta:save:';
 export const SAVE_LEGACY_KEY = 'tinygta:save';
 export const saveMember = (pid, name) => pid + '|' + name;
 
+// SEED de migração (hash nome -> dinheiro): jogadores que JÁ estavam no ranking
+// antes do sistema de save (logo, sem save) herdam aqui o valor do ranking como
+// saldo inicial NA PRIMEIRA vez que jogam (pico -> atual). É consumido quando o
+// save é gravado de fato, então cada nome é semeado uma vez só; nomes novos no
+// ranking nunca entram neste hash. Fora desta migração, ninguém herda dinheiro
+// de outro só digitando o apelido público.
+export const SEED_KEY = 'tinygta:seed';
+
 // Higieniza o blob de progresso vindo do cliente antes de gravar: limita
 // profundidade/tamanho (evita guardar lixo gigante) e crava o dinheiro no teto
 // de plausibilidade. Genérico de propósito — o backend não precisa conhecer o

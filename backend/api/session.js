@@ -28,6 +28,13 @@ export default async function handler(req, res) {
       // migração: jogadores que só têm o save antigo (sorted set só-dinheiro)
       const legacy = await redis.zscore(C.SAVE_LEGACY_KEY, member);
       if (legacy != null) save = {money: Math.max(0, Math.floor(Number(legacy) || 0))};
+      else {
+        // jogador antigo SEM save: herda UMA vez o valor do ranking (pico->atual)
+        // como saldo inicial. NÃO consome aqui (pra sobreviver a uma sessão que
+        // não chega a salvar) — o /api/scores apaga o seed ao gravar o save.
+        const seed = await redis.hget(C.SEED_KEY, name);
+        if (seed != null) save = {money: Math.max(0, Math.floor(Number(seed) || 0))};
+      }
     }
   }
   const money = save && Number.isFinite(save.money) ? Math.max(0, Math.floor(save.money)) : 0;

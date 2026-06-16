@@ -67,7 +67,12 @@ async function submit(req, res) {
   //    crava no teto impede usar a base pra furar o ranking na sessão seguinte.
   if (pid && body.save) {
     const blob = C.sanitizeSave(body.save, maxAllowed);
-    if (blob) await redis.set(C.SAVE_PREFIX + C.saveMember(pid, name), blob);
+    if (blob) {
+      await redis.set(C.SAVE_PREFIX + C.saveMember(pid, name), blob);
+      // o jogador agora tem save de verdade: consome o seed de migração do nome
+      // (idempotente; só faz algo na primeira gravação de cada nome semeado).
+      await redis.hdel(C.SEED_KEY, name);
+    }
   }
 
   // 6) leaderboard = DINHEIRO ATUAL do jogador (não mais o pico): grava o valor
