@@ -28,14 +28,13 @@ function bx(mat,w,h,d,x,y,z,rx=0,ry=0,rz=0){
 // extra segments are cheap. `side` (+1 right / -1 left) sets the thumb side.
 export function buildGripHand(skinMat,side=1){
   const h=new THREE.Group();
-  h.add(bx(skinMat,.072,.05,.026, 0,.012,.02));         // back of the hand (driver side of rim)
-  h.add(bx(skinMat,.07,.022,.03,  0,.026,-.002));       // knuckle ridge, at the top-front of the rim
-  for(let i=0;i<4;i++){
-    const fx=(-1.5+i)*.0165;
-    h.add(bx(skinMat,.014,.034,.017, fx,.006,-.026, -1.55));  // proximal: drapes DOWN the rim front
-    h.add(bx(skinMat,.013,.028,.015, fx,-.024,-.03, -2.5));   // distal: curls UNDER, behind the rim
-  }
-  h.add(bx(skinMat,.018,.046,.02, side*.044,.006,.012, .55,0,side*.75)); // thumb opposing, down the near side
+  // ONE solid fist mass that ENCLOSES the rim tube (rim hidden inside the fist, so it
+  // reads as a single clean hand gripping — not a cluttered fan of separate fingers).
+  h.add(bx(skinMat,.072,.056,.056, 0,.008,.006));       // fist mass straddling the rim
+  h.add(bx(skinMat,.07,.016,.054,  0,.038,.006));       // knuckle ridge across the top
+  for(let i=0;i<4;i++)                                   // 4 short fingertips curling under the front
+    h.add(bx(skinMat,.013,.016,.022, (-1.5+i)*.0165,-.024,-.026, -.5));
+  h.add(bx(skinMat,.018,.044,.022, side*.044,.004,.016, .4,0,side*.7)); // thumb on the near side
   return h;
 }
 

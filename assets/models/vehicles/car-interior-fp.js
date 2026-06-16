@@ -113,7 +113,7 @@ function addWheelArms(wheelSpin){
     // reads as gripping (GTA-style), not hovering in front.
     // grip point ON the rim tube (radius ~.165, z=0) in the open top gap between the
     // upper spokes (~10:30 / 1:30) so the wrapping fingers don't hit a spoke
-    const hx=side*.117, hy=.117, hz=0;
+    const hx=side*.15, hy=.06, hz=0;
     // elbow routed far DOWN and OUTWARD so the forearm crosses the wheel plane OUTSIDE
     // the rim ring (no clipping through the wheel) on its way to the lap.
     const ex=side*.42, ey=-.5, ez=-.34;
