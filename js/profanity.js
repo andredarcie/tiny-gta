@@ -2,8 +2,9 @@
 // Estratégia: normaliza o texto (minúsculas, leet -> letras, sem acentos,
 // só a-z0-9 e colapsa repetições). Termos longos/inequívocos batem por
 // substring (pra pegar evasão tipo "xxfuckxx", "sep_a_r_ado"); termos curtos
-// ou ambíguos (cu, pau, pinto…) só batem se forem o apelido inteiro, pra não
-// derrubar nomes legítimos (CURITIBA, PAULO, PINTOR…). Nomes têm no máx 12 chars.
+// ou ambíguos (cu, pau, pinto…) só batem se forem o apelido inteiro OU uma
+// PALAVRA isolada do apelido (pega "CU ROXO" sem derrubar "CURITIBA"). Nomes
+// têm no máx 12 chars.
 
 // Termos longos: match por substring. Já em minúsculas/normalizados.
 const BAD_SUBSTR = [
@@ -18,7 +19,8 @@ const BAD_SUBSTR = [
   'filhodaputa', 'bosta', 'cacete', 'cabrao', 'siririca', 'gozada',
 ];
 
-// Termos curtos/ambíguos: só batem se forem o apelido inteiro (após normalizar).
+// Termos curtos/ambíguos: só batem se forem o apelido inteiro OU uma palavra
+// isolada (após normalizar) — ver o loop por tokens em hasProfanity().
 const BAD_EXACT = [
   'fck', 'fag', 'cum', 'jizz', 'cock', 'dick', 'twat', 'prick', 'boner',
   'nazi', 'cu', 'puta', 'puto', 'foda', 'pau', 'rola', 'pica',
@@ -27,13 +29,16 @@ const BAD_EXACT = [
 ];
 
 // Normaliza pra dificultar evasão: minúsculas, leetspeak comum, sem acentos,
-// só a-z0-9 e colapsa letras repetidas ("merrrda" -> "merda").
+// só a-z0-9 e colapsa letras repetidas ("merrrda" -> "merda"). As letras
+// visualmente trocáveis i / l / 1 / ! / | viram todas "i" — é o que pega
+// "HLTLER" (Hitler com L no lugar do I) e "CARAIHO" (caralho com I no lugar
+// do L), já que o dicionário sofre a MESMA normalização ("hitler"->"hitier").
 function normalize(s) {
   return String(s)
     .toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
     .replace(/[@4]/g, 'a').replace(/[$5]/g, 's').replace(/0/g, 'o')
-    .replace(/[1!|]/g, 'i').replace(/3/g, 'e').replace(/7/g, 't')
+    .replace(/[1!|l]/g, 'i').replace(/3/g, 'e').replace(/7/g, 't')
     .replace(/[^a-z0-9]/g, '')
     .replace(/(.)\1+/g, '$1');
 }
@@ -46,5 +51,12 @@ export function hasProfanity(raw) {
   const n = normalize(raw);
   if (!n) return false;
   if (EXACT.has(n)) return true;
-  return SUBSTR.some(w => n.includes(w));
+  if (SUBSTR.some(w => n.includes(w))) return true;
+  // termo curto/ambíguo como PALAVRA isolada do apelido ("CU ROXO" -> "cu"),
+  // sem derrubar nomes onde ele é só um pedaço ("CURITIBA", "PAULO").
+  for (const tok of String(raw).split(/[^A-Za-z0-9]+/)) {
+    const tn = normalize(tok);
+    if (tn && EXACT.has(tn)) return true;
+  }
+  return false;
 }
