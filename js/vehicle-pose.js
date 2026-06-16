@@ -19,10 +19,12 @@ export const SEAT_OFFSET={
   boat:[0,-.34,-.12],
   // Open cockpit rim ≈1.48; the pilot sits in the fuselage with head/shoulders out.
   plane:[0,.05,.18],
+  // Tractor: open elevated seat cushion ≈1.11, footplates ≈.52, wheel ≈(0,1.34,.4).
+  tractor:[0,.14,-.5],
 };
 
 // Apply the seated limb pose for `kind` ∈ {bike,boat,plane} to a rig's `limbs`
-// (the buildToonPlayer/buildPed userData.limbs bones). Legs are forced visible
+// (the buildToonPlayer userData.limbs bones). Legs are forced visible
 // because the cockpits are open. setDrivePose(false) in player.js zeroes every
 // bone again on exit, so no per-kind reset is needed here.
 export function poseRider(l,kind){
@@ -61,5 +63,16 @@ export function poseRider(l,kind){
     l.rightArm.rotation.set(-1.3,0,-.42);
     l.leftForearm?.rotation.set(-.78,0,0);
     l.rightForearm?.rotation.set(-.78,0,0);
+  }else if(kind==='tractor'){
+    // Sitting up on the open seat: thighs angled forward-down to the footplates,
+    // shins down, arms reaching forward/up to the raked steering wheel.
+    l.leftLeg.rotation.set(-1.25,0,.2);
+    l.rightLeg.rotation.set(-1.25,0,-.2);
+    l.leftCalf?.rotation.set(1.25,0,0);
+    l.rightCalf?.rotation.set(1.25,0,0);
+    l.leftArm.rotation.set(-1.05,0,.32);
+    l.rightArm.rotation.set(-1.05,0,-.32);
+    l.leftForearm?.rotation.set(-.5,0,0);
+    l.rightForearm?.rotation.set(-.5,0,0);
   }
 }

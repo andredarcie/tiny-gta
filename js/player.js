@@ -10,6 +10,7 @@ import {makeWakePuff} from '../assets/models/effects/boat-wake.js';
 import {makeSmokePuff} from '../assets/models/effects/smoke-puff.js';
 import {makeRcController} from '../assets/models/props/rc-controller.js';
 import {buildCarInteriorFp} from '../assets/models/vehicles/car-interior-fp.js';
+import {makeTractor} from '../assets/models/vehicles/tractor.js';
 import {SEAT_OFFSET,poseRider} from './vehicle-pose.js';
 import {thud,blip,splash} from './audio.js';
 import {radioOn,radioOff,radioEnter} from './radio.js';
@@ -100,6 +101,17 @@ function spawnBoat(color,name,x,z,heading){
 }
 spawnBoat(0xff5a3c,'SEA BLASTER',BOAT_SPAWN_X,BOAT_SPAWN_Z,Math.PI);
 
+// Tractor parked out at the rural farms (east of the city). A slow, chunky utility
+// vehicle (flag `tractor`): car-style physics but low top speed, open seat (rider
+// posed via vehicle-pose.js), and it never dents/explodes. Only one, only out here.
+function spawnTractor(x,z,heading){
+  const t={g:makeTractor(),heading,speed:0,name:'FIELD MULE',police:false,tractor:true};
+  t.g.position.set(x,groundHeight(x,z),z);t.g.rotation.y=heading;
+  idleCars.push(t);
+  return t;
+}
+spawnTractor(398,40,Math.PI/2);
+
 export function playerPos(){return state.mode==='car'?cur.g.position:player.g.position;}
 
 // ===== Dano progressivo do carro do jogador: bate -> amassa feio; bate de novo
@@ -171,7 +183,7 @@ function explodePlayerCar(){
 // debounce, conta como evento único. Escala: dent maior -> fumaça -> explosão.
 // Devolve true se o carro foi destruído (o chamador deve abortar o frame).
 function registerCrash(speed,pt,dir){
-  if(cur.bike)return false; // moto não amassa/explode (só carro tem lataria)
+  if(cur.bike||cur.tractor)return false; // moto/trator não amassam/explodem (só carro tem lataria)
   const ud=cur.g.userData;
   // amassado bem maior: zona ampliada (radius) e afundando mais fundo (max),
   // crescendo com a velocidade do impacto
@@ -356,12 +368,12 @@ function completeEnter(f){
   }
   // jogador sentado no banco do motorista (carro: visível pelo vidro; moto: por cima)
   cur.g.add(player.g);
-  if(cur.bike||cur.boat||cur.plane){
-    // Moto/lancha/avião: piloto totalmente à vista. Offset (banco) + pose (membros
-    // sobre os controles) vivem em vehicle-pose.js, casados com o corpo atual.
-    // A moto não usa userData.driver (spinWheels não deve mexer nos braços); o
+  if(cur.bike||cur.boat||cur.plane||cur.tractor){
+    // Moto/lancha/avião/trator: piloto totalmente à vista. Offset (banco) + pose
+    // (membros sobre os controles) vivem em vehicle-pose.js, casados com o corpo.
+    // Não usam userData.driver (spinWheels não deve mexer nos braços posados); o
     // avião pode receber driver (não tem rodas esterçadas, então é inócuo).
-    const kind=cur.bike?'bike':cur.boat?'boat':'plane';
+    const kind=cur.bike?'bike':cur.boat?'boat':cur.plane?'plane':'tractor';
     if(cur.plane)cur.g.userData.driver=player.g;
     player.g.position.fromArray(SEAT_OFFSET[kind]);
     player.g.rotation.set(0,0,0);
@@ -662,16 +674,17 @@ export function updateCar(dt){
   const th=input.moveY;
   const st=input.moveX;
   const hb=input.brake;
-  // moto: mais rápida e acelera mais forte, esterça mais fino e quase não dá ré
-  const bike=cur.bike;
+  // moto: mais rápida e acelera mais forte, esterça mais fino e quase não dá ré.
+  // trator: lento (teto baixo), arranque modesto, esterço lento — sente o peso.
+  const bike=cur.bike, trac=cur.tractor;
   // upgrade de motor da oficina de custom (car-customs/mod-shop): topo + arranque
   const mul=cur.g.userData.speedMul||1;
-  const MAX=(bike?42:32)*mul;
-  if(th>0)cur.speed+=(bike?22:16)*mul*dt*Math.max(.15,1-cur.speed/MAX);
-  else if(th<0)cur.speed-=(cur.speed>0?(bike?34:30):(bike?12:9))*dt;
+  const MAX=trac?15:(bike?42:32)*mul;
+  if(th>0)cur.speed+=(trac?9:(bike?22:16)*mul)*dt*Math.max(.15,1-cur.speed/MAX);
+  else if(th<0)cur.speed-=(cur.speed>0?(trac?16:(bike?34:30)):(trac?7:(bike?12:9)))*dt;
   cur.speed*=Math.exp(-(hb?2.2:.45)*dt);
-  cur.speed=clamp(cur.speed,bike?-8:-11,MAX);
-  cur.heading+=st*(bike?2.4:2.0)*dt*clamp(cur.speed/(bike?9:11),-1,1)*(hb?1.55:1);
+  cur.speed=clamp(cur.speed,trac?-5:(bike?-8:-11),MAX);
+  cur.heading+=st*(trac?1.5:(bike?2.4:2.0))*dt*clamp(cur.speed/(trac?7:(bike?9:11)),-1,1)*(hb?1.55:1);
   const p=cur.g.position;
   const px0=p.x,pz0=p.z; // pre-move position (used by the RC shoreline guard)
   p.x+=Math.sin(cur.heading)*cur.speed*dt;
@@ -1168,7 +1181,7 @@ export function updateCamera(dt){
 // steering wheel hidden behind the detailed one while it is loaded.
 let fpInterior=null,fpInteriorCar=null,fpHiddenSteer=null;
 function updateFpCarInterior(dt,fp){
-  const inCar=fp&&cur&&!cur.bike&&!cur.boat&&!cur.plane&&!cur.remote;
+  const inCar=fp&&cur&&!cur.bike&&!cur.boat&&!cur.plane&&!cur.remote&&!cur.tractor;
   const want=inCar?cur.g:null;
   if(want!==fpInteriorCar){
     if(fpInterior&&fpInterior.parent)fpInterior.parent.remove(fpInterior); // unload
@@ -1210,9 +1223,9 @@ function updateCameraFP(dt,tgt){
     // the wheel, so the detailed cockpit (dash + wheel + gauges) reads in front of you
     // and the road shows through the windshield. Open vehicles (bike/boat/plane) keep
     // the eye further forward since they have no cabin to look into.
-    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:1.06;
-    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:.1;
-    const sideOff=(cur.bike||cur.boat||cur.plane)?0:-.36; // cars: sit on the driver (left) seat
+    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:cur.tractor?1.7:1.06;
+    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:cur.tractor?-.35:.1;
+    const sideOff=(cur.bike||cur.boat||cur.plane||cur.tractor)?0:-.36; // cars: sit on the driver (left) seat
     _fpEye.set(tgt.x+cf*fwd+crx*sideOff,tgt.y+up,tgt.z+cfz*fwd+crz*sideOff);
   }else{
     // Standing/walking: eyes near the crown of the head. tgt.y already carries the
