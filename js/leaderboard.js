@@ -55,16 +55,22 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Atualiza o top 5 nas duas listas que usam o mesmo ranking: a tela inicial
-// (#lb-list) e o overlay de pausa (#pause-lb-list).
+// (#lb-list) e o overlay de pausa (#pause-lb-list). Também mostra o total de
+// jogadores cadastrados no ranking (#lb-total / #pause-lb-total).
 export async function refreshTopPlayers() {
   const targets = ['lb-list', 'pause-lb-list']
     .map(id => document.getElementById(id))
     .filter(Boolean);
+  const totals = ['lb-total', 'pause-lb-total']
+    .map(id => document.getElementById(id))
+    .filter(Boolean);
   if (!targets.length) return;
-  let entries = [];
+  let entries = [], total = 0;
   try {
     const r = await fetch(API + '/api/scores?limit=5');
-    entries = (await r.json()).entries || [];
+    const data = await r.json();
+    entries = data.entries || [];
+    total = Number(data.total) || 0;
   } catch (e) {}
   const html = entries.length
     ? entries.map(e =>
@@ -74,6 +80,10 @@ export async function refreshTopPlayers() {
       ).join('')
     : '<li class="lb-empty">Be the first on the board!</li>';
   targets.forEach(el => { el.innerHTML = html; });
+  const totalText = total > 0
+    ? `${total.toLocaleString('en-US')} player${total === 1 ? '' : 's'} competing`
+    : '';
+  totals.forEach(el => { el.textContent = totalText; });
 }
 
 // reforço: manda o melhor score ao esconder/fechar a aba

@@ -22,7 +22,9 @@ async function getBoard(req, res) {
   const entries = [];
   for (let i = 0; i < raw.length; i += 2)
     entries.push({rank: entries.length + 1, name: String(raw[i]), money: Number(raw[i + 1])});
-  res.status(200).json({entries});
+  // total de jogadores no ranking (cardinalidade do sorted set), pra exibir na tela inicial
+  const total = await redis.zcard(C.LEADERBOARD_KEY);
+  res.status(200).json({entries, total: Number(total) || 0});
 }
 
 async function submit(req, res) {

@@ -339,6 +339,9 @@ body.mod-shop-open #btn-fullscreen{display:none!important}
 .lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lb-money{color:#7CFFB0;font-variant-numeric:tabular-nums}
 .lb-empty{display:block;text-align:center;opacity:.7;font-weight:600}
+.lb-total{margin-top:9px;text-align:center;font:700 12px 'IBM Plex Mono',monospace;
+  letter-spacing:.5px;color:var(--cyan);opacity:.85;text-shadow:0 0 8px rgba(25,227,255,.4)}
+.lb-total:empty{display:none}
 .lb-prize{margin-top:10px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.45;
   color:var(--cream);opacity:.85;text-align:center}
 .lb-prize b{color:var(--gold)}
