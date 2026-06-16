@@ -1,11 +1,11 @@
 // Verificação ASCII da costa da ilha (node puro, sem browser).
 // Desenha isLand de cima e confere conteúdo em terra / boias no mar.
 import {isLand,ruralHalf,cityCoastCheb,BOAT_SPAWN_X,BOAT_SPAWN_Z,
-  WATER,SWIM_BOUND,RURAL_X0,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,RURAL_TIP}
+  WATER,SWIM_BOUND,RURAL_X0,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,RURAL_TIP,TOWN_CX}
   from '../js/constants.js';
 
 // --- mapa ASCII (vista de cima) -------------------------------------------
-const X0=-300,X1=640,Z0=-300,Z1=300;
+const X0=-300,X1=770,Z0=-300,Z1=300;
 const COLS=120,ROWS=46;
 let out='';
 for(let r=0;r<ROWS;r++){
@@ -57,6 +57,9 @@ land.push(['pine extremo (565,-114)',565,-114,true]);
 land.push(['mountain E edge (570,0)',570,0,true]);
 land.push(['mountain side (550,46)',550,46,true]);
 land.push(['summit (509,0)',MOUNT_X,0,true]);
+// vila rural "Pine Hollow" (depois da montanha): tudo em terra
+for(const[px,pz]of[[TOWN_CX,0],[TOWN_CX,38],[TOWN_CX-30,22],[TOWN_CX+52,22],[TOWN_CX+50,-34],[TOWN_CX-54,9]])
+  land.push([`town (${px},${pz})`,px,pz,true]);
 // boias da prova (anel Chebyshev 253) — devem ser MAR
 const CR=Math.round((WATER+SWIM_BOUND)/2);
 // (eixo leste z≈0 é a península — ali NÃO há boia; boias do leste ficam a |z|≥142)

@@ -10,10 +10,26 @@ export const RURAL_X0=HALF+ROAD/2;      // 183: onde a cidade acaba
 // pasto: a península fica mais comprida e o fog dinâmico (daynight.js) esconde a
 // zona distante. RURAL_X0 segue na borda da cidade pra manter a estrada ligada.
 export const RURAL_GAP=130;
-export const RURAL_X1=RURAL_X0+260+RURAL_GAP; // ponta da península (depois é mar)
+export const RURAL_X1=RURAL_X0+410+RURAL_GAP; // fim do corpo da península: a montanha E a vila rural cabem aqui (depois afunila num bico de areia)
 export const RURAL_HALF=120;            // meia-largura da península em z
 export const MOUNT_X=RURAL_X0+196+RURAL_GAP;   // centro da montanha, empurrada pra leste
 export const MOUNT_R=62, MOUNT_H=46;    // raio da base e altura do pico
+// Vila rural ("Pine Hollow"), DEPOIS da montanha: cidadezinha de interior (praça,
+// igreja, mercadinho, caixa d'água, moinho). Terreno plano — nem a montanha nem as
+// colinas do corredor (HILL_X1) chegam tão a leste.
+export const TOWN_CX=650;               // centro da vila (x), além da base leste da montanha
+export const MOUNT_BYPASS_R=MOUNT_R+30; // raio da estrada de terra que contorna a montanha pelo norte
+// Traçado da estrada de terra rural: reta saindo da cidade, contorno da montanha
+// pelo NORTE num arco e reta atravessando a vila. Fonte ÚNICA pro chão (world.js) e
+// pro mapa (hud.js), pra estrada e radar baterem 1:1.
+export function ruralRoadPath(){
+  const pts=[],arcStart=MOUNT_X-MOUNT_BYPASS_R;
+  for(let x=RURAL_X0;x<=arcStart;x+=12)pts.push([x,0]);             // reta da cidade até a montanha
+  for(let a=Math.PI;a>=-1e-6;a-=Math.PI/16)                         // arco pelo norte (z>0)
+    pts.push([MOUNT_X+Math.cos(a)*MOUNT_BYPASS_R,Math.sin(a)*MOUNT_BYPASS_R]);
+  for(let x=MOUNT_X+MOUNT_BYPASS_R;x<=TOWN_CX+60;x+=12)pts.push([x,0]); // reta atravessando a vila
+  return pts;
+}
 // Montanha low poly: grade grossa de alturas compartilhada por física e visual.
 // Nós seguem um cone suavizado com variação aleatória (facetas irregulares);
 // o pico e as bordas ficam exatos.

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {N,CELL,ROAD,BLOCK,SIDE,HALF,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
-  RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,groundHeight,ruralHillH} from './constants.js';
+  RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,
+  TOWN_CX,ruralRoadPath,groundHeight,ruralHillH} from './constants.js';
 import {scene,renderer} from './engine.js';
 import {addPalm} from '../assets/models/props/palm.js';
 import {addUmbrella} from '../assets/models/props/umbrella.js';
@@ -23,6 +24,11 @@ import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
 import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
+import {addChurch} from '../assets/models/rural/church.js';
+import {addGeneralStore} from '../assets/models/rural/general-store.js';
+import {addWaterTower} from '../assets/models/rural/water-tower.js';
+import {addWindmill} from '../assets/models/rural/windmill.js';
+import {addTownSign} from '../assets/models/rural/town-sign.js';
 import {makeTexturedPlane} from '../assets/models/terrain/textured-plane.js';
 import {buildIsland,updateCoastFoam} from '../assets/models/terrain/island.js';
 import {addBeachRock} from '../assets/models/terrain/beach-rock.js';
@@ -205,11 +211,22 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
       x.beginPath();x.moveTo(u(fx0)+3,r);x.lineTo(u(fx1)-3,r);x.stroke();
     }
   }
-  // estrada de terra: sai da rua central da cidade e morre no pé da montanha
-  x.fillStyle='#b08a5e';x.fillRect(u(RURAL_X0),w(-3.4),u(MOUNT_X-MOUNT_R+16)-u(RURAL_X0),w(3.4)-w(-3.4));
+  // estrada de terra: sai da cidade, contorna a montanha pelo NORTE e atravessa a
+  // vila rural (mesmo traçado do radar — ver ruralRoadPath em constants.js)
+  const sx0=1024/RW,sz0=512/RD,roadW=7*(sx0+sz0)/2;
+  x.strokeStyle='#b08a5e';x.lineCap='round';x.lineJoin='round';x.lineWidth=roadW;
+  const rp=ruralRoadPath();
+  x.beginPath();rp.forEach(([px,pz],i)=>i?x.lineTo(u(px),w(pz)):x.moveTo(u(px),w(pz)));x.stroke();
+  // rua transversal N-S da vila (termina no pé da praça/igreja)
+  x.beginPath();x.moveTo(u(TOWN_CX),w(-46));x.lineTo(u(TOWN_CX),w(34));x.stroke();
+  // praça central: clareira de terra batida mais clara
+  x.fillStyle='#c2a275';
+  x.beginPath();x.ellipse(u(TOWN_CX),w(0),16*sx0,16*sz0,0,0,Math.PI*2);x.fill();
+  // poeira ao longo da estrada
   for(let k=0;k<420;k++){
-    x.fillStyle=`rgba(${irand(140,180)},${irand(105,135)},${irand(70,95)},.5)`;
-    x.fillRect(rand(u(RURAL_X0),u(MOUNT_X-MOUNT_R+16)),rand(w(-3.4),w(3.4)),irand(2,6),irand(1,3));
+    const seg=rp[irand(0,rp.length-1)];
+    x.fillStyle=`rgba(${irand(140,180)},${irand(105,135)},${irand(70,95)},.45)`;
+    x.fillRect(u(seg[0])+rand(-roadW/2,roadW/2),w(seg[1])+rand(-roadW/2,roadW/2),irand(2,6),irand(1,3));
   }
   // A orla irregular (areia/raso/espuma) agora vem da ilha (island.js); o pasto
   // só leva uma transição suave de grama mais clara/seca na linha de vegetação,
@@ -279,6 +296,34 @@ addHayBales();
   }
   // mirante no pico: mastro com bandeira (e a vista da cidade)
   addSummitFlag(MOUNT_X,MOUNT_H,0);
+}
+
+// ----- Vila rural "Pine Hollow": DEPOIS da montanha, no fim da península -----
+// Pequena cidadezinha de interior em volta de uma praça: igreja no topo, mercado
+// e casas na rua principal, moinho e caixa d'água ao sul. Terreno plano aqui.
+{
+  const cx=TOWN_CX;
+  // placa de boas-vindas na entrada (oeste), de frente pra quem chega pela estrada
+  solids.push(addTownSign(cx-54,9,-Math.PI/2));
+  // igreja no topo da praça (norte), torre/campanário voltados pra praça (sul)
+  solids.push(addChurch(cx,38,Math.PI));
+  // mercadinho + casas no lado norte da rua principal, de frente pro sul
+  solids.push(addGeneralStore(cx-30,22,Math.PI));
+  solids.push(addFarmHouse(cx+34,22,Math.PI));
+  solids.push(addFarmHouse(cx+52,22,Math.PI));
+  // moinho, casas e caixa d'água no lado sul, de frente pro norte
+  solids.push(addWindmill(cx-36,-28));
+  solids.push(addFarmHouse(cx-14,-24,0));
+  solids.push(addFarmHouse(cx+22,-24,0));
+  solids.push(addWaterTower(cx+50,-34));
+  // bandeira no centro da praça
+  addSummitFlag(cx,0,0);
+  // postes de luz ao longo da rua principal
+  for(const lx of[cx-44,cx-18,cx+18,cx+44])addStreetLamp(lx,7);
+  // pinheiros cercando a vila
+  for(const[px,pz]of[[cx-58,-44],[cx-40,-50],[cx-10,-52],[cx+24,-52],[cx+54,-46],
+    [cx-58,44],[cx-30,52],[cx+8,54],[cx+44,50],[cx+60,40],[cx+62,-30]])
+    addPine(px,pz);
 }
 
 // espuma da costa (anéis polares da cidade + tiras da península) — ver island.js

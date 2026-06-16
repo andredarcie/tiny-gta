@@ -1,5 +1,5 @@
 import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
-  RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,
+  RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,TOWN_CX,ruralRoadPath,
   cityCoastR,isLand} from './constants.js';
 import {state,input,refs} from './state.js';
 import {isPark} from './world.js';
@@ -181,13 +181,21 @@ mmRural.width=Math.round(RRW*.8);mmRural.height=Math.round(RRD*.8);
   for(const[a,b,d,e]of[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
     .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]))
     x.fillRect(U(a),W(d),(b-a)*sx,(e-d)*sz);
-  x.fillStyle='#b08a5e';                                        // estrada de terra
-  x.fillRect(U(RURAL_X0),W(-3.4),(MOUNT_X-MOUNT_R+16-RURAL_X0)*sx,6.8*sz);
-  // montanha em níveis de elevação
+  // montanha em níveis de elevação (sob a estrada que a contorna)
   for(const[r,col]of[[MOUNT_R,'#8d8f99'],[MOUNT_R*.62,'#a9adb8'],[MOUNT_R*.28,'#c9ccd4']]){
     x.fillStyle=col;x.beginPath();
     x.ellipse(U(MOUNT_X),W(0),r*sx,r*sz,0,0,Math.PI*2);x.fill();
   }
+  // estrada de terra: cidade → contorno da montanha → vila (mesmo traçado do chão)
+  x.strokeStyle='#b08a5e';x.lineCap='round';x.lineJoin='round';x.lineWidth=7*(sx+sz)/2;
+  const rp=ruralRoadPath();
+  x.beginPath();rp.forEach(([px,pz],i)=>i?x.lineTo(U(px),W(pz)):x.moveTo(U(px),W(pz)));x.stroke();
+  x.beginPath();x.moveTo(U(TOWN_CX),W(-46));x.lineTo(U(TOWN_CX),W(34));x.stroke();
+  // edifícios da vila "Pine Hollow" (quadradinhos)
+  x.fillStyle='#9a6f4d';
+  for(const[bx,bz,bw]of[[TOWN_CX,38,7],[TOWN_CX-30,22,6],[TOWN_CX+34,22,5],[TOWN_CX+52,22,5],
+    [TOWN_CX-14,-24,5],[TOWN_CX+22,-24,5],[TOWN_CX-36,-28,4],[TOWN_CX+50,-34,5]])
+    x.fillRect(U(bx-bw/2),W(bz-bw/2),bw*sx,bw*sz);
 }
 
 // O mapa NUNCA muda depois de gerado, a escala do radar é constante e o radar é
