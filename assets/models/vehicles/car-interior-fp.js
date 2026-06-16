@@ -97,7 +97,8 @@ function gripHand(side){
   hand.rotation.set(.35,0,side*.25);                  // wrap the rim naturally
   arm.add(hand);
   const foreGrp=new THREE.Group();
-  foreGrp.rotation.set(-.7,0,side*.45);               // aim the forearm down-back-inward to the lap
+  foreGrp.rotation.set(.7,0,side*.45);                // aim the forearm down-and-BACK toward the
+                                                      // driver/camera (not forward into the wheel)
   const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.038,.3,6,12),SLEEVE);
   fore.position.set(0,-.2,0);
   fore.castShadow=false;
