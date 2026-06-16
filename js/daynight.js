@@ -110,6 +110,9 @@ const {points:starPoints,material:starMat}=makeStarField();skyLayer.add(starPoin
 for(const c of clouds)c.userData.op0=c.material.opacity;
 
 const SUNSET_TINT=new THREE.Color(0xff5a28);
+// Luminous haze tint for the dense rural fog on a SUNNY day, so the countryside
+// reads as bright sunlit bruma (não um cinza de tempo fechado). Ver updateDayNight.
+const RURAL_HAZE=new THREE.Color(0xeef1e9);
 // Bulbo do poste: apagado (cinza) de dia, quente e brilhante à noite
 const BULB_DAY=new THREE.Color(0x9a948e),BULB_NIGHT=new THREE.Color(0xffd9a0);
 
@@ -140,15 +143,26 @@ export function updateDayNight(dt){
 
   scene.fog.color.copy(cur.fog);
   // Fog por zona: na cidade o alcance é amplo (vê a cidade inteira); ao entrar na
-  // zona rural ele encolhe (430→230), escondendo a cidade distante na névoa — e,
-  // da cidade, a zona rural distante. Transição suave no corredor de pasto.
-  // Mirante: do alto da montanha o horizonte reabre (a névoa recua com a altitude).
+  // zona rural ele fica bem mais denso (ver distâncias abaixo), escondendo a cidade
+  // distante na névoa — e, da cidade, a zona rural distante. Transição suave no
+  // corredor de pasto. Mirante: do alto da montanha o horizonte reabre.
   const ppos=refs.playerPos?.();
   const ruralF=clamp(((ppos?ppos.x:0)-RURAL_X0)/120,0,1);
-  // Cap em 430: o mirante ainda abre a névoa com a altitude, mas não ao ponto de
-  // anular o culling da cidade (que corta ~400m). Assim a região cortada cai no
-  // haze em vez de virar "chão vazio" visível do alto.
-  scene.fog.far=Math.min(300-ruralF*70+(ppos?Math.max(0,ppos.y)*14:0),430);
+  // De dia com sol, a névoa rural densa deve parecer uma BRUMA luminosa (não um
+  // cinza de tempo fechado): clareia a cor da névoa em direção ao haze, na medida
+  // de quão rural se está E de quão forte está o sol (sunI ~2.4 ao meio-dia, ~.5 à
+  // noite) — então amanhecer/entardecer/noite mantêm a própria névoa. Não mexe no
+  // sol nem nas distâncias; só na cor.
+  const dayF=clamp((cur.sunI-1.2)/1.0,0,1);
+  scene.fog.color.lerp(RURAL_HAZE,ruralF*dayF*.55);
+  // Fog por zona. Na zona rural ele fica BEM mais denso (perto e longe puxados pra
+  // dentro): props (pinheiros, postes, igreja e o forte, todos assados) somem no
+  // culling a ~160m, então a névoa precisa fechar ANTES disso pra esconder o
+  // "pop-in" do carregamento. far rural ~155 (< culling) + near antecipado deixam
+  // o objeto totalmente no haze quando é cortado. Cap em 430 e o termo de altitude
+  // mantêm o mirante: do alto da montanha o horizonte reabre.
+  scene.fog.near=120-ruralF*48;
+  scene.fog.far=Math.min(300-ruralF*145+(ppos?Math.max(0,ppos.y)*14:0),430);
   renderer.toneMappingExposure=cur.exp;
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;

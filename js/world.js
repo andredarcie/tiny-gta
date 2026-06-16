@@ -21,6 +21,7 @@ import {addPrison,PRISON_I,PRISON_J} from '../assets/models/city/prison.js';
 import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../assets/models/city/gun-shop.js';
 import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../assets/models/city/workshop.js';
 import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
+import {addAbandonedFort} from '../assets/models/rural/abandoned-fort.js';
 import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
@@ -389,6 +390,13 @@ addHayBales();
     [cx-58,44],[cx-30,52],[cx+8,54],[cx+44,50],[cx+60,40],[cx+62,-30]])
     addPine(px,pz);
 }
+
+// ----- Abandoned military base: a walled, ruined fort on the open ground north
+// of the mountain, between it and the village. Drive in through the front gate or
+// slip in through the crumbled breach in the back wall. -----
+addAbandonedFort(solids,606,88);
+// a few pines screening the fort from the road
+for(const[px,pz]of[[574,70],[580,108],[636,112],[630,66]])addPine(px,pz);
 
 // espuma da costa (anéis polares da cidade + tiras da península) — ver island.js
 export function updateBeach(time){updateCoastFoam(coastFoam,time);}

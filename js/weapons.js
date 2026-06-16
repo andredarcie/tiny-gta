@@ -424,10 +424,21 @@ const _camDir=new THREE.Vector3(),_muzzle=new THREE.Vector3(),
   _flatDir=new THREE.Vector3(),_aimPoint=new THREE.Vector3(),_gmRight=new THREE.Vector3();
 const _ray={origin:_muzzle,dir:_aimPoint};
 const _molDir=new THREE.Vector3(); // direção do molotov em voo (scratch)
+const _hand=new THREE.Vector3();   // firing-hand world position (gun placement)
 let _xhairT=0; // acumulador do throttle do alvo do crosshair
 function aimRay(range=48){
   camera.getWorldDirection(_camDir);
   const muzzle=getMuzzleWorldPosition(_muzzle);
+  // First person: the gun barrel rides the camera, so the shot must follow the
+  // camera's TRUE 3D direction starting AT the muzzle — then the bullet/tracer
+  // visibly leaves the barrel toward the crosshair (vertical aim included). Third
+  // person keeps the horizontal aim below (shots travel level at muzzle height).
+  if(fpHolderActive()){
+    _aimPoint.copy(_camDir);
+    if(_aimPoint.lengthSq()<.0001)_aimPoint.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+    _aimPoint.normalize();
+    return _ray; // origin=_muzzle (barrel tip), dir=_aimPoint (camera forward)
+  }
   _flatDir.set(_camDir.x,0,_camDir.z);
   if(_flatDir.lengthSq()<.0001)_flatDir.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
   _flatDir.normalize();
@@ -457,13 +468,47 @@ function getMuzzleWorldPosition(out){
 function posePlayerWithGun(){
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
-  poseAiming(player.g,gunKick); // pose padrão de mira (mesma de NPCs/polícia)
+  poseAiming(player.g,gunKick); // base aiming pose (shared with NPCs/police)
+  applyGripPose(curWeapon.hold?.grip,limbs); // weapon-specific arm posture (player only)
   const h=curWeapon.hold||{};
+  // Seat the weapon IN the firing hand: read the (now-posed) forearm bone and place
+  // the holder at the hand, so the gun sits in the grip at any scale instead of
+  // floating at a fixed body point. Refresh the bone world matrices for the pose
+  // set above; the hand is ~0.28 down the forearm bone's local axis.
+  player.g.updateWorldMatrix(true,true);
+  const fore=limbs.rightForearm||limbs.rightArm;
+  _hand.set(0,-.28,0).applyMatrix4(fore.matrixWorld);
+  player.g.worldToLocal(_hand);
   heldHolder.position.set(
-    limbs.rightArm.position.x+(h.x||0),
-    1.26+(h.y||0),
-    .67+(h.z||0)-gunKick*.75);
+    _hand.x+(h.x||0),
+    _hand.y+(h.y||0),
+    _hand.z+(h.z||0)-gunKick*.75);
   heldHolder.rotation.set(-.03-gunKick*.9+(h.rx||0),(h.ry||0),-.03+(h.rz||0));
+}
+
+// Player-only realistic posture per weapon, layered ON TOP of poseAiming (which
+// already extends the firing arm forward). Only the player calls this — NPC/police
+// keep the generic two-arm aim. Arm bones: rotation.x ≈ -π/2 points the arm
+// straight forward; the support (left) arm reaches onto the weapon.
+function applyGripPose(grip,l){
+  if(!grip||!l.leftArm)return;
+  if(grip==='pistol'){
+    // two-handed clasp: the support hand comes up to meet the firing hand
+    l.leftArm.rotation.set(-1.46,.16,.12);
+    if(l.leftForearm)l.leftForearm.rotation.x=-.32;
+  }else if(grip==='smg'||grip==='rifle'){
+    // support hand forward on the foregrip, both elbows tucked in
+    l.leftArm.rotation.set(-1.30,.12,.16);
+    if(l.leftForearm)l.leftForearm.rotation.x=-.55;
+    l.rightArm.rotation.z=-.05;
+  }else if(grip==='shoulder'){
+    // launcher braced on the shoulder: firing elbow up at the rear grip, support
+    // hand under the tube
+    l.rightArm.rotation.set(-1.24,-.06,-.30);
+    if(l.rightForearm)l.rightForearm.rotation.x=-.22;
+    l.leftArm.rotation.set(-1.06,.20,.30);
+    if(l.leftForearm)l.leftForearm.rotation.x=-.70;
+  }
 }
 
 // Porte parado (arma melee não erguida): segura a arma baixa junto ao corpo e
@@ -848,7 +893,9 @@ function damageCar(car,arr,pos,dir,dmg=1){
 }
 
 function addTracer(origin,end){
-  const line=makeWeaponTracerLine(origin.clone(),new THREE.Vector3(end.x,origin.y,end.z));
+  // Keep the true 3D end so first-person tracers angle with the aim (in third
+  // person the shot is already level, so end.y === origin.y and nothing changes).
+  const line=makeWeaponTracerLine(origin.clone(),end.clone());
   scene.add(line);tracers.push({line,t:0});
 }
 
