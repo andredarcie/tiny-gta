@@ -3,7 +3,7 @@ import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
   cityCoastR,isLand} from './constants.js';
 import {state,input,refs} from './state.js';
 import {isPark} from './world.js';
-import {getTod} from './daynight.js';
+import {getTod,getWeekday} from './daynight.js';
 import {paintWeaponGlyph} from './weapon-icon.js';
 import {MiniGame} from './minigame.js';
 import {inGangTerritory} from './gangs.js';
@@ -700,8 +700,8 @@ export function updateHUD(dt){
   if(Math.abs(shownMoney-state.money)<1)shownMoney=state.money;
   const moneyS='$'+String(Math.max(0,Math.round(shownMoney))).padStart(8,'0');
   if(moneyS!==_money){hudMoney.textContent=moneyS;_money=moneyS;}
-  const min=Math.floor(getTod()*1440);              // relógio segue o ciclo de dia/noite
-  const clockS=String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0');
+  const min=Math.floor(getTod()*1440);              // clock follows the Brasília day/night time
+  const clockS=String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0')+' '+getWeekday();
   if(clockS!==_clock){hudClock.textContent=clockS;_clock=clockS;}
   const hp=Math.max(0,Math.round(state.health));
   if(hp!==_health){hudHealth.textContent=hp;_health=hp;}

@@ -32,6 +32,9 @@ const fixedTod=isNaN(urlTod)?null:((urlTod%1)+1)%1;
 let tod=fixedTod??brasiliaTod();
 export const getTod=()=>tod;
 export const setTod=v=>{tod=((v%1)+1)%1;};
+// Short English weekday (MON..SUN) for the current Brasília date — shown on the HUD.
+const brasiliaDayFmt=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'});
+export const getWeekday=()=>brasiliaDayFmt.format(new Date()).toUpperCase();
 // Day counter: bumps every time the clock wraps past midnight. Used by the gym
 // (js/gym.js) to allow training only once per day.
 let dayCount=0;
