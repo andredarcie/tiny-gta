@@ -1,34 +1,47 @@
 import * as THREE from 'three';
 
-// First-person viewmodel arms: two short sleeved forearms with simple hands, posed
-// to grip a weapon held in front of the camera (see js/weapons.js applyViewModel).
-// Pure factory — gameplay code (js/**) must not define geometry, so the meshes
-// live here. Local space, as weapons.js orients it: +X right, +Y up, -Z into the
-// screen (so the arms hang down toward the bottom corners and reach to the grip).
+// First-person hands. A single, more detailed hand (palm + curled fingers + thumb)
+// used ONLY in first person (the gun viewmodel and the car cockpit grip), so the
+// extra polys cost nothing in the third-person world. Built with the wrist at the
+// origin, palm facing -Z (toward what it grips) and fingers reaching +Y then curling
+// over the front; `side` (+1 right / -1 left) puts the thumb on the inner edge.
 
-const foreGeo=new THREE.CapsuleGeometry(.04,.24,6,12); // sleeved forearm (along -Y)
-const wristGeo=new THREE.SphereGeometry(.042,12,10);
-const handGeo=new THREE.BoxGeometry(.072,.046,.1);     // simple blocky hand
-const thumbGeo=new THREE.BoxGeometry(.026,.044,.05);
+const palmGeo  =new THREE.BoxGeometry(.058,.07,.028);
+const fingerGeo=new THREE.BoxGeometry(.013,.05,.024);
+const thumbGeo =new THREE.BoxGeometry(.016,.044,.022);
 
-// One arm: group origin is the wrist (the grip point); the forearm hangs toward the
-// elbow and the whole arm is tilted so it comes in from the bottom corner.
+// A bare hand (no sleeve). Reused by the gun viewmodel and the steering grip.
+export function buildHand(skinMat,side=1){
+  const h=new THREE.Group();
+  h.add(new THREE.Mesh(palmGeo,skinMat));                 // palm at the origin
+  const knuckle=new THREE.Mesh(new THREE.BoxGeometry(.058,.02,.028),skinMat);
+  knuckle.position.set(0,.045,-.004);                     // rounded knuckle ridge
+  h.add(knuckle);
+  for(let i=0;i<4;i++){                                   // four fingers, curled over (-Z)
+    const f=new THREE.Mesh(fingerGeo,skinMat);
+    f.position.set((-1.5+i)*.0155,.052,-.02);
+    f.rotation.x=-.95;
+    h.add(f);
+  }
+  const t=new THREE.Mesh(thumbGeo,skinMat);               // thumb on the inner side
+  t.position.set(side*.034,.012,-.012);
+  t.rotation.set(-.4,0,side*.7);
+  h.add(t);
+  return h;
+}
+
+// A full arm: hand + a sleeved forearm hanging toward the elbow. Used by the gun
+// viewmodel (hands come up from the bottom of the screen to grip the weapon).
 function buildArm(skinMat,sleeveMat,side){
   const arm=new THREE.Group();
-  const hand=new THREE.Mesh(handGeo,skinMat);
-  hand.position.set(0,0,-.035);         // knuckles a touch into the screen
+  const hand=buildHand(skinMat,side);
+  hand.position.set(0,0,-.02);
   arm.add(hand);
-  const thumb=new THREE.Mesh(thumbGeo,skinMat);
-  thumb.position.set(side*.042,.012,-.015);
-  arm.add(thumb);
-  arm.add(new THREE.Mesh(wristGeo,skinMat));
-  const fore=new THREE.Mesh(foreGeo,sleeveMat);
-  fore.position.set(0,-.15,.015);       // hangs below the wrist
+  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.04,.26,6,12),sleeveMat);
+  fore.position.set(0,-.17,.02);
   fore.castShadow=false;
   arm.add(fore);
-  // tilt mostly straight down with a little outward splay (less toward the viewer,
-  // so the elbows drop out of frame instead of looming large)
-  arm.rotation.set(-.5,0,side*.32);
+  arm.rotation.set(-.5,0,side*.32);                       // down-back-outward toward the corner
   return arm;
 }
 
@@ -46,5 +59,8 @@ export function makeFpHands({skin=0xd9a06b,sleeve=0x19e3ff}={}){
   return g;
 }
 
-// Model-viewer descriptor (auto-discovered). Shown straight-on for inspection.
-export default {category:'Characters',label:'FP Hands',build:()=>makeFpHands()};
+// Model-viewer descriptor (auto-discovered). Shows a hand straight-on for inspection.
+export default {category:'Characters',label:'FP Hand',build:()=>{
+  const m=new THREE.MeshStandardMaterial({color:0xc8a06a,roughness:.85});
+  return buildHand(m,1);
+}};

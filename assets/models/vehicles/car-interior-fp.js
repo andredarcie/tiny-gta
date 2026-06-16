@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {buildHand} from '../characters/fp-hands.js';
 
 // Detailed first-person CAR cockpit — ONE shared model, used by the player's car
 // only while in first person inside a car (loaded/unloaded by js/player.js). It is
@@ -85,20 +86,23 @@ function makeGauge(x,withNeedle){
   return {group:g,needle};
 }
 
-// A driver's hand gripping the wheel rim + forearm reaching down toward the lap.
-// Built in the wheel's local space and parented to the spinning wheel, so the hands
-// turn WITH the wheel as you steer (natural hand-on-wheel motion).
+// A driver's hand gripping the wheel rim + a forearm reaching down to the lap. The
+// hand (a real palm+fingers, not a ball) grips at the group origin; the sleeved
+// forearm is a SEPARATE rotated child, so it clearly connects the hand to an arm
+// going off the bottom of the view WITHOUT twisting the hand off the wheel. Parented
+// to the spinning wheel, so the hands turn WITH the wheel as you steer.
 function gripHand(side){
   const arm=new THREE.Group();
-  const hand=new THREE.Mesh(new THREE.SphereGeometry(.06,12,10),SKIN);
-  hand.scale.set(1.25,.72,1.3);
+  const hand=buildHand(SKIN,side);
+  hand.rotation.set(.35,0,side*.25);                  // wrap the rim naturally
   arm.add(hand);
-  arm.add(mesh(new THREE.BoxGeometry(.07,.03,.05),SKIN,0,.02,.02)); // knuckles over the rim
-  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.045,.34,6,12),SLEEVE);
-  fore.position.set(0,-.22,.02);                      // hangs below the grip toward the elbow
-  arm.add(fore);
-  // aim the forearm down toward the driver (+Z) and inward toward the lap centre
-  arm.rotation.set(-.55,0,side*.42);
+  const foreGrp=new THREE.Group();
+  foreGrp.rotation.set(-.7,0,side*.45);               // aim the forearm down-back-inward to the lap
+  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.038,.3,6,12),SLEEVE);
+  fore.position.set(0,-.2,0);
+  fore.castShadow=false;
+  foreGrp.add(fore);
+  arm.add(foreGrp);
   return arm;
 }
 
@@ -145,9 +149,10 @@ export function buildCarInteriorFp(){
   }
   wheelSpin.add(mesh(new THREE.CylinderGeometry(.052,.052,.03,16),TRIM,0,0,0,Math.PI/2)); // hub
   wheelSpin.add(mesh(new THREE.CircleGeometry(.03,16),METAL,0,0,.018));                    // hub badge
-  // driver's hands at ~10 and 2 o'clock, gripping and turning with the wheel
-  const lh=gripHand(1);lh.position.set(-.13,.075,.01);wheelSpin.add(lh);
-  const rh=gripHand(-1);rh.position.set(.13,.075,.01);wheelSpin.add(rh);
+  // driver's hands near the TOP of the wheel (~10 and 2 o'clock) — that upper arc is
+  // the part actually in view, so the hands read at rest; they turn with the wheel
+  const lh=gripHand(1);lh.position.set(-.115,.105,.012);wheelSpin.add(lh);
+  const rh=gripHand(-1);rh.position.set(.115,.105,.012);wheelSpin.add(rh);
   g.add(wheelTilt);
   g.userData.steerWheel=wheelSpin;
 
@@ -190,17 +195,15 @@ export function buildCarInteriorFp(){
   g.add(mesh(new THREE.BoxGeometry(.21,.055,.025),DASH,.05,1.33,.61));
   g.add(mesh(new THREE.BoxGeometry(.185,.042,.008),GAUGEF,.05,1.33,.6));  // mirror glass
 
-  // ---- seats: caramel leather with dark suede centre inserts + headrests ----
+  // ---- seats: caramel leather with darker side bolsters + headrest. Pieces are
+  // sized/offset so no two boxes share a coplanar face (that coplanarity was the
+  // flickering "bug" on the seat side — classic z-fighting). ----
   for(const x of[DX,.38]){
-    g.add(mesh(new THREE.BoxGeometry(.5,.56,.13),TAN,x,.52,-.46,-.12));   // backrest
-    g.add(mesh(new THREE.BoxGeometry(.3,.5,.06),DASH,x,.52,-.4,-.12));    // dark centre insert
-    g.add(mesh(new THREE.BoxGeometry(.46,.16,.5),TAN,x,.24,-.12));        // cushion
-    g.add(mesh(new THREE.BoxGeometry(.3,.16,.42),DASH,x,.245,-.12));      // cushion centre insert
-    g.add(mesh(new THREE.BoxGeometry(.2,.18,.1),TAN,x,.86,-.5));          // headrest
-    g.add(mesh(new THREE.BoxGeometry(.06,.5,.14),TAND,x-.22,.52,-.45,-.12)); // bolster L
-    g.add(mesh(new THREE.BoxGeometry(.06,.5,.14),TAND,x+.22,.52,-.45,-.12)); // bolster R
-    g.add(mesh(new THREE.BoxGeometry(.004,.42,.05),STITCH,x-.15,.52,-.36,-.12)); // stitch lines (proud)
-    g.add(mesh(new THREE.BoxGeometry(.004,.42,.05),STITCH,x+.15,.52,-.36,-.12));
+    g.add(mesh(new THREE.BoxGeometry(.5,.58,.12),TAN,x,.53,-.46,-.12));      // backrest
+    g.add(mesh(new THREE.BoxGeometry(.08,.5,.22),TAND,x-.28,.54,-.38,-.12)); // side bolster L
+    g.add(mesh(new THREE.BoxGeometry(.08,.5,.22),TAND,x+.28,.54,-.38,-.12)); // side bolster R
+    g.add(mesh(new THREE.BoxGeometry(.46,.16,.5),TAN,x,.245,-.12));          // cushion
+    g.add(mesh(new THREE.BoxGeometry(.2,.17,.12),TAN,x,.92,-.5));            // headrest
   }
 
   return g;
