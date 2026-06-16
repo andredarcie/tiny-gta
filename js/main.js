@@ -48,7 +48,7 @@ import {modShopState,modShopInteract,updateModShop,workshopBlip} from './mod-sho
 import {hospitalAdmit} from './hospital.js';
 import {prisonAdmit} from './prison.js';
 import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from './gun-shop.js';
-import {recordBest} from './leaderboard.js';
+import {scheduleFlush} from './leaderboard.js';
 import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from './property.js';
 import {houseTvState,updateHouseTv,getHouseTvState} from './house-tv.js';
 import {updateDoors} from './doors.js';
@@ -231,7 +231,7 @@ function step(dt){
   updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
   P.end();
   P.begin('hud');updateHUD(dt);P.end();
-  recordBest(state.money); // acompanha o maior dinheiro pro ranking global
+  scheduleFlush(); // mantém o envio agendado (ranking = dinheiro atual + save)
   P.begin('audio');updateAudio();P.end();
   // Radar redesenhado a ~22fps (ver MM_INTERVAL): liberar a main thread sem
   // impacto visual perceptível.

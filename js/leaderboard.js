@@ -1,14 +1,17 @@
 // Cliente do ranking global (backend Vercel + Upstash). O front só faz fetch:
 //  - startSession(): abre a sessão e RESTAURA o save do jogador (dinheiro+itens)
-//  - recordBest(money): acompanha o maior dinheiro da run (pico = ranking)
-//  - flush(): envia o pico (ranking) E o save de progresso (saldo atual+itens)
+//  - scheduleFlush(): mantém um envio agendado (chamado todo frame)
+//  - flush(): envia o DINHEIRO ATUAL (ranking) + o save de progresso (itens)
 //  - refreshTopPlayers(): desenha o top 5 na tela inicial
+//
+// O ranking reflete o DINHEIRO ATUAL do jogador (não mais o pico): é mais justo —
+// quem gastou cai, quem acumula sobe. O backend grava o valor recebido (sem GT).
 import { refs } from './state.js';
 export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 const PID_KEY = 'tinygta_pid';
 
-let token = null, bestMoney = 0, lastSig = '', flushTimer = null;
+let token = null, lastSig = '', flushTimer = null;
 let nickname = '';
 try { nickname = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
 
@@ -38,10 +41,9 @@ export function setNickname(n) {
 }
 
 // Abre a sessão e devolve o SAVE desse (id, nick) — o chamador (js/save.js via
-// input.js) restaura dinheiro + itens. O pico do ranking começa no saldo salvo
-// (GT protege o recorde por nome de qualquer jeito).
+// input.js) restaura dinheiro + itens.
 export async function startSession() {
-  token = null; bestMoney = 0; lastSig = '';
+  token = null; lastSig = '';
   let save = null;
   try {
     const r = await fetch(API + '/api/session', {
@@ -53,28 +55,26 @@ export async function startSession() {
     token = data.token;
     save = data.save || (data.money > 0 ? { money: Math.floor(data.money) } : null);
   } catch (e) {}
-  const m = save && Number.isFinite(save.money) ? Math.max(0, Math.floor(save.money)) : 0;
-  if (m > 0) bestMoney = m;
   return save;
 }
 
-// Acompanha o maior dinheiro da run (pico = ranking) e mantém um envio agendado.
-// Chamado todo frame; o setTimeout guardado por flushTimer faz o throttle (~3s),
-// e o flush() só posta de fato quando algo mudou (assinatura — dedupe).
-export function recordBest(money) {
-  if (typeof money === 'number' && money > bestMoney) bestMoney = money;
+// Chamado todo frame: mantém um envio agendado. O setTimeout guardado por
+// flushTimer faz o throttle (~3s); o flush() só posta quando algo mudou
+// (assinatura — dedupe).
+export function scheduleFlush() {
   if (token && nickname && !flushTimer)
     flushTimer = setTimeout(() => { flushTimer = null; flush(); }, 3000);
 }
 
-// Envia ao backend: `money` = PICO da partida (ranking, GT no servidor) e `save`
-// = blob de progresso (saldo ATUAL + itens). Dedupe por assinatura pra não
-// repostar igual. keepalive sobrevive ao unload (pagehide/visibilitychange).
+// Envia ao backend o DINHEIRO ATUAL (ranking, sem GT no servidor) + o `save`
+// (saldo atual + itens). O valor do ranking é o saldo atual do blob — ranking e
+// save ficam no mesmo número. Dedupe por assinatura; keepalive sobrevive ao
+// unload (pagehide/visibilitychange).
 export function flush() {
   if (flushTimer) { clearTimeout(flushTimer); flushTimer = null; }
   if (!token || !nickname) return;
-  const money = Math.max(0, Math.round(bestMoney));
   const save = refs.collectSave?.() || null;
+  const money = save ? Math.max(0, Math.floor(Number(save.money) || 0)) : 0;
   const sig = money + '#' + (save ? JSON.stringify(save) : '');
   if (sig === lastSig) return;       // nada mudou desde o último envio
   lastSig = sig;                     // otimista; em erro volta pra '' e tenta de novo

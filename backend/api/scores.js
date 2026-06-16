@@ -70,11 +70,13 @@ async function submit(req, res) {
     if (blob) await redis.set(C.SAVE_PREFIX + C.saveMember(pid, name), blob);
   }
 
-  // 6) leaderboard (PICO da partida): plausibilidade + GT por nome. O 422 faz o
-  //    cliente reagendar e reenviar — o pico legítimo entra quando o teto cresce.
+  // 6) leaderboard = DINHEIRO ATUAL do jogador (não mais o pico): grava o valor
+  //    recebido por nome, SEM GT — quem gasta cai no ranking, quem acumula sobe.
+  //    Continua barrado pela plausibilidade (não dá pra forjar um salto). O 422
+  //    faz o cliente reagendar e reenviar quando o teto cresce.
   if (money > maxAllowed)
     return res.status(422).json({error: 'implausible_score', maxAllowed: Math.floor(maxAllowed)});
-  await redis.zadd(C.LEADERBOARD_KEY, {gt: true}, {score: money, member: name});
+  await redis.zadd(C.LEADERBOARD_KEY, {score: money, member: name});
   const rank = await redis.zrevrank(C.LEADERBOARD_KEY, name);
   res.status(200).json({ok: true, name, money, rank: rank == null ? null : rank + 1});
 }
