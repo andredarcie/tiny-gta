@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {buildHand} from '../characters/fp-hands.js';
+import {buildHand,buildGripHand} from '../characters/fp-hands.js';
 
 // Detailed first-person CAR cockpit — ONE shared model, used by the player's car
 // only while in first person inside a car (loaded/unloaded by js/player.js). It is
@@ -111,16 +111,20 @@ function addWheelArms(wheelSpin){
     // straddles the rim plane (z≈0) so the fingers actually curl AROUND the rim —
     // back of hand + knuckles toward the driver, fingertips just behind the rim. That
     // reads as gripping (GTA-style), not hovering in front.
-    const hx=side*.115, hy=.115, hz=.018;
+    // grip point ON the rim tube (radius ~.165, z=0) in the open top gap between the
+    // upper spokes (~10:30 / 1:30) so the wrapping fingers don't hit a spoke
+    const hx=side*.117, hy=.117, hz=0;
     // elbow routed far DOWN and OUTWARD so the forearm crosses the wheel plane OUTSIDE
     // the rim ring (no clipping through the wheel) on its way to the lap.
     const ex=side*.42, ey=-.5, ez=-.34;
     wheelSpin.add(limb(SLEEVE,.032, hx,hy,hz, ex,ey,ez));           // slim forearm: rim → elbow
     wheelSpin.add(mesh(new THREE.SphereGeometry(.034,10,8),SLEEVE,ex,ey,ez)); // cuff
-    const hand=buildHand(SKIN,side);
+    // wrap-grip hand: its origin is the rim tube, so place it AT the grip point and
+    // spin it so the hand's X aligns with the rim tangent there (perpendicular to the
+    // radius), making the fingers wrap over the outer edge of the rim
+    const hand=buildGripHand(SKIN,side);
     hand.position.set(hx,hy,hz);
-    // tilt so the fingers curl over the top of the rim and wrap to the back
-    hand.rotation.set(-.5,0,side*.35);
+    hand.rotation.z=Math.atan2(hy,hx)-Math.PI/2;
     wheelSpin.add(hand);
   }
 }

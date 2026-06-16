@@ -11,6 +11,34 @@ const knuckGeo =new THREE.BoxGeometry(.065,.018,.024);
 const fingerGeo=new THREE.BoxGeometry(.013,.05,.019);
 const thumbGeo =new THREE.BoxGeometry(.016,.044,.02);
 
+// Small box helper (position + rotation) for the wrap-grip hand below.
+function bx(mat,w,h,d,x,y,z,rx=0,ry=0,rz=0){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+  m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=false;
+  return m;
+}
+
+// A hand WRAPPED around a wheel rim (a real grip). Origin = the rim tube itself, so
+// callers just place this at the grip point on the rim. Local axes: +Z toward the
+// driver (back of hand + knuckles visible), +Y radially out (toward the rim's outer
+// edge), the rim running along X through the origin. The four fingers drape over the
+// rim and curl down/behind it in TWO segments each (proximal over the front, distal
+// hooking behind), and the thumb opposes on the near side — so the rim is enclosed by
+// the grip and partly hidden, exactly like a hand holding a wheel. FP-only, so the
+// extra segments are cheap. `side` (+1 right / -1 left) sets the thumb side.
+export function buildGripHand(skinMat,side=1){
+  const h=new THREE.Group();
+  h.add(bx(skinMat,.072,.05,.026, 0,.012,.02));         // back of the hand (driver side of rim)
+  h.add(bx(skinMat,.07,.022,.03,  0,.026,-.002));       // knuckle ridge, at the top-front of the rim
+  for(let i=0;i<4;i++){
+    const fx=(-1.5+i)*.0165;
+    h.add(bx(skinMat,.014,.034,.017, fx,.006,-.026, -1.55));  // proximal: drapes DOWN the rim front
+    h.add(bx(skinMat,.013,.028,.015, fx,-.024,-.03, -2.5));   // distal: curls UNDER, behind the rim
+  }
+  h.add(bx(skinMat,.018,.046,.02, side*.044,.006,.012, .55,0,side*.75)); // thumb opposing, down the near side
+  return h;
+}
+
 // A bare hand (no sleeve). Reused by the gun viewmodel and the steering grip.
 export function buildHand(skinMat,side=1){
   const h=new THREE.Group();
