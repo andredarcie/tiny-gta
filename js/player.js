@@ -1210,8 +1210,8 @@ function updateCameraFP(dt,tgt){
     // the wheel, so the detailed cockpit (dash + wheel + gauges) reads in front of you
     // and the road shows through the windshield. Open vehicles (bike/boat/plane) keep
     // the eye further forward since they have no cabin to look into.
-    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:1.09;
-    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:.12;
+    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:1.06;
+    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:.1;
     const sideOff=(cur.bike||cur.boat||cur.plane)?0:-.36; // cars: sit on the driver (left) seat
     _fpEye.set(tgt.x+cf*fwd+crx*sideOff,tgt.y+up,tgt.z+cfz*fwd+crz*sideOff);
   }else{

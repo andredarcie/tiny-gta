@@ -35,6 +35,7 @@ const SKIN   =new THREE.MeshStandardMaterial({color:0xc8a06a,roughness:.85}); //
 const SLEEVE =new THREE.MeshStandardMaterial({color:0x19e3ff,roughness:.82}); // matches the player's shirt
 
 const _q=new THREE.Quaternion(),_a=new THREE.Vector3(),_b=new THREE.Vector3(),_up=new THREE.Vector3(0,1,0);
+const DX=-.38; // driver x (car-local)
 
 function mesh(geo,mat,x,y,z,rx=0,ry=0,rz=0){
   const m=new THREE.Mesh(geo,mat);
@@ -86,30 +87,41 @@ function makeGauge(x,withNeedle){
   return {group:g,needle};
 }
 
-// A driver's hand gripping the wheel rim + a forearm reaching down to the lap. The
-// hand (a real palm+fingers, not a ball) grips at the group origin; the sleeved
-// forearm is a SEPARATE rotated child, so it clearly connects the hand to an arm
-// going off the bottom of the view WITHOUT twisting the hand off the wheel. Parented
-// to the spinning wheel, so the hands turn WITH the wheel as you steer.
-function gripHand(side){
-  const arm=new THREE.Group();
-  const hand=buildHand(SKIN,side);
-  hand.rotation.set(.35,0,side*.25);                  // wrap the rim naturally
-  arm.add(hand);
-  const foreGrp=new THREE.Group();
-  foreGrp.rotation.set(.7,0,side*.45);                // aim the forearm down-and-BACK toward the
-                                                      // driver/camera (not forward into the wheel)
-  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.038,.3,6,12),SLEEVE);
-  fore.position.set(0,-.2,0);
-  fore.castShadow=false;
-  foreGrp.add(fore);
-  arm.add(foreGrp);
-  return arm;
+// A sleeved forearm capsule spanning a→b (lap → wheel rim), oriented along the line.
+function limb(mat,r,ax,ay,az,bx,by,bz){
+  _a.set(ax,ay,az);_b.set(bx,by,bz);
+  const len=_a.distanceTo(_b);
+  const m=new THREE.Mesh(new THREE.CapsuleGeometry(r,Math.max(.02,len-2*r),6,12),mat);
+  m.position.copy(_a).add(_b).multiplyScalar(.5);
+  m.quaternion.setFromUnitVectors(_up,_b.sub(_a).normalize());
+  m.castShadow=m.receiveShadow=false;
+  return m;
+}
+
+// The driver's two arms gripping the wheel. Each forearm runs from the lap (down near
+// the bottom of the view, below the camera) UP to a hand on the rim — a fixed, natural
+// pose attached to the cockpit (the wheel spins under the grip). This avoids the
+// contorted look of bolting the arms to the raked, spinning wheel. Authored in
+// car-local space, so positions match the wheel built above.
+function makeDriverArms(){
+  const arms=new THREE.Group();
+  for(const side of[-1,1]){                            // -1 = left hand, +1 = right hand
+    const rimX=DX+side*.135, rimY=1.0, rimZ=.29;       // grip point on the rim (~10 / 2 o'clock, upper arc)
+    const lapX=DX+side*.18,  lapY=.6,  lapZ=.05;       // where the forearm comes up from (lap)
+    arms.add(limb(SLEEVE,.045, lapX,lapY,lapZ, rimX,rimY,rimZ)); // forearm: lap → rim
+    arms.add(mesh(new THREE.SphereGeometry(.05,10,8),SLEEVE,lapX,lapY,lapZ)); // elbow/cuff cap
+    const hand=buildHand(SKIN,side);
+    hand.position.set(rimX,rimY,rimZ);
+    // back of the hand toward the driver (visible), fingers curling over the front of
+    // the rim; a small downward tilt lays the hand on the rim
+    hand.rotation.set(.55,Math.PI,side*.25);
+    arms.add(hand);
+  }
+  return arms;
 }
 
 export function buildCarInteriorFp(){
   const g=new THREE.Group();
-  const DX=-.38; // driver x
 
   // ---- dashboard: a low charcoal block (see well over it) with a soft anti-glare
   // top pad, a walnut trim band proud of the face, and a recessed cluster panel ----
@@ -150,12 +162,11 @@ export function buildCarInteriorFp(){
   }
   wheelSpin.add(mesh(new THREE.CylinderGeometry(.052,.052,.03,16),TRIM,0,0,0,Math.PI/2)); // hub
   wheelSpin.add(mesh(new THREE.CircleGeometry(.03,16),METAL,0,0,.018));                    // hub badge
-  // driver's hands near the TOP of the wheel (~10 and 2 o'clock) — that upper arc is
-  // the part actually in view, so the hands read at rest; they turn with the wheel
-  const lh=gripHand(1);lh.position.set(-.115,.105,.012);wheelSpin.add(lh);
-  const rh=gripHand(-1);rh.position.set(.115,.105,.012);wheelSpin.add(rh);
   g.add(wheelTilt);
   g.userData.steerWheel=wheelSpin;
+  // driver's arms gripping the wheel (fixed natural pose on the cockpit; the wheel
+  // spins under the grip — see makeDriverArms)
+  g.add(makeDriverArms());
 
   // ---- centre console + gear shifter + handbrake + cupholders ----
   g.add(mesh(new THREE.BoxGeometry(.32,.34,.66),DASH,0,.30,.02));
