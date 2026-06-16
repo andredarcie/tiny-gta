@@ -77,6 +77,8 @@ function nextWanted(){
 // remocao acontece no fim da fase 'lift', com o jogador ja fora do carro.
 function startExport(){
   if(job)return;                        // ja exportando
+  // regra 1x/dia: já exportou hoje? avisa e não começa.
+  if(refs.mgPlayedToday?.(MiniGameId.IMPORT_EXPORT)){message('ALREADY EXPORTED TODAY - COME BACK TOMORROW','var(--gold)');return;}
   const car=cur;
   if(!car)return;
   // veiculo especial/unico: recusa e avisa (nunca destroi o unico do mundo)
@@ -110,6 +112,7 @@ function finishExport(j){
   }
 
   economy.earn(j.total,'import-export');
+  refs.mgMarkPlayed?.(MiniGameId.IMPORT_EXPORT); // concluído: trava até o próximo dia
   exported++;
 
   if(j.match){

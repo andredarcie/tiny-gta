@@ -170,6 +170,8 @@ function dropFromLists(c){
 // jogador (vira 'foot') e começa a descida da placa.
 function startCrush(){
   if(crushing)return;
+  // regra 1x/dia: já usou a prensa hoje? avisa e não começa.
+  if(refs.mgPlayedToday?.(MiniGameId.CAR_CRUSHER)){message('SCRAP CRUSHER - ALREADY USED TODAY, COME BACK TOMORROW','var(--pink)');return;}
   car=cur;                 // captura o carro atual ANTES de qualquer coisa
   if(!car)return;
   // RECUSA veículos únicos/especiais: destruí-los os removeria do mundo pra
@@ -200,6 +202,7 @@ function payAndScrap(){
   paid=true;
   scrap=car;                       // guarda pra remover no fim do hold
   economy.earn(reward,'car-crusher');
+  refs.mgMarkPlayed?.(MiniGameId.CAR_CRUSHER); // concluído: trava até o próximo dia
   // impacto pesado: trovão grave + tremor forte + faíscas/poeira
   thud(16);
   state.shake=Math.max(state.shake,.55);

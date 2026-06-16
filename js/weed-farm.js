@@ -187,6 +187,8 @@ function addBudsToPile(n){
 
 function sell(){
   if(carried<=0)return;
+  // regra 1x/dia: uma venda por dia in-game (anti-farm da plantação).
+  if(refs.mgPlayedToday?.(MiniGameId.WEED_FARM)){message('ALREADY SOLD TODAY - COME BACK TOMORROW','var(--pink)');return;}
   const paid=economy.earn(bulkPrice(carried),'weed-farm');
   boxed+=carried;
   reportMiniGameResult(MiniGameId.WEED_FARM,{won:true,score:carried});

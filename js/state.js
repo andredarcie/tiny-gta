@@ -26,7 +26,8 @@ export const state={
                        // POIs/atividades e não dá pra entrar noutro mini game
   mgIntro:null,        // id do mini game cujo briefing/ranking está aberto (congela o
                        // mundo até o jogador "passar"); ver js/minigame-leaderboard.js
-  onRoof:null // registro da porta do prédio em cujo telhado o jogador está
+  onRoof:null, // registro da porta do prédio em cujo telhado o jogador está
+  mgDays:{} // {minigameId: último dia in-game concluído} — regra "1x por dia" (ver js/minigame.js)
 };
 
 export const input={

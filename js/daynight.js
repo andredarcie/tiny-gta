@@ -26,6 +26,9 @@ export const setTod=v=>{tod=((v%1)+1)%1;};
 // (js/gym.js) to allow training only once per day.
 let dayCount=0;
 export const getDay=()=>dayCount;
+// Restaura o contador de dias do save (NUNCA regride). Sem isto o "dia" voltaria a
+// 0 a cada reload e a regra "1x por dia" dos mini-games seria burlável recarregando.
+export const setDay=n=>{ if(Number.isFinite(n)) dayCount=Math.max(dayCount,Math.floor(n)); };
 
 // Keyframes do ciclo. sky = 5 paradas do gradiente (zênite -> horizonte).
 // sun = cor da luz direcional (vira luar à noite), win = brilho das janelas dos prédios.

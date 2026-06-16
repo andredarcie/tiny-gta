@@ -1,7 +1,7 @@
 import {animatePed} from './entities.js';
 import {Interior} from './interior.js';
 import {playerPos} from './player.js';
-import {state} from './state.js';
+import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {message} from './hud.js';
 import {clubMusicOn,clubMusicOff} from './club-music.js';
@@ -67,6 +67,8 @@ export function clubDanceState(){
 // Ação na pista (chamada pelo performInteract): abre o mini-game de ritmo.
 export function clubDance(){
   if(!clubDanceNear())return false;
+  // regra 1x/dia: já dançou hoje? avisa e não abre a pista.
+  if(refs.mgPlayedToday?.(MiniGameId.DANCE)){message('ALREADY DANCED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
   // briefing com o top 5 antes de dançar; a pista abre quando o jogador "passa"
   openMiniGameIntro(MiniGameId.DANCE,'Dance Fever',()=>openDanceGame({onFinish:onDanceFinish}));
   return true;

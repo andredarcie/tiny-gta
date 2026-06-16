@@ -1,4 +1,4 @@
-import {state,saveBest} from './state.js';
+import {state,saveBest,refs} from './state.js';
 
 // ============================================================================
 // ECONOMY — the single gateway for EVERY change to the player's money.
@@ -49,6 +49,7 @@ class Economy{
     state.money+=amt;
     this.earned+=amt;
     if(persist)saveBest();
+    refs.backupSave?.(); // backup local imediato (debounced) — ver leaderboard.js
     return amt;
   }
 
@@ -66,6 +67,7 @@ class Economy{
     state.money-=amt;
     this.spent+=amt;
     saveBest();
+    refs.backupSave?.(); // backup local imediato (debounced) — ver leaderboard.js
     return true;
   }
 
@@ -77,6 +79,7 @@ class Economy{
     const lost=before-state.money;
     this.spent+=lost;
     saveBest();
+    refs.backupSave?.(); // backup local imediato (debounced) — ver leaderboard.js
     return lost;
   }
 }

@@ -7,7 +7,7 @@
 // têm no máx 12 chars.
 
 // Termos longos: match por substring. Já em minúsculas/normalizados.
-const BAD_SUBSTR = [
+const BAD_SUBSTR: string[] = [
   // inglês
   'fuck', 'shit', 'bitch', 'cunt', 'pussy', 'asshole', 'bastard', 'slut',
   'whore', 'faggot', 'nigger', 'nigga', 'retard', 'rapist', 'wanker',
@@ -21,7 +21,7 @@ const BAD_SUBSTR = [
 
 // Termos curtos/ambíguos: só batem se forem o apelido inteiro OU uma palavra
 // isolada (após normalizar) — ver o loop por tokens em hasProfanity().
-const BAD_EXACT = [
+const BAD_EXACT: string[] = [
   'fck', 'fag', 'cum', 'jizz', 'cock', 'dick', 'twat', 'prick', 'boner',
   'nazi', 'cu', 'puta', 'puto', 'foda', 'pau', 'rola', 'pica',
   'pinto', 'xota', 'corna', 'fdp', 'pqp', 'vsf', 'preto', 'macaco',
@@ -33,7 +33,7 @@ const BAD_EXACT = [
 // visualmente trocáveis i / l / 1 / ! / | viram todas "i" — é o que pega
 // "HLTLER" (Hitler com L no lugar do I) e "CARAIHO" (caralho com I no lugar
 // do L), já que o dicionário sofre a MESMA normalização ("hitler"->"hitier").
-function normalize(s) {
+function normalize(s: unknown): string {
   return String(s)
     .toLowerCase()
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
@@ -47,7 +47,7 @@ const SUBSTR = BAD_SUBSTR.map(normalize).filter(Boolean);
 const EXACT = new Set(BAD_EXACT.map(normalize).filter(Boolean));
 
 // true se o apelido contém/é um termo banido.
-export function hasProfanity(raw) {
+export function hasProfanity(raw: unknown): boolean {
   const n = normalize(raw);
   if (!n) return false;
   if (EXACT.has(n)) return true;

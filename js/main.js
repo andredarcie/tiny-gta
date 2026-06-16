@@ -278,6 +278,13 @@ function adaptResolution(ms){
 }
 window.__renderScale=getRenderScale; // debug/profiler
 
+// Aviso anti self-XSS no console (padrão dos grandes sites): desencoraja colar
+// código de terceiros, que pode roubar/zerar a conta do jogador.
+try{
+  console.log('%cSTOP!','color:#ff2e88;font:900 42px sans-serif;text-shadow:2px 2px 0 #000');
+  console.log("%cThis console is meant for developers. If someone told you to paste or run code here, it's almost certainly a scam — running scripts here can compromise your account and wipe your progress. Don't do it.",'color:#ffd24a;font:600 15px sans-serif');
+}catch(e){}
+
 const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)
 function frame(){
   requestAnimationFrame(frame);
@@ -291,6 +298,12 @@ function frame(){
   P.frameEnd(); // fecha o frame: atualiza FPS/ms/overlay do profiler
 }
 
+// Hooks de debug/teste no window: SÓ em dev (ou com ?debug). Saem do build de
+// produção, onde seriam "botões" prontos de cheat (acelerar o tempo pra farmar
+// renda, snapshot de estado, teleporte/colocar veículo). O harness de teste roda
+// no dev server (import.meta.env.DEV=true), então continua com acesso.
+const DEBUG_HOOKS=(()=>{try{return !!import.meta.env?.DEV||/[?&]debug\b/.test(location.search);}catch(e){return false;}})();
+if(DEBUG_HOOKS){
 window.advanceTime=ms=>{
   const steps=Math.max(1,Math.round(ms/(1000/60)));
   for(let i=0;i<steps;i++)step(1/60);
@@ -374,6 +387,7 @@ window.__test={
     return r[0]?{x:r[0].x,z:r[0].z}:null;
   },
 };
+} // fim do if(DEBUG_HOOKS)
 // Pré-compila TODOS os shaders ANTES do loop: tanto os materiais da cena montada
 // (chunks da cidade revelados ao andar) quanto os modelos que só nascem em jogo
 // (efeitos de combate, arma na mão, heli, props de minigame). Sem isso o THREE

@@ -21,6 +21,7 @@ export function collectSave() {
     house: refs.getPropertySave?.() || null,
     pkg: refs.getPackagesSave?.() || [],
     stunts: refs.getStuntsSave?.() || [],
+    daily: refs.getDailySave?.() || null, // dia in-game + travas "1x por dia" dos mini-games
   };
 }
 
@@ -41,6 +42,7 @@ export function applySave(blob) {
   refs.restoreProperty?.(blob.house);
   refs.restorePackages?.(blob.pkg);
   refs.restoreStunts?.(blob.stunts);
+  refs.restoreDaily?.(blob.daily);
 }
 
 refs.collectSave = collectSave;

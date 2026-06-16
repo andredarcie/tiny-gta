@@ -5,8 +5,8 @@
 //      no loop principal (main.js) que só renderiza enquanto setado.
 //   2) ENVIO: cada sessão concluída reporta {won,score} ao backend, que acumula e
 //      recalcula um rating justo (ver backend/api/minigame.js + lib/scores.js).
-import {state} from './state.js';
-import {API, getNickname, getSessionToken} from './leaderboard.js';
+import {state, refs} from './state.js';
+import {API, getNickname, getSessionToken, signSession} from './leaderboard.js';
 
 const escapeHtml = s => String(s).replace(/[&<>"']/g,
   c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]));
@@ -133,15 +133,23 @@ export function miniGameIntroActive() { return !!state.mgIntro; }
 // score = a métrica natural da sessão (dinheiro ganho, kills, resgates, ...). O
 // backend acumula plays/wins/losses/earned por jogador e recalcula o rating.
 export function reportMiniGameResult(game, {won = false, score = 0} = {}) {
+  // marca "concluído hoje" (regra 1x/dia) ANTES de qualquer early-return: a trava
+  // vale mesmo offline / sem ranking, é gameplay e não depende do backend.
+  refs.mgMarkPlayed?.(game);
   const name = getNickname();
   const token = getSessionToken();
   if (!name || !token) return;     // sem apelido/sessão: ranking global desligado
   const s = Math.max(0, Math.round(Number(score) || 0));
+  // assina (game.score.won.t) com o segredo da sessão — igual ao /api/scores, o
+  // servidor rejeita um resultado editado na aba Network sem re-assinar.
+  const won01 = won ? 1 : 0;
+  const t = Date.now();
+  const sig = signSession(game + '.' + s + '.' + won01 + '.' + t);
   try {
     fetch(`${API}/api/minigame`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({game, name, won: !!won, score: s, token}),
+      body: JSON.stringify({game, name, won: !!won, score: s, token, t, sig}),
       keepalive: true,
     }).catch(() => {});
   } catch (e) {}

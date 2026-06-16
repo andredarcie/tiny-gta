@@ -1,4 +1,4 @@
-// cleanup.mjs — leaderboard repair tool for Tiny Crime.
+// cleanup.ts — leaderboard repair tool for Tiny Crime.
 //
 // The game is client-side, so a determined cheater can still forge a /api/scores
 // request (e.g. copy the cURL from devtools and edit `money`). The server-side
@@ -7,21 +7,21 @@
 //
 // It reads the same Upstash creds the API uses (UPSTASH_REDIS_REST_URL /
 // UPSTASH_REDIS_REST_TOKEN) via Redis.fromEnv(). Run it from the backend/ dir so
-// the .env beside it is picked up:
+// the .env beside it is picked up (tsx runs TypeScript directly):
 //
-//   node --env-file=.env scripts/cleanup.mjs list [N]
+//   npm run cleanup -- list [N]            (or: node --env-file=.env node_modules/.bin/tsx scripts/cleanup.ts list)
 //       Print the top N (default 50) leaderboard entries (rank/name/money) and
 //       the total player count (ZCARD).
 //
-//   node --env-file=.env scripts/cleanup.mjs inspect "<NAME>"
+//   npm run cleanup -- inspect "<NAME>"
 //       Dump everything stored for a name: leaderboard money, all save blobs,
 //       seed value and per-minigame stats. Read-only.
 //
-//   node --env-file=.env scripts/cleanup.mjs cap <VALUE> [--apply]
+//   npm run cleanup -- cap <VALUE> [--apply]
 //       Lower every entry whose money > VALUE down to VALUE (squashes inflated
 //       scores without deleting players).
 //
-//   node --env-file=.env scripts/cleanup.mjs remove "<NAME>" [--apply]
+//   npm run cleanup -- remove "<NAME>" [--apply]
 //       Remove a name from the global board, delete its save blobs, drop its seed
 //       field, and remove it from every minigame board + its minigame hashes.
 //
@@ -29,24 +29,24 @@
 // what WOULD change. Pass --apply to actually mutate Redis.
 //
 // Examples:
-//   node --env-file=.env scripts/cleanup.mjs list 20
-//   node --env-file=.env scripts/cleanup.mjs inspect "CHEATER 1"
-//   node --env-file=.env scripts/cleanup.mjs cap 10000000            # dry run
-//   node --env-file=.env scripts/cleanup.mjs cap 10000000 --apply    # for real
-//   node --env-file=.env scripts/cleanup.mjs remove "CHEATER 1" --apply
+//   npm run cleanup -- list 20
+//   npm run cleanup -- inspect "CHEATER 1"
+//   npm run cleanup -- cap 10000000            # dry run
+//   npm run cleanup -- cap 10000000 --apply    # for real
+//   npm run cleanup -- remove "CHEATER 1" --apply
 
 import { Redis } from '@upstash/redis';
 
-// ----- Redis key schema (mirrors backend/lib/scores.js) ---------------------
+// ----- Redis key schema (mirrors backend/lib/scores.ts) ---------------------
 const LEADERBOARD_KEY = 'tinygta:leaderboard';
 const SAVE_PREFIX = 'tinygta:save:';          // + <pid> (atual) | + <pid>|<name> (legado)
 const SEED_KEY = 'tinygta:seed';              // hash: field=name -> money
 const MG_BOARD_PREFIX = 'tinygta:mg:';        // + <game>            -> sorted set
-const mgBoardKey = (game) => MG_BOARD_PREFIX + game;
-const mgPlayerKey = (game, name) => MG_BOARD_PREFIX + game + ':p:' + name;
+const mgBoardKey = (game: string): string => MG_BOARD_PREFIX + game;
+const mgPlayerKey = (game: string, name: string): string => MG_BOARD_PREFIX + game + ':p:' + name;
 
-// Minigame ids (mirrors MG_GAME_IDS in backend/lib/scores.js).
-const MG_GAME_IDS = [
+// Minigame ids (mirrors MG_GAME_IDS in backend/lib/scores.ts).
+const MG_GAME_IDS: string[] = [
   'taxi', 'race', 'boat-race', 'offroad', 'vigilante', 'paramedic', 'firefighter',
   'rampage', 'rc-toyz', 'car-crusher', 'import-export', 'bomb-shop',
   'hidden-packages', 'stunt-jumps', 'overkill', 'gym', 'dance', 'rocket-rampage',
@@ -56,7 +56,7 @@ const MG_GAME_IDS = [
 if (!process.env.UPSTASH_REDIS_REST_URL || !process.env.UPSTASH_REDIS_REST_TOKEN) {
   console.error(
     'Missing Upstash credentials. Set UPSTASH_REDIS_REST_URL and ' +
-    'UPSTASH_REDIS_REST_TOKEN (run with: node --env-file=.env scripts/cleanup.mjs ...).'
+    'UPSTASH_REDIS_REST_TOKEN (run with: node --env-file=.env node_modules/.bin/tsx scripts/cleanup.ts ...).'
   );
   process.exit(1);
 }
@@ -77,9 +77,9 @@ const tag = APPLY ? '[APPLY]' : '[DRY-RUN]';
 // ----- helpers --------------------------------------------------------------
 
 // zrange withScores returns a flat [member, score, member, score, ...] array —
-// fold it into {name, score} objects (mirrors backend/api/scores.js getBoard).
-function foldWithScores(raw) {
-  const out = [];
+// fold it into {name, score} objects (mirrors backend/api/scores.ts getBoard).
+function foldWithScores(raw: (string | number)[]): Array<{ name: string; score: number }> {
+  const out: Array<{ name: string; score: number }> = [];
   for (let i = 0; i < raw.length; i += 2) {
     out.push({ name: String(raw[i]), score: Number(raw[i + 1]) });
   }
@@ -92,8 +92,8 @@ function foldWithScores(raw) {
 // We scan every save key and match both ways, so inspect/remove still see (and
 // can delete) a player's save no matter which shape it has. Names are sanitized
 // to [A-Z0-9 _-] (no '|'), so the last '|' cleanly separates pid from name.
-async function findSaveKeysForName(name) {
-  const found = [];
+async function findSaveKeysForName(name: string): Promise<string[]> {
+  const found: string[] = [];
   let cursor = '0';
   do {
     const [next, keys] = await redis.scan(cursor, { match: SAVE_PREFIX + '*', count: 100 });
@@ -106,7 +106,7 @@ async function findSaveKeysForName(name) {
         if (rest.slice(lastPipe + 1) === name) found.push(key);
       } else {
         // current pid-only key — match by the name stamped in the blob
-        const blob = await redis.get(key); // @upstash/redis parses JSON values
+        const blob = await redis.get<{ name?: string }>(key); // @upstash/redis parses JSON values
         if (blob && typeof blob === 'object' && blob.name === name) found.push(key);
       }
     }
@@ -114,18 +114,18 @@ async function findSaveKeysForName(name) {
   return found;
 }
 
-function fmtMoney(n) {
+function fmtMoney(n: unknown): string {
   return Number(n).toLocaleString('en-US');
 }
 
 // ----- commands -------------------------------------------------------------
 
-async function cmdList() {
-  let n = parseInt(args[1], 10);
+async function cmdList(): Promise<void> {
+  let n = parseInt(String(args[1]), 10);
   if (!Number.isFinite(n)) n = 50;
   n = Math.max(1, n);
 
-  const raw = await redis.zrange(LEADERBOARD_KEY, 0, n - 1, { rev: true, withScores: true });
+  const raw = await redis.zrange<(string | number)[]>(LEADERBOARD_KEY, 0, n - 1, { rev: true, withScores: true });
   const entries = foldWithScores(raw);
   const total = Number(await redis.zcard(LEADERBOARD_KEY)) || 0;
 
@@ -136,7 +136,7 @@ async function cmdList() {
   });
 }
 
-async function cmdInspect() {
+async function cmdInspect(): Promise<void> {
   const name = args[1];
   if (!name) {
     console.error('Usage: inspect "<NAME>"');
@@ -148,7 +148,7 @@ async function cmdInspect() {
   const score = await redis.zscore(LEADERBOARD_KEY, name);
   console.log(`  leaderboard money: ${score == null ? '(not on board)' : fmtMoney(score)}`);
 
-  // 2) all save blobs (scan by exact name suffix)
+  // 2) all save blobs (scan by exact name suffix / stamped name)
   const saveKeys = await findSaveKeysForName(name);
   if (!saveKeys.length) {
     console.log('  save blobs: (none)');
@@ -169,7 +169,7 @@ async function cmdInspect() {
   let anyMg = false;
   for (const game of MG_GAME_IDS) {
     const rating = await redis.zscore(mgBoardKey(game), name);
-    const stats = await redis.hgetall(mgPlayerKey(game, name));
+    const stats = await redis.hgetall<Record<string, unknown>>(mgPlayerKey(game, name));
     if (rating == null && (!stats || !Object.keys(stats).length)) continue;
     anyMg = true;
     const s = stats || {};
@@ -182,7 +182,7 @@ async function cmdInspect() {
   if (!anyMg) console.log('    (none)');
 }
 
-async function cmdCap() {
+async function cmdCap(): Promise<void> {
   const value = Number(args[1]);
   if (!Number.isFinite(value) || value < 0) {
     console.error('Usage: cap <VALUE> [--apply]   (VALUE must be a non-negative number)');
@@ -190,7 +190,7 @@ async function cmdCap() {
   }
 
   // Pull the whole board (member + score) and find offenders above the cap.
-  const raw = await redis.zrange(LEADERBOARD_KEY, 0, -1, { rev: true, withScores: true });
+  const raw = await redis.zrange<(string | number)[]>(LEADERBOARD_KEY, 0, -1, { rev: true, withScores: true });
   const all = foldWithScores(raw);
   const offenders = all.filter((e) => e.score > value);
 
@@ -214,7 +214,7 @@ async function cmdCap() {
   }
 }
 
-async function cmdRemove() {
+async function cmdRemove(): Promise<void> {
   const name = args[1];
   if (!name) {
     console.error('Usage: remove "<NAME>" [--apply]');
@@ -228,11 +228,11 @@ async function cmdRemove() {
   const saveKeys = await findSaveKeysForName(name);
   const hasSeed = (await redis.hget(SEED_KEY, name)) != null;
 
-  const mgHits = []; // { game, onBoard, playerKey, hasHash }
+  const mgHits: Array<{ game: string; onBoard: boolean; playerKey: string; hasHash: boolean }> = [];
   for (const game of MG_GAME_IDS) {
     const mgScore = await redis.zscore(mgBoardKey(game), name);
     const pKey = mgPlayerKey(game, name);
-    const hash = await redis.hgetall(pKey);
+    const hash = await redis.hgetall<Record<string, unknown>>(pKey);
     const hasHash = !!(hash && Object.keys(hash).length);
     if (mgScore != null || hasHash) {
       mgHits.push({ game, onBoard: mgScore != null, playerKey: pKey, hasHash });
@@ -276,7 +276,7 @@ async function cmdRemove() {
 }
 
 // ----- dispatch -------------------------------------------------------------
-async function main() {
+async function main(): Promise<void> {
   switch (cmd) {
     case 'list': return cmdList();
     case 'inspect': return cmdInspect();

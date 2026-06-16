@@ -1,4 +1,5 @@
-import {state} from './state.js';
+import {state,refs} from './state.js';
+import {getDay,setDay} from './daynight.js';
 import {openMiniGameIntro} from './minigame-leaderboard.js';
 
 // ============================================================================
@@ -49,6 +50,19 @@ export const MiniGameId=Object.freeze({
   WEED_FARM:'weed-farm',
 });
 
+// ---- REGRA "1x POR DIA" (tempo do jogo) ------------------------------------
+// Cada mini-game de dinheiro só pode ser CONCLUÍDO uma vez por dia in-game; depois
+// o jogador espera virar o próximo dia (obriga a rodar entre mini-games em vez de
+// farmar um só). state.mgDays guarda {id: último dia concluído}; o dia (getDay) é
+// persistido no save (ver refs.getDailySave) pra não ser burlável recarregando.
+export function mgPlayedToday(id){ return state.mgDays?.[id]===getDay(); }
+export function mgMarkPlayed(id){ (state.mgDays??(state.mgDays={}))[id]=getDay(); }
+refs.mgPlayedToday=mgPlayedToday;
+refs.mgMarkPlayed=mgMarkPlayed;
+// slot do save: dia atual + mapa por mini-game (restaurados juntos, consistentes).
+refs.getDailySave=()=>({day:getDay(),mg:{...(state.mgDays||{})}});
+refs.restoreDaily=d=>{ if(d&&typeof d==='object'){ setDay(d.day); if(d.mg&&typeof d.mg==='object') state.mgDays={...d.mg}; } };
+
 // registro global: uma instância por id (preenchido nos construtores dos módulos)
 const registry=new Map();
 
@@ -81,6 +95,11 @@ export class MiniGame{
   begin(){
     if(this._active)return true;
     if(!this.canStart())return false;
+    // regra 1x/dia: já concluiu este mini-game hoje? bloqueia e avisa.
+    if(mgPlayedToday(this.id)){
+      refs.message?.(`${this.name.toUpperCase()} - ALREADY DONE TODAY, COME BACK TOMORROW`,'var(--pink)');
+      return false;
+    }
     this._active=true;
     if(this.exclusive){
       state.activeMiniGame=this.id;

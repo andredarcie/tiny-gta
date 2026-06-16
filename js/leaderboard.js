@@ -7,6 +7,7 @@
 // O ranking reflete o DINHEIRO ATUAL do jogador (não mais o pico): é mais justo —
 // quem gastou cai, quem acumula sobe. O backend grava o valor recebido (sem GT).
 import { refs } from './state.js';
+import { hmacSha256Hex } from './sign.js';
 export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 const PID_KEY = 'tinygta_pid';
@@ -17,6 +18,10 @@ const PID_KEY = 'tinygta_pid';
 const SAVE_MIRROR_KEY = 'tinygta_save';
 
 let token = null, lastSig = '', flushTimer = null;
+// segredo por sessão (emitido pelo /api/session): assina o envio de score pra o
+// servidor rejeitar um payload editado na aba Network. Vazio = backend sem o
+// recurso (rollout) -> não assina; ver flush().
+let flushSecret = '';
 let nickname = '';
 try { nickname = localStorage.getItem(NICK_KEY) || ''; } catch (e) {}
 
@@ -40,9 +45,41 @@ export function getNickname() { return nickname; }
 export function getPlayerId() { return pid; }
 // token da sessão atual (single-run), reaproveitado pelos rankings por mini game
 export function getSessionToken() { return token; }
+// Assina uma string com o segredo da sessão (HMAC). Exposto pra outros envios
+// (ex.: resultado de minigame) assinarem sem ver o segredo. Vazio = sem segredo.
+export function signSession(msg) { return flushSecret ? hmacSha256Hex(flushSecret, msg) : ''; }
 export function setNickname(n) {
   nickname = n;
   try { localStorage.setItem(NICK_KEY, n); } catch (e) {}
+}
+
+// Adota um pid (ex.: o pid da conta após login/registro) e persiste, pra que as
+// próximas sessões deste aparelho usem a mesma identidade. É o que faz o login
+// RECUPERAR o save: trocar o pid local pelo da conta e deixar o /api/session
+// restaurar o save daquele pid.
+export function setPlayerId(newPid) {
+  if (typeof newPid !== 'string' || !newPid) return;
+  pid = newPid;
+  try { localStorage.setItem(PID_KEY, pid); } catch (e) {}
+}
+
+// Registra ou faz login de uma conta (usuário+senha) no backend, resolvendo o pid
+// da conta e adotando-o localmente (+ o apelido). Retorna {ok:true} ou
+// {ok:false, error:<código>} pra UI traduzir. NÃO inicia a partida — o chamador
+// segue o fluxo normal (startSession) depois do ok.
+export async function accountRequest(action, username, password) {
+  try {
+    const r = await fetch(API + '/api/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, username, password, pid }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.ok) return { ok: false, error: data.error || 'network' };
+    setNickname(data.username || username);
+    setPlayerId(data.pid);
+    return { ok: true };
+  } catch (e) { return { ok: false, error: 'network' }; }
 }
 
 // Lê/grava o espelho local do save (só do pid atual: nunca restaura o save de
@@ -57,6 +94,27 @@ function readMirror() {
   } catch (e) { return null; }
 }
 
+// Backup LOCAL disparado pelo economy.js a cada mudança de dinheiro. É o que torna
+// "ganhar agora" seguro IMEDIATAMENTE no MESMO aparelho: mesmo que o envio ao
+// backend (3s) ou o unload não aconteçam (crash/kill abrupto), o espelho local já
+// tem o valor e o restaura na volta. Borda de SUBIDA (escreve na hora p/ uma
+// recompensa avulsa = janela ~0) + uma escrita de cauda por janela de 400ms, que
+// coalesce rajadas contínuas (ex.: renda por segundo do overkill).
+let backupTimer = null, backupPending = false;
+function doBackup() {
+  const save = refs.collectSave?.();
+  if (save) { save.t = Date.now(); writeMirror(save); }
+}
+function backupNow() {
+  if (backupTimer) { backupPending = true; return; } // dentro da janela: marca p/ a cauda
+  doBackup();                                          // borda de subida: backup na hora
+  backupTimer = setTimeout(() => {
+    backupTimer = null;
+    if (backupPending) { backupPending = false; doBackup(); } // captura o que mudou na janela
+  }, 400);
+}
+refs.backupSave = backupNow;
+
 // Abre a sessão e devolve o SAVE desse (id, nick) — o chamador (js/save.js via
 // input.js) restaura dinheiro + itens.
 export async function startSession() {
@@ -70,6 +128,7 @@ export async function startSession() {
     });
     const data = await r.json();
     token = data.token;
+    flushSecret = typeof data.secret === 'string' ? data.secret : '';
     save = data.save || (data.money > 0 ? { money: Math.floor(data.money) } : null);
   } catch (e) {}
   // Reconciliação com o espelho local (mesmo pid), priorizando NÃO PERDER
@@ -108,15 +167,34 @@ export function flush() {
   // conteúdo mudou: carimba o instante (last-write-wins na reconciliação com o
   // espelho — ver startSession) e atualiza o backup local ANTES de postar, pra
   // que progresso feito offline sobreviva mesmo se o POST não chegar ao backend.
-  if (save) { save.t = Date.now(); writeMirror(save); }
+  const t = save ? (save.t = Date.now()) : 0;
+  if (save) writeMirror(save);
+  // assina (money.t) com o segredo da sessão (síncrono, sobrevive ao unload): o
+  // servidor rejeita um payload editado na aba Network sem re-assinar (precisa do
+  // segredo). Vazio quando o backend ainda não emite segredo (rollout).
+  const authSig = flushSecret ? hmacSha256Hex(flushSecret, money + '.' + t) : '';
   try {
     fetch(API + '/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nickname, money, token, pid, save }),
+      body: JSON.stringify({ name: nickname, money, token, pid, save, t, sig: authSig }),
       keepalive: true,
     }).then(r => { if (!r.ok) lastSig = ''; }).catch(() => { lastSig = ''; });
   } catch (e) { lastSig = ''; }
+}
+
+// Sai da conta/identidade atual: SALVA o progresso primeiro (o POST keepalive
+// sobrevive ao reload), esquece pid/nick/espelho LOCAIS e recarrega pra tela
+// inicial — onde dá pra entrar/registrar outra conta ou jogar como convidado.
+// NÃO apaga o save do backend: ele continua lá, recuperável pelo login.
+export function logout() {
+  try { flush(); } catch (e) {}
+  try {
+    localStorage.removeItem(NICK_KEY);
+    localStorage.removeItem(PID_KEY);
+    localStorage.removeItem(SAVE_MIRROR_KEY);
+  } catch (e) {}
+  location.reload();
 }
 
 const escapeHtml = s => String(s).replace(/[&<>"']/g,

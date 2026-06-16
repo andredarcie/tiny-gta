@@ -1,0 +1,43 @@
+// Hash de senha das contas (login usuário+senha). Usa só node:crypto — sem
+// dependência nova (escolha "sem infra nova"). scrypt é deliberadamente caro pra
+// frear brute-force offline caso o Redis vaze; o salt aleatório por conta impede
+// rainbow tables; a comparação é timing-safe.
+import { scryptSync, randomBytes, timingSafeEqual, createHmac } from 'node:crypto';
+
+const KEYLEN = 32; // bytes do hash derivado
+
+// Deriva {salt, hash} (ambos hex) de uma senha em texto plano.
+export function hashPassword(pw: string): { salt: string; hash: string } {
+  const salt = randomBytes(16).toString('hex');
+  const hash = scryptSync(String(pw), salt, KEYLEN).toString('hex');
+  return { salt, hash };
+}
+
+// Confere a senha contra o {salt, hash} guardado. Timing-safe; false em qualquer
+// formato inesperado (salt/hash ausente ou corrompido).
+export function verifyPassword(pw: unknown, salt: unknown, hash: unknown): boolean {
+  if (typeof pw !== 'string' || typeof salt !== 'string' || typeof hash !== 'string') return false;
+  const expected = Buffer.from(hash, 'hex');
+  if (expected.length !== KEYLEN) return false;
+  const actual = scryptSync(pw, salt, KEYLEN);
+  return timingSafeEqual(expected, actual);
+}
+
+// Assinatura anti-adulteração do envio de score: HMAC-SHA256(secret, `${money}.${t}`)
+// em hex. Igual ao cliente síncrono em js/sign.js — assim o servidor rejeita um
+// payload editado na aba Network (que não foi re-assinado com o segredo da sessão).
+export function scoreSig(secret: string, money: number, t: number): string {
+  return createHmac('sha256', secret).update(`${money}.${t}`).digest('hex');
+}
+
+// Assinatura do resultado de mini game: HMAC-SHA256(secret, `${game}.${score}.${won}.${t}`).
+// Igual ao cliente em js/minigame-leaderboard.js (won = 0/1).
+export function mgSig(secret: string, game: string, score: number, won: number, t: number): string {
+  return createHmac('sha256', secret).update(`${game}.${score}.${won}.${t}`).digest('hex');
+}
+
+// Compara dois hex de forma timing-safe; false em formato/tamanho inesperado.
+export function safeEqualHex(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length || a.length === 0) return false;
+  try { return timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex')); } catch { return false; }
+}

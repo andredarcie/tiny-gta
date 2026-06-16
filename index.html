@@ -75,6 +75,7 @@
     <div id="pause-lb-total" class="lb-total"></div>
   </div>
   <button id="btn-pause-fullscreen" type="button">FULLSCREEN</button>
+  <button id="btn-pause-account" type="button">SWITCH ACCOUNT</button>
 </div>
 
 <div id="mg-intro" aria-hidden="true">
@@ -189,10 +190,16 @@
 
 <div id="nickmodal" aria-hidden="true">
   <div class="nick-box">
-    <div class="nick-title">ENTER YOUR NICKNAME</div>
-    <input id="nick-input" type="text" maxlength="12" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="YOUR NAME">
-    <div class="nick-note">This nickname will appear on the <b>global leaderboard</b> for everyone to see.</div>
-    <button id="nick-play" type="button">PLAY</button>
+    <div class="nick-title">PLAY TINY CRIME</div>
+    <input id="nick-input" type="text" maxlength="12" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="NICKNAME">
+    <input id="nick-pass" type="password" maxlength="64" autocomplete="current-password" spellcheck="false" placeholder="PASSWORD">
+    <div class="nick-note">Create an account to <b>keep your progress on any device</b>. Your nickname shows on the <b>global leaderboard</b>.</div>
+    <div id="nick-status" aria-live="polite"></div>
+    <div class="nick-btns">
+      <button id="nick-login" type="button" class="nick-alt">LOG IN</button>
+      <button id="nick-register" type="button">CREATE ACCOUNT</button>
+    </div>
+    <button id="nick-guest" type="button" class="nick-secondary">Play as guest (progress may be lost)</button>
   </div>
 </div>
 

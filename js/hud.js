@@ -44,6 +44,7 @@ export function message(t,col){
   hudMsg.textContent=t;hudMsg.style.color=col||'var(--cream)';
   hudMsg.style.opacity=1;msgT=2.6;
 }
+refs.message=message; // exposto p/ módulos que não podem importar hud sem ciclo (ex.: minigame.js)
 export function bigText(t,col){
   hudBig.textContent=t;hudBig.style.color=col;
   hudBig.style.textShadow=`4px 4px 0 #000,0 0 40px ${col}`;

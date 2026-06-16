@@ -16,7 +16,7 @@ import {message,drawFullMap} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from './weapons.js';
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from './weapon-wheel.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
-import {getNickname,setNickname,startSession,refreshTopPlayers} from './leaderboard.js';
+import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest,logout} from './leaderboard.js';
 import {applySave} from './save.js';
 import {hasProfanity} from './profanity.js';
 import {MiniGame} from './minigame.js';
@@ -193,32 +193,73 @@ export function startGameFromUserGesture(opts={}){
 
 const isMobileEnv=()=>state.mobile||matchMedia('(pointer: coarse)').matches;
 
-// Abre o modal de nickname (passo antes de iniciar a partida).
+// Abre o modal de nickname/login (passo antes de iniciar a partida).
 function openNickModal(){
   if(state.started)return;
   const inp=document.getElementById('nick-input');
   if(inp)inp.value=getNickname();
+  setNickStatus('');
   document.getElementById('nickmodal')?.classList.add('open');
   setTimeout(()=>inp?.focus(),60);
 }
 
-// Confirma o nick e inicia o jogo (este clique/tap é o gesto do usuário, então
-// vale pra áudio/fullscreen/pointer-lock dentro de startGameFromUserGesture).
-function confirmNick(){
+// Lê o apelido do campo já saneado (mesma regra do servidor).
+function readNick(){
   const inp=document.getElementById('nick-input');
-  const name=(inp?.value||'').toUpperCase().replace(/[^A-Z0-9 _-]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
-  // vazio ou palavrão: rejeita com o shake (mesma validação do servidor).
-  if(!name||hasProfanity(name)){inp?.classList.add('err');setTimeout(()=>inp?.classList.remove('err'),350);return;}
-  setNickname(name);
+  return (inp?.value||'').toUpperCase().replace(/[^A-Z0-9 _-]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
+}
+// Linha de status do modal (erro em vermelho, ok em ciano).
+function setNickStatus(msg,ok){
+  const el=document.getElementById('nick-status');
+  if(el){el.textContent=msg||'';el.classList.toggle('ok',!!ok);}
+}
+function nickShake(){
+  const inp=document.getElementById('nick-input');
+  inp?.classList.add('err');setTimeout(()=>inp?.classList.remove('err'),350);
+}
+
+// Fecha o modal e ENTRA na partida. Este caminho roda dentro do clique/tap do
+// usuário (gesto), então vale pra áudio/fullscreen/pointer-lock. Abre a sessão do
+// ranking (não bloqueia o start) e RESTAURA o save: dinheiro, armas, casa, etc.
+function beginRun(){
   document.getElementById('nickmodal')?.classList.remove('open');
   startGameFromUserGesture({mobile:isMobileEnv()});
-  // abre a sessão do ranking (não bloqueia o start) e RESTAURA o save desse
-  // jogador (mesmo id + nick): dinheiro, armas, músculo, casa e coletáveis.
   startSession().then(save=>{
     if(!save)return;
     applySave(save);
     if(save.money>0)message('WELCOME BACK - $'+Math.floor(save.money).toLocaleString('en-US'),'var(--gold)');
   });
+}
+
+// Jogar como CONVIDADO: fluxo anônimo de sempre (pid no localStorage, sem conta).
+function playAsGuest(){
+  const name=readNick();
+  if(!name||hasProfanity(name)){nickShake();setNickStatus('Pick a valid nickname.');return;}
+  setNickname(name);
+  beginRun();
+}
+
+// Mensagens amigáveis pros códigos de erro do /api/account.
+const ACCT_ERR={
+  taken:'Nickname already registered — use LOG IN.',
+  invalid_credentials:'Wrong nickname or password.', // genérico (não revela se o nick existe)
+  rate_limited:'Too many tries — wait a moment.',
+  invalid_password:'Password must be 4+ characters.',
+  invalid_name:'Pick a valid nickname.',
+  network:'Network error — try again.',
+};
+
+// CRIAR CONTA ou ENTRAR: valida local, resolve a conta no backend (adota pid+nick)
+// e só então entra na partida. Erros aparecem no status, sem iniciar o jogo.
+async function doAccount(action){
+  const name=readNick();
+  const pass=document.getElementById('nick-pass')?.value||'';
+  if(!name||hasProfanity(name)){nickShake();setNickStatus('Pick a valid nickname.');return;}
+  if(pass.length<4){setNickStatus('Password must be 4+ characters.');return;}
+  setNickStatus(action==='register'?'Creating account…':'Logging in…',true);
+  const res=await accountRequest(action,name,pass);
+  if(!res.ok){setNickStatus(ACCT_ERR[res.error]||ACCT_ERR.network);return;}
+  beginRun();
 }
 
 // Usado pelo touch-controls: tocar pra jogar abre o modal de nickname.
@@ -344,10 +385,13 @@ export function setupInput(){
   // Iniciar passa pelo modal de nickname (o nick vai pro ranking global).
   refreshTopPlayers();
   document.getElementById('play')?.addEventListener('click',e=>{e.stopPropagation();openNickModal();});
-  document.getElementById('nick-play')?.addEventListener('click',confirmNick);
-  document.getElementById('nick-input')?.addEventListener('keydown',e=>{
-    if(e.key==='Enter'){e.preventDefault();confirmNick();}
-  });
+  document.getElementById('nick-register')?.addEventListener('click',()=>doAccount('register'));
+  document.getElementById('nick-login')?.addEventListener('click',()=>doAccount('login'));
+  document.getElementById('nick-guest')?.addEventListener('click',playAsGuest);
+  // Enter em qualquer campo: faz LOGIN (caminho mais comum de quem volta).
+  const nickEnter=e=>{ if(e.key==='Enter'){e.preventDefault();doAccount('login');} };
+  document.getElementById('nick-input')?.addEventListener('keydown',nickEnter);
+  document.getElementById('nick-pass')?.addEventListener('keydown',nickEnter);
   // Top-center button: opens/closes the in-game pause menu (only shown while playing).
   document.getElementById('btn-fullscreen')?.addEventListener('pointerdown',e=>{
     e.preventDefault();
@@ -358,6 +402,12 @@ export function setupInput(){
   document.getElementById('btn-pause-fullscreen')?.addEventListener('click',e=>{
     e.stopPropagation();
     performFullscreenToggle();
+  });
+  // Trocar de conta / sair: confirma (recarrega pra tela inicial), salvando antes.
+  document.getElementById('btn-pause-account')?.addEventListener('click',e=>{
+    e.stopPropagation();
+    if(confirm('Switch account? Your progress is saved first, then you return to the title screen.'))
+      logout();
   });
   // Mapa completo: X fecha; tocar/clicar no radar abre (acesso no celular, sem tecla M)
   document.getElementById('fm-close')?.addEventListener('click',e=>{e.stopPropagation();closeFullMap();});
