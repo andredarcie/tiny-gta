@@ -106,9 +106,12 @@ function limb(mat,r,ax,ay,az,bx,by,bz){
 // slimmed buildHand keep them from looking chunky.
 function addWheelArms(wheelSpin){
   for(const side of[-1,1]){                            // -1 = left hand, +1 = right hand
-    // grip on the rim at ~10/2 (radius ~.165), but the hand sits clearly IN FRONT of
-    // the wheel plane (+Z, driver side) so it never pierces the rim/spokes.
-    const hx=side*.14, hy=.085, hz=.075;
+    // Grip ON the rim (radius ~.165), placed in the open TOP gap between the upper
+    // spokes (~11/1 o'clock) so the wrapping fingers never hit a spoke. The hand
+    // straddles the rim plane (z≈0) so the fingers actually curl AROUND the rim —
+    // back of hand + knuckles toward the driver, fingertips just behind the rim. That
+    // reads as gripping (GTA-style), not hovering in front.
+    const hx=side*.115, hy=.115, hz=.018;
     // elbow routed far DOWN and OUTWARD so the forearm crosses the wheel plane OUTSIDE
     // the rim ring (no clipping through the wheel) on its way to the lap.
     const ex=side*.42, ey=-.5, ez=-.34;
@@ -116,9 +119,8 @@ function addWheelArms(wheelSpin){
     wheelSpin.add(mesh(new THREE.SphereGeometry(.034,10,8),SLEEVE,ex,ey,ez)); // cuff
     const hand=buildHand(SKIN,side);
     hand.position.set(hx,hy,hz);
-    // back of the hand toward the driver (visible); fingers curl down over the FRONT
-    // of the rim only (they stay in front of the wheel plane, so no poke-through)
-    hand.rotation.set(-.65,0,side*.38);
+    // tilt so the fingers curl over the top of the rim and wrap to the back
+    hand.rotation.set(-.5,0,side*.35);
     wheelSpin.add(hand);
   }
 }
