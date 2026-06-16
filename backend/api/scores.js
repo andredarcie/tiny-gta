@@ -55,24 +55,26 @@ async function submit(req, res) {
   const seconds = (Date.now() - sess.at) / 1000;
   if (seconds < C.MIN_RUN_SECONDS) return res.status(403).json({error: 'run_too_short'});
 
-  // 4) plausibilidade: dinheiro não pode passar do teto pelo tempo de partida,
-  //    SOMADO ao saldo restaurado no início (sess.base) — quem volta rico pode
-  //    reenviar o que já estava salvo sem cair no teto por tempo.
+  // 4) teto de plausibilidade: dinheiro não passa do que cabe pelo tempo de
+  //    partida, SOMADO ao saldo restaurado no início (sess.base) — quem volta
+  //    rico reenvia o que já estava salvo sem cair no teto por tempo.
   const maxAllowed = C.maxPlausibleMoney(seconds) + sess.base;
-  if (money > maxAllowed)
-    return res.status(422).json({error: 'implausible_score', maxAllowed: Math.floor(maxAllowed)});
 
-  // 5) leaderboard: guarda só se for melhor que o recorde atual do nome (GT).
-  //    Aqui `money` é o PICO da partida (ranking público é "maior dinheiro").
-  await redis.zadd(C.LEADERBOARD_KEY, {gt: true}, {score: money, member: name});
-  // 6) save por (id, nick): o blob de progresso (dinheiro ATUAL + itens),
-  //    restaurado no próximo /api/session. Higienizado e com o dinheiro cravado
-  //    no teto de plausibilidade. Inflar o save só afeta o jogo privado do dono;
-  //    o ranking competitivo continua protegido pelo GT + plausibilidade acima.
+  // 5) save por (id, nick): grava SEMPRE (mesmo que o pico abaixo seja barrado),
+  //    com o dinheiro cravado no teto. Assim o progresso (saldo ATUAL + itens)
+  //    não fica refém de um pico momentaneamente alto: o jogador que sai no meio
+  //    não perde o que fez. Inflar o save só afeta o jogo privado do dono — o
+  //    crava no teto impede usar a base pra furar o ranking na sessão seguinte.
   if (pid && body.save) {
     const blob = C.sanitizeSave(body.save, maxAllowed);
     if (blob) await redis.set(C.SAVE_PREFIX + C.saveMember(pid, name), blob);
   }
+
+  // 6) leaderboard (PICO da partida): plausibilidade + GT por nome. O 422 faz o
+  //    cliente reagendar e reenviar — o pico legítimo entra quando o teto cresce.
+  if (money > maxAllowed)
+    return res.status(422).json({error: 'implausible_score', maxAllowed: Math.floor(maxAllowed)});
+  await redis.zadd(C.LEADERBOARD_KEY, {gt: true}, {score: money, member: name});
   const rank = await redis.zrevrank(C.LEADERBOARD_KEY, name);
   res.status(200).json({ok: true, name, money, rank: rank == null ? null : rank + 1});
 }

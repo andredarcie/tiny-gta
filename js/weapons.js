@@ -310,7 +310,9 @@ function restoreInventory(list){
     }
   }
   owned.sort((a,b)=>WEAPONS.indexOf(a)-WEAPONS.indexOf(b));
-  if(curWeapon===FIST&&owned.length>1)equip(owned[1]);else syncWeaponState();
+  // mantém o PUNHO na mão ao renascer (não saca arma sozinho); as armas ficam no
+  // inventário/roda. Só reflete a posse nos campos de state (state.hasGun etc).
+  syncWeaponState();
 }
 refs.getWeaponsSave=getInventorySave;
 refs.restoreWeapons=restoreInventory;
