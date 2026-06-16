@@ -91,6 +91,12 @@ export function flush() {
 const escapeHtml = s => String(s).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
+// Dinheiro no ranking em forma COMPACTA (letras K/M/B/T) pra um jogador muito
+// rico não estourar a largura da linha: $39.5K, $1.2M, $3B, $1T. Valores baixos
+// saem normais ($250).
+const moneyCompact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
+const fmtMoney = n => '$' + moneyCompact.format(Math.max(0, Math.floor(Number(n) || 0)));
+
 // Atualiza o top 5 nas duas listas que usam o mesmo ranking: a tela inicial
 // (#lb-list) e o overlay de pausa (#pause-lb-list). Também mostra o total de
 // jogadores cadastrados no ranking (#lb-total / #pause-lb-total).
@@ -113,7 +119,7 @@ export async function refreshTopPlayers() {
     ? entries.map(e =>
         `<li><span class="lb-rank">${e.rank}</span>` +
         `<span class="lb-name">${escapeHtml(e.name)}</span>` +
-        `<span class="lb-money">$${Number(e.money).toLocaleString('en-US')}</span></li>`
+        `<span class="lb-money">${fmtMoney(e.money)}</span></li>`
       ).join('')
     : '<li class="lb-empty">Be the first on the board!</li>';
   targets.forEach(el => { el.innerHTML = html; });

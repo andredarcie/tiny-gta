@@ -141,7 +141,11 @@ export function miniGameRating({ plays = 0, wins = 0, earned = 0 } = {}) {
 
 export const BASE_MONEY = num(process.env.BASE_MONEY, 250);
 export const MONEY_PER_SEC = num(process.env.MONEY_PER_SEC, 200);
-export const MONEY_HARD_CAP = num(process.env.MONEY_HARD_CAP, 10_000_000);
+// Teto absoluto de sanidade (rejeita valores claramente forjados). Bem alto de
+// propósito — o jogador PODE ficar muito rico; quem limita o crescimento real é
+// a plausibilidade por tempo (maxPlausibleMoney). O ranking abrevia com letras
+// (K/M/B/T) pra não estourar o layout. 1e12 cabe exato em float64 (score do set).
+export const MONEY_HARD_CAP = num(process.env.MONEY_HARD_CAP, 1_000_000_000_000);
 export const SESSION_TTL = num(process.env.SESSION_TTL, 4 * 60 * 60);
 export const MIN_RUN_SECONDS = num(process.env.MIN_RUN_SECONDS, 20);
 export const RL_MAX = num(process.env.RL_MAX, 30);
