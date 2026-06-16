@@ -157,6 +157,7 @@ export function startGameFromUserGesture(opts={}){
   initAudio();AC?.resume?.();
   document.getElementById('title').style.display='none';
   document.getElementById('hud').style.display='block';
+  document.body.classList.add('playing'); // reveals the in-game pause button (hidden on title)
   state.started=true;
   cameraRig.yaw=player.heading;
   if(mobile){
@@ -319,11 +320,6 @@ export function setupInput(){
     if(document.hidden)resetInput(true);
   });
 
-  const savedBest=JSON.parse(localStorage.getItem('tinygta_best')||'{"money":0,"deliveries":0}');
-  if(savedBest.money>0||savedBest.deliveries>0)
-    document.getElementById('best').textContent=
-      `BEST: $${savedBest.money} ◆ ${savedBest.deliveries} DELIVERIES`;
-
   // Iniciar passa pelo modal de nickname (o nick vai pro ranking global).
   refreshTopPlayers();
   document.getElementById('play')?.addEventListener('click',e=>{e.stopPropagation();openNickModal();});
@@ -331,8 +327,14 @@ export function setupInput(){
   document.getElementById('nick-input')?.addEventListener('keydown',e=>{
     if(e.key==='Enter'){e.preventDefault();confirmNick();}
   });
+  // Top-center button: opens/closes the in-game pause menu (only shown while playing).
   document.getElementById('btn-fullscreen')?.addEventListener('pointerdown',e=>{
     e.preventDefault();
+    e.stopPropagation();
+    performPauseToggle();
+  });
+  // Fullscreen now lives inside the pause menu.
+  document.getElementById('btn-pause-fullscreen')?.addEventListener('click',e=>{
     e.stopPropagation();
     performFullscreenToggle();
   });
