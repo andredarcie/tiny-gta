@@ -52,6 +52,11 @@ async function submit(req, res) {
   //    por tempo (abaixo) + rate-limit por IP + GT (só melhora).
   const sess = C.parseSession(await redis.get(C.SESSION_PREFIX + token));
   if (!sess || !sess.at) return res.status(403).json({error: 'invalid_session'});
+  // 3b) o token vale só para a identidade que o emitiu: impede usar um token
+  //     (próprio ou copiado via devtools/cURL) para gravar/sobrescrever o nome de
+  //     outro jogador. Sessões antigas sem identidade (pid/name null) não exigem.
+  if (sess.name && sess.name !== name) return res.status(403).json({error: 'session_mismatch'});
+  if (sess.pid && pid && sess.pid !== pid) return res.status(403).json({error: 'session_mismatch'});
   const seconds = (Date.now() - sess.at) / 1000;
   if (seconds < C.MIN_RUN_SECONDS) return res.status(403).json({error: 'run_too_short'});
 

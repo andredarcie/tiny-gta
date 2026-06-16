@@ -72,8 +72,11 @@ async function submit(req, res) {
 
   // 3) sessão precisa existir (mesmo token da run global). Não exige duração mínima:
   //    um resultado de mini game é enviado durante a partida, não no fim dela.
-  const startedAtRaw = await redis.get(C.SESSION_PREFIX + token);
-  if (startedAtRaw == null) return res.status(403).json({error: 'invalid_session'});
+  //    O token é amarrado à identidade: o nome enviado tem que bater com o da
+  //    sessão (token copiado não infla o ranking de minigame de outro nome).
+  const sess = C.parseSession(await redis.get(C.SESSION_PREFIX + token));
+  if (!sess || !sess.at) return res.status(403).json({error: 'invalid_session'});
+  if (sess.name && sess.name !== name) return res.status(403).json({error: 'session_mismatch'});
 
   // 4) acumula os crus do jogador neste jogo (HINCRBY soma sessão a sessão)
   const pKey = C.mgPlayerKey(game, name);

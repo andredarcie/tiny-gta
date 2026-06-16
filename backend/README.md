@@ -38,16 +38,25 @@ Parâmetros (`MG_PRIOR_N`=5, `MG_PRIOR_RATE`=0.35, `MG_VOLUME_W`=0.5, `MG_SCORE_
 são ajustáveis por env. Reaproveita o **token de sessão** e o **rate-limit por IP**.
 
 ### Camadas de segurança
-- **Token de sessão** emitido em `/api/session` no início da partida, exigido e
-  **consumido** (single-use) no envio → dificulta replay/spam.
-- **Plausibilidade**: `money` não pode passar de `BASE_MONEY + MONEY_PER_SEC * duração`.
-- **Rate-limit por IP** (`RL_MAX` envios por `RL_WINDOW`).
-- **Sanitização do nome** (A–Z 0–9, até 12 chars).
-- **CORS** restrito a `ALLOWED_ORIGINS`.
-- Guarda só o **melhor score por nome** (`ZADD … GT`).
+- **Token de sessão** emitido em `/api/session` **amarrado à identidade (pid+nick)**
+  que o criou; `/api/scores` e `/api/minigame` **rejeitam** envios cujo nome/pid não
+  batam com a sessão → impede usar um token copiado (via cURL/devtools) pra gravar ou
+  sobrescrever o nome de outro jogador.
+- **Plausibilidade por tempo**: `money` não pode passar de
+  `BASE_MONEY + MONEY_PER_SEC * duração` **+ saldo restaurado** no início da run.
+- **Teto absoluto** `MONEY_HARD_CAP` (default agora **10.000.000**, ajustável por env)
+  → barra de cara valores claramente forjados.
+- **Rate-limit por IP** (`RL_MAX` envios por `RL_WINDOW`) usando o IP **confiável da
+  Vercel** (`x-real-ip`), e não o `x-forwarded-for` cru (que o cliente consegue forjar).
+- **Limite de tamanho do corpo** da requisição, aplicado antes do parse do JSON.
+- **Sanitização do nome** (A–Z 0–9, até 12 chars) + **filtro de palavrão**.
+- **CORS** restrito a `ALLOWED_ORIGINS` (lembre: CORS só protege o navegador, **não**
+  o cURL).
 
-> ⚠️ Jogo é client-side: isto eleva muito o custo da trapaça, mas não é à prova de
-> tudo. Para 100% seria preciso revalidar a partida no servidor (server-authoritative).
+> ⚠️ Jogo é client-side: estas camadas elevam muito o custo da trapaça, mas não são à
+> prova de tudo. Para 100% seria preciso revalidar a partida no servidor
+> (server-authoritative). Quando algo passar mesmo assim, `scripts/cleanup.mjs` repara
+> o ranking depois do abuso (inspecionar / tetar / remover trapaceiros).
 
 ## Setup
 

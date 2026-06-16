@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {redis} from '../lib/redis.js';
-import {cors, jsonBody} from '../lib/http.js';
+import {cors, clientIp, jsonBody} from '../lib/http.js';
 import * as C from '../lib/scores.js';
 
 // POST /api/session  (body opcional {pid, name})
@@ -14,6 +14,14 @@ import * as C from '../lib/scores.js';
 export default async function handler(req, res) {
   if (cors(req, res)) return;
   if (req.method !== 'POST') { res.status(405).json({error: 'method_not_allowed'}); return; }
+
+  // rate-limit da criação de token (por IP confiável): um jogador legítimo abre
+  // ~1 sessão por partida; isto trava o mint em massa de tokens para fabricar
+  // dinheiro no teto por tempo e o abuso de escrita/custo no Redis.
+  const rlKey = C.SESS_RL_PREFIX + clientIp(req);
+  const hits = await redis.incr(rlKey);
+  if (hits === 1) await redis.expire(rlKey, C.RL_WINDOW);
+  if (hits > C.RL_MAX) { res.status(429).json({error: 'rate_limited'}); return; }
 
   // identidade opcional: restaura o progresso só quando id + nick batem
   const body = jsonBody(req);
@@ -41,6 +49,13 @@ export default async function handler(req, res) {
 
   const token = randomUUID();
   const startedAt = Date.now();
-  await redis.set(C.SESSION_PREFIX + token, {at: startedAt, base: money}, {ex: C.SESSION_TTL});
+  // Grava a identidade (pid+nick) junto do token: o /api/scores e o /api/minigame
+  // exigem que o envio bata com isto, então um token (próprio ou copiado de outra
+  // aba/cURL) não consegue gravar/sobrescrever o nome de OUTRO jogador no ranking.
+  await redis.set(
+    C.SESSION_PREFIX + token,
+    {at: startedAt, base: money, pid: pid || null, name: name || null},
+    {ex: C.SESSION_TTL},
+  );
   res.status(200).json({token, startedAt, money, save});
 }

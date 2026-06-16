@@ -6,6 +6,9 @@ const num = (v, def) => (Number.isFinite(Number(v)) ? Number(v) : def);
 export const LEADERBOARD_KEY = 'tinygta:leaderboard';
 export const SESSION_PREFIX = 'tinygta:sess:';
 export const RL_PREFIX = 'tinygta:rl:';
+// Rate-limit próprio da CRIAÇÃO de sessão (mintar token): limita o grind
+// automatizado do teto por tempo e o abuso de custo/escrita no Redis.
+export const SESS_RL_PREFIX = 'tinygta:srl:';
 
 // ----- SAVE / PROGRESSO POR JOGADOR -----------------------------------------
 // Cada jogador tem um BLOB JSON de progresso (dinheiro atual + armas + músculo +
@@ -80,14 +83,23 @@ export function sanitizePid(raw) {
 
 // Valor da sessão: instante de início + saldo restaurado (base de plausibilidade
 // do /api/scores — um jogador que volta rico pode reenviar o saldo já salvo sem
-// estourar o teto por tempo). Aceita o formato antigo (só o timestamp) para não
-// quebrar sessões em voo durante o deploy.
+// estourar o teto por tempo) + a IDENTIDADE (pid+nick) que criou o token. Os
+// endpoints exigem que o envio bata com essa identidade, então um token copiado
+// (devtools/cURL) não grava o nome de outro jogador. Aceita o formato antigo
+// (só o timestamp / sem identidade) para não quebrar sessões em voo no deploy:
+// quando pid/name vêm null, o binding simplesmente não é exigido.
 export function parseSession(raw) {
   if (raw == null) return null;
-  if (typeof raw === 'object') return { at: Number(raw.at) || 0, base: Math.max(0, Number(raw.base) || 0) };
+  const norm = o => ({
+    at: Number(o.at) || 0,
+    base: Math.max(0, Number(o.base) || 0),
+    pid: typeof o.pid === 'string' ? o.pid : null,
+    name: typeof o.name === 'string' ? o.name : null,
+  });
+  if (typeof raw === 'object') return norm(raw);
   const s = String(raw);
-  if (s[0] === '{') { try { const o = JSON.parse(s); return { at: Number(o.at) || 0, base: Math.max(0, Number(o.base) || 0) }; } catch {} }
-  return { at: Number(s) || 0, base: 0 };
+  if (s[0] === '{') { try { return norm(JSON.parse(s)); } catch {} }
+  return { at: Number(s) || 0, base: 0, pid: null, name: null };
 }
 
 // ----- Leaderboards POR MINI GAME -------------------------------------------
@@ -149,11 +161,14 @@ export function miniGameRating({ plays = 0, wins = 0, earned = 0 } = {}) {
 
 export const BASE_MONEY = num(process.env.BASE_MONEY, 250);
 export const MONEY_PER_SEC = num(process.env.MONEY_PER_SEC, 200);
-// Teto absoluto de sanidade (rejeita valores claramente forjados). Bem alto de
-// propósito — o jogador PODE ficar muito rico; quem limita o crescimento real é
-// a plausibilidade por tempo (maxPlausibleMoney). O ranking abrevia com letras
-// (K/M/B/T) pra não estourar o layout. 1e12 cabe exato em float64 (score do set).
-export const MONEY_HARD_CAP = num(process.env.MONEY_HARD_CAP, 1_000_000_000_000);
+// Teto absoluto de sanidade (rejeita valores claramente forjados). Quem limita o
+// crescimento normal é a plausibilidade por tempo (maxPlausibleMoney); este é o
+// freio de emergência caso a plausibilidade deixe passar. O default é 10M
+// (igual ao .env.example) DE PROPÓSITO: se a env var não estiver setada em prod,
+// o teto NÃO pode virar 1e12 — era isso que deixava um valor absurdo passar.
+// Suba por env (MONEY_HARD_CAP) se a economia do jogo exigir. O ranking abrevia
+// com letras (K/M/B/T) pra não estourar o layout.
+export const MONEY_HARD_CAP = num(process.env.MONEY_HARD_CAP, 10_000_000);
 export const SESSION_TTL = num(process.env.SESSION_TTL, 4 * 60 * 60);
 export const MIN_RUN_SECONDS = num(process.env.MIN_RUN_SECONDS, 20);
 export const RL_MAX = num(process.env.RL_MAX, 30);
