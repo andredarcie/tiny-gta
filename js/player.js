@@ -78,6 +78,8 @@ function spawnBike(color,name,x,z,heading){
 // uma ao lado do carro inicial; outra num cruzamento (sempre asfalto livre)
 spawnBike(0xd11f3a,'STREET ROCKET',nodeX(4)+3.5,0,nodeX(4)+10,Math.PI/2);
 spawnBike(0x18b0a6,'NEON BLADE',nodeX(5),0,nodeX(5),0);
+// a getaway bike waiting in the fort courtyard, by where the escape tunnel surfaces
+{const b=spawnBike(0x8a3b2a,'FORT RUNNER',600,0,84,Math.PI);b.g.position.y=groundHeight(600,84);}
 
 export let cur=null;
 

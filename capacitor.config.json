@@ -1,0 +1,11 @@
+{
+  "appId": "com.andredarcie.tinygta",
+  "appName": "Tiny Crime",
+  "webDir": "dist",
+  "backgroundColor": "#14091f",
+  "android": {
+    "backgroundColor": "#14091f",
+    "allowMixedContent": false,
+    "captureInput": true
+  }
+}

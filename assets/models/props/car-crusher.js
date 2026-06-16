@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {matte} from '../matte.js';
 
 // Prensa industrial de sucata (CAR CRUSHER) — estilo "esmagador de carros" do
-// GTA. Modelo PURO: monta a estrutura e devolve o grupo. A placa/pistão pesado
+// open-world. Modelo PURO: monta a estrutura e devolve o grupo. A placa/pistão pesado
 // fica exposta em group.userData.press (um THREE.Mesh) para o sistema animar a
 // descida sobre o carro. Cores industriais: cinza de aço e amarelo de máquina.
 export function makeCarCrusher(){

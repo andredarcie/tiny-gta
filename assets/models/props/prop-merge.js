@@ -9,7 +9,7 @@ import {scene} from '../../../js/engine.js';
 //
 // finalizeProps() funde cada balde num mesh, agrupados por chunk. updatePropCulling()
 // esconde os chunks distantes com uma distância de corte CURTA — LOD por tamanho
-// estilo GTA3: objeto pequeno NÃO deve ser desenhado de longe (some perto), ao
+// estilo open-world: objeto pequeno NÃO deve ser desenhado de longe (some perto), ao
 // contrário dos prédios (grandes), que aparecem de bem longe.
 const PROP_CHUNK=90;  // lado do super-bloco de props (m)
 const PROP_CULL=160;  // props além disso (do centro do chunk) não são desenhados

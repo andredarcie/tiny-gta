@@ -1,4 +1,4 @@
-# Tiny GTA — Leaderboard API
+# Tiny Crime — Leaderboard API
 
 API serverless (Vercel) + Upstash Redis para o ranking global de dinheiro.
 

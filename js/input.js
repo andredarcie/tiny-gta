@@ -82,6 +82,27 @@ export function performPauseToggle(){
   showPause();
 }
 
+// Android hardware "back" button. Mirrors the keydown Escape precedence so back
+// closes whatever overlay is open (mini-game, map, weapon wheel, TV, …) before
+// falling back to pause. Returns 'exit' only at the very top (title/nick screen)
+// so the native shell can leave the app; otherwise 'consumed'. See js/native.js.
+export function performBack(){
+  if(state.cine)return 'consumed';                                        // cut-scene: ignore back
+  if(gymGameActive()){closeGymGame();return 'consumed';}
+  if(danceGameActive()){if(!danceGameConfirm())closeDanceGame();return 'consumed';}
+  if(modShopActive()){closeModShop();return 'consumed';}
+  if(state.tvActive){closeHouseTv();return 'consumed';}
+  if(state.viewerOpen){closeModelViewer();return 'consumed';}
+  const nick=document.getElementById('nickmodal');
+  if(nick?.classList.contains('open')){nick.classList.remove('open');return 'consumed';}
+  if(!state.started)return 'exit';                                        // title screen: allow exit
+  if(state.dlgActive)return 'consumed';                                   // cut-scene dialogue
+  if(state.wheelOpen){closeWheel(false);return 'consumed';}
+  if(state.mapOpen){closeFullMap();return 'consumed';}
+  performPauseToggle();                                                   // gameplay: pause / unpause
+  return 'consumed';
+}
+
 // Mapa completo (tecla M / toque no radar): congela o mundo e mostra a visão
 // geral com todos os POIs. Ver state.mapOpen e o early-return em main.js.
 const fullmapEl=()=>document.getElementById('fullmap');
@@ -301,7 +322,7 @@ export function setupInput(){
     if(e.code==='KeyR'){performRadioSwitch();return;} // rádio saiu do Tab (agora da roda de armas)
     if(e.code==='KeyC'){toggleFirstPerson();return;}  // alterna câmera em primeira pessoa
     if(/^Digit[0-9]$/.test(e.code)){selectWeaponSlot(e.code==='Digit0'?10:+e.code.slice(5));return;}
-    // Roda de armas: TAB é o padrão de mercado (GTA V); Q segue valendo de alternativa.
+    // Roda de armas: TAB é o padrão de mercado (open-world); Q segue valendo de alternativa.
     if(e.code==='Tab'||e.code==='KeyQ'){if(!e.repeat)openWheel();return;} // segurar abre a roda; soltar equipa (keyup)
     // !e.repeat: segurar E/F NÃO repete a interação. Sem isso, manter a tecla
     // pressionada dispararia os DOIS toques da confirmação da loja de armas em

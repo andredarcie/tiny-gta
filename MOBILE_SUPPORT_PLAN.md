@@ -1,8 +1,8 @@
-# Plano mobile 3D para Tiny GTA
+# Plano mobile 3D para Tiny Crime
 
 ## Objetivo
 
-Transformar o Tiny GTA em um jogo totalmente jogavel em mobile, mantendo o desktop intacto. No celular/tablet, o jogo deve funcionar em landscape, com dois analogicos transparentes, botoes touch para interacao/armas/tiro/freio/radio/pausa, HUD responsiva e controles confortaveis para uma camera 3D em terceira pessoa.
+Transformar o Tiny Crime em um jogo totalmente jogavel em mobile, mantendo o desktop intacto. No celular/tablet, o jogo deve funcionar em landscape, com dois analogicos transparentes, botoes touch para interacao/armas/tiro/freio/radio/pausa, HUD responsiva e controles confortaveis para uma camera 3D em terceira pessoa.
 
 ## Comparacao com o codigo atual
 

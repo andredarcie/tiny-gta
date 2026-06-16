@@ -10,7 +10,7 @@ import {RANCH_CX,RANCH_CZ,RANCH_DOOR,RANCH_SPAWN_OUT,RANCH_SALE,GARAGE_PAD,
   INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,FOOD,HOUSE_PRICE,
   ranchFx,ranchInterior} from '../assets/models/rural/ranch-house.js';
 
-// Casa de campo COMPRÁVEL (safehouse estilo GTA). Estende a classe base de
+// Casa de campo COMPRÁVEL (safehouse estilo open-world). Estende a classe base de
 // interiores (js/interior.js), que já cuida de porta/teleporte/limite do
 // mundo/câmera/saída de emergência. O que é só desta casa:
 //   - COMPRA: placa FOR SALE na frente; só depois de paga a porta abre;

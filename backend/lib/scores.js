@@ -12,15 +12,38 @@ export const SESS_RL_PREFIX = 'tinygta:srl:';
 
 // ----- SAVE / PROGRESSO POR JOGADOR -----------------------------------------
 // Cada jogador tem um BLOB JSON de progresso (dinheiro atual + armas + músculo +
-// casa + coletáveis) numa chave string `tinygta:save:<pid>|<nick>`, restaurado na
-// partida seguinte. Chavear por (pid, nick) — e não só pelo nick público —
-// impede que alguém digite o apelido alheio e herde o progresso: o pid é um UUID
-// secreto no localStorage do dono.
+// casa + coletáveis) numa chave string `tinygta:save:<pid>`, restaurado na partida
+// seguinte. Chavear pelo PID (UUID secreto no localStorage do dono) — e não pelo
+// nick público — impede que alguém digite o apelido alheio e herde o progresso, e
+// faz o save seguir o jogador mesmo se ele trocar de apelido. (O formato antigo
+// `tinygta:save:<pid>|<nick>` ainda é lido para migração; ver saveKey/saveMember.)
 export const SAVE_PREFIX = 'tinygta:save:';
 // Sorted set ANTIGO (save só-dinheiro). Mantido só para migração: se ainda não
 // existir o blob novo, o /api/session lê o saldo daqui.
 export const SAVE_LEGACY_KEY = 'tinygta:save';
 export const saveMember = (pid, name) => pid + '|' + name;
+// Chave PRIMÁRIA do save: SÓ o pid (UUID secreto no localStorage do dono). O pid
+// sozinho já impede herdar progresso alheio (ninguém adivinha o UUID) — incluir o
+// nick na chave só fazia o save "sumir" quando o jogador trocava de apelido.
+// saveMember continua existindo para LER o formato antigo (pid|nick) e migrar.
+export const saveKey = pid => SAVE_PREFIX + pid;
+
+// ----- CONTAS (login usuário+senha) -----------------------------------------
+// A conta resolve (username, senha) -> pid. O save CONTINUA chaveado por pid; a
+// conta só permite RECUPERAR o pid (e portanto o save) em outro aparelho / depois
+// de limpar o localStorage. O username é o próprio apelido do ranking.
+export const ACCT_PREFIX = 'tinygta:acct:';        // + <username> -> {hash,salt,pid,at}
+export const PIDACCT_PREFIX = 'tinygta:pidacct:';  // + <pid> -> <username> (1 conta por pid)
+export const ACCT_RL_PREFIX = 'tinygta:arl:';      // rate-limit das operações de conta
+export const acctKey = u => ACCT_PREFIX + u;
+export const pidAcctKey = pid => PIDACCT_PREFIX + pid;
+
+// Senha: 4..64 chars, qualquer caractere (jogo casual). Retorna a senha ou null.
+export function sanitizePassword(raw) {
+  if (typeof raw !== 'string') return null;
+  if (raw.length < 4 || raw.length > 64) return null;
+  return raw;
+}
 
 // SEED de migração (hash nome -> dinheiro): jogadores que JÁ estavam no ranking
 // antes do sistema de save (logo, sem save) herdam aqui o valor do ranking como

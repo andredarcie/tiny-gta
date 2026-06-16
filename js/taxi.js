@@ -12,14 +12,14 @@ import {blip} from './audio.js';
 import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
-// Minigame de táxi estilo GTA: um táxi amarelo fica estacionado na rua ao
+// Minigame de táxi estilo Open-world: um táxi amarelo fica estacionado na rua ao
 // lado de uma praça. Entrou nele, começa o expediente: sempre tem um
 // passageiro acenando em algum canto da cidade — pare do lado que ele
 // embarca (e fica sentado no banco do carona, visível pelo vidro), leve até
 // o marcador e ele desce pagando a corrida. Emenda corridas sem limite;
 // sair do táxi encerra o expediente.
 
-const TAXI_BUILD=' ◆ TAXI';
+const TAXI_BUILD=' ◆ CAB HUSTLE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',TAXI_BUILD);
 
 const standKey=[...parks][0]||'4_4';
@@ -55,7 +55,7 @@ const taxiHud=document.getElementById('taxihud');
 
 // mini game (sessão): trava o mundo durante o expediente; o alvo é o passageiro
 // (fase pickup) ou o destino da corrida (fase ride)
-const game=new MiniGame({id:MiniGameId.TAXI,name:'Taxi',
+const game=new MiniGame({id:MiniGameId.TAXI,name:'Cab Hustle',
   blips:()=>{
     if(phase==='pickup'&&fare)
       return[{x:fare.x,z:fare.z,icon:'person',color:'#5eff8a',label:'PASSENGER',current:true,reveal:false}];
@@ -130,14 +130,14 @@ function updateTaxiHud(){
   if(phase==='pickup'){
     const d=Math.hypot(taxi.g.position.x-fare.x,taxi.g.position.z-fare.z);
     taxiHud.innerHTML=`
-      <div class="taxi-label">TAXI</div>
+      <div class="taxi-label">CAB</div>
       <div class="taxi-main"><span>PICK</span><b>${Math.ceil(d)}m</b></div>`;
   }else{
     const d=Math.hypot(taxi.g.position.x-fare.dropX,taxi.g.position.z-fare.dropZ);
     const span=Math.max(.1,fare.deadline-fare.rideStart);
     const pct=Math.round(clamp((fare.deadline-state.time)/span,0,1)*100);
     taxiHud.innerHTML=`
-      <div class="taxi-label">TAXI</div>
+      <div class="taxi-label">CAB</div>
       <div class="taxi-main"><span>DROP</span><b>${Math.ceil(d)}m</b></div>
       <div class="taxi-meter"><i style="width:${pct}%"></i></div>`;
   }
@@ -218,7 +218,7 @@ function dropPassenger(){
   leaving.push({g:ped,t:0,bob:0,h:ped.rotation.y});
 }
 
-function endShift(text='TAXI SHIFT ENDED',col='var(--cyan)'){
+function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
   if(phase==='pickup'&&fare){clearMarker();scene.remove(fare.ped);}
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
   // ranking: o expediente inteiro conta como UMA sessão (ganho = total da corrida)
@@ -234,7 +234,7 @@ function startShift(){
   if(!game.begin())return; // outra sessão de mini game rolando: não começa
   shiftFares=0;shiftEarnings=0;shiftStartedAt=state.time;
   spawnFare(false);
-  message('TAXI SHIFT STARTED - PICK UP THE FARE','var(--gold)');
+  message('CAB SHIFT STARTED - PICK UP THE FARE','var(--gold)');
   blip([523,659],.08,'sine',.16);
 }
 
@@ -281,7 +281,7 @@ export function updateTaxi(dt){
       wreckT=0;resetTaxiCar();
       scene.add(taxi.g);
       if(!idleCars.includes(taxi))idleCars.push(taxi);
-      message('A NEW TAXI IS WAITING BY THE PLAZA','var(--cyan)');
+      message('A NEW CAB IS WAITING BY THE PLAZA','var(--cyan)');
     }
   }
 

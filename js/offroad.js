@@ -15,7 +15,7 @@ import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
 // ============================================================================
-// OFF-ROAD — a 3ª corrida do jogo (estilo desafio off-road do GTA III), na
+// OFF-ROAD — a 3ª corrida do jogo (estilo desafio off-road do open-world), na
 // PRADARIA RURAL a leste da cidade. Mesmo esquema das outras corridas (rua e
 // lancha), só que num CIRCUITO FIXO de terra em loop pelas colinas: chegue de
 // carro no pórtico de largada, pare embaixo e a prova começa — o carro teleporta

@@ -10,6 +10,11 @@ import { refs } from './state.js';
 export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 const PID_KEY = 'tinygta_pid';
+// Espelho LOCAL do último save (mesmo pid). Rede de segurança: se o backend
+// devolver vazio por um soluço transitório (rede/Redis), o jogo restaura daqui
+// em vez de começar do zero e sobrescrever o progresso bom no próximo flush.
+// (Não cobre limpeza do localStorage — aí o próprio pid some; ver startSession.)
+const SAVE_MIRROR_KEY = 'tinygta_save';
 
 let token = null, lastSig = '', flushTimer = null;
 let nickname = '';
@@ -40,6 +45,18 @@ export function setNickname(n) {
   try { localStorage.setItem(NICK_KEY, n); } catch (e) {}
 }
 
+// Lê/grava o espelho local do save (só do pid atual: nunca restaura o save de
+// outra identidade que tenha ficado no mesmo aparelho).
+function writeMirror(save) {
+  try { localStorage.setItem(SAVE_MIRROR_KEY, JSON.stringify({ pid, save })); } catch (e) {}
+}
+function readMirror() {
+  try {
+    const m = JSON.parse(localStorage.getItem(SAVE_MIRROR_KEY) || 'null');
+    return m && m.pid === pid && m.save ? m.save : null;
+  } catch (e) { return null; }
+}
+
 // Abre a sessão e devolve o SAVE desse (id, nick) — o chamador (js/save.js via
 // input.js) restaura dinheiro + itens.
 export async function startSession() {
@@ -55,6 +72,14 @@ export async function startSession() {
     token = data.token;
     save = data.save || (data.money > 0 ? { money: Math.floor(data.money) } : null);
   } catch (e) {}
+  // Reconciliação com o espelho local (mesmo pid), priorizando NÃO PERDER
+  // progresso: usa o espelho quando o backend não trouxe nada (rede/Redis falhou)
+  // OU quando o espelho é MAIS NOVO que o save do servidor — caso de progresso
+  // feito offline depois do último flush que chegou ao backend. Comparação por
+  // carimbo `t` (last-write-wins): o save mais recente é a verdade, tenha ele mais
+  // ou menos dinheiro (gastar é progresso legítimo também).
+  const m = readMirror();
+  if (m && (!save || (Number(m.t) || 0) > (Number(save.t) || 0))) save = m;
   return save;
 }
 
@@ -75,9 +100,15 @@ export function flush() {
   if (!token || !nickname) return;
   const save = refs.collectSave?.() || null;
   const money = save ? Math.max(0, Math.floor(Number(save.money) || 0)) : 0;
+  // dedupe pelo CONTEÚDO (sem o carimbo `t`, senão a assinatura mudaria todo
+  // frame e o flush postaria sem parar).
   const sig = money + '#' + (save ? JSON.stringify(save) : '');
   if (sig === lastSig) return;       // nada mudou desde o último envio
   lastSig = sig;                     // otimista; em erro volta pra '' e tenta de novo
+  // conteúdo mudou: carimba o instante (last-write-wins na reconciliação com o
+  // espelho — ver startSession) e atualiza o backup local ANTES de postar, pra
+  // que progresso feito offline sobreviva mesmo se o POST não chegar ao backend.
+  if (save) { save.t = Date.now(); writeMirror(save); }
   try {
     fetch(API + '/api/scores', {
       method: 'POST',

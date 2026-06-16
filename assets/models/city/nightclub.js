@@ -6,7 +6,7 @@ import {addPalm} from '../props/palm.js';
 import {makePed,shirtColors} from '../characters/pedestrian.js';
 import {makeDoorArrow} from './door-arrow.js';
 
-// Boate "THE FLAMINGO", estilo Vice City: prédio na orla oeste (quarteirão
+// Boate "THE FLAMINGO", estilo mundo aberto: prédio na orla oeste (quarteirão
 // CLUB_I/CLUB_J, reservado pelo world.js) com letreiro neon e entrada coberta.
 // O interior é um cenário separado construído a ~600m do mapa, dentro de um
 // Group com visible=false — só é renderizado enquanto o jogador está lá

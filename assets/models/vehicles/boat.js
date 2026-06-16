@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {scene} from '../../../js/engine.js';
 
-// Lancha estilo GTA Vice City: speedboat de cockpit aberto, casco em V com proa
+// Lancha estilo mundo aberto: speedboat de cockpit aberto, casco em V com proa
 // pontuda, para-brisa envolvente, console/timão central, bancos, capô do motor e
 // plataforma de mergulho na popa. Convenção igual ao carro/moto: +Z é a FRENTE
 // (proa), largura em X, casco flutuando com o piso em y≈0 (o mar fica em y=-.32).

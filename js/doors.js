@@ -12,7 +12,7 @@ import {irand} from './constants.js';
 import {message} from './hud.js';
 import {blip} from './audio.js';
 
-// Portas estilo Vice City: sem botão — encostou na porta, atravessou.
+// Portas estilo mundo aberto: sem botão — encostou na porta, atravessou.
 // Boate: porta da rua entra, porta de dentro sai. Prédio com porta: a porta
 // leva ao telhado; o alçapão de metal lá em cima (com a seta) desce de volta.
 // O latch impede o vaivém: depois de atravessar, o jogador nasce dentro do

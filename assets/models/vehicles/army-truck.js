@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
-// ARMY truck (GTA "Barracks" style): low cab up front + open bed at the back with
+// ARMY truck (military transport style): low cab up front + open bed at the back with
 // side lockers and canvas bows, GREEN CAMO paint (procedural <canvas> texture),
 // 6 wheels. Shows up at 6 stars (max wanted) — see js/army.js — carrying 4
 // soldiers standing in the bed who dismount and gun down the player. build() is

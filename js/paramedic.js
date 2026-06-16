@@ -13,7 +13,7 @@ import {HOSP_I,HOSP_J} from '../assets/models/city/hospital.js';
 import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
-// Side-mission de paramédico estilo GTA (Vigilante/Paramedic): uma ambulância
+// Side-mission de paramédico estilo open-world (Vigilante/Paramedic): uma ambulância
 // fica estacionada na esquina do hospital. Entrou nela, começa o plantão: feridos
 // caídos pela cidade precisam ser recolhidos (passe perto e pare) e levados ao
 // hospital. Cada nível tem MAIS feridos e um tempo MENOR de folga; entregar todos
@@ -46,7 +46,7 @@ let runRescues=0;  // pacientes entregues no plantão (resumo)
 
 // mini game (sessão): trava o mundo durante o plantão; os alvos são os feridos
 // (fase rescue) ou o hospital (fase hospital)
-const game=new MiniGame({id:MiniGameId.PARAMEDIC,name:'Paramedic',
+const game=new MiniGame({id:MiniGameId.PARAMEDIC,name:'Ambulance Rush',
   blips:()=>phase==='hospital'
     ?[{x:dropX,z:dropZ,icon:'cross',color:'#19e3ff',label:'HOSPITAL',current:true,reveal:false}]
     :patients.filter(p=>!p.loaded).map(p=>({x:p.x,z:p.z,icon:'cross',color:'#5eff8a',
@@ -123,7 +123,7 @@ function startLevel(announce=true){
   clearHospMk();
   spawnPatients();
   if(announce){
-    message(`PARAMEDIC - LEVEL ${level}: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
+    message(`AMBULANCE RUSH - LEVEL ${level}: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
     blip([523,659],.08,'sine',.16);
   }
   phase='rescue';
@@ -133,13 +133,13 @@ function startLevel(announce=true){
 function startDuty(){
   if(!game.begin())return; // outra sessão de mini game rolando: não começa
   level=1;runRescues=0;
-  message('PARAMEDIC DUTY STARTED','var(--gold)');
+  message('AMBULANCE RUSH STARTED','var(--gold)');
   startLevel(false);
   message(`LEVEL 1: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
   blip([440,587,740],.08,'sine',.16);
 }
 
-function endDuty(text='PARAMEDIC DUTY ENDED',col='var(--cyan)'){
+function endDuty(text='AMBULANCE RUSH ENDED',col='var(--cyan)'){
   clearPatients();
   clearHospMk();
   const summary=runRescues>0?` - ${runRescues} PATIENTS SAVED`:'';
@@ -217,7 +217,7 @@ function updateMedHud(){
     ?'<div class="med-row"><span>TO HOSPITAL</span><b>DELIVER</b></div>'
     :'<div class="med-row"><span>TO HOSPITAL</span><b>--</b></div>';
   medHud.innerHTML=`
-    <div class="med-label">PARAMEDIC</div>
+    <div class="med-label">MEDIC</div>
     <div class="med-main"><span>LEVEL</span><b>${level}</b></div>
     <div class="med-row"><span>ONBOARD</span><b>${onboard}/${needed}</b></div>
     ${rowState}

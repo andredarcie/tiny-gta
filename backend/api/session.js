@@ -30,7 +30,11 @@ export default async function handler(req, res) {
   let save = null;
   if (pid && name) {
     const member = C.saveMember(pid, name);
-    const blob = await redis.get(C.SAVE_PREFIX + member);
+    // 1) chave nova (só pid). 2) fallback p/ chave antiga (pid|nick): cobre o
+    //    deploy e quem trocou de apelido — o save é re-gravado na chave nova no
+    //    próximo flush (ver /api/scores). 3) sorted set só-dinheiro. 4) seed.
+    let blob = await redis.get(C.saveKey(pid));
+    if (!(blob && typeof blob === 'object')) blob = await redis.get(C.SAVE_PREFIX + member);
     if (blob && typeof blob === 'object') save = blob;
     else {
       // migração: jogadores que só têm o save antigo (sorted set só-dinheiro)

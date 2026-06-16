@@ -1,6 +1,6 @@
 import { defineConfig } from '@playwright/test';
 
-// Browser test config for Tiny GTA. Tests drive the REAL game in a REAL Chromium
+// Browser test config for Tiny Crime. Tests drive the REAL game in a REAL Chromium
 // (real WebGL, real game loop) — see test/support/game.js for the driver and
 // test/README or the repo README for how to write a test.
 //

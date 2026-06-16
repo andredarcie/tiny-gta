@@ -13,7 +13,7 @@ import {PRISON_I,PRISON_J} from '../assets/models/city/prison.js';
 import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
-// Vigilante estilo GTA clássico: uma viatura de polícia fica estacionada na
+// Vigilante estilo open-world clássico: uma viatura de polícia fica estacionada na
 // esquina ao lado do presídio. Entrou nela, começa a patrulha: a cada nível
 // nasce UM criminoso fugindo de carro pela cidade. Sem drive-by neste jogo
 // (armas só a pé), então a captura é na MARRADA — encoste a viatura em
@@ -22,7 +22,7 @@ import {reportMiniGameResult} from './minigame-leaderboard.js';
 // suspeito escapa e a patrulha recomeça (igual ao expediente contínuo do táxi).
 // Sair da viatura (ou WASTED/BUSTED) encerra a patrulha.
 
-const VIG_BUILD=' ◆ VIGILANTE';
+const VIG_BUILD=' ◆ STREET JUSTICE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',VIG_BUILD);
 
 const RED=0xff3b56;
@@ -51,7 +51,7 @@ let criminal=null; // {g,hp,destX,destZ,heading,speed,ring,beacon,lastHit}
 let wreckT=0;      // viatura destruída: volta ao presídio depois de um tempo
 
 // mini game (sessão): trava o mundo durante a patrulha; o alvo é o fugitivo
-const game=new MiniGame({id:MiniGameId.VIGILANTE,name:'Vigilante',
+const game=new MiniGame({id:MiniGameId.VIGILANTE,name:'Street Justice',
   blips:()=>criminal?[{x:criminal.g.position.x,z:criminal.g.position.z,
     icon:'target',color:'#ff3b56',label:'SUSPECT',current:true,reveal:false}]:[]});
 
@@ -139,7 +139,7 @@ function updateVigHud(){
   vigHud.classList.add('show');
   const pct=Math.round(clamp(timeLeft/DUTY_TIME,0,1)*100);
   vigHud.innerHTML=`
-    <div class="vig-label">VIGILANTE</div>
+    <div class="vig-label">JUSTICE</div>
     <div class="vig-main"><span>LEVEL</span><b>${level}</b></div>
     <div class="vig-row"><span>BUSTS</span><b>${busts}</b></div>
     <div class="vig-row"><span>TIME</span><b>${Math.ceil(timeLeft)}s</b></div>
@@ -160,12 +160,12 @@ function startDuty(){
   clearTimeout(hideTimer);hideTimer=null; // cancel any stale hide from a previous session
   phase='duty';level=1;busts=0;timeLeft=DUTY_TIME;
   spawnCriminal();
-  message('VIGILANTE - RAM THE FLEEING SUSPECT','var(--blue)');
+  message('STREET JUSTICE - RAM THE FLEEING SUSPECT','var(--blue)');
   blip([523,659,784],.08,'square',.16);
   updateVigHud();
 }
 
-function endDuty(text='VIGILANTE OFF DUTY',col='var(--cyan)'){
+function endDuty(text='STREET JUSTICE OFF DUTY',col='var(--cyan)'){
   removeCriminal();
   const summary=busts>0?` - ${busts} BUSTS / LVL ${level}`:'';
   // ranking: a patrulha inteira é UMA sessão; score = prisões feitas

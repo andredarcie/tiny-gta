@@ -4,7 +4,7 @@ import {scene} from '../../../js/engine.js';
 import {RURAL_GAP} from '../../../js/constants.js';
 import {makeDoorArrow} from '../city/door-arrow.js';
 
-// Casa de campo COMPRÁVEL (safehouse estilo GTA), no mesmo molde dos demais
+// Casa de campo COMPRÁVEL (safehouse estilo open-world), no mesmo molde dos demais
 // interiores (boate/academia/hospital/presídio): fachada no mapa + ambiente
 // interno a ~600m num Group visible=false. Diferenças (ver js/property.js):
 //   - só ABRE depois de comprada (placa FOR SALE na frente);

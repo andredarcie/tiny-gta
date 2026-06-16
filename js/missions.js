@@ -62,7 +62,7 @@ export function spawnDelivery(){
   setMissionHUD();
 }
 
-// HUD minimalista estilo Vice City: missão atual não aparece mais na tela
+// HUD minimalista estilo mundo aberto: missão atual não aparece mais na tela
 export function setMissionHUD(){}
 
 // Sem seta 3D para entregas: o blip amarelo no radar já basta (a seta sobre o

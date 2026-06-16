@@ -17,7 +17,11 @@ export const INT_CENTER={x:-800,z:330};
 export const INT_DOOR={x:-814.2,z:330};
 export const INT_SPAWN={x:-812.2,z:330};
 export const PRISON_RELEASE={x:-808.8,z:329.4}; // busted spawn, release corridor
-export const INT_BOUNDS={x0:-814.3,x1:-785.7,z0:320.7,z1:339.3,y1:5.2};
+export const INT_BOUNDS={x0:-814.3,x1:-760.5,z0:320.7,z1:339.3,y1:5.2};
+// The clandestine hole in the open cell at the far east of the cell-block wing
+// (filled in by addPrison). Stepping on it drops into the escape tunnel — see
+// js/jail-break.js.
+export const TUNNEL_HOLE={x:-763,z:337};
 
 const concreteM=matte({color:0x6b7378,roughness:.96});
 const darkM=matte({color:0x15191d,roughness:.86});
@@ -100,6 +104,35 @@ function addCellWall(parent,x,z,w,d,h=3.25){
   return wall;
 }
 
+// Combined steel toilet-and-sink unit (the classic jail fixture), for cell detail.
+function makeToiletSink(){
+  const g=new THREE.Group();
+  const por=matte({color:0xb6bcc2,roughness:.5,metalness:.2});
+  g.add(mesh(new THREE.CylinderGeometry(.22,.18,.45,12),por,0,.32,0));        // bowl
+  const seat=new THREE.Mesh(new THREE.TorusGeometry(.2,.05,6,14),por);
+  seat.rotation.x=Math.PI/2;seat.position.y=.55;g.add(seat);
+  g.add(mesh(new THREE.BoxGeometry(.5,.55,.2),por,0,.78,-.24));               // tank
+  g.add(mesh(new THREE.BoxGeometry(.46,.12,.34),por,0,1.08,-.12));            // sink shelf
+  g.add(mesh(new THREE.CylinderGeometry(.12,.1,.08,12),
+    matte({color:0x2a2d33,roughness:.6}),0,1.12,-.08));                       // basin
+  return g;
+}
+function mesh(geo,m,x,y,z){const o=new THREE.Mesh(geo,m);o.position.set(x,y,z);return o;}
+
+// "CELL BLOCK D" placard over the doorway between the two rooms.
+let cbSignTex=null;
+function cellBlockSign(){
+  if(cbSignTex)return cbSignTex;
+  const c=document.createElement('canvas');c.width=256;c.height=64;
+  const x=c.getContext('2d');
+  x.fillStyle='#161b22';x.fillRect(0,0,256,64);
+  x.strokeStyle='#3e7bff';x.lineWidth=4;x.strokeRect(5,5,246,54);
+  x.fillStyle='#dfeaff';x.textAlign='center';x.textBaseline='middle';
+  x.font='900 28px monospace';x.fillText('CELL BLOCK D',128,34);
+  cbSignTex=new THREE.CanvasTexture(c);cbSignTex.colorSpace=THREE.SRGBColorSpace;
+  return cbSignTex;
+}
+
 export function addPrison(solids){
   const cx=-66,cz=-66;
 
@@ -136,21 +169,23 @@ export function addPrison(solids){
   solids.push({x0:cx-9.2,x1:cx+9.2,z0:cz-9.2,z1:cz+9.2,h:13.4});
 
   // Interior: processing room with a holding cell row.
-  const shell=new THREE.Mesh(new THREE.BoxGeometry(30,6,20),
+  // One long room: processing (west) + cell-block wing (east). Center shifts to -788,
+  // width 54 (x ≈ -815 .. -761), so the player walks straight into the cell block.
+  const shell=new THREE.Mesh(new THREE.BoxGeometry(54,6,20),
     matte({color:0x283039,roughness:1,side:THREE.BackSide}));
-  shell.position.set(-800,3,330);prisonInterior.add(shell);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(29.4,19.4),
+  shell.position.set(-788,3,330);prisonInterior.add(shell);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(53.4,19.4),
     matte({color:0x41464d,roughness:.94}));
-  floor.rotation.x=-Math.PI/2;floor.position.set(-800,.02,330);prisonInterior.add(floor);
-  const outer=new THREE.Mesh(new THREE.BoxGeometry(34,10,24),
+  floor.rotation.x=-Math.PI/2;floor.position.set(-788,.02,330);prisonInterior.add(floor);
+  const outer=new THREE.Mesh(new THREE.BoxGeometry(58,10,24),
     new THREE.MeshBasicMaterial({color:0x050608,side:THREE.BackSide}));
-  outer.position.set(-800,3.8,330);prisonInterior.add(outer);
+  outer.position.set(-788,3.8,330);prisonInterior.add(outer);
 
   for(const z of[320.1,339.9]){
-    const s=new THREE.Mesh(new THREE.BoxGeometry(29.2,.1,.08),stripeM);
-    s.position.set(-800,2.55,z);prisonInterior.add(s);
+    const s=new THREE.Mesh(new THREE.BoxGeometry(53.2,.1,.08),stripeM);
+    s.position.set(-788,2.55,z);prisonInterior.add(s);
   }
-  for(const x of[-814.9,-785.1]){
+  for(const x of[-814.9,-761.1]){
     const s=new THREE.Mesh(new THREE.BoxGeometry(.08,.1,19.2),stripeM);
     s.position.set(x,2.55,330);prisonInterior.add(s);
   }
@@ -208,13 +243,79 @@ export function addPrison(solids){
   addInmate(cellDefs[0].inmateX,337.1,-Math.PI/2);
   addInmate(cellDefs[1].inmateX,337.1,-Math.PI/2);
 
+  // ===== Cell-block wing (escape route): barred cells fill the east half of the
+  // room. The FAR cell stands OPEN over a clandestine HOLE dug down to a dirt tunnel
+  // (see js/jail-break.js). Walk east from processing straight into the cells. =====
+  const WF=334.3,WB=339.7;                        // wing cell front / back z
+  const wp=[-783,-777.3,-771.6,-765.9,-760.2];    // 4 cells between 5 partitions
+  for(const x of wp){
+    addCellWall(prisonInterior,x,(WF+WB)/2,.26,WB-WF);
+    solids.push({x0:x-.13,x1:x+.13,z0:WF,z1:WB,h:3.4});
+  }
+  for(let i=0;i<wp.length-1;i++){
+    const cx=(wp[i]+wp[i+1])/2,w=wp[i+1]-wp[i];
+    addCellWall(prisonInterior,cx,WB,w,.26);      // cell back wall
+    solids.push({x0:wp[i],x1:wp[i+1],z0:WB-.13,z1:WB+.13,h:3.4});
+    if(i<wp.length-2){                            // a normal, locked cell
+      addBars(prisonInterior,cx,1.8,WF,w-.4,3.1,true);
+      const lock=new THREE.Mesh(new THREE.BoxGeometry(.18,.35,.12),amberM);
+      lock.position.set(cx+1.7,1.35,WF-.12);prisonInterior.add(lock);
+      const bunk=makeBunk();bunk.position.set(cx,0,337.2);prisonInterior.add(bunk);
+      const ts=makeToiletSink();ts.position.set(cx+w/2-.55,0,WB-.6);prisonInterior.add(ts);
+    }else{                                        // the OPEN cell with the escape hole
+      const gate=new THREE.Group();
+      addBars(gate,0,1.8,0,w-.4,3.1,true);
+      gate.position.set(wp[i]+.35,0,WF);gate.rotation.y=1.15; // door swung open
+      prisonInterior.add(gate);
+      const hole=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.6),
+        new THREE.MeshBasicMaterial({color:0x05060a}));
+      hole.rotation.x=-Math.PI/2;hole.position.set(cx,.05,337);prisonInterior.add(hole);
+      for(const sx of[-.86,.86]){                 // dug-out rim rails
+        const r=new THREE.Mesh(new THREE.BoxGeometry(.12,.12,1.9),steelM);
+        r.position.set(cx+sx,.07,337);prisonInterior.add(r);
+      }
+      for(let rr=0;rr<3;rr++){                    // ladder rungs into the dark
+        const rung=new THREE.Mesh(new THREE.BoxGeometry(1.1,.06,.06),steelM);
+        rung.position.set(cx,-.25-rr*.45,337.7);prisonInterior.add(rung);
+      }
+      TUNNEL_HOLE.x=cx;TUNNEL_HOLE.z=337;
+    }
+  }
+
+  // ===== Divider wall: the cell block is now a SEPARATE room reached through a
+  // doorway (not one open hall). Two full-height chunks leave a doorway at z~330. ====
+  const DV=-785;
+  addCellWall(prisonInterior,DV,324.6,.5,9.2,5.6);   // south chunk (z320 .. 329.2)
+  addCellWall(prisonInterior,DV,336.6,.5,6.8,5.6);   // north chunk (z333.2 .. 340)
+  for(const z of[329.4,333.2]){                       // steel doorway jambs
+    const jamb=new THREE.Mesh(new THREE.BoxGeometry(.55,3.4,.22),steelM);
+    jamb.position.set(DV,1.7,z);prisonInterior.add(jamb);
+  }
+  const lintel=new THREE.Mesh(new THREE.BoxGeometry(.55,.7,4.1),steelM);
+  lintel.position.set(DV,3.55,331.3);prisonInterior.add(lintel);
+  const cbSign=new THREE.Mesh(new THREE.PlaneGeometry(2.6,.66),
+    new THREE.MeshBasicMaterial({map:cellBlockSign(),transparent:true}));
+  cbSign.position.set(DV-.33,3.0,331.3);cbSign.rotation.y=Math.PI/2;prisonInterior.add(cbSign);
+  // detailing: ceiling light strips + wall conduit pipes down the long room
+  for(const x of[-806,-794,-772,-764]){
+    const strip=new THREE.Mesh(new THREE.BoxGeometry(2.4,.12,.5),
+      new THREE.MeshBasicMaterial({color:0xeaf4ff}));
+    strip.position.set(x,5.45,330);prisonInterior.add(strip);
+  }
+  for(const z of[320.7,339.3]){
+    const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,52,8),steelM);
+    pipe.rotation.z=Math.PI/2;pipe.position.set(-788,4.8,z);prisonInterior.add(pipe);
+  }
+
   scene.add(prisonInterior);
 
   solids.push(
-    {x0:-816,x1:-814.9,z0:319.5,z1:340.5,h:6.5},
-    {x0:-785.1,x1:-784,z0:319.5,z1:340.5,h:6.5},
-    {x0:-815.5,x1:-784.5,z0:319.4,z1:320.1,h:6.5},
-    {x0:-815.5,x1:-784.5,z0:339.9,z1:340.6,h:6.5},
+    {x0:DV-.25,x1:DV+.25,z0:319.5,z1:329.5,h:5.6},     // divider wall (south of doorway)
+    {x0:DV-.25,x1:DV+.25,z0:333.1,z1:340.5,h:5.6},     // divider wall (north of doorway)
+    {x0:-816,x1:-814.9,z0:319.5,z1:340.5,h:6.5},        // west wall
+    {x0:-761.1,x1:-760,z0:319.5,z1:340.5,h:6.5},        // east wall (moved east for the wing)
+    {x0:-815.5,x1:-760.5,z0:319.4,z1:320.1,h:6.5},      // south wall (extended)
+    {x0:-815.5,x1:-760.5,z0:339.9,z1:340.6,h:6.5},      // north wall (extended)
     {x0:-808.85,x1:-808.55,z0:334.05,z1:339.2,h:3.6},
     {x0:-803.55,x1:-803.25,z0:334.05,z1:339.2,h:3.6},
     {x0:-798.25,x1:-797.95,z0:334.05,z1:339.2,h:3.6},

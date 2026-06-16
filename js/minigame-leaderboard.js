@@ -1,7 +1,7 @@
 // Ranking POR MINI GAME (cliente). Duas responsabilidades:
 //   1) INTRO: ao começar um mini game (MiniGame.begin), congela o mundo e mostra o
 //      top 5 daquele jogo. O jogador lê e "passa" (tecla/clique/toque) pro jogo de
-//      fato — estilo briefing do GTA. O congelamento é o flag state.mgIntro, lido
+//      fato — estilo briefing do open-world. O congelamento é o flag state.mgIntro, lido
 //      no loop principal (main.js) que só renderiza enquanto setado.
 //   2) ENVIO: cada sessão concluída reporta {won,score} ao backend, que acumula e
 //      recalcula um rating justo (ver backend/api/minigame.js + lib/scores.js).
@@ -31,6 +31,7 @@ const MG_METRIC = {
   'rc-toyz': 'cars wrecked',
   gym: 'lift points',
   dance: 'dance points',
+  'weed-farm': 'buds sold',
 };
 
 // Texto que explica COMO o número de desempenho é calculado para este mini game.

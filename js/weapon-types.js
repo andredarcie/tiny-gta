@@ -1,4 +1,4 @@
-// Classe base das armas + subclasses por categoria do GTA III.
+// Classe base das armas + subclasses por categoria do open-world.
 //
 // As armas são DECLARATIVAS: guardam metadados (nome, slot, cadência, munição,
 // modelo 3D, offset na mão, recuo) e implementam só `onFire(api)`. Toda a parte

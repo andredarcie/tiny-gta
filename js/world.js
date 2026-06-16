@@ -23,6 +23,7 @@ import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../assets/models/city/workshop.
 import {addBarnWithSilo} from '../assets/models/rural/barn-with-silo.js';
 import {addAbandonedFort} from '../assets/models/rural/abandoned-fort.js';
 import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural/ranch-house.js';
+import {addWeedFarm,WEED_CX,WEED_CZ} from '../assets/models/rural/weed-farm.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
 import {addChurch} from '../assets/models/rural/church.js';
@@ -268,6 +269,9 @@ addBarnWithSilo(solids);
 // casa de campo comprável (safehouse): fachada + garagem aqui, interior a ~600m
 addRanchHouse(solids);
 
+// clandestine weed grow-op tucked into the south shore (mini-game: js/weed-farm.js)
+addWeedFarm(solids);
+
 // Pine forest across the rural peninsula and the lower mountain slopes. A pine
 // is a tiny merged prop (~4 meshes folded into the shared chunk meshes), so a
 // dense forest costs almost nothing extra in draw calls — it just merges into
@@ -285,6 +289,7 @@ addRanchHouse(solids);
     if(groundHeight(px,pz)>18)return false;                 // high slope is rock
     if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)return false;  // ranch yard/porch/sign
     if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)return false; // garage approach
+    if(Math.hypot(px-WEED_CX,pz-WEED_CZ)<18)return false;   // weed farm clearing
     if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))return false;
     return true;
   };

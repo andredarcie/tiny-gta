@@ -12,7 +12,7 @@ import {collideStatics,addWanted} from './physics.js';
 import {message} from './hud.js';
 import {playerPos,cur,getBusted,getWasted} from './player.js';
 
-// IA da polícia estilo GTA: a viatura persegue; perto de um alvo parado/a pé
+// IA da polícia estilo Open-world: a viatura persegue; perto de um alvo parado/a pé
 // ela ENCOSTA e desce uma dupla de policiais que corre até a distância de
 // tiro e atira. Se o jogador abre distância, a dupla volta correndo, embarca
 // e a perseguição recomeça. No nível máximo de procurado (5 estrelas) os

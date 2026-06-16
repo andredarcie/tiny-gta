@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {scene} from '../../../js/engine.js';
 
-// Oficina de customização "MOD GARAGE" (estilo Pay'n'Spray / TransFender do GTA).
+// Oficina de customização "MOD GARAGE" (estilo pintura / tuning do open-world).
 // Diferente dos outros prédios especiais, NÃO tem interior off-map: é um galpão
 // de FRENTE ABERTA num quarteirão reservado, e o jogador entra DE CARRO pela
 // abertura até a plataforma (WORKSHOP_PAD). Perto dela, parado, abre o menu de
@@ -55,7 +55,7 @@ export function addWorkshop(solids){
   const slab=new THREE.Mesh(new THREE.PlaneGeometry(19,19),floorM);
   slab.rotation.x=-Math.PI/2;slab.position.set(CX,.02,CZ);slab.receiveShadow=true;
   scene.add(slab);
-  // anel da plataforma onde o carro para (corona estilo GTA)
+  // anel da plataforma onde o carro para (corona estilo open-world)
   const ring=new THREE.Mesh(new THREE.TorusGeometry(2.5,.14,8,28),
     new THREE.MeshBasicMaterial({color:0x19e3ff,transparent:true,opacity:.9}));
   ring.rotation.x=-Math.PI/2;ring.position.set(WORKSHOP_PAD.x,.06,WORKSHOP_PAD.z);

@@ -1,7 +1,7 @@
 // Side-by-side portrait harness: renders the Schedule I-style PLAYER ped next to
 // real Schedule I reference screenshots so we can judge how close the look is.
 // Loaded by /portrait.html and screenshotted by test/portrait.spec.js.
-// buildPed is pure (no scene.add), so we can render it in throwaway scenes here.
+// buildToonPlayer is pure (no scene.add), so we can render it in throwaway scenes here.
 // Lives at repo root + refs in public/ because the Vite dev server doesn't serve
 // files under /test/. Both are throwaway test scaffolding.
 import * as THREE from 'three';
@@ -64,8 +64,8 @@ addEventListener('unhandledrejection',e=>console.error('[unhandled]',String(e.re
   ctx.beginPath();ctx.moveTo(600,0);ctx.lineTo(600,900);ctx.moveTo(0,450);ctx.lineTo(1200,450);ctx.stroke();
   label(ctx,'Schedule I — rosto (referencia)',8,8);
   label(ctx,'Schedule I — corpo (referencia)',8,458);
-  label(ctx,'Tiny GTA — PLAYER (estilo novo)',608,8);
-  label(ctx,'Tiny GTA — PLAYER (estilo novo)',608,458);
+  label(ctx,'Tiny Crime — PLAYER (estilo novo)',608,8);
+  label(ctx,'Tiny Crime — PLAYER (estilo novo)',608,458);
   console.log('[portrait] done');
   window.__ready=true;
  }catch(e){

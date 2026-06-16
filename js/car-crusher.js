@@ -12,9 +12,9 @@ import {MiniGame,MiniGameId} from './minigame.js';
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. A ação CRUSH já fica indisponível durante uma sessão (ver a trava
 // nas zoneActions do input/hud).
-new MiniGame({id:MiniGameId.CAR_CRUSHER,name:'Car Crusher',exclusive:false});
+new MiniGame({id:MiniGameId.CAR_CRUSHER,name:'Scrap Crusher',exclusive:false});
 
-// CAR CRUSHER — minigame estilo "sucata/esmagador de carros" do GTA. Uma prensa
+// SCRAP CRUSHER — minigame estilo "sucata/esmagador de carros" do open-world. Uma prensa
 // industrial fica fixa numa interseção da cidade. O jogador entra de carro na
 // zona de esmagamento (PAD) e PARA; aparece a ação CRUSH (botão E, via
 // refs.zoneActions). Ao acionar: o jogador é jogado pra fora, a placa pesada
@@ -61,7 +61,7 @@ const _car0={y:0,scaleY:1};
 function isSpecialVehicle(c){
   if(!c)return false;
   return !!(c.taxi||c.police||c.vigilante||c.ambulance||c.firetruck
-    ||c.boat||c.bike||c.plane)||c.name==='RC BANDIT';
+    ||c.boat||c.bike||c.plane)||c.name==='RC RAGER';
 }
 
 // ----- partículas de impacto (estilhaços/poeira) num pool reaproveitado -----
@@ -188,7 +188,7 @@ function startCrush(){
   // sucata: 80 + até 220 aleatório
   reward=80+Math.floor(Math.random()*221);
   press.position.y=PRESS_UP;
-  message('CAR CRUSHER - SCRAPPING...','var(--cyan)');
+  message('SCRAP CRUSHER - SCRAPPING...','var(--cyan)');
   blip([330,247,196],.1,'sawtooth',.18);
 }
 
@@ -254,7 +254,7 @@ export function updateCarCrusher(dt){
     if(k>=1){
       press.position.y=PRESS_UP;
       crushing=false;phase='idle';
-      message('CAR CRUSHER READY','var(--cyan)');
+      message('SCRAP CRUSHER READY','var(--cyan)');
     }
   }
 }
@@ -275,7 +275,7 @@ export function updateCarCrusher(dt){
 
 // blip fixo no radar/mapa (ícone 'crusher': desconhecido desenha genérico, ok)
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
-  [{x:PAD.x,z:PAD.z,icon:'crusher',color:'#9aa3ad',label:'CAR CRUSHER'}]);
+  [{x:PAD.x,z:PAD.z,icon:'crusher',color:'#9aa3ad',label:'SCRAP CRUSHER'}]);
 
 // debug
 refs.getCarCrusherState=()=>({crushing,phase});

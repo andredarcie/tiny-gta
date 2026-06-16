@@ -16,7 +16,7 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .panel{background:rgba(16,6,30,.62);border:2px solid var(--pink);
   box-shadow:0 0 14px rgba(255,46,136,.35), inset 0 0 22px rgba(255,46,136,.08);
   border-radius:10px;backdrop-filter:blur(3px)}
-/* HUD estilo GTA Vice City: pilha no canto superior direito, sem painéis */
+/* HUD estilo mundo aberto: pilha no canto superior direito, sem painéis */
 #vchud{position:absolute;top:20px;right:20px;display:flex;align-items:flex-start;gap:14px}
 #vc-stack{display:flex;flex-direction:column;align-items:flex-end;gap:10px;
   font-family:'Press Start 2P',monospace;
@@ -69,7 +69,7 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .ch-left{left:5px}.ch-right{right:5px}
 .ch-ring{position:absolute;inset:10px;border:1px solid rgba(25,227,255,.38);border-radius:50%}
 @keyframes crosspop{50%{transform:translate(-50%,-50%) scale(1.28);opacity:1}}
-/* nome do carro em cursiva ciano, canto inferior direito (como "Admiral" na referência) */
+/* nome do carro em cursiva ciano, canto inferior direito */
 #carname{position:absolute;right:30px;bottom:104px;display:none;
   font-family:'Yellowtail',cursive;font-size:46px;line-height:1;color:#56d4e8;
   text-shadow:2px 3px 0 #0a3543,0 0 18px rgba(86,212,232,.35);transform:rotate(-2deg)}

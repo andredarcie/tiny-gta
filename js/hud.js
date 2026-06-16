@@ -102,9 +102,9 @@ function computeInteractAction(){
       const c=near.c;
       // entrar em veículo de mini game só fora de outra sessão (um por vez)
       if(!MiniGame.busy){
-        if(refs.isTaxiCar?.(c))return{label:'TAXI',prompt:'START TAXI SHIFT',enabled:true};
-        if(refs.isVigilanteCar?.(c))return{label:'VIGILANTE',prompt:'START VIGILANTE DUTY',enabled:true};
-        if(refs.isAmbulanceCar?.(c))return{label:'PARAMEDIC',prompt:'START PARAMEDIC',enabled:true};
+        if(refs.isTaxiCar?.(c))return{label:'CAB',prompt:'START CAB SHIFT',enabled:true};
+        if(refs.isVigilanteCar?.(c))return{label:'JUSTICE',prompt:'START STREET JUSTICE',enabled:true};
+        if(refs.isAmbulanceCar?.(c))return{label:'MEDIC',prompt:'START AMBULANCE RUSH',enabled:true};
         for(const f of refs.carEnterLabels||[]){const a=f(c);if(a)return a;} // veículo especial de minigame
       }
       return c.boat
@@ -135,7 +135,7 @@ function computeInteractAction(){
   return{label:'...',prompt:'',enabled:false};
 }
 
-// Vice City-style radar: circular, fixed north-up, player arrow rotating at
+// open-world-style radar: circular, fixed north-up, player arrow rotating at
 // the center, square blips clamped to the rim
 const mmCanvas=$('minimap');
 export const mm=mmCanvas.getContext('2d');
@@ -362,7 +362,7 @@ function mmCircleIcon(ctx,px,py,b,scale=1){
       ctx.quadraticCurveTo(5,2.4,0,6);
       ctx.closePath();ctx.fill();
       break;
-    case'bomb': // bomba (loja de bombas / 8-Ball)
+    case'bomb': // bomba (loja de bombas / o artificeiro)
       ctx.beginPath();ctx.arc(-.6,1.9,4.5,0,Math.PI*2);ctx.fill();
       ctx.fillRect(1.1,-3.3,2.1,2.3);                                  // gargalo
       ctx.lineWidth=1.4;ctx.beginPath();
@@ -644,13 +644,13 @@ export function drawFullMap(){
       const ws=refs.workshopBlip?.();if(ws)marks.push({...ws});      // oficina de custom
       // minigames de ponto fixo (nunca em território de gangue)
       pushMG(refs.overkillBlip?.(),'skull','#ff2e88','OVERKILL');
-      pushMG(refs.vigilanteStart?.(),'cop','#3e7bff','VIGILANTE');
-      pushMG(refs.paramedicStart?.(),'cross','#19e3ff','PARAMEDIC');
+      pushMG(refs.vigilanteStart?.(),'cop','#3e7bff','JUSTICE');
+      pushMG(refs.paramedicStart?.(),'cross','#19e3ff','MEDIC');
       // táxi: livre / passageiro / destino
       const tx=refs.taxiTarget?.();
       if(tx)pushMG(tx,tx.kind==='taxi'?'taxi':tx.kind==='pickup'?'person':'flag',
                   tx.kind==='taxi'?'#f5c518':'#5eff8a',
-                  tx.kind==='taxi'?'TAXI':tx.kind==='pickup'?'PASSENGER':'DROP OFF');
+                  tx.kind==='taxi'?'CAB':tx.kind==='pickup'?'PASSENGER':'DROP OFF');
       // entrega
       pushMG(refs.getDelivery?.(),'package','#ffd24a','DELIVERY');
       // plantões ativos

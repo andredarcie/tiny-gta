@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// Galpao de doca do IMPORT/EXPORT (estilo da garagem que compra carros no GTA):
+// Galpao de doca do IMPORT/EXPORT (estilo da garagem que compra carros no open-world):
 // um piso de concreto marcado com listras de alerta, uma estrutura de portao
 // aberto (dois pilares + viga) e um guindaste simples ao lado. Cores
 // industriais (concreto cinza, aco escuro, ferrugem). Modelo PURO: build()

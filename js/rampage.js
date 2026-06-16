@@ -12,7 +12,7 @@ import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
 // ============================================================================
-// MINIGAME RAMPAGE (clássico do GTA)
+// MINIGAME FRENZY (clássico do open-world)
 //  - espalha caveiras vermelhas em interseções aleatórias da cidade;
 //  - o jogador A PÉ encosta numa caveira -> ganha arsenal cheio e começa uma
 //    chacina cronometrada: matar N inimigos/pedestres em 30s;
@@ -40,7 +40,7 @@ let level=1;            // sobe a cada rampage concluído -> meta maior
 // mini game (sessão): trava o mundo durante a chacina cronometrada. Não tem um
 // alvo único no radar (é "matar N"), então não expõe blips de alvo — o mapa só
 // fica limpo enquanto roda.
-const game=new MiniGame({id:MiniGameId.RAMPAGE,name:'Rampage'});
+const game=new MiniGame({id:MiniGameId.RAMPAGE,name:'Frenzy'});
 
 // ---------- cria os pickups no carregamento -------------------------------
 // interseções da grade: (nodeX(i),nodeX(j)) com i,j em 0..N. Sorteia posições
@@ -67,7 +67,7 @@ const game=new MiniGame({id:MiniGameId.RAMPAGE,name:'Rampage'});
 // POI fixo: as caveiras vivas aparecem no radar e no mapa quando o jogador chega
 // perto. (refs.miniBlips é consumido por hud.js)
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
-  pads.filter(p=>p.alive).map(p=>({x:p.x,z:p.z,icon:'skull',color:'#ff3b3b',label:'RAMPAGE'})));
+  pads.filter(p=>p.alive).map(p=>({x:p.x,z:p.z,icon:'skull',color:'#ff3b3b',label:'FRENZY'})));
 
 // snapshot pro render_game_to_text / debug
 refs.getRampageState=()=>({active,timeLeft:+timeLeft.toFixed(1),killed,goal,level,
@@ -87,7 +87,7 @@ function startRampage(pad){
   pad.alive=false;                     // esconde a caveira usada...
   pad.cooldown=COOLDOWN;               // ...reaparece depois do cooldown
   pad.g.visible=false;
-  bigText('RAMPAGE!','var(--pink)');
+  bigText('FRENZY!','var(--pink)');
   setTimeout(hideBig,1100);
   message(`KILL ${goal} IN ${DURATION}s`,'var(--pink)');
   blip([220,330,440,660,880],.12,'square',.22);
@@ -111,19 +111,19 @@ function finishRampage(success,silent=false){
   if(success){
     const reward=250+50*goal;
     economy.earn(reward,'rampage');
-    bigText('RAMPAGE COMPLETE','var(--gold)');
+    bigText('FRENZY COMPLETE','var(--gold)');
     setTimeout(hideBig,1300);
-    message(`RAMPAGE COMPLETE - +$${reward.toLocaleString('en-US')}`,'var(--gold)');
+    message(`FRENZY COMPLETE - +$${reward.toLocaleString('en-US')}`,'var(--gold)');
     blip([523,659,784,1047,1319],.13,'square',.22); // fanfarra de vitória
     level++;                            // próxima chacina é mais difícil
   }else if(silent){
     // morreu/foi preso: a cut-scene já mostra WASTED/BUSTED. Só registra o status
     // discreto no rodapé, sem letreiro grande nem fanfarra concorrente.
-    message(`RAMPAGE ENDED - ${killed}/${goal}`,'var(--pink)');
+    message(`FRENZY ENDED - ${killed}/${goal}`,'var(--pink)');
   }else{
-    bigText('RAMPAGE FAILED','var(--pink)');
+    bigText('FRENZY FAILED','var(--pink)');
     setTimeout(hideBig,1300);
-    message(`RAMPAGE FAILED - ${killed}/${goal}`,'var(--pink)');
+    message(`FRENZY FAILED - ${killed}/${goal}`,'var(--pink)');
     blip([330,220,160],.2,'sawtooth',.2);
   }
 }
@@ -173,12 +173,12 @@ export function updateRampage(dt){
       const newKill=killed!==lastKilled&&killed>0;
       lastKilled=killed;lastSec=sec;
       const left=Math.max(0,goal-killed);
-      message(`RAMPAGE ${killed}/${goal} - ${sec}s`,
+      message(`FRENZY ${killed}/${goal} - ${sec}s`,
         sec<=5?'var(--pink)':'var(--cream)');
       if(newKill)blip([660,880],.05,'square',.12);        // tique curto por kill
       else if(sec<=5&&sec>0)blip([300+sec*40],.06,'square',.1); // tique-tique final
       // troca pra dourado nos últimos golpes (quase lá)
-      if(left>0&&left<=2&&newKill)message(`RAMPAGE ${killed}/${goal} - ${left} TO GO!`,'var(--gold)');
+      if(left>0&&left<=2&&newKill)message(`FRENZY ${killed}/${goal} - ${left} TO GO!`,'var(--gold)');
     }
     if(killed>=goal){finishRampage(true);return;}
     if(timeLeft<=0){finishRampage(false);return;}

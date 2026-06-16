@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// Rampa de salto (estilo "unique stunt jump" do GTA): uma cunha de madeira/concreto.
+// Rampa de salto (estilo "unique stunt jump" do open-world): uma cunha de madeira/concreto.
 // É um prisma triangular — base no chão na traseira, subindo até a borda alta na
 // frente (ponta em +z). A cunha SOBE ao longo do +z local de propósito: no motor os
 // carros apontam o eixo local +z e andam em (sin h, cos h) (ver player.js), e a

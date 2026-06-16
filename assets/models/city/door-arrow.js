@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '../../../js/engine.js';
 
-// Setinha de porta estilo Vice City: cone neon apontando pra baixo, quicando
+// Setinha de porta estilo mundo aberto: cone neon apontando pra baixo, quicando
 // rente ao chão nas portas em que dá pra entrar. Só as portas PERTO do
 // jogador mostram seta: um pool pequeno de meshes reaproveitados é
 // reposicionado a cada frame sobre as portas dentro do raio, em vez de uma

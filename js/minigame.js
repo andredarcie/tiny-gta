@@ -46,6 +46,7 @@ export const MiniGameId=Object.freeze({
   GYM:'gym',
   DANCE:'dance',
   ROCKET_RAMPAGE:'rocket-rampage',
+  WEED_FARM:'weed-farm',
 });
 
 // registro global: uma instância por id (preenchido nos construtores dos módulos)

@@ -8,25 +8,24 @@ import {blip,thud} from './audio.js';
 import {N,nodeX,ROAD,SIDE,irand,clamp,groundHeight} from './constants.js';
 import {makeCar} from './entities.js';
 import {makeDeliveryMarker} from '../assets/models/missions/delivery-marker.js';
-import {makeRcBandit} from '../assets/models/vehicles/rc-bandit.js';
+import {makeRcRager} from '../assets/models/vehicles/rc-rager.js';
 import {makeRcPad} from '../assets/models/props/rc-pad.js';
 import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
-// RC TOYZ — faithful to GTA III's RC Bandit side-missions ("Diablo Destruction",
-// "Mafia Massacre", "Casino Calamity", "Rumpo Rampage"). You drive a tiny remote
-// control bandit that is a MOBILE BOMB: ram a gang car's wheels (or press fire to
-// detonate) and the RC blows up, destroying the car. Each detonation SPENDS the
-// bandit, so a fresh one instantly respawns on the pad. You have 2 MINUTES to
-// wreck as many gang cars as you can — there is no fixed quota: a single kill
-// already passes, and the score is simply how many you destroy. Cash is paid per
-// car. Leaving the bandit ends the session; the RC returns to the pad to replay.
+// RC SMASH — a remote-control demolition mini-game: you drive a tiny RC car that is
+// a MOBILE BOMB. Ram a gang car's wheels (or press fire to detonate) and the RC
+// blows up, destroying the car. Each detonation SPENDS the RC, so a fresh one
+// instantly respawns on the pad. You have 2 MINUTES to wreck as many gang cars as
+// you can — there is no fixed quota: a single kill already passes, and the score is
+// simply how many you destroy. Cash is paid per car. Leaving the RC ends the
+// session; it returns to the pad to replay.
 
-const RC_BUILD=' ◆ RC TOYZ';
+const RC_BUILD=' ◆ RC SMASH';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',RC_BUILD);
 
 const GREEN=0x5eff8a;
-const ROUND_TIME=120;  // GTA III: 2 minutes, counts straight down, no time bonuses
+const ROUND_TIME=120;  // 2 minutes, counts straight down, no time bonuses
 const POOL=5;          // gang cars roaming at once (refilled as they are destroyed)
 const HIT_RANGE=2.2;   // RC→car distance that auto-detonates on contact (RC is tiny)
 const BLAST=5;         // blast radius (matches weapons.blastDamage) — a cluster chains
@@ -51,15 +50,15 @@ pad.scale.setScalar(.8);
 pad.position.set(PAD_X,padY+.02,PAD_Z);
 scene.add(pad);
 
-// the bandit: a dedicated TOY model (rc-bandit), not a gameplay car. It is flagged
+// the RC: a dedicated TOY model (rc-rager), not a gameplay car. It is flagged
 // remote:true so player.js does NOT seat the player inside it — the operator stays
-// standing by the pad and pilots it from afar, exactly like GTA III's RC missions.
-// makeRcBandit is ~1.2 m; at ×1.5 the footprint is ~1.8 m, which the car-cam frames well.
+// standing by the pad and pilots it from afar, exactly like the genre's classic RC missions.
+// makeRcRager is ~1.2 m; at ×1.5 the footprint is ~1.8 m, which the car-cam frames well.
 const RC_SCALE=1.5;
-const rc=makeRcBandit();
+const rc=makeRcRager();
 rc.scale.setScalar(RC_SCALE);
-scene.add(rc); // makeRcBandit is a PURE build() (no scene.add), so we add it here
-const rcObj={g:rc,heading:0,speed:0,name:'RC BANDIT',remote:true};
+scene.add(rc); // makeRcRager is a PURE build() (no scene.add), so we add it here
+const rcObj={g:rc,heading:0,speed:0,name:'RC RAGER',remote:true};
 
 // grab the antenna parts to wobble them (search the built group)
 let _ant=null,_antTip=null;
@@ -74,9 +73,9 @@ let _ant=null,_antTip=null;
 }
 const _antBaseRotZ=_ant?_ant.rotation.z:0;
 
-// Return the bandit to the pad. With keepIfDriving=true (round end), do NOT yank
+// Return the RC to the pad. With keepIfDriving=true (round end), do NOT yank
 // it out from under a still-seated player: just reset state and leave it where it
-// is. With keepIfDriving=false (a fresh bandit after a detonation, or arranging
+// is. With keepIfDriving=false (a fresh RC after a detonation, or arranging
 // the parked one) it always teleports back to the pad, facing the road.
 function parkRc(keepIfDriving=false){
   rcObj.speed=0;rcObj.heading=0;
@@ -95,7 +94,7 @@ let cooldown=0; // pause between rounds (lets the result banner be read)
 let _firePrev=false; // edge-detect the (held) fire button for manual detonation
 
 // mini game (session): locks the world during the round; targets are the live cars
-const game=new MiniGame({id:MiniGameId.RC_TOYZ,name:'RC Toyz',
+const game=new MiniGame({id:MiniGameId.RC_TOYZ,name:'RC Smash',
   blips:()=>targets.filter(t=>t.alive).map(t=>({x:t.g.position.x,z:t.g.position.z,
     icon:'target',color:'#5eff8a',label:'TARGET',current:true,reveal:false}))});
 
@@ -103,17 +102,17 @@ const game=new MiniGame({id:MiniGameId.RC_TOYZ,name:'RC Toyz',
 const _hit=new THREE.Vector3();
 
 // ---------- registries (auto-register at the top of the module) ----------
-// E prompt next to the parked bandit
+// E prompt next to the parked RC
 (refs.carEnterLabels||(refs.carEnterLabels=[])).push(c=>
-  c===rcObj?{label:'RC',prompt:'START RC TOYZ',enabled:true}:null);
+  c===rcObj?{label:'RC',prompt:'START RC SMASH',enabled:true}:null);
 
 // radar/map blips: during the round, the live targets (always visible);
-// outside the round, the fixed point of the bandit
+// outside the round, the fixed point of the RC
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
   active
     ?targets.filter(t=>t.alive).map(t=>({x:t.g.position.x,z:t.g.position.z,
         icon:'target',color:'#5eff8a',label:'TARGET',current:true,reveal:false}))
-    :[{x:rc.position.x,z:rc.position.z,icon:'taxi',color:'#ffb02e',label:'RC TOYZ'}]);
+    :[{x:rc.position.x,z:rc.position.z,icon:'taxi',color:'#ffb02e',label:'RC SMASH'}]);
 
 // debug
 refs.getRcToyzState=()=>({active,timeLeft,destroyed});
@@ -167,7 +166,7 @@ function hudRound(){
   const left=Math.max(0,Math.ceil(timeLeft));
   // last 10 s turn red for urgency
   const col=left<=10?'var(--pink)':'var(--cyan)';
-  message(`RC TOYZ   ${destroyed} WRECKED   ${left}s`,col);
+  message(`RC SMASH   ${destroyed} WRECKED   ${left}s`,col);
 }
 
 function startRound(){
@@ -189,20 +188,20 @@ function startRound(){
   }
 }
 
-// keepIfDriving=true on finish: the player stays in the bandit, so we don't yank
+// keepIfDriving=true on finish: the player stays in the RC, so we don't yank
 // it to the pad; we just clear the round and breathe before the next one (to read
-// the banner). Left the bandit → false: tidy it back onto the pad and free the world.
+// the banner). Left the RC → false: tidy it back onto the pad and free the world.
 function endRound(keepIfDriving=false){
   active=false;
   clearTargets();
   parkRc(keepIfDriving);
   if(keepIfDriving){
     // still seated: KEEP the session (lock + briefing cover the whole stay in the
-    // bandit; otherwise the ranking would re-pop each round). Just a breath.
+    // RC; otherwise the ranking would re-pop each round). Just a breath.
     cooldown=2.4;
   }else{
     cooldown=0;
-    game.end(); // left the bandit: release the world lock
+    game.end(); // left the RC: release the world lock
   }
 }
 
@@ -214,9 +213,9 @@ function killTarget(t){
   economy.earn(PER_KILL,'rc-toyz');
 }
 
-// The bandit IS the bomb: it blows up where it stands, wrecking every gang car
+// The RC IS the bomb: it blows up where it stands, wrecking every gang car
 // caught in the blast (so a tight cluster chains). Spending the RC respawns a
-// fresh one on the pad — exactly like GTA III. Triggered by contact or by fire.
+// fresh one on the pad — exactly like the classics. Triggered by contact or by fire.
 function detonate(){
   _hit.copy(rc.position);
   // noSelf: the RC sits inside its own blast; without this every kill would dent
@@ -228,7 +227,7 @@ function detonate(){
   }
   thud(10);                              // deeper, more satisfying blast
   state.shake=Math.max(state.shake,.25); // camera kick on detonation
-  parkRc(false);                         // spend the bandit: a fresh one on the pad
+  parkRc(false);                         // spend the RC: a fresh one on the pad
   cameraRig.yaw=rcObj.heading;cameraRig.touchLookIdle=1; // face the road again
   refill();                              // keep targets coming
   if(kills){
@@ -241,22 +240,22 @@ function detonate(){
 }
 
 function finishRound(){
-  const won=destroyed>=1; // GTA III: a single kill already passes
+  const won=destroyed>=1; // a single kill already passes
   reportMiniGameResult(game.id,{won,score:destroyed});
   if(won){
-    bigText(`RC TOYZ: ${destroyed} CAR${destroyed>1?'S':''}`,'var(--gold)');
-    message(`RC TOYZ DONE - ${destroyed} WRECKED`,'var(--gold)');
+    bigText(`RC SMASH: ${destroyed} CAR${destroyed>1?'S':''}`,'var(--gold)');
+    message(`RC SMASH DONE - ${destroyed} WRECKED`,'var(--gold)');
     blip([523,659,784,1047],.09,'square',.2);
   }else{
-    bigText('RC TOYZ FAILED','var(--pink)');
-    message('RC TOYZ FAILED - NO CARS WRECKED','var(--pink)');
+    bigText('RC SMASH FAILED','var(--pink)');
+    message('RC SMASH FAILED - NO CARS WRECKED','var(--pink)');
     blip([330,247,180],.12,'sawtooth',.18);
   }
   setTimeout(hideBig,1200);
   endRound(true);
 }
 
-// antenna wobble: sways proportional to the bandit speed (toy feel)
+// antenna wobble: sways proportional to the RC speed (toy feel)
 function wobbleAntenna(dt){
   if(!_ant)return;
   const sp=Math.abs(rcObj.speed);
@@ -271,7 +270,7 @@ function wobbleAntenna(dt){
 export function updateRcToyz(dt){
   const driving=state.mode==='car'&&cur===rcObj;
 
-  // the antenna sways whenever the bandit exists (barely moves when parked)
+  // the antenna sways whenever the RC exists (barely moves when parked)
   wobbleAntenna(dt);
 
   // edge-detect the (held) fire button → one manual detonation per press
@@ -282,14 +281,14 @@ export function updateRcToyz(dt){
   if(cooldown>0)cooldown-=dt; // pause between rounds: lets the banner be read
 
   if(!active){
-    // left the bandit between rounds (session still locked): end for good
+    // left the RC between rounds (session still locked): end for good
     if(!driving){if(game.active)endRound();return;}
     // still in it after a round: restart — but only after the cooldown breath
     // (else the round restarts the same frame). begin() reuses the session: no new briefing.
     if(cooldown<=0)startRound();
     return;
   }
-  if(!driving){endRound();return;} // left the bandit mid-round: end (clears everything)
+  if(!driving){endRound();return;} // left the RC mid-round: end (clears everything)
 
   timeLeft-=dt;
   hudRound(); // wrecked count + clock on screen every frame during the round

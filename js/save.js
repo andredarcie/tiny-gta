@@ -1,4 +1,4 @@
-import {state, refs, saveBest} from './state.js';
+import {state, refs, saveBest, INITIAL_MONEY} from './state.js';
 
 // SAVE DE PROGRESSO — ponte entre o estado vivo do jogo e o blob que vai/vem do
 // backend (js/leaderboard.js). Mantém este módulo "burro": ele só monta/aplica o
@@ -27,7 +27,15 @@ export function collectSave() {
 // Aplica um blob restaurado do backend ao jogo (chamado uma vez ao abrir a run).
 export function applySave(blob) {
   if (!blob || typeof blob !== 'object') return;
-  if (Number.isFinite(blob.money) && blob.money > 0) { state.money = Math.floor(blob.money); saveBest(); }
+  if (Number.isFinite(blob.money) && blob.money >= 0) {
+    // applySave chega async (depois do startSession): o jogo já rodou alguns
+    // frames e o jogador pode ter ganho/gasto algo. Some esse delta sobre o saldo
+    // restaurado em vez de descartá-lo — senão um pickup nos primeiros instantes
+    // sumia ao restaurar. (Para run nova sem ganho, delta=0 → comportamento igual.)
+    const gap = Math.floor(state.money) - INITIAL_MONEY;
+    state.money = Math.max(0, Math.floor(blob.money) + gap);
+    saveBest();
+  }
   refs.restoreWeapons?.(blob.weapons);
   refs.restoreGym?.(blob.arm);
   refs.restoreProperty?.(blob.house);

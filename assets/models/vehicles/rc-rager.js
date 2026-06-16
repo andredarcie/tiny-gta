@@ -15,7 +15,7 @@ const tipM=new THREE.MeshBasicMaterial({color:0xff3b56});
 const winM=new THREE.MeshStandardMaterial({color:0x121820,roughness:.2,metalness:.6}); // "vidro" da cabine
 const lightM=new THREE.MeshBasicMaterial({color:0xfff2c0}); // faróis (brilho)
 
-function buildRcBandit(){
+function buildRcRager(){
   const g=new THREE.Group();
 
   // chassi baixo (a "carroceria" do brinquedo)
@@ -70,7 +70,7 @@ function buildRcBandit(){
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Vehicles',label:'RC bandit',build:buildRcBandit};
+export default {category:'Vehicles',label:'RC rager',build:buildRcRager};
 
 // Compat com o padrão dos outros veículos: factory direta.
-export function makeRcBandit(){return buildRcBandit();}
+export function makeRcRager(){return buildRcRager();}

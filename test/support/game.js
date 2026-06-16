@@ -1,5 +1,5 @@
 // ============================================================================
-// GameDriver — the ONE way agents/tests drive Tiny GTA in a real browser.
+// GameDriver — the ONE way agents/tests drive Tiny Crime in a real browser.
 //
 // It runs the actual game (real Three.js/WebGL, real game loop, real input
 // pipeline) in a real Chromium and drives it through the seams the game already

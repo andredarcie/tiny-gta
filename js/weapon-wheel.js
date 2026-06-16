@@ -1,4 +1,4 @@
-// ----- RODA DE SELEÇÃO DE ARMAS (estilo GTA V / RDR2) -----
+// ----- RODA DE SELEÇÃO DE ARMAS (roda de armas radial) -----
 //
 // PC: segura Tab (ou Q, ou o botão do meio do mouse) → a roda abre e o tempo entra
 // em câmera lenta (ver WHEEL_TIMESCALE em main.js). O movimento do mouse (pointer

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// Plataforma/marca no chão indicando o ponto do RC TOYZ: um disco escuro com
+// Plataforma/marca no chão indicando o ponto do RC SMASH: um disco escuro com
 // uma borda em zebra (faixas amarelas/pretas) e quatro setas apontando pro
 // centro, dando o ar de "pista de largada de brinquedo". build() é PURO.
 

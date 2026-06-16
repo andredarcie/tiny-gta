@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {scene} from '../../../js/engine.js';
 import {beamMat} from './car.js'; // mesma luz de farol do carro (daynight liga à noite)
 
-// Moto estilo GTA: cruiser/street compacta, ~2.1m de comprimento, rodas Ø.68,
+// Moto estilo Open-world: cruiser/street compacta, ~2.1m de comprimento, rodas Ø.68,
 // banco a ~.80 de altura (o piloto fica visível por cima, diferente do carro).
 // Convenção igual à do carro: +Z é a FRENTE (farol/garfo na frente), largura em X.
 //

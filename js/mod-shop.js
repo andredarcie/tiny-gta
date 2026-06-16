@@ -9,7 +9,7 @@ import {applyPaint,setRims,setSpoiler,setHood,setNeon,repairCar} from
   '../assets/models/vehicles/car-customs.js';
 
 // Oficina de custom "MOD GARAGE": menu DOM aberto ao parar o carro na plataforma
-// do galpão (assets/models/city/workshop.js). Estilo GTA/TransFender: categorias
+// do galpão (assets/models/city/workshop.js). Estilo open-world/tuning: categorias
 // de mods, cada opção aplicada AO VIVO no carro só como PRÉVIA (não cobra). As
 // escolhas novas entram num CARRINHO com o total; só FINALIZE & BUY (em dois
 // toques, p/ confirmar) cobra de verdade e instala. O que já está pago aparece

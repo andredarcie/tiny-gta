@@ -21,7 +21,7 @@ import {reportMiniGameResult} from './minigame-leaderboard.js';
 // alvo aqui — a trava só garante o "um por vez" e o mapa sem outras atividades.
 const game=new MiniGame({id:MiniGameId.RACE,name:'Street Race'});
 
-// Minigame de corrida estilo GTA 3D: um pórtico de largada xadrez fica numa
+// Minigame de corrida estilo open-world 3D: um pórtico de largada xadrez fica numa
 // esquina da cidade. Chegue de carro, pare embaixo dele e a corrida começa:
 // o carro teleporta pra linha, sirene + contagem 3-2-1, e então um percurso de
 // checkpoints (um por vez) que você cruza NA ORDEM até a chegada. Três rivais

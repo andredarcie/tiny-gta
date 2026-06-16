@@ -20,31 +20,34 @@ import {updateBoatRace} from './boat-race.js';
 import {updateOffroad} from './offroad.js'; // 3ª corrida: circuito off-road na pradaria rural
 import {updateVigilante} from './vigilante.js'; // side-mission: viatura caça criminosos
 import {updateParamedic} from './paramedic.js'; // side-mission: ambulância salva feridos
-import {updateFirefighter} from './firefighter.js';        // GTA: caminhão de bombeiros apaga incêndios
-import {updateRampage} from './rampage.js';                // GTA: caveira dá arsenal + caça por tempo
-import {updateHiddenPackages} from './hidden-packages.js'; // GTA: 24 pacotes escondidos pela cidade
-import {updateStuntJumps} from './stunt-jumps.js';         // GTA: rampas de salto insano
-import {updateCarCrusher} from './car-crusher.js';         // GTA: prensa de sucata
-import {updateImportExport} from './import-export.js';     // GTA: garagem que compra/exporta carros
-import {updateBombShop} from './bomb-shop.js';             // GTA: 8-Ball arma o carro-bomba
-import {updateRcToyz} from './rc-toyz.js';                 // GTA: carrinho de controle destrói alvos
-import {updateWeaponPickups} from './weapon-pickups.js';  // GTA: as 12 armas escondidas pelo mapa
+import {updateFirefighter} from './firefighter.js';        // Open-world: caminhão de bombeiros apaga incêndios
+import {updateRampage} from './rampage.js';                // Open-world: caveira dá arsenal + caça por tempo
+import {updateHiddenPackages} from './hidden-packages.js'; // Open-world: 24 pacotes escondidos pela cidade
+import {updateStuntJumps} from './stunt-jumps.js';         // Open-world: rampas de salto insano
+import {updateCarCrusher} from './car-crusher.js';         // Open-world: prensa de sucata
+import {updateImportExport} from './import-export.js';     // Open-world: garagem que compra/exporta carros
+import {updateBombShop} from './bomb-shop.js';             // Open-world: o artificeiro arma o carro-bomba
+import {updateRcToyz} from './rc-toyz.js';                 // Open-world: carrinho de controle destrói alvos
+import {updateWeaponPickups} from './weapon-pickups.js';  // Open-world: as 12 armas escondidas pelo mapa
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
 import {setupInput,updateKeyboardInput,performShoot,performInteract} from './input.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
+import {setupNative} from './native.js'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud} from './weapons.js';
 import {setupWheel,updateWeaponWheel} from './weapon-wheel.js';
 import {updateDayNight} from './daynight.js';
 import {updateInteriors,interiors} from './interior.js';
+import {updateJailBreak} from './jail-break.js';
 import {updateSpeech,updateStreetChatter} from './speech.js';
 import {updateOverkill,overkillNear,endOverkill,getOverkillState} from './overkill.js';
 import {clubDanceState} from './club.js'; // instancia a boate em interiors[] + ação DANCE
 import {updateDanceGame} from './dance-game.js';
 import {gymTrainState} from './gym.js';
 import {updateGymGame} from './gym-game.js';
+import {updateWeedFarm} from './weed-farm.js'; // Rural: cultivo de erva (atividade no mundo, a pé)
 import {modShopState,modShopInteract,updateModShop,workshopBlip} from './mod-shop.js';
 import {hospitalAdmit} from './hospital.js';
 import {prisonAdmit} from './prison.js';
@@ -131,6 +134,7 @@ spawnInitialGangs();
 
 setupInput();
 setupTouchControls();
+setupNative(); // hardware back button on Android; no-op in the browser
 setupWheel(); // roda de seleção de armas (overlay próprio; ver js/weapon-wheel.js)
 
 const clock=new THREE.Clock();
@@ -199,7 +203,7 @@ function step(dt){
   updateRace(dt);
   updateBoatRace(dt);
   updateOffroad(dt); // corrida off-road (circuito de terra na zona rural)
-  // Minigames estilo GTA III (cada um se auto-registra em refs; ver os módulos).
+  // Minigames estilo open-world (cada um se auto-registra em refs; ver os módulos).
   // Rodam DEPOIS do update do jogador/carro (acima), então o stunt-jumps pode
   // sobrescrever a altura do carro pra desenhar o arco do salto.
   updateFirefighter(dt);
@@ -210,11 +214,13 @@ function step(dt){
   updateImportExport(dt);
   updateBombShop(dt);
   updateRcToyz(dt);
+  updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
   updateWeaponPickups(dt);
   P.end();
   P.begin('weapons');updateWeapons(dt);P.end();
   P.begin('misc');
   updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
+  updateJailBreak(dt); // prison hole <-> escape tunnel <-> fort triggers
   updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
   updateSpeech(dt);    // segue/fade dos balões de diálogo (rua e interiores)
   updateOverkill(dt);  // modo overkill: multiplicador de heat + renda
@@ -272,7 +278,7 @@ function adaptResolution(ms){
 }
 window.__renderScale=getRenderScale; // debug/profiler
 
-const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo GTA V)
+const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)
 function frame(){
   requestAnimationFrame(frame);
   P.frameStart(); // marca o início do frame pro profiler (limpa acumuladores)
@@ -319,6 +325,7 @@ window.render_game_to_text=()=>{
     importExport:refs.getImportExportState?.()||null,
     bombShop:refs.getBombShopState?.()||null,
     rcToyz:refs.getRcToyzState?.()||null,
+    weedFarm:refs.getWeedFarmState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],

@@ -10,9 +10,9 @@ import {MiniGame,MiniGameId} from './minigame.js';
 
 // coletável livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. Os pacotes NÃO aparecem no mapa/radar — o jogador descobre sozinho.
-new MiniGame({id:MiniGameId.HIDDEN_PACKAGES,name:'Hidden Packages',exclusive:false});
+new MiniGame({id:MiniGameId.HIDDEN_PACKAGES,name:'Hidden Stashes',exclusive:false});
 
-// HIDDEN PACKAGES: colecionáveis escondidos espalhados pela cidade (estilo GTA).
+// HIDDEN STASHES: colecionáveis escondidos espalhados pela cidade (estilo open-world).
 // Coleta a pé ou de carro; pequenos prêmios por pacote, bônus a cada 10, e um
 // grande bônus ao achar todos.
 const TOTAL=24;
@@ -183,9 +183,9 @@ export function updateHiddenPackages(dt){
         bigText('PACKAGE BONUS! +$'+BONUS_EACH,'var(--gold)');
         blip([784,1175],0.08,'triangle',.18);
         setTimeout(hideBig,1300);
-        message('HIDDEN PACKAGE '+found+'/'+TOTAL,'var(--cyan)');
+        message('HIDDEN STASH '+found+'/'+TOTAL,'var(--cyan)');
       }else{
-        message('HIDDEN PACKAGE '+found+'/'+TOTAL,'var(--cyan)');
+        message('HIDDEN STASH '+found+'/'+TOTAL,'var(--cyan)');
       }
     }
   }

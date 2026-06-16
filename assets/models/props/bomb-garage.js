@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 
-// Garagem do "BOMB SHOP" (oficina clandestina estilo 8-Ball do GTA): um galpão
+// Garagem do "DEMO GARAGE" (oficina clandestina de demolição): um galpão
 // pequeno de cara suja onde se instala uma bomba no carro. Modelo PURO: build()
 // devolve um Object3D fresco, sem scene.add. Cores escuras (chapa de metal) com
 // detalhes amarelos/vermelhos de alerta. Sem assets binários: o símbolo de

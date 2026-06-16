@@ -39,7 +39,7 @@ import { Redis } from '@upstash/redis';
 
 // ----- Redis key schema (mirrors backend/lib/scores.js) ---------------------
 const LEADERBOARD_KEY = 'tinygta:leaderboard';
-const SAVE_PREFIX = 'tinygta:save:';          // + <pid>|<name>
+const SAVE_PREFIX = 'tinygta:save:';          // + <pid> (atual) | + <pid>|<name> (legado)
 const SEED_KEY = 'tinygta:seed';              // hash: field=name -> money
 const MG_BOARD_PREFIX = 'tinygta:mg:';        // + <game>            -> sorted set
 const mgBoardKey = (game) => MG_BOARD_PREFIX + game;
@@ -86,25 +86,29 @@ function foldWithScores(raw) {
   return out;
 }
 
-// SCAN (never KEYS) for save blobs belonging to a name. Keys look like
-//   tinygta:save:<pid>|<name>
-// and the name is the part AFTER THE LAST '|'. Names can contain spaces, so we
-// match by the exact `|<NAME>` suffix rather than by pattern wildcards alone.
+// SCAN (never KEYS) for save blobs belonging to a name. Two key shapes coexist:
+//   tinygta:save:<pid>          (current) — name is STAMPED INSIDE the blob
+//   tinygta:save:<pid>|<name>   (legacy)  — name is the part after the last '|'
+// We scan every save key and match both ways, so inspect/remove still see (and
+// can delete) a player's save no matter which shape it has. Names are sanitized
+// to [A-Z0-9 _-] (no '|'), so the last '|' cleanly separates pid from name.
 async function findSaveKeysForName(name) {
-  const wantSuffix = '|' + name;
-  const matchGlob = SAVE_PREFIX + '*|' + name; // server-side narrowing; client-side exact-checked below
   const found = [];
   let cursor = '0';
   do {
-    const [next, keys] = await redis.scan(cursor, { match: matchGlob, count: 100 });
+    const [next, keys] = await redis.scan(cursor, { match: SAVE_PREFIX + '*', count: 100 });
     cursor = String(next);
     for (const key of keys) {
-      // Exact suffix check: the name is everything after the last '|'. The MATCH
-      // glob can over-match (e.g. a name with a '|' inside another name's slice),
-      // so confirm the real suffix here before touching anything.
-      const rest = key.slice(SAVE_PREFIX.length); // "<pid>|<name>"
+      const rest = key.slice(SAVE_PREFIX.length); // "<pid>" or "<pid>|<name>"
       const lastPipe = rest.lastIndexOf('|');
-      if (lastPipe >= 0 && rest.slice(lastPipe) === wantSuffix) found.push(key);
+      if (lastPipe >= 0) {
+        // legacy pid|name key — match by the suffix after the last '|'
+        if (rest.slice(lastPipe + 1) === name) found.push(key);
+      } else {
+        // current pid-only key — match by the name stamped in the blob
+        const blob = await redis.get(key); // @upstash/redis parses JSON values
+        if (blob && typeof blob === 'object' && blob.name === name) found.push(key);
+      }
     }
   } while (cursor !== '0');
   return found;

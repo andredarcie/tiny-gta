@@ -10,12 +10,12 @@ import {MiniGame,MiniGameId} from './minigame.js';
 
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. As rampas NÃO aparecem no mapa/radar — o jogador descobre sozinho.
-new MiniGame({id:MiniGameId.STUNT_JUMPS,name:'Stunt Jumps',exclusive:false});
+new MiniGame({id:MiniGameId.STUNT_JUMPS,name:'Daredevil Jumps',exclusive:false});
 
-// UNIQUE STUNT JUMPS — rampas escondidas pela praia e pela zona rural (NUNCA no
+// DAREDEVIL JUMPS — rampas escondidas pela praia e pela zona rural (NUNCA no
 // meio da rua). O jogador chega de carro em alta velocidade, decola num arco e
 // ganha dinheiro proporcional à velocidade; completar cada rampa pela primeira vez
-// dá um bônus ("UNIQUE STUNT JUMP").
+// dá um bônus ("DAREDEVIL JUMP").
 //
 // FÍSICA: updateStuntJumps roda no loop DEPOIS do update do carro. Por isso, durante
 // um salto, sobrescrevemos cur.g.position.y a cada frame para desenhar o arco — o
@@ -130,8 +130,8 @@ export function updateStuntJumps(dt){
         jumpRamp.done=true;jumpRamp.paidAt=state.time;
         const bonus=400;
         economy.earn(v+bonus,'stunt-jump');
-        bigText('UNIQUE STUNT JUMP! +$'+(v+bonus),'var(--gold)');
-        message('UNIQUE STUNT JUMP  +$'+(v+bonus),'var(--gold)');
+        bigText('DAREDEVIL JUMP! +$'+(v+bonus),'var(--gold)');
+        message('DAREDEVIL JUMP  +$'+(v+bonus),'var(--gold)');
         blip([523,659,784,1047,1319],0.1,'square',.2);
       }else if(jumpRamp&&state.time-jumpRamp.paidAt>=REPEAT_PAY_CD){
         // repetição após o cooldown: paga de novo (evita farm na mesma rampa)

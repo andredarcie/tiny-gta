@@ -30,14 +30,16 @@ async function getBoard(req, res) {
 async function submit(req, res) {
   const body = jsonBody(req);
   const name = C.sanitizeName(body.name);
-  const money = Number(body.money);
+  const money = Math.floor(Number(body.money));
   const token = typeof body.token === 'string' ? body.token : '';
   const pid = C.sanitizePid(body.pid); // id estável do cliente (save por jogador)
 
-  // 1) validação básica do payload
+  // 1) validação básica do payload. O dinheiro só precisa ser um número inteiro
+  //    não-negativo: passar do TETO DURO não rejeita mais a requisição (senão um
+  //    save legítimo acima do teto deixava de persistir pra sempre) — o teto é
+  //    aplicado só ao número do RANKING, lá embaixo.
   if (!name) return res.status(400).json({error: 'invalid_name'});
-  if (!Number.isInteger(money) || money < 0 || money > C.MONEY_HARD_CAP)
-    return res.status(400).json({error: 'invalid_money'});
+  if (!Number.isFinite(money) || money < 0) return res.status(400).json({error: 'invalid_money'});
   if (!token) return res.status(400).json({error: 'missing_token'});
 
   // 2) rate-limit por IP (incr + expire na primeira ocorrência da janela)
@@ -58,35 +60,47 @@ async function submit(req, res) {
   if (sess.name && sess.name !== name) return res.status(403).json({error: 'session_mismatch'});
   if (sess.pid && pid && sess.pid !== pid) return res.status(403).json({error: 'session_mismatch'});
   const seconds = (Date.now() - sess.at) / 1000;
-  if (seconds < C.MIN_RUN_SECONDS) return res.status(403).json({error: 'run_too_short'});
 
   // 4) teto de plausibilidade: dinheiro não passa do que cabe pelo tempo de
   //    partida, SOMADO ao saldo restaurado no início (sess.base) — quem volta
   //    rico reenvia o que já estava salvo sem cair no teto por tempo.
   const maxAllowed = C.maxPlausibleMoney(seconds) + sess.base;
 
-  // 5) save por (id, nick): grava SEMPRE (mesmo que o pico abaixo seja barrado),
-  //    com o dinheiro cravado no teto. Assim o progresso (saldo ATUAL + itens)
-  //    não fica refém de um pico momentaneamente alto: o jogador que sai no meio
-  //    não perde o que fez. Inflar o save só afeta o jogo privado do dono — o
+  // 5) SAVE (progresso privado: saldo ATUAL + itens) — grava ANTES dos gates do
+  //    ranking. O blob é cravado no teto por sanitizeSave (não dá pra inflar),
+  //    então NEM partida curta (run_too_short) NEM o teto do ranking podem
+  //    DESTRUIR o progresso do dono. Chave nova = só pid (trocar de apelido não
+  //    perde mais o save). Inflar o save só afeta o jogo privado do dono — o
   //    crava no teto impede usar a base pra furar o ranking na sessão seguinte.
   if (pid && body.save) {
     const blob = C.sanitizeSave(body.save, maxAllowed);
     if (blob) {
-      await redis.set(C.SAVE_PREFIX + C.saveMember(pid, name), blob);
+      // carimba o nick AUTORITATIVO (depois do sanitize, pra não ser truncado):
+      // a chave é só o pid, então é isto que deixa a ferramenta de manutenção
+      // (scripts/cleanup.mjs) achar/remover o save de um nome. `blob.t` (carimbo
+      // de tempo do cliente) sobrevive ao sanitize e serve à reconciliação local.
+      blob.name = name;
+      await redis.set(C.saveKey(pid), blob);
       // o jogador agora tem save de verdade: consome o seed de migração do nome
       // (idempotente; só faz algo na primeira gravação de cada nome semeado).
       await redis.hdel(C.SEED_KEY, name);
     }
   }
 
-  // 6) leaderboard = DINHEIRO ATUAL do jogador (não mais o pico): grava o valor
+  // 6) gates do RANKING (não afetam mais o save acima):
+  //    partida curta demais não publica score (anti-forja), mas o save já foi
+  //    gravado — o cliente reenvia depois (o 403 faz reagendar) e aí entra no board.
+  if (seconds < C.MIN_RUN_SECONDS) return res.status(403).json({error: 'run_too_short'});
+
+  // 7) leaderboard = DINHEIRO ATUAL do jogador (não mais o pico): grava o valor
   //    recebido por nome, SEM GT — quem gasta cai no ranking, quem acumula sobe.
-  //    Continua barrado pela plausibilidade (não dá pra forjar um salto). O 422
-  //    faz o cliente reagendar e reenviar quando o teto cresce.
-  if (money > maxAllowed)
+  //    O valor é CRAVADO no teto duro (em vez de rejeitar a requisição): quem
+  //    passa do teto continua salvando e só não infla o board. Continua barrado
+  //    pela plausibilidade por tempo (422 faz o cliente reagendar quando cresce).
+  const lbMoney = Math.min(money, C.MONEY_HARD_CAP);
+  if (lbMoney > maxAllowed)
     return res.status(422).json({error: 'implausible_score', maxAllowed: Math.floor(maxAllowed)});
-  await redis.zadd(C.LEADERBOARD_KEY, {score: money, member: name});
+  await redis.zadd(C.LEADERBOARD_KEY, {score: lbMoney, member: name});
   const rank = await redis.zrevrank(C.LEADERBOARD_KEY, name);
-  res.status(200).json({ok: true, name, money, rank: rank == null ? null : rank + 1});
+  res.status(200).json({ok: true, name, money: lbMoney, rank: rank == null ? null : rank + 1});
 }

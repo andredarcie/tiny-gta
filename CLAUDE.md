@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Tiny GTA — a browser GTA-style game built with vanilla JavaScript ES modules and Three.js, bundled by Vite. No framework, no TypeScript. The whole world (city, terrain, characters, vehicles, effects) is generated procedurally in code; there are **no image/model binary assets** loaded at runtime — textures are drawn to `<canvas>` and geometry is built from Three.js primitives.
+Tiny Crime — a browser open-world-style game built with vanilla JavaScript ES modules and Three.js, bundled by Vite. No framework, no TypeScript. The whole world (city, terrain, characters, vehicles, effects) is generated procedurally in code; there are **no image/model binary assets** loaded at runtime — textures are drawn to `<canvas>` and geometry is built from Three.js primitives.
 
 ## Commands
 
@@ -38,6 +38,11 @@ There is **no unit-test framework and no linter**. Quick validation is still `no
 **Debug hooks** on `window`: `render_game_to_text()` (JSON snapshot of game state), `advanceTime(ms)` (steps the loop deterministically), and `__test` (test scaffolding used by the browser harness — `enterCar`/`exitCar`/`interact`/`placeVehicle`/`setKey`/`clearKeys`/`raceTarget`). The game never uses `__test`; it only exists so tests can set up scenarios on the live instance.
 
 ## Testing (browser end-to-end)
+
+> **🚫 DO NOT RUN BROWSER/GAME TESTS YOURSELF. THE USER TESTS. 🚫**
+> This is an absolute, non-negotiable rule. **Claude must NEVER launch Playwright, Chromium, a headless browser, `npm test`, `npx playwright`, or any other in-browser/runtime test of the game.** Do not write throwaway `.spec.js` files to "just check" something, and do not take in-game screenshots to verify your own work. The user is the only one who runs the game and verifies it visually.
+> Your validation stops at static checks: `node --check <file>` on the files you touched and `npm run build`. After that, describe what you changed and hand it to the user to test. If you believe something needs runtime/visual verification, **say so and ask the user to test it** — never do it yourself.
+> (The harness below still exists for the user's own use / CI; the rest of this section documents it for that purpose only. It is **not** an invitation for Claude to run it.)
 
 Gameplay is tested by driving the **real game in a real Chromium** (real Three.js/WebGL, real game loop, real input pipeline) via Playwright — there is no headless-stub/mock layer. This is the one sanctioned way to test the game; do not invent per-test browser scripts.
 

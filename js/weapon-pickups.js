@@ -10,7 +10,7 @@ import {MiniGame} from './minigame.js';
 
 // HIDDEN WEAPONS — the 12 possible weapons (the whole ARSENAL, i.e. everything
 // but the fist) hidden in out-of-the-way corners of the map for the player to
-// find on foot. No map/radar blip on purpose: they are discoveries, GTA-style.
+// find on foot. No map/radar blip on purpose: they are discoveries, open-world-style.
 // Touching one grants that weapon (and always refills its ammo, so it doubles as
 // an ammo crate); it then respawns after a cooldown so it stays useful.
 

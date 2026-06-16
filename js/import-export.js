@@ -12,9 +12,9 @@ import {MiniGame,MiniGameId} from './minigame.js';
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. A ação EXPORT já fica indisponível durante uma sessão (trava nas
 // zoneActions do input/hud).
-new MiniGame({id:MiniGameId.IMPORT_EXPORT,name:'Import/Export',exclusive:false});
+new MiniGame({id:MiniGameId.IMPORT_EXPORT,name:'Dock Exports',exclusive:false});
 
-// Minigame IMPORT/EXPORT (garagem da doca que compra carros, estilo GTA): uma
+// Minigame DOCK EXPORTS (garagem da doca que compra carros, estilo open-world): uma
 // garagem fica numa interseccao do mapa. Ela mantem uma "lista de procurados"
 // (um nome de carro sorteado de carNames). O jogador leva QUALQUER carro comum
 // ate a zona, para dentro dela e exporta: ganha um pagamento base; se o carro
@@ -60,7 +60,7 @@ const hookRestY=hook?hook.position.y:0;
 // rc-toyz.js e player.js.
 function isSpecial(car){
   return !!(car&&(car.taxi||car.police||car.vigilante||car.ambulance||
-    car.firetruck||car.boat||car.bike||car.plane||car.name==='RC BANDIT'));
+    car.firetruck||car.boat||car.bike||car.plane||car.name==='RC RAGER'));
 }
 
 // Sorteia um novo pedido diferente do atual. Se a lista so tiver um nome, sai do
@@ -230,7 +230,7 @@ function updateJob(dt){
 
 // Blip fixo no radar/mapa (POI da garagem).
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>[
-  {x:PAD.x,z:PAD.z,icon:'package',color:'#7ad0ff',label:'IMPORT/EXPORT'}
+  {x:PAD.x,z:PAD.z,icon:'package',color:'#7ad0ff',label:'DOCK EXPORTS'}
 ]);
 
 // Snapshot pro render_game_to_text.

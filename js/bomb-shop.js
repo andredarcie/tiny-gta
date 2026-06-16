@@ -12,9 +12,9 @@ import {MiniGame,MiniGameId} from './minigame.js';
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. As ações ARM/DETONATE já ficam indisponíveis durante uma sessão
 // (trava nas zoneActions do input/hud).
-new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Bomb Shop',exclusive:false});
+new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Demo Garage',exclusive:false});
 
-// BOMB SHOP estilo GTA (garagem clandestina do 8-Ball): pare o CARRO dentro da
+// DEMO GARAGE estilo open-world (garagem clandestina do artificeiro): pare o CARRO dentro da
 // garagem e pague pra instalar uma bomba. Depois saia a pé, afaste-se e DETONE —
 // a explosão (refs.explodeAt) mata/danifica gangues e policiais ao redor, ótimo
 // pra emboscadas. Só 1 carro armado por vez; o carro-bomba pisca em vermelho pra
@@ -172,7 +172,7 @@ function detonate(){
 
 // POI fixo no radar (ícone 'bomb'; se desconhecido o hud cai no genérico, ok).
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
-  [{x:PAD.x,z:PAD.z,icon:'bomb',color:'#ff3b3b',label:'BOMB SHOP'}]);
+  [{x:PAD.x,z:PAD.z,icon:'bomb',color:'#ff3b3b',label:'DEMO GARAGE'}]);
 
 // debug: estado pro render_game_to_text
 refs.getBombShopState=()=>({armed:!!armedCar});

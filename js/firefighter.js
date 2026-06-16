@@ -15,19 +15,19 @@ import {MiniGame,MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
 
 // ============================================================================
-// MINIGAME FIREFIGHTER (fiel ao GTA III, repaginado pra dar gosto de combate)
+// MINIGAME FIREFIGHTER (fiel ao open-world, repaginado pra dar gosto de combate)
 //  - um caminhão de bombeiros (com canhão d'água giratório + sirene) fica numa
 //    esquina; entrar nele começa o plantão;
 //  - a cada nível nasce UM VEÍCULO em chamas numa interseção (carro carbonizado
 //    engolido pelo fogo), com COLUNA DE FUMAÇA visível de longe e brasas;
-//  - igual ao GTA III: o TEMPO concedido por incêndio é proporcional à DISTÂNCIA
+//  - igual ao open-world: o TEMPO concedido por incêndio é proporcional à DISTÂNCIA
 //    (tem que correr pela cidade) e acumula no relógio — o que sobra vai pro
 //    próximo;
 //  - chegue de caminhão e BORRIFE: dentro do alcance do canhão sai um JATO D'ÁGUA
 //    que mira no fogo e vai apagando — cada incêndio tem "vida" (intensidade) que
 //    cai enquanto a água bate e SE RECUPERA um pouco se você se afasta no meio;
 //  - apagar paga (bônus por rapidez) e sobe o nível (fogo maior, mais "vida");
-//    apagar FLAME_AT incêndios libera o LANÇA-CHAMAS (recompensa do GTA III);
+//    apagar FLAME_AT incêndios libera o LANÇA-CHAMAS (recompensa do open-world);
 //    zerou o cronômetro, o plantão acaba;
 //  - sair do caminhão / WASTED / BUSTED encerra; caminhão destruído reaparece.
 // ============================================================================
@@ -36,14 +36,14 @@ const FF_BUILD=' ◆ FIREFIGHTER';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',FF_BUILD);
 
 const ORANGE=0xff7a1e;
-// GTA III: o tempo de cada incêndio é proporcional à DISTÂNCIA (correr pela
+// open-world: o tempo de cada incêndio é proporcional à DISTÂNCIA (correr pela
 // cidade) + uma base pra apagar, e ACUMULA no relógio (sobra vai pro próximo).
 const TIME_PER_M=.12;      // segundos concedidos por metro até o fogo
 const FIRE_BASE=8;         // base por incêndio (apagar depois de chegar)
 const TIME_MIN=12,TIME_MAX=30; // piso/teto do tempo concedido por incêndio
 const START_BUFFER=6;      // folga extra só no 1º incêndio (dar partida)
 const LOW_TIME=8;          // abaixo disso o HUD pisca vermelho e bipa
-const FLAME_AT=10;         // incêndios apagados que liberam o LANÇA-CHAMAS (GTA III)
+const FLAME_AT=10;         // incêndios apagados que liberam o LANÇA-CHAMAS (open-world)
 const SPRAY_RANGE=11;      // alcance do canhão d'água (m): chegou perto, já borrifa
 const DOUSE_RATE=0.7;      // "vida" do fogo apagada por segundo de jato
 const REGEN_RATE=0.6;      // "vida" recuperada por segundo quando ninguém borrifa
@@ -196,7 +196,7 @@ function spawnFire(initial){
   }
   x=bx;z=bz;
   const gy=groundHeight(x,z);
-  // VEÍCULO em chamas (alvo do incêndio, estilo GTA III). Wreck estático: sem
+  // VEÍCULO em chamas (alvo do incêndio, estilo open-world). Wreck estático: sem
   // sombra (custo) e fora de idleCars (não vira carro dirigível/colidível).
   const car=makeCar(CHARRED);
   car.position.set(x,gy,z);
@@ -213,7 +213,7 @@ function spawnFire(initial){
   scene.add(group,ring,beacon);
   const maxHp=2.4+level*0.5;
   fire={x,z,gy,group,ring,beacon,car,hp:maxHp,maxHp,startT:state.time};
-  // tempo ~ distância (GTA III) + base; acumula no relógio (sobra carrega)
+  // tempo ~ distância (open-world) + base; acumula no relógio (sobra carrega)
   const dist=Math.hypot(x-pp.x,z-pp.z);
   let grant=clamp(Math.round(dist*TIME_PER_M+FIRE_BASE),TIME_MIN,TIME_MAX);
   if(initial)grant+=START_BUFFER;
@@ -291,7 +291,7 @@ function extinguishFire(){
   blip([523,659,784,1047],.1,'square',.2);
   removeFire();
   setSpraying(false);
-  // recompensa do GTA III: apagar FLAME_AT incêndios libera o lança-chamas
+  // recompensa do open-world: apagar FLAME_AT incêndios libera o lança-chamas
   if(fires===FLAME_AT&&buyWeapon('flame')){
     message('FLAMETHROWER UNLOCKED!','var(--pink)');
     bigText('FLAMETHROWER','var(--pink)');setTimeout(hideBig,1400);
@@ -407,7 +407,7 @@ export function updateFirefighter(dt){
 
   timeLeft-=dt;
   if(timeLeft<=0){endDuty('FIRE BRIGADE OVER','var(--pink)');return;}
-  // tempo acabando: bipa uma vez por segundo (aviso de pressão, estilo GTA)
+  // tempo acabando: bipa uma vez por segundo (aviso de pressão, estilo open-world)
   if(timeLeft<LOW_TIME){
     const s=Math.ceil(timeLeft);
     if(s!==lastBeep){lastBeep=s;blip([880],.07,'square',.16);}

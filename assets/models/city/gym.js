@@ -98,7 +98,7 @@ export function addGym(solids){
   gymFx.sign=new THREE.Mesh(new THREE.PlaneGeometry(9,2.3),
     new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
   gymFx.sign.position.set(cx-8.12,6,cz);gymFx.sign.rotation.y=-Math.PI/2;facade.add(gymFx.sign);
-  // seta estilo Vice City quicando rente ao chão na entrada (mesh próprio, no
+  // seta estilo mundo aberto quicando rente ao chão na entrada (mesh próprio, no
   // grupo, pra sumir junto; animada por js/interior.js)
   gymFx.facadeArrow=makeDoorArrow();
   gymFx.facadeArrow.position.set(cx-9.3,1.7,cz);facade.add(gymFx.facadeArrow);
