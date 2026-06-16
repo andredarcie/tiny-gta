@@ -5,7 +5,7 @@
 // Lives at repo root + refs in public/ because the Vite dev server doesn't serve
 // files under /test/. Both are throwaway test scaffolding.
 import * as THREE from 'three';
-import {buildPed} from '/assets/models/characters/pedestrian.js';
+import {buildToonPlayer} from '/assets/models/characters/pedestrian.js';
 
 // Seed Math.random so the player ped is identical every run (stable comparison).
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -20,11 +20,16 @@ function renderPed(view,w,h){
   sc.add(new THREE.HemisphereLight(0xdfeaff,0x33302e,1.0));
   const key=new THREE.DirectionalLight(0xfff0d8,2.1);key.position.set(3,6,5);sc.add(key);
   const rim=new THREE.DirectionalLight(0x8aa0ff,.5);rim.position.set(-4,3,-5);sc.add(rim);
-  const ped=seeded(7,()=>buildPed({color:0x19e3ff,toon:true}));
+  const ped=seeded(7,()=>buildToonPlayer({color:0x19e3ff}));
   sc.add(ped);
+  if(view==='body'){   // natural relaxed stance (arms hang slightly out, like in-game)
+    const L=ped.userData.limbs;
+    L.leftArm.rotation.z=.15;L.rightArm.rotation.z=-.15;
+    ped.updateMatrixWorld(true);
+  }
   const cam=new THREE.PerspectiveCamera(view==='face'?24:32,w/h,.01,100);
-  if(view==='face'){cam.position.set(0,1.64,1.05);cam.lookAt(0,1.6,0);}
-  else{cam.position.set(1.0,1.25,3.0);cam.lookAt(0,0.95,0);}
+  if(view==='face'){cam.position.set(0,1.675,.62);cam.lookAt(0,1.645,0);}
+  else{cam.position.set(.85,1.3,3.1);cam.lookAt(0,0.9,0);}
   r.render(sc,cam);
   return cv;
 }

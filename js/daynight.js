@@ -11,30 +11,17 @@ import {makeHorizonGlow} from '../assets/models/daynight/horizon-glow.js';
 import {makeStarField} from '../assets/models/daynight/star-field.js';
 
 // tod (time of day) in [0,1): 0=midnight, .25=sunrise, .5=noon, .75=sunset.
-// The in-game clock mirrors real Brasília time (America/Sao_Paulo): if it is
-// night in Brazil it is night in Tiny GTA, and the HUD clock reads Brasília time.
-const brasiliaFmt=new Intl.DateTimeFormat('en-US',{
-  timeZone:'America/Sao_Paulo',hour12:false,
-  hour:'2-digit',minute:'2-digit',second:'2-digit'});
-function brasiliaTod(){
-  let h=0,m=0,s=0;
-  for(const p of brasiliaFmt.formatToParts(new Date())){
-    if(p.type==='hour')h=+p.value%24;        // some engines emit '24' at midnight
-    else if(p.type==='minute')m=+p.value;
-    else if(p.type==='second')s=+p.value;
-  }
-  return (h*3600+m*60+s)/86400;
-}
-// ?tod=0..1 in the URL pins the clock to a fixed time of day (debug/screenshots),
-// overriding the live Brasília clock; otherwise we start from the real time.
+// Full day length in seconds; the cycle advances on its own each frame.
+const DAY_LEN=300;
+// Day runs 3x slower and night 3x faster than a uniform cycle.
+const DAY_MULT=1/3;
+const NIGHT_MULT=6.6;
+// ?tod=0..1 in the URL pins the STARTING time of day (debug); default is early
+// afternoon, so the first sunset arrives in ~1 min. The clock keeps advancing.
 const urlTod=parseFloat(new URLSearchParams(location.search).get('tod'));
-const fixedTod=isNaN(urlTod)?null:((urlTod%1)+1)%1;
-let tod=fixedTod??brasiliaTod();
+let tod=isNaN(urlTod)?.55:((urlTod%1)+1)%1;
 export const getTod=()=>tod;
 export const setTod=v=>{tod=((v%1)+1)%1;};
-// Short English weekday (MON..SUN) for the current Brasília date — shown on the HUD.
-const brasiliaDayFmt=new Intl.DateTimeFormat('en-US',{timeZone:'America/Sao_Paulo',weekday:'short'});
-export const getWeekday=()=>brasiliaDayFmt.format(new Date()).toUpperCase();
 // Day counter: bumps every time the clock wraps past midnight. Used by the gym
 // (js/gym.js) to allow training only once per day.
 let dayCount=0;
@@ -133,18 +120,18 @@ scene.add(headSpot);scene.add(headSpot.target);
 const _fwd=new THREE.Vector3();
 
 let twinkleT=0;
-// The sky changes slowly over the real day, so redrawing the gradient canvas and
-// re-uploading the texture to the GPU every frame was wasteful; at ~12fps the
+// The sky changes slowly over minutes (DAY_LEN), so redrawing the gradient canvas
+// and re-uploading the texture to the GPU every frame was wasteful; at ~12fps the
 // transition still looks smooth. Lights/fog follow per frame (cheap and need to
 // stay smooth). skyAccum starts high to force the first draw.
 let skyAccum=1;
 export function updateDayNight(dt){
-  // Sync to real Brasília time every frame. Time only stops during a cut-scene
-  // (story.js pins it to noon) or when ?tod= pins a fixed time for debugging.
-  if(!state.cine&&fixedTod===null){
+  // Time advances on its own; it only stops during a cut-scene (story.js pins it
+  // to noon when entering the scene).
+  if(!state.cine){
     const before=tod;
-    tod=brasiliaTod();
-    if(before>.9&&tod<.1)dayCount++; // clock wrapped past midnight: new day
+    tod=(tod+dt*(tod<.24||tod>.76?NIGHT_MULT:DAY_MULT)/DAY_LEN)%1;
+    if(tod<before)dayCount++; // wrapped past midnight: new day
   }
   twinkleT+=dt;
   sampleKeyframes();

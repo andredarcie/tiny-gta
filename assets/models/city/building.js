@@ -8,7 +8,12 @@ import {addDoorArrow} from './door-arrow.js';
 // (js/doors.js cuida do gatilho e do teleporte; js/player.js da queda)
 export const buildingDoors=[];
 
-const facadePalette=['#f4c2d0','#a8e0d8','#f9e4b8','#ffb88a','#b8d4f0','#e8c8f0','#8ad8c8','#f49a8a'];
+// Paleta Miami, porém puxada pro realista: estuque desbotado pelo sol em vez de
+// pastéis saturados de desenho. Areia, off-white quente, coral/salmão suave,
+// verde-água esmaecido, aqua-cinza e terracota poeirento.
+const facadePalette=['#e7d8c2','#d8c5a6','#e3b6a6','#bcd4cd','#ccd6d0','#e0cbb1','#c7b69e','#d8bdac'];
+// Altura do térreo (faixa sólida sem janela): janelas só do 1º andar pra cima.
+const BASE_H=3.2;
 
 function windowTexPair(base){
   const c=document.createElement('canvas');c.width=256;c.height=512;
@@ -72,11 +77,17 @@ const roofEquipMat=new THREE.MeshLambertMaterial({color:0x9aa0a8});
 const tankMat=new THREE.MeshLambertMaterial({color:0x8a705a});
 const doorMat=new THREE.MeshLambertMaterial({color:0x2a2230});
 const antennaTipMat=new THREE.MeshBasicMaterial({color:0xff3030});
-const awningMats=[0xff5f9e,0x2ec8c8,0xffd24a,0xff8c2e,0xb06ad8]
+const awningMats=[0xc85d77,0x3f9a96,0xd7af4f,0xc7783c,0x90699e]
   .map(c=>new THREE.MeshLambertMaterial({color:c}));
 // Paredes lisas (faces sem janela): cor sólida da fachada, SEM textura — bem
 // mais barato de desenhar que a face com mapa de janelas (map+emissiveMap).
 const plainMats=facadePalette.map(c=>new THREE.MeshLambertMaterial({color:c}));
+// Plinto do térreo: a cor da fachada puxada pra um concreto quente e levemente
+// escurecida — lê como base de loja/estuque, sem janela, e ancora o prédio.
+const baseMats=facadePalette.map(c=>{
+  const col=new THREE.Color(c).lerp(new THREE.Color('#968c82'),.45).multiplyScalar(.9);
+  return new THREE.MeshLambertMaterial({color:col});
+});
 
 // Geometria agrupada por CHUNK espacial (super-bloco) E por material. Cada chunk
 // vira um Group de meshes fundidos: o Three faz frustum culling por chunk e
@@ -86,6 +97,7 @@ const CHUNK=100; // lado do super-bloco de culling (m)
 const newBuckets=()=>({
   sides:texVariants.map(()=>[]),  // faces COM janela (viradas pra rua)
   plain:texVariants.map(()=>[]),  // faces lisas (sem textura) viradas pro miolo
+  base:texVariants.map(()=>[]),   // térreo: plinto sólido sem janela
   roof:[],parapet:[],equip:[],tank:[],tip:[],door:[],
   awning:awningMats.map(()=>[]),
 });
@@ -124,9 +136,9 @@ function sliceFaces(geo,faces){
   return out;
 }
 
-// Caixa de fachada: laterais no balde da variante, topo no balde de telhado;
+// Caixa envidraçada: laterais no balde da variante, topo no balde de telhado;
 // a face de baixo nunca aparece e é descartada
-function addFacadeBox(b,vi,cx,cy,cz,w,h,d,win){
+function windowedBox(b,vi,cx,cy,cz,w,h,d,win){
   const nb=new THREE.BoxGeometry(w,h,d).toNonIndexed();
   bakeBoxUVs(nb,w,h,d);
   nb.translate(cx,cy,cz);
@@ -137,6 +149,27 @@ function addFacadeBox(b,vi,cx,cy,cz,w,h,d,win){
   if(winF.length)b.sides[vi].push(sliceFaces(nb,winF));
   if(plainF.length)b.plain[vi].push(sliceFaces(nb,plainF));
   b.roof.push(sliceFaces(nb,[2]));
+}
+
+// Plinto do térreo: parede sólida sem janela. Só as 4 laterais — topo fica sob
+// a torre e a base fica no chão.
+function baseBand(b,vi,cx,cy,cz,w,h,d){
+  const nb=new THREE.BoxGeometry(w,h,d).toNonIndexed();
+  nb.translate(cx,cy,cz);
+  b.base[vi].push(sliceFaces(nb,[0,1,4,5]));
+}
+
+// Fachada. No nível da rua (ground), separa um térreo sólido sem janela do
+// resto envidraçado — janelas começam só no 1º andar. Blocos elevados
+// (penthouse) entram inteiros.
+function addFacadeBox(b,vi,cx,cy,cz,w,h,d,win,ground=false){
+  if(ground&&h>BASE_H+2){
+    const y0=cy-h/2; // base do prédio (chão)
+    baseBand(b,vi,cx,y0+BASE_H/2,cz,w,BASE_H,d);
+    windowedBox(b,vi,cx,y0+BASE_H+(h-BASE_H)/2,cz,w,h-BASE_H,d,win);
+  }else{
+    windowedBox(b,vi,cx,cy,cz,w,h,d,win);
+  }
 }
 
 function pushBox(arr,sx,sy,sz,x,y,z,rx=0,rz=0){
@@ -152,7 +185,7 @@ export function addBuilding(cx,cz,w,d,solids,win={e:1,w:1,s:1,n:1}){
   const dist=Math.hypot(cx,cz);
   const h=clamp(rand(7,17)+Math.max(0,1-dist/200)*rand(8,30),7,46);
   const vi=irand(0,texVariants.length-1);
-  addFacadeBox(buckets,vi,cx,h/2,cz,w,h,d,win);
+  addFacadeBox(buckets,vi,cx,h/2,cz,w,h,d,win,true);
   solids.push({x0:cx-w/2,x1:cx+w/2,z0:cz-d/2,z1:cz+d/2,h});
 
   pushBox(buckets.parapet,w+.35,.55,d+.35,cx,h+.12,cz);
@@ -234,6 +267,7 @@ export function finalizeBuildings(){
     };
     b.sides.forEach((g,i)=>add(g,sideMats[i],true,true));
     b.plain.forEach((g,i)=>add(g,plainMats[i],true,true));
+    b.base.forEach((g,i)=>add(g,baseMats[i],true,true));
     add(b.roof,roofMat,true,true);
     add(b.parapet,parapetMat);
     add(b.equip,roofEquipMat);
