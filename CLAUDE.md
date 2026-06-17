@@ -19,6 +19,16 @@ npm test           # browser end-to-end tests (Playwright) — see "Testing" bel
 
 There is **no unit-test framework and no linter**. Quick validation is still `node --check` on the files you touched, plus a build. For *gameplay* changes there is now a browser test harness (`npm test`) that drives the real game — see the Testing section. Do not stand up new ad-hoc Playwright scripts; use the shared harness in `test/`.
 
+## Deployment
+
+There are **two separately-deployed pieces**:
+- **Frontend** (the game) → `git push` to `main` triggers GitHub Actions (`.github/workflows/deploy-tiny-gta-itch.yml`) which publishes to **itch.io**.
+- **Backend** (`backend/`, the ranking/save/ledger API) → Vercel project `tiny-gta-backend` (already linked via `backend/.vercel`). Deploy with `cd backend && npx vercel --prod --yes` (the machine is logged in as `andredarcie` — `npx vercel whoami` confirms; the global `vercel` binary may be absent, so use `npx vercel`). Production is aliased to `https://tiny-gta-backend.vercel.app`.
+
+**⚠️ DEPLOY ORDER — BACKEND FIRST whenever the client⇄server contract changes** (the HMAC signed-message format, the session `secret` handshake, request/response shape, new required fields). The new backend is written to accept BOTH the old and new client; an OLD backend receiving a NEW client's request rejects it (e.g. `403 bad_signature` when the signature format changed) and **breaks every save/flush in production until the backend catches up**. So: deploy backend → smoke-test → then push the frontend.
+- Smoke-test the live backend build: `curl -s -X POST https://tiny-gta-backend.vercel.app/api/admin -d '{}'` → `400 {"error":"bad_request"}` means the *new* build is live (a `404` means the old one still is). `POST /api/session` should stay `200` and return a `secret`.
+- The old `backend/README.md` says "frontend first" — that rule is **stale**; it only held for the *original* HMAC rollout when the then-live backend issued no `secret` (so the new client didn't sign). Once the backend issues a `secret` (it does now), the client always signs, so a signature-format change is backend-first. When in doubt, backend-first is the safe default.
+
 ## Architecture
 
 **Entry & loop.** `index.html` loads `js/main.js` as a module. `main.js` runs the single `requestAnimationFrame` loop (`frame` → `step(dt)`), dispatching each frame by `state.mode` (`'foot'` | `'car'` | `'cut'`) and calling every system's `update*(dt)`. `dt` is clamped to 0.05s.
