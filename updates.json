@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-06-17-general-store",
+    "date": "2026-06-17",
+    "title": "The General Store is open",
+    "description": "Drop by the country store on the village main street and step inside. Buy seed packs at the counter — and you'll want to, because the garden now needs seeds before you can plant anything."
+  },
+  {
+    "id": "2026-06-17-denser-woods",
+    "date": "2026-06-17",
+    "title": "Thicker forest, smoother menus",
+    "description": "The countryside is wilder now, with denser pine forest spreading across the peninsula. The pause menu also lays out better on phones, so it's easier to read and tap on the go."
+  },
+  {
     "id": "2026-06-17-updates-panel",
     "date": "2026-06-17",
     "title": "See what's new",
