@@ -51,6 +51,7 @@ const WHY_LABELS={
   'stunt-jump-repeat':'Stunt jump', story:'Mission reward', rick:'Side mission',
   property:'Bought house', 'mod-shop':'Car mods', 'bomb-shop':'Car bomb',
   weapon:'Weapon', ammo:'Ammo', busted:'Arrested', wasted:'Hospital bill',
+  seeds:'Seeds',
 };
 const whyLabel=w=>WHY_LABELS[w]||(w?String(w).replace(/[-_]/g,' '):'—');
 

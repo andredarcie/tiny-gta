@@ -95,6 +95,13 @@ function detachBucket(){
 // ---------- plant lifecycle ----------
 function plantSeed(slot){
   if(slot.plant)return;
+  // seeds are bought at the rural General Store (js/general-store.js); no seed, no planting
+  if((state.seeds|0)<=0){
+    message('NO SEEDS - BUY THEM AT THE GENERAL STORE','var(--pink)');
+    blip([300,220],.06,'square',.08);
+    return;
+  }
+  state.seeds--;
   const y=groundHeight(slot.x,slot.z)+.38;        // sits on the raised planter soil
   const g=makeWeedPlant(1,false);
   g.position.set(slot.x,y,slot.z);g.rotation.y=rand(0,Math.PI*2);g.scale.setScalar(.3);
@@ -241,7 +248,12 @@ function updateFx(dt){
   for(const s of slots){const d=dist(p,s);if(d<bd){bd=d;best=s;}}
   if(!best)return null;
   const pl=best.plant;
-  if(!pl)return{label:'PLANT',prompt:'PLANT A SEED',enabled:true,run:()=>plantSeed(best)};
+  if(!pl){
+    if((state.seeds|0)>0)
+      return{label:'PLANT',prompt:`PLANT A SEED (${state.seeds} LEFT)`,enabled:true,run:()=>plantSeed(best)};
+    return{label:'PLANT',prompt:'NEED SEEDS - BUY AT THE GENERAL STORE',enabled:true,
+      run:()=>plantSeed(best)}; // plantSeed shows the "buy seeds" hint when empty
+  }
   if(pl.stage==='dead')return{label:'CLEAR',prompt:'CLEAR THE DEAD PLANT',enabled:true,run:()=>clearSlot(best)};
   if(pl.stage==='ripe')return{label:'HARVEST',prompt:`HARVEST THE ${grade(pl.quality)} FLOWERS`,enabled:true,run:()=>harvest(best)};
   // with a full bucket you can pour on any not-full plant; without one you simply
