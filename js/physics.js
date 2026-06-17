@@ -1,4 +1,4 @@
-import {clamp,BOUND,RURAL_X1,RURAL_HALF} from './constants.js';
+import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from './constants.js';
 import {solids} from './world.js';
 import {state} from './state.js';
 import {blip} from './audio.js';
@@ -26,9 +26,11 @@ export function collideStatics(p,r,bound=BOUND){
   // não vale lá (senão o clamp o arrasta pro meio do mar); as paredes da sala
   // já são sólidas. NPCs (bound===BOUND) continuam presos à praia.
   if(state.interior&&bound>BOUND)return hit;
-  // Jogador (bound>BOUND) pode seguir a península rural para +x até a montanha
-  const ext=Math.max(0,bound-BOUND);
-  const maxX=ext>0&&Math.abs(p.z)<RURAL_HALF+ext?RURAL_X1+ext:bound;
+  // Jogador (bound>BOUND) pode seguir a península rural para +x até a montanha.
+  // A folga da península (rext) é FIXA (RURAL_SWIM_MARGIN), não escala com `bound`:
+  // SWIM_BOUND cresceu pra ilha a oeste, mas o alcance a leste fica igual ao de antes.
+  const rext=bound>BOUND?RURAL_SWIM_MARGIN:0;
+  const maxX=rext>0&&Math.abs(p.z)<RURAL_HALF+rext?RURAL_X1+rext:bound;
   if(p.x<-bound){p.x=-bound;hit=true} if(p.x>maxX){p.x=maxX;hit=true}
   if(p.z<-bound){p.z=-bound;hit=true} if(p.z>bound){p.z=bound;hit=true}
   return hit;

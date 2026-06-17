@@ -54,7 +54,10 @@ const MINE_HIT=3.4;     // raio de colisão da mina (lancha é larga): encostou,
 const MINE_DODGE=12;    // desvio lateral que os rivais fazem pra contornar a mina
 const HOP_V=7.5;        // impulso vertical do "pulo" ao bater numa mina
 const HOP_G=22;         // gravidade que traz a lancha de volta à água depois do pulo
-const COAST_R=Math.round((WATER+SWIM_BOUND)/2); // raio (Chebyshev) da pista, no meio do mar
+// Raio (Chebyshev) da pista, no meio do mar. FIXO em 253: antes era
+// round((WATER+SWIM_BOUND)/2) com SWIM_BOUND=288; SWIM_BOUND cresceu pra alcançar a
+// ilha a oeste, mas o anel da prova deve ficar EXATAMENTE onde estava.
+const COAST_R=253;
 const COAST_ZGAP=RURAL_HALF+22; // folga da península a leste: água só além disso
 const LAT_AMP=20;       // amplitude do slalom: desloca a boia p/ dentro/fora da faixa de água
 const CORNER_MARGIN=52; // perto de uma quina a boia fica no anel (sem slalom) p/ curva limpa

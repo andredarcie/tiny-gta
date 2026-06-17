@@ -1,6 +1,6 @@
 import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
   RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,TOWN_CX,ruralRoadPath,
-  cityCoastR,isLand} from './constants.js';
+  cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from './constants.js';
 import {state,input,refs} from './state.js';
 import {isPark} from './world.js';
 import {getTod} from './daynight.js';
@@ -589,7 +589,9 @@ const fm=fmCanvas&&fmCanvas.getContext('2d');
 // roda num anel no mar (raio ~ (WATER+SWIM_BOUND)/2), então o mapa precisa
 // alcançar além da linha d'água pra mostrar as boias/largada da prova.
 const FM_SEA=Math.round((WATER+SWIM_BOUND)/2)+24;
-const FM_MINX=-FM_SEA,FM_MAXX=RURAL_TIP+12,FM_MINZ=-FM_SEA,FM_MAXZ=FM_SEA;
+// O mapa estende a borda OESTE pra caber a ilha paradisíaca (em mar aberto a oeste).
+const FM_MINX=Math.min(-FM_SEA,ISLAND_CX-ISLAND_MAXR-16),FM_MAXX=RURAL_TIP+12,
+  FM_MINZ=-FM_SEA,FM_MAXZ=FM_SEA;
 const FM_WW=FM_MAXX-FM_MINX,FM_WH=FM_MAXZ-FM_MINZ;
 // Resolução interna seguindo a proporção real do mundo (sem barras); o CSS
 // reescala isso pra caber em qualquer tela mantendo a proporção.
@@ -612,6 +614,26 @@ export function drawFullMap(){
   fm.fillStyle='#2e8a96';fm.fillRect(0,0,fmCanvas.width,fmCanvas.height); // mar ao fundo
   fm.drawImage(mmStatic,...P(-MMW/2,-MMW/2),MMW*s,MMW*s);
   fm.drawImage(mmRural,...P(RR_X0,-RR_HALF),RRW*s,RRD*s);
+  // Ilha paradisíaca a oeste (em mar aberto): silhueta de areia + miolo verde,
+  // farol no centro e o nome — o destino que se alcança de barco.
+  {
+    const seg=64;
+    fm.beginPath();
+    for(let i=0;i<=seg;i++){const th=i/seg*Math.PI*2,r=islandCoastR(th);
+      const[x,y]=P(ISLAND_CX+Math.cos(th)*r,ISLAND_CZ+Math.sin(th)*r);i?fm.lineTo(x,y):fm.moveTo(x,y);}
+    fm.closePath();fm.fillStyle='#e7d29a';fm.fill();
+    fm.lineWidth=2;fm.strokeStyle='rgba(60,190,200,.9)';fm.stroke();
+    fm.beginPath();
+    for(let i=0;i<=seg;i++){const th=i/seg*Math.PI*2,r=Math.max(6,islandCoastR(th)-14);
+      const[x,y]=P(ISLAND_CX+Math.cos(th)*r,ISLAND_CZ+Math.sin(th)*r);i?fm.lineTo(x,y):fm.moveTo(x,y);}
+    fm.closePath();fm.fillStyle='#5aa657';fm.fill();
+    const[lx,ly]=P(ISLAND_CX,ISLAND_CZ);
+    fm.fillStyle='#d23b32';fm.beginPath();fm.arc(lx,ly,3,0,Math.PI*2);fm.fill();
+    fm.strokeStyle='#fff';fm.lineWidth=1;fm.stroke();
+    fm.font='700 12px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
+    fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('PARADISE ISLE',lx,ly+8);
+    fm.fillStyle='#ffe9c9';fm.fillText('PARADISE ISLE',lx,ly+8);
+  }
   // territórios das gangues
   const gangsArr=refs.gangs;
   if(!mgActive&&gangsArr)for(const g of gangsArr){

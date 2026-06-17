@@ -36,6 +36,7 @@ import {addWell} from '../assets/models/rural/well.js';
 import {addMarketStall} from '../assets/models/rural/market-stall.js';
 import {makeTexturedPlane} from '../assets/models/terrain/textured-plane.js';
 import {buildIsland,updateCoastFoam} from '../assets/models/terrain/island.js';
+import {buildIslandParadise,updateIslandFoam} from '../assets/models/terrain/island-paradise.js';
 import {addBeachRock} from '../assets/models/terrain/beach-rock.js';
 import {makeMountain} from '../assets/models/terrain/mountain.js';
 import {addMountainRock} from '../assets/models/terrain/mountain-rock.js';
@@ -161,6 +162,13 @@ finalizeDoorArrows();    // todas as setinhas de porta num único mesh
 // quadrados / bordas retangulares. Mesmo contorno do gameplay (isLand). A espuma
 // pulsa via updateBeach. Ver assets/models/terrain/island.js.
 const coastFoam=buildIsland();
+
+// Ilha paradisíaca a oeste, em mar aberto: alcançável de barco e explorável a pé.
+// Mesmo islandHeight/islandCoastR de constants.js que o gameplay usa (groundHeight/
+// isLand). Props (palmeiras/pedras/arbustos) são assados e fundidos no finalizeProps
+// abaixo; terreno/raso/espuma/farol/cabana/píer vão direto pra cena. Ver
+// assets/models/terrain/island-paradise.js.
+const islandFoam=buildIslandParadise(solids);
 
 function beachSpot(margin=4){
   const inner=GROUND/2+3,outer=GROUND/2+BEACH-margin;
@@ -403,8 +411,9 @@ addAbandonedFort(solids,606,88);
 // a few pines screening the fort from the road
 for(const[px,pz]of[[574,70],[580,108],[636,112],[630,66]])addPine(px,pz);
 
-// espuma da costa (anéis polares da cidade + tiras da península) — ver island.js
-export function updateBeach(time){updateCoastFoam(coastFoam,time);}
+// espuma da costa (anéis polares da cidade + tiras da península) + espuma da ilha
+// a oeste — ver island.js / island-paradise.js
+export function updateBeach(time){updateCoastFoam(coastFoam,time);updateIslandFoam(islandFoam,time);}
 
 // Street poles
 // Luz dos postes: mesmo truque dos faróis dos carros — texturas aditivas em

@@ -3,7 +3,15 @@ export const GROUND=N*CELL+ROAD;
 export const BEACH=38;                  // largura da faixa de areia ao redor da cidade
 export const BOUND=HALF+ROAD/2+BEACH-5; // limite de NPCs: andam na areia, não entram no mar
 export const WATER=HALF+ROAD/2+BEACH-3; // linha d'água: além disso é mar (nado/afundamento)
-export const SWIM_BOUND=WATER+70;       // parede invisível de verdade, bem mar adentro
+// Parede invisível no mar. Era WATER+70 (=288), só o suficiente pro anel da prova
+// de lanchas. AGORA é bem maior (540) pra o jogador alcançar de barco/nadando a
+// ILHA paradisíaca a oeste (centro x=-408, costa até ~-497). A prova de lanchas
+// NÃO muda: seu raio é fixo (ver COAST_R em boat-race.js, antes derivado daqui).
+export const SWIM_BOUND=540;
+// Folga de natação da península rural (leste), independente de SWIM_BOUND: mantém
+// o alcance a pé/nado da península IGUAL ao de antes (= antigo SWIM_BOUND 288 −
+// BOUND 216) mesmo depois de SWIM_BOUND crescer pra ilha. Usada em physics.js.
+export const RURAL_SWIM_MARGIN=72;
 // Zona rural: península a leste da cidade que termina na montanha-mirante
 export const RURAL_X0=HALF+ROAD/2;      // 183: onde a cidade acaba
 // Afasta o conteúdo rural (fazendas/montanha) da cidade por um corredor de
@@ -61,10 +69,46 @@ export function ruralHillH(x,z){
   const h=.5+.5*Math.sin(x*.085+z*.05)*Math.cos(z*.07-x*.035+.6); // hummocks irregulares
   return env*h*HILL_AMP;
 }
+// ===== Ilha paradisíaca a oeste: alcançável de barco e explorável a pé ========
+// Uma ilha isolada bem a oeste, em mar aberto além do anel da prova de lanchas
+// (costa a leste ~x=-331, longe da reta oeste da prova em ~-273). Como a montanha,
+// é fonte ÚNICA de verdade: o MESMO islandHeight monta o visual
+// (assets/models/terrain/island-paradise.js) E a física (groundHeight), e
+// islandCoastR define a linha d'água tanto pro visual quanto pro isLand — então
+// nunca se "nada na areia" nem se "anda no mar" na ilha.
+export const ISLAND_CX=-408, ISLAND_CZ=-44; // centro (coords de mundo)
+export const ISLAND_BASE_R=70;              // raio médio da costa
+export const ISLAND_MAXR=92;                // raio de rejeição barata (> maior costa)
+const ISLAND_MAXR2=ISLAND_MAXR*ISLAND_MAXR;
+export const ISLAND_PEAK=25;                // altura do morro central
+// Costa irregular (polar) da ilha: raio euclidiano por ângulo (∈ ~[51, 89]).
+export function islandCoastR(th){
+  return ISLAND_BASE_R+9*Math.sin(3*th+1.3)+6*Math.sin(5*th+0.2)+4*Math.sin(2*th-0.8);
+}
+// Relevo da ilha: 0 na linha d'água, subindo num morro central com leve ondulação
+// e uma praia achatada na orla. Sem usar clamp (definido mais abaixo): min/max
+// inline pra evitar a zona-morta (TDZ) do const.
+export function islandHeight(x,z){
+  const dx=x-ISLAND_CX,dz=z-ISLAND_CZ,d=Math.hypot(dx,dz);
+  const cr=islandCoastR(Math.atan2(dz,dx));
+  if(d>=cr)return 0;
+  const t=d/cr, inner=1-t;
+  const dome=inner*inner*(3-2*inner);                 // smoothstep até o pico
+  let h=ISLAND_PEAK*dome;
+  const shore=Math.max(0,Math.min(1,(t-0.84)/0.16));  // achata a praia na orla
+  h*=1-shore*shore*0.95;
+  h+=2.2*Math.max(0,inner-0.15)*Math.sin(dx*0.075+1)*Math.cos(dz*0.07-0.5); // não é um cone perfeito
+  return Math.max(0,h);
+}
+
 // Altura do terreno: interpola os MESMOS triângulos da malha (split do
 // PlaneGeometry: diagonal B–D), então a colisão bate 1:1 com o que se vê.
 // Soma as colinas do corredor (0 fora dele) ao relevo da montanha.
 export function groundHeight(x,z){
+  if(x<-300){                  // ilha a oeste: relevo próprio, isolada no mar
+    const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
+    if(dx*dx+dz*dz<ISLAND_MAXR2){const ih=islandHeight(x,z);if(ih>0)return ih;}
+  }
   const hill=ruralHillH(x,z);
   const u=(x-MOUNT_X)/MCELL+MOUNT_SEG/2, v=z/MCELL+MOUNT_SEG/2;
   if(u<=0||v<=0||u>=MOUNT_SEG||v>=MOUNT_SEG)return hill;
@@ -123,6 +167,10 @@ export function ruralHalf(x){
 }
 // Terra vs. mar. Barato (abs/max/atan2 + ~3 sin) — só o player chama (~4×/frame).
 export function isLand(x,z){
+  if(x<-300){                                      // ilha a oeste (rejeição barata por x)
+    const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
+    if(dx*dx+dz*dz<ISLAND_MAXR2&&Math.hypot(dx,dz)<islandCoastR(Math.atan2(dz,dx)))return true;
+  }
   const rh=ruralHalf(x);
   if(rh>0&&Math.abs(z)<=rh)return true;           // península
   const ax=Math.abs(x),az=Math.abs(z),cheb=ax>az?ax:az;
