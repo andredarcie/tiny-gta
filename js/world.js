@@ -9,6 +9,11 @@ import {addChair} from '../assets/models/props/chair.js';
 import {addLifeguard} from '../assets/models/props/lifeguard.js';
 import {addFarmHouse} from '../assets/models/props/farm-house.js';
 import {addPine} from '../assets/models/props/pine.js';
+import {addTree} from '../assets/models/props/tree.js';
+import {addBush} from '../assets/models/props/bush.js';
+import {addFern} from '../assets/models/props/fern.js';
+import {addMushroom} from '../assets/models/props/mushroom.js';
+import {addFallenLog} from '../assets/models/props/fallen-log.js';
 import {addStreetLamp,lampGlowMat,lampHaloMat,lampBulbMat} from '../assets/models/props/street-lamp.js';
 import {addBuilding,finalizeBuildings,buildingMats} from '../assets/models/city/building.js';
 import {finalizeDoorArrows} from '../assets/models/city/door-arrow.js';
@@ -280,58 +285,101 @@ addRanchHouse(solids);
 // clandestine weed grow-op tucked into the south shore (mini-game: js/weed-farm.js)
 addWeedFarm(solids);
 
-// Pine forest across the rural peninsula and the lower mountain slopes. A pine
-// is a tiny merged prop (~4 meshes folded into the shared chunk meshes), so a
-// dense forest costs almost nothing extra in draw calls — it just merges into
-// more geometry per chunk. We seed a handful of CLUSTER centres (groves) and
-// drop most trees near them with a falloff, so the wood reads as clumped stands
-// of forest rather than an even grid of dots; a thinner scatter fills the gaps.
+// Dense living forest across the rural peninsula and the lower mountain slopes.
+// Every forest prop (pine, broadleaf tree, bush, fern, mushroom, fallen log) is a
+// tiny MERGED prop folded into the shared chunk meshes, so a thick wood costs
+// almost nothing extra in draw calls — it just merges into more geometry per
+// chunk (and distant chunks are culled). We seed CLUSTER centres (groves), drop
+// most trees near them with a falloff so the wood reads as clumped stands, fill
+// the gaps with a denser scatter, then carpet the floor with undergrowth (bushes
+// and ferns) and decay detail (mushroom clusters and fallen logs) to make it
+// feel alive rather than an even grid of dots.
 {
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
     .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
-  // A pine spot is valid only off the road, off rock, clear of the ranch and the
-  // ploughed fields (trees in a field would look wrong).
-  const okPine=(px,pz)=>{
+  // A forest spot is valid only off the road, off rock, and clear of the ranch,
+  // ploughed fields, weed plot, the village square and the ruined fort (trees
+  // sprouting inside a building or a field would look wrong).
+  const okForest=(px,pz)=>{
     if(px<RURAL_X0+6||px>RURAL_X1-8||Math.abs(pz)>RURAL_HALF-6)return false;
     if(Math.abs(pz)<7&&px<MOUNT_X)return false;            // dirt road
     if(groundHeight(px,pz)>18)return false;                 // high slope is rock
     if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)return false;  // ranch yard/porch/sign
     if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)return false; // garage approach
     if(Math.hypot(px-WEED_CX,pz-WEED_CZ)<18)return false;   // weed farm clearing
+    if(Math.hypot(px-TOWN_CX,pz)<78)return false;           // Pine Hollow village clearing
+    if(Math.hypot(px-606,pz-88)<30)return false;            // abandoned fort grounds
     if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))return false;
     return true;
   };
-  let placed=0,guard=0;
-  // grove centres: two thick stands on the north and south flanks plus a band of
-  // forest creeping up the wooded foot of the mountain.
+  // Plant a tree at a valid spot: mostly conifers, with broadleaf trees mixed in
+  // for variety. Returns whether it took.
+  const plantTree=(px,pz)=>{
+    if(!okForest(px,pz))return false;
+    (Math.random()<.72?addPine:addTree)(px,pz);return true;
+  };
+  // Grove centres [x, z, radiusX, radiusZ, count]: thick stands on the north and
+  // south flanks, bands creeping up the wooded foot of the mountain, and stands
+  // wrapping the far peninsula and the woods between the mountain and the village.
+  const G=RURAL_GAP;
   const groves=[
-    [240+RURAL_GAP, 92, 26, 34],[300+RURAL_GAP, 96, 24, 30],
-    [232+RURAL_GAP,-96, 26, 32],[296+RURAL_GAP,-100,24, 30],
-    [MOUNT_X-MOUNT_R-10, 60, 30, 26],[MOUNT_X-MOUNT_R-10,-60, 30, 26],
-    [350+RURAL_GAP, 70, 22, 26],[350+RURAL_GAP,-70, 22, 26],
+    [228+G, 90, 30, 34, 40],[268+G, 96, 28, 30, 38],[306+G, 92, 26, 28, 34],
+    [224+G,-92, 30, 34, 40],[266+G,-98, 28, 30, 38],[302+G,-96, 26, 28, 34],
+    [MOUNT_X-MOUNT_R-12, 64, 32, 30, 40],[MOUNT_X-MOUNT_R-12,-64, 32, 30, 40],
+    [350+G, 74, 26, 28, 34],[350+G,-74, 26, 28, 34],
+    [245+G,108, 24, 9, 18],[285+G,-110, 24, 9, 16],
+    [560, 70, 26, 30, 34],[560,-70, 26, 30, 34],
   ];
-  for(const[gx,gz,rx,rz]of groves){
+  let placed=0;
+  for(const[gx,gz,rx,rz,count]of groves){
     let n=0,g2=0;
-    while(n<26&&g2++<120){
+    while(n<count&&g2++<count*6){
       // gaussian-ish clump: sum of two uniforms biases toward the centre
       const ox=(Math.random()+Math.random()-1)*rx, oz=(Math.random()+Math.random()-1)*rz;
-      const px=gx+ox,pz=gz+oz;
-      if(!okPine(px,pz))continue;
-      addPine(px,pz);n++;placed++;
+      if(plantTree(gx+ox,gz+oz)){n++;placed++;}
     }
   }
-  // light scatter to fill the open pasture between the groves and the fields
-  while(placed<200&&guard++<1400){
-    const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
-    if(!okPine(px,pz))continue;
-    addPine(px,pz);placed++;
+  // denser scatter between the groves so the whole peninsula reads as woodland
+  let guard=0;
+  while(placed<470&&guard++<4000){
+    if(plantTree(rand(RURAL_X0+6,RURAL_X1-8),rand(-RURAL_HALF+6,RURAL_HALF-6)))placed++;
   }
-  // a row of pines lining each side of the dirt road on the way out of town
-  for(let px=RURAL_X0+24;px<MOUNT_X-MOUNT_R-6;px+=rand(9,13)){
+  // a double row of pines lining each side of the dirt road on the way out of town
+  for(let px=RURAL_X0+24;px<MOUNT_X-MOUNT_R-6;px+=rand(7,11)){
     for(const sz of[-1,1]){
-      const pz=sz*rand(10,13);
-      if(okPine(px,pz))addPine(px,pz);
+      const pz=sz*rand(9,13);
+      if(okForest(px,pz))addPine(px,pz);
     }
+  }
+  // ---- Undergrowth & forest floor ----
+  // Bushes thicken the ground layer; bias most toward the groves so the stands
+  // read as dense thicket, with the rest scattered through the open wood.
+  let bushes=0,bg=0;
+  while(bushes<320&&bg++<5200){
+    let px,pz;
+    if(Math.random()<.7){
+      const[gx,gz,rx,rz]=groves[irand(0,groves.length-1)];
+      px=gx+(Math.random()+Math.random()-1)*(rx+8);
+      pz=gz+(Math.random()+Math.random()-1)*(rz+8);
+    }else{
+      px=rand(RURAL_X0+6,RURAL_X1-8);pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
+    }
+    if(okForest(px,pz)){addBush(px,pz);bushes++;}
+  }
+  // Ferns dotted across the shaded floor.
+  let ferns=0,fg=0;
+  while(ferns<240&&fg++<4200){
+    const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
+    if(okForest(px,pz)){addFern(px,pz);ferns++;}
+  }
+  // Mushroom clusters & mossy fallen logs as life/decay detail, near the stands.
+  let detail=0,dg=0;
+  while(detail<80&&dg++<1600){
+    const[gx,gz,rx,rz]=groves[irand(0,groves.length-1)];
+    const px=gx+(Math.random()+Math.random()-1)*(rx+6),pz=gz+(Math.random()+Math.random()-1)*(rz+6);
+    if(!okForest(px,pz))continue;
+    if(Math.random()<.62)addMushroom(px,pz);else addFallenLog(px,pz);
+    detail++;
   }
 }
 
