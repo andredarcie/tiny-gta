@@ -118,6 +118,23 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .race-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
 .race-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffce8a}
 .race-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+/* Weed delivery run HUD (left-center, like the vigilante/medic panels) + heat bar */
+#weedhud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  display:none;width:122px;box-sizing:border-box;padding:6px 7px;
+  border:1px solid rgba(127,224,127,.7);border-radius:4px;
+  background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  color:var(--cream);text-shadow:1px 1px 0 #000}
+#weedhud.show{display:block}
+.weed-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#7fe07f;line-height:1}
+.weed-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
+.weed-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#bfe6bf}
+.weed-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.weed-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
+.weed-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#bfe6bf}
+.weed-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.weed-heat{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;margin-top:4px}
+.weed-meter{height:4px;margin-top:2px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
+.weed-meter i{display:block;height:100%;border-radius:2px;transition:width .2s}
 /* Vigilante (viatura) e Paramedic (ambulância): mesmo formato do taxihud, à
    esquerda. São mutuamente exclusivos entre si e com o táxi (você está em UM
    veículo especial por vez), então compartilham a posição sem sobrepor. */

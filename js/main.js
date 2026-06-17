@@ -350,7 +350,9 @@ window.render_game_to_text=()=>{
     bombShop:refs.getBombShopState?.()||null,
     rcToyz:refs.getRcToyzState?.()||null,
     weedFarm:refs.getWeedFarmState?.()||null,
-    seeds:state.seeds|0, // crop seeds in hand (bought at the General Store, spent planting)
+    seeds:{...state.seeds}, // per-strain seed counts (bought at the General Store, spent planting)
+    seedSel:state.seedSel,  // strain selected to plant next
+    fertilizer:state.fertilizer|0, // plant-food charges
     generalStore:refs.getGeneralStoreState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,

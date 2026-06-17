@@ -24,6 +24,7 @@ export function collectSave() {
     pkg: refs.getPackagesSave?.() || [],
     stunts: refs.getStuntsSave?.() || [],
     daily: refs.getDailySave?.() || null, // dia in-game + travas "1x por dia" dos mini-games
+    farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
   };
 }
 
@@ -45,6 +46,7 @@ export function applySave(blob) {
   refs.restorePackages?.(blob.pkg);
   refs.restoreStunts?.(blob.stunts);
   refs.restoreDaily?.(blob.daily);
+  refs.restoreFarm?.(blob.farm);
 }
 
 refs.collectSave = collectSave;

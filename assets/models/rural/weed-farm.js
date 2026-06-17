@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from '../props/prop-merge.js';
+import {scene} from '../../../js/engine.js'; // halo sprites are added individually (bakeProp skips sprites)
+// Shared night-faded lamp materials (driven by js/daynight.js): the ground-glow
+// pool + bulb tint + halo sprite that street lamps use. Reusing them lights the
+// grow yard at night for free — no real lights, no daynight edits.
+import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.js';
 
 // ============================================================================
 // WEED FARM — a HIDDEN, walled grow-op compound on the deserted south-east shore
@@ -38,6 +43,7 @@ export const WEED_SLOTS=[
 ];
 export const WEED_BOX={x:9.5,z:6.5};      // sale table / crate (LOCAL)
 export const WEED_TAP={x:-9.5,z:6.5};     // water standpipe (LOCAL)
+export const WEED_RACK={x:-2.5,z:-7.3};   // drying rack — hang the harvest to cure (LOCAL)
 
 // ---- materials (shared, so bakeProp merges every farm mesh by material) ----
 const concreteM=matte({color:0xb9b3a6,roughness:1});      // wall body
@@ -112,20 +118,28 @@ function priceTexture(){
   const x=c.getContext('2d');
   x.fillStyle='#14201a';x.fillRect(0,0,128,96);
   x.fillStyle='#9dff2e';x.textAlign='center';x.textBaseline='middle';
-  x.font='900 22px monospace';x.fillText('FLOWERS',64,28);
-  x.font='900 30px monospace';x.fillText('$ / BUD',64,64);
+  x.font='900 24px monospace';x.fillText('STASH',64,28);
+  x.font='900 26px monospace';x.fillText('BOX',64,64);
   priceTex=new THREE.CanvasTexture(c);priceTex.colorSpace=THREE.SRGBColorSpace;return priceTex;
 }
 
 // ---- a single stylized cannabis plant on the origin (base at y=0) ----
-export function makeWeedPlant(s=1,frosty=false){
+export function makeWeedPlant(s=1,frosty=false,leafColor=null){
   const g=new THREE.Group();
   const H=0.9*s;
+  // optional per-strain leaf tint (only a handful of live plants, so per-plant mats are fine)
+  let mLeaf=leafM,mDark=leafDarkM,mCola=colaM;
+  if(leafColor!=null){
+    const c=new THREE.Color(leafColor);
+    mLeaf=matte({color:c.getHex(),roughness:.85});
+    mDark=matte({color:c.clone().multiplyScalar(.78).getHex(),roughness:.85});
+    mCola=matte({color:c.clone().lerp(new THREE.Color(0xffffff),.32).getHex(),roughness:.7});
+  }
   const stem=new THREE.Mesh(new THREE.CylinderGeometry(.03*s,.05*s,H,6),stemM);
   stem.position.y=H/2;stem.castShadow=true;g.add(stem);
-  const tiers=[{y:.30,n:5,len:.40,mat:leafDarkM,spread:1.5},
-               {y:.55,n:5,len:.46,mat:leafM,spread:1.35},
-               {y:.78,n:5,len:.34,mat:leafM,spread:1.1}];
+  const tiers=[{y:.30,n:5,len:.40,mat:mDark,spread:1.5},
+               {y:.55,n:5,len:.46,mat:mLeaf,spread:1.35},
+               {y:.78,n:5,len:.34,mat:mLeaf,spread:1.1}];
   for(const t of tiers){
     for(const side of[-1,1]){
       const fan=new THREE.Group();
@@ -140,7 +154,7 @@ export function makeWeedPlant(s=1,frosty=false){
       g.add(fan);
     }
   }
-  const cola=new THREE.Mesh(new THREE.ConeGeometry(.11*s,.34*s,7),frosty?colaM:leafM);
+  const cola=new THREE.Mesh(new THREE.ConeGeometry(.11*s,.34*s,7),frosty?mCola:mLeaf);
   cola.position.y=H+.1*s;cola.castShadow=true;g.add(cola);
   return g;
 }
@@ -431,6 +445,76 @@ function makeSign(){
   return g;
 }
 
+// drying rack: two posts + hang bars under a little corrugated lean-to. The HARVEST
+// hangs here to cure (the hanging buds are added live by js/weed-farm.js).
+function makeDryingRack(){
+  const g=new THREE.Group();
+  const W=3.0,H=2.0;
+  for(const sx of[-1,1]){
+    const post=new THREE.Mesh(new THREE.BoxGeometry(.12,H,.12),tableM);
+    post.position.set(sx*W/2,H/2,0);post.castShadow=true;g.add(post);
+  }
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,W+.2,8),pipeM);
+  bar.rotation.z=Math.PI/2;bar.position.y=H-.1;g.add(bar);
+  const bar2=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,W+.2,8),pipeM);
+  bar2.rotation.z=Math.PI/2;bar2.position.set(0,H-.55,.22);g.add(bar2);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(W+.5,.1,1.5),roofM);
+  roof.position.set(0,H+.18,.1);roof.rotation.x=-.18;roof.castShadow=true;g.add(roof);
+  return g;
+}
+
+// ---- grow-yard night lighting -------------------------------------------------
+// Two flood poles flank the planter beds, a festoon string runs between them, and
+// warm ground-glow pools wash the soil — all using the shared lamp materials that
+// js/daynight.js fades in after dark, so the plantation reads clearly at night.
+const FLOOD_POS=[{x:-9.5,z:1,yaw:0},{x:9.5,z:1,yaw:Math.PI}];
+const FLOOD_ARM=1.0, FLOOD_H=3.6;
+
+function makeFloodlight(yaw){
+  const g=new THREE.Group();
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.085,FLOOD_H,6),frameM);
+  pole.position.y=FLOOD_H/2;pole.castShadow=true;g.add(pole);
+  const arm=new THREE.Group();arm.position.y=FLOOD_H-.1;arm.rotation.y=yaw;
+  const reach=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,FLOOD_ARM,6),frameM);
+  reach.rotation.z=Math.PI/2;reach.position.set(FLOOD_ARM/2,0,0);arm.add(reach);
+  const shade=new THREE.Mesh(new THREE.ConeGeometry(.3,.34,12,1,true),metalBoxM); // wide opening faces down
+  shade.position.set(FLOOD_ARM,-.05,0);arm.add(shade);
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),lampBulbMat);
+  bulb.position.set(FLOOD_ARM,-.18,0);arm.add(bulb);
+  g.add(arm);
+  return g;
+}
+
+function addGrowLighting(g){
+  for(const f of FLOOD_POS){
+    const fl=makeFloodlight(f.yaw);fl.position.set(f.x,0,f.z);g.add(fl);
+  }
+  // warm ground-glow pools over the two planter rows (off by day, lit by night)
+  for(const[gx,gz,s] of [[-4,1.5,9],[4,1.5,9],[0,4,8],[0,-1,8]]){
+    const pool=new THREE.Mesh(new THREE.PlaneGeometry(s,s),lampGlowMat);
+    pool.rotation.x=-Math.PI/2;pool.position.set(gx,.05,gz);pool.renderOrder=2;g.add(pool);
+  }
+  // festoon string strung between the flood poles, bulbs sagging over the beds
+  const span=FLOOD_POS[1].x-FLOOD_POS[0].x, segs=9, z=FLOOD_POS[0].z, top=FLOOD_H-.2;
+  let prev=null;
+  for(let i=0;i<=segs;i++){
+    const t=i/segs, x=FLOOD_POS[0].x+span*t, y=top-Math.sin(t*Math.PI)*.55;
+    const pt=new THREE.Vector3(x,y,z);
+    if(prev){
+      const len=prev.distanceTo(pt), mid=prev.clone().add(pt).multiplyScalar(.5);
+      const wire=new THREE.Mesh(new THREE.CylinderGeometry(.012,.012,len,4),shackTrimM);
+      wire.position.copy(mid);
+      wire.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),pt.clone().sub(prev).normalize());
+      g.add(wire);
+    }
+    if(i>0&&i<segs){
+      const bulb=new THREE.Mesh(new THREE.SphereGeometry(.085,8,6),lampBulbMat);
+      bulb.position.set(x,y-.13,z);g.add(bulb);
+    }
+    prev=pt;
+  }
+}
+
 // Assemble the whole compound on the origin (plot centre). Pure: no scene.add.
 function build(){
   const g=new THREE.Group();
@@ -472,6 +556,12 @@ function build(){
   const sacks=makeSackStack();sacks.position.set(-9,0,-2);g.add(sacks);
   const barrel=makeBarrel();barrel.position.set(9.3,0,-3.5);g.add(barrel);
 
+  // drying rack at the back (harvest hangs here to cure — see js/weed-farm.js)
+  const rack=makeDryingRack();rack.position.set(WEED_RACK.x,0,WEED_RACK.z);g.add(rack);
+
+  // night lighting over the beds (flood poles + festoon + ground glow)
+  addGrowLighting(g);
+
   g.userData.r=Math.max(HALF_W,HALF_D)+1;
   return g;
 }
@@ -492,6 +582,14 @@ export function addWeedFarm(solids){
   const g=build();
   g.position.set(WEED_CX,-.02,WEED_CZ);
   bakeProp(g);
+  // bloom halos on the flood-lamp bulbs (sprites can't bake — added to the scene,
+  // invisible by day, faded in at night by the shared lampHaloMat)
+  for(const f of FLOOD_POS){
+    const lx=f.x+FLOOD_ARM*Math.cos(f.yaw), lz=f.z-FLOOD_ARM*Math.sin(f.yaw);
+    const halo=new THREE.Sprite(lampHaloMat);
+    halo.position.set(WEED_CX+lx,FLOOD_H-.28,WEED_CZ+lz);halo.scale.set(2.6,2.6,1);
+    scene.add(halo);
+  }
   const cx=WEED_CX,cz=WEED_CZ,T=WALL_T/2+.1;
   solids.push(
     {x0:cx-HALF_W-T,x1:cx-HALF_W+T,z0:cz-HALF_D,z1:cz+HALF_D,h:WALL_H}, // west

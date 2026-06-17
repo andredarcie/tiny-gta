@@ -44,7 +44,7 @@ const WHY_LABELS={
   taxi:'Taxi fare', race:'Street race', 'boat-race':'Boat race', offroad:'Off-road race',
   dance:'Dance tips', rampage:'Rampage', 'rocket-rampage':'Rocket rampage', overkill:'Overkill',
   paramedic:'Ambulance shift', firefighter:'Firefighter', vigilante:'Street justice',
-  'car-crusher':'Car crusher', 'import-export':'Car export', 'weed-farm':'Weed sale',
+  'car-crusher':'Car crusher', 'import-export':'Car export', 'weed-farm':'Weed sale', 'weed-deal':'Weed delivery',
   delivery:'Delivery', 'cash-drop':'Cash drop', loot:'Loot', 'rc-toyz':'RC Toyz',
   'hidden-package':'Hidden package', 'hidden-package-all':'All packages bonus',
   'hidden-package-bonus':'Package bonus', 'stunt-jump':'Stunt jump',
