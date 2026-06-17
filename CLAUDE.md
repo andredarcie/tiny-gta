@@ -21,8 +21,10 @@ There is **no unit-test framework and no linter**. Quick validation is still `no
 
 ## Deployment
 
+**⚠️ TO SHIP ANYTHING, IT MUST REACH `main`.** Work happens on a feature branch, but nothing deploys from a branch. Every time you want to release: **commit → push the branch → merge it into `main` → push `main`**. The itch.io deploy is **pipeline-driven** — it fires *only* on a push to `main` (GitHub Actions). A branch that is committed and pushed but never merged into `main` ships nothing. So the full flow for a change is: branch → commit → push → merge to `main` → push `main` (→ pipeline → itch.io).
+
 There are **two separately-deployed pieces**:
-- **Frontend** (the game) → `git push` to `main` triggers GitHub Actions (`.github/workflows/deploy-tiny-gta-itch.yml`) which publishes to **itch.io**.
+- **Frontend** (the game) → a push to `main` triggers the GitHub Actions **pipeline** (`.github/workflows/deploy-tiny-gta-itch.yml`) which publishes to **itch.io**. This is the *only* way the game deploys — there is no manual itch upload and no branch ever deploys directly.
 - **Backend** (`backend/`, the ranking/save/ledger API) → Vercel project `tiny-gta-backend` (already linked via `backend/.vercel`). Deploy with `cd backend && npx vercel --prod --yes` (the machine is logged in as `andredarcie` — `npx vercel whoami` confirms; the global `vercel` binary may be absent, so use `npx vercel`). Production is aliased to `https://tiny-gta-backend.vercel.app`.
 
 **⚠️ DEPLOY ORDER — BACKEND FIRST whenever the client⇄server contract changes** (the HMAC signed-message format, the session `secret` handshake, request/response shape, new required fields). The new backend is written to accept BOTH the old and new client; an OLD backend receiving a NEW client's request rejects it (e.g. `403 bad_signature` when the signature format changed) and **breaks every save/flush in production until the backend catches up**. So: deploy backend → smoke-test → then push the frontend.
