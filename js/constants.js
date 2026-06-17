@@ -38,20 +38,24 @@ export function ruralRoadPath(){
   for(let x=MOUNT_X+MOUNT_BYPASS_R;x<=TOWN_CX+60;x+=12)pts.push([x,0]); // reta atravessando a vila
   return pts;
 }
-// Montanha low poly: grade grossa de alturas compartilhada por física e visual.
-// Nós seguem um cone suavizado com variação aleatória (facetas irregulares);
-// o pico e as bordas ficam exatos.
-export const MOUNT_SEG=10, MOUNT_S=MOUNT_R*2+2;
-const MN=MOUNT_SEG+1, MCELL=MOUNT_S/MOUNT_SEG;
-export const mountH=new Float32Array(MN*MN);
-for(let j=0;j<MN;j++)for(let i=0;i<MN;i++){
-  const x=(i/MOUNT_SEG-.5)*MOUNT_S,z=(j/MOUNT_SEG-.5)*MOUNT_S;
-  const d=Math.hypot(x,z);
-  if(d>=MOUNT_R)continue;
-  const t=1-d/MOUNT_R;
-  let h=MOUNT_H*t*t*(3-2*t);
-  if(h>1&&h<MOUNT_H*.92)h=Math.min(h*(.8+Math.random()*.34),MOUNT_H-2); // pico continua sendo o ponto mais alto
-  mountH[j*MN+i]=h;
+// Mountain relief — a SINGLE smooth analytic function shared by the physics
+// (groundHeight) and the visual mesh (assets/models/terrain/mountain.js), exactly
+// like the island. There is NO stored height grid and NO per-node randomness: the
+// old low-poly grid randomised every node, so the slope was a field of irregular
+// facets and walking/driving across it POPPED from one triangle to the next (that
+// was the "broken mountain collision"). A continuous radial dome has no such steps,
+// so collision and visuals agree everywhere and the surface never jumps.
+// MOUNT_SEG is now purely the VISUAL mesh resolution (denser → smoother silhouette).
+export const MOUNT_SEG=28, MOUNT_S=MOUNT_R*2+2;
+// Height of the mountain at world (x,z): 0 outside the base radius, rising on a
+// smoothstep profile (zero slope at BOTH the foot and the peak — the foot flares
+// gently into the plain instead of meeting it at a wall, and the summit is rounded)
+// up to MOUNT_H at the centre. Pure and allocation-free — physics calls it ~4×/frame.
+export function mountainH(x,z){
+  const dx=x-MOUNT_X,d=Math.hypot(dx,z);
+  if(d>=MOUNT_R)return 0;
+  const t=1-d/MOUNT_R;            // 0 at the foot, 1 at the summit
+  return MOUNT_H*t*t*(3-2*t);     // smoothstep: gentle flared foot, rounded top
 }
 // Colinas BEM suaves no corredor entre a cidade e o conteúdo rural: dão a
 // sensação de separação entre as zonas sem atrapalhar a direção. Amplitude
@@ -101,21 +105,16 @@ export function islandHeight(x,z){
   return Math.max(0,h);
 }
 
-// Altura do terreno: interpola os MESMOS triângulos da malha (split do
-// PlaneGeometry: diagonal B–D), então a colisão bate 1:1 com o que se vê.
-// Soma as colinas do corredor (0 fora dele) ao relevo da montanha.
+// Terrain height. Each landform is its OWN single source of truth, shared with its
+// visual mesh: the island (islandHeight), the corridor hills (ruralHillH) and the
+// mountain (mountainH). The hills and the mountain never overlap in x, so summing
+// them is safe — one is always 0 where the other rises.
 export function groundHeight(x,z){
   if(x<-300){                  // ilha a oeste: relevo próprio, isolada no mar
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2){const ih=islandHeight(x,z);if(ih>0)return ih;}
   }
-  const hill=ruralHillH(x,z);
-  const u=(x-MOUNT_X)/MCELL+MOUNT_SEG/2, v=z/MCELL+MOUNT_SEG/2;
-  if(u<=0||v<=0||u>=MOUNT_SEG||v>=MOUNT_SEG)return hill;
-  const i=Math.floor(u),j=Math.floor(v),fu=u-i,fv=v-j;
-  const hA=mountH[j*MN+i],hD=mountH[j*MN+i+1],
-        hB=mountH[(j+1)*MN+i],hC=mountH[(j+1)*MN+i+1];
-  return hill+(fu+fv<=1?hA+(hD-hA)*fu+(hB-hA)*fv:hC+(hB-hC)*(1-fu)+(hD-hC)*(1-fv));
+  return ruralHillH(x,z)+mountainH(x,z);
 }
 // ===== Ilha: costa irregular unificada (fonte ÚNICA de verdade) ============
 // Hoje o mundo parece "dois blocos" (cidade quadrada + península retangular).
