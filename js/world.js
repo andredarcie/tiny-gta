@@ -297,12 +297,26 @@ addWeedFarm(solids);
 {
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
     .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
+  // Keep a clear strip along the actual dirt road (the SAME polyline that draws
+  // it): straight out of town, the arc looping NORTH around the mountain, then
+  // straight through the village. Point-to-segment distance so the arc gaps and
+  // the eastern leg are covered too — not just the western straight.
+  const road=ruralRoadPath();
+  const nearRoad=(px,pz)=>{
+    for(let i=1;i<road.length;i++){
+      const ax=road[i-1][0],az=road[i-1][1],dx=road[i][0]-ax,dz=road[i][1]-az;
+      let t=((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz||1);t=t<0?0:t>1?1:t;
+      const ex=px-(ax+t*dx),ez=pz-(az+t*dz);
+      if(ex*ex+ez*ez<49)return true;   // within 7m of the road centreline
+    }
+    return false;
+  };
   // A forest spot is valid only off the road, off rock, and clear of the ranch,
   // ploughed fields, weed plot, the village square and the ruined fort (trees
   // sprouting inside a building or a field would look wrong).
   const okForest=(px,pz)=>{
     if(px<RURAL_X0+6||px>RURAL_X1-8||Math.abs(pz)>RURAL_HALF-6)return false;
-    if(Math.abs(pz)<7&&px<MOUNT_X)return false;            // dirt road
+    if(nearRoad(px,pz))return false;                        // dirt road (incl. mountain bypass)
     if(groundHeight(px,pz)>18)return false;                 // high slope is rock
     if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)return false;  // ranch yard/porch/sign
     if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)return false; // garage approach
