@@ -21,7 +21,13 @@ There is **no unit-test framework and no linter**. Quick validation is still `no
 
 ## Deployment
 
-**⚠️ TO SHIP ANYTHING, IT MUST REACH `main`.** Work happens on a feature branch, but nothing deploys from a branch. Every time you want to release: **commit → push the branch → merge it into `main` → push `main`**. The itch.io deploy is **pipeline-driven** — it fires *only* on a push to `main` (GitHub Actions). A branch that is committed and pushed but never merged into `main` ships nothing. So the full flow for a change is: branch → commit → push → merge to `main` → push `main` (→ pipeline → itch.io).
+**🌿 BRANCHING MODEL — `dev` is the default integration branch; `main` is production only.**
+- **Everything new goes to `dev`.** Cut every feature/fix branch **from `dev`**, and merge it **back into `dev`** — never branch from or merge into `main` during normal work.
+- **`dev` does not deploy.** Pushing `dev` (or any branch) ships nothing. It is just where work accumulates and integrates.
+- **Production ships ONLY on an explicit instruction from the user** ("ship to production" / "subir pra produção" / similar). Only then do you promote: merge **`dev` → `main`** and push `main`, which fires the itch.io pipeline. Do **not** touch `main` or merge `dev → main` on your own initiative — wait for that explicit word.
+- So the normal flow for a change is: branch from `dev` → commit → push → merge to `dev` → push `dev`. The production flow (only when asked) is: merge `dev → main` → push `main` (→ pipeline → itch.io).
+
+**⚠️ TO SHIP ANYTHING TO PLAYERS, IT MUST REACH `main`.** The itch.io deploy is **pipeline-driven** — it fires *only* on a push to `main` (GitHub Actions). A branch that is committed and pushed but never promoted into `main` ships nothing.
 
 **📋 BEFORE EVERY PUSH TO `main`: add an entry to `updates.json`.** The in-game pause menu has an **UPDATES** panel — a player-facing changelog driven by the root `updates.json` file (see `js/pause-menu.js`). It is a list of `{id, date, title, description}` objects ordered **newest-first**. Whenever you ship player-visible changes to `main`, **prepend one new entry** at the top of the array describing what changed in **plain, non-technical language** (the reader is a player, not a developer), dated with the day you ship (`YYYY-MM-DD`), and give it a unique `id`. A new top entry automatically lights up the "NEW" badge on the menu button until the player opens the panel. Skip this only for pure backend/infra/docs changes a player would never notice.
 

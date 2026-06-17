@@ -749,6 +749,39 @@ body.is-portrait-blocked #rotate-device{display:flex}
   .mv-title{font-size:clamp(20px,6vw,26px)}
 }
 
+/* ===== Pause menu — responsive polish & compact (landscape/short) layout ===== */
+/* Entrance animation — replays each time the overlay is shown (display none→flex). */
+@keyframes pauseOvIn{from{opacity:0}to{opacity:1}}
+@keyframes pauseShellIn{from{opacity:0;transform:translateY(12px) scale(.96)}
+  to{opacity:1;transform:translateY(0) scale(1)}}
+#pauseov{animation:pauseOvIn .16s ease both}
+.pause-shell{animation:pauseShellIn .24s cubic-bezier(.2,.85,.25,1) both}
+/* Slim neon scrollbars for the menu body and inner scroll panes. */
+#pause-body,.pause-scroll{scrollbar-width:thin;scrollbar-color:rgba(25,227,255,.5) transparent}
+#pause-body::-webkit-scrollbar,.pause-scroll::-webkit-scrollbar{width:8px;height:8px}
+#pause-body::-webkit-scrollbar-thumb,.pause-scroll::-webkit-scrollbar-thumb{
+  background:rgba(25,227,255,.38);border-radius:8px}
+#pause-body::-webkit-scrollbar-thumb:hover,.pause-scroll::-webkit-scrollbar-thumb:hover{
+  background:rgba(25,227,255,.6)}
+#pause-body::-webkit-scrollbar-track,.pause-scroll::-webkit-scrollbar-track{background:transparent}
+/* Keyboard focus ring (PC). */
+.pause-btn:focus-visible,.pause-mini:focus-visible,.pause-switch:focus-visible,
+.pause-range:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){#pauseov,.pause-shell{animation:none}}
+/* Short / landscape viewports (phones held sideways — mobile is locked to landscape —
+   and short desktop windows): the 8-button column won't fit the height, so lay the
+   main menu out as a 2-column grid (RESUME and QUIT span the full width) and shrink
+   the chrome so the whole menu fits without scrolling. */
+@media (max-height:560px) and (min-width:480px){
+  .pause-shell{width:min(640px,96vw);max-height:96vh;gap:9px;padding:14px 20px 12px}
+  #pause-title{font-size:clamp(22px,5vh,34px);letter-spacing:3px}
+  #pause-body{gap:8px}
+  .pause-menu{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .pause-btn{min-height:40px;font-size:14px}
+  .pause-btn-go,.pause-btn-danger{grid-column:1/-1}
+  .pause-scroll{max-height:56vh}
+}
+
 /* Mapa completo (tecla M) — overlay com a visão geral do mundo */
 #fullmap{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
