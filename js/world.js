@@ -272,9 +272,14 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   scene.add(ground);
 }
 
-solids.push(addFarmHouse(212+RURAL_GAP,-12,0),addFarmHouse(236+RURAL_GAP,10,-.4),addFarmHouse(258+RURAL_GAP,12,.3),
-  addFarmHouse(282+RURAL_GAP,-12,.2),addFarmHouse(302+RURAL_GAP,10,-.25),addFarmHouse(222+RURAL_GAP,74,2.8),
-  addFarmHouse(310+RURAL_GAP,-58,1.3));
+// Farmhouse positions, kept as data so the forest pass below can leave a clearing
+// around each one (the houses sit in the gap between the road and the fields,
+// which the field/road exclusions don't cover).
+const FARMHOUSES=[[212,-12,0],[236,10,-.4],[258,12,.3],[282,-12,.2],[302,10,-.25],
+  [222,74,2.8],[310,-58,1.3]].map(([x,z,r])=>[x+RURAL_GAP,z,r]);
+for(const[x,z,r]of FARMHOUSES)solids.push(addFarmHouse(x,z,r));
+// Barn + silo footprint centre (see addBarnWithSilo: placed at 250+gap,-34).
+const BARN_CX=250+RURAL_GAP,BARN_CZ=-34;
 
 // celeiro vermelho com silo
 addBarnWithSilo(solids);
@@ -322,7 +327,9 @@ addWeedFarm(solids);
     if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)return false; // garage approach
     if(Math.hypot(px-WEED_CX,pz-WEED_CZ)<18)return false;   // weed farm clearing
     if(Math.hypot(px-TOWN_CX,pz)<78)return false;           // Pine Hollow village clearing
-    if(Math.hypot(px-606,pz-88)<30)return false;            // abandoned fort grounds
+    if(Math.hypot(px-606,pz-88)<33)return false;            // abandoned fort compound (44m wide)
+    if(Math.hypot(px-BARN_CX,pz-BARN_CZ)<13)return false;   // barn + silo
+    if(FARMHOUSES.some(([fx,fz])=>Math.hypot(px-fx,pz-fz)<9))return false; // farmhouse yards
     if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))return false;
     return true;
   };
