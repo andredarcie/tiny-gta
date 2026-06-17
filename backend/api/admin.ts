@@ -77,7 +77,8 @@ async function listPlayers(): Promise<Array<{ pid: string; name: string; money: 
     ]);
     players.push({ pid, name, money: Number(score) || 0, bal });
   }
-  players.sort((a, b) => b.bal - a.bal || b.money - a.money);
+  // ordem do RANKING: dinheiro do leaderboard desc (empate -> saldo do ledger).
+  players.sort((a, b) => b.money - a.money || b.bal - a.bal);
   return players;
 }
 

@@ -37,28 +37,49 @@ async function api(action, extra = {}) {
 
 function setMsg(text) { const b = bodyEl(); if (b) b.innerHTML = `<div class="admin-msg">${escapeHtml(text)}</div>`; }
 
-// ---- Players list -----------------------------------------------------------
+// ---- Players list (ranking order, paginated 10 per page) --------------------
+const PER_PAGE = 10;
+let allPlayers = [];  // full list (ranking order), cached so paging never re-scans
+let page = 0;         // current page (0-based)
+
 async function showPlayers() {
   setMsg('Loading players…');
   let players;
   try { ({ players } = await api('players')); }
   catch (e) { setMsg(e.message === 'not_admin' ? 'Not authorized (admin only).' : 'Failed to load: ' + e.message); return; }
   if (!state.adminOpen) return; // closed while loading
+  allPlayers = players || [];
+  page = 0;
+  if (!allPlayers.length) { setMsg('No players found.'); return; }
+  renderPlayersPage();
+}
+
+// Render the current page of the cached list (already ranking-ordered by the server).
+function renderPlayersPage() {
   const b = bodyEl(); if (!b) return;
-  if (!players.length) { setMsg('No players found.'); return; }
-  const rows = players.map((p, i) =>
+  const total = allPlayers.length;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  page = Math.min(Math.max(0, page), pages - 1);
+  const start = page * PER_PAGE;
+  const rows = allPlayers.slice(start, start + PER_PAGE).map((p, i) =>
     `<tr class="admin-row" data-pid="${escapeHtml(p.pid)}" data-name="${escapeHtml(p.name)}">` +
-    `<td class="admin-pos">${i + 1}</td>` +
+    `<td class="admin-pos">${start + i + 1}</td>` +       // continuous ranking position across pages
     `<td class="admin-name">${escapeHtml(p.name)}</td>` +
-    `<td class="num">${fmt(p.bal)}</td>` +
-    `<td class="num">${fmt(p.money)}</td></tr>`
+    `<td class="num">${fmt(p.money)}</td>` +
+    `<td class="num">${fmt(p.bal)}</td></tr>`
   ).join('');
-  b.innerHTML =
-    `<div class="admin-bar"><span class="admin-sub"><b>${players.length}</b> players · click one to see its transactions</span></div>` +
-    `<table class="admin-table"><thead><tr><th>#</th><th>PLAYER</th><th class="num">BALANCE</th><th class="num">RANKING</th></tr></thead>` +
+  const bar = total > PER_PAGE
+    ? `<div class="admin-bar"><button class="admin-back" type="button" data-pg="prev"${page === 0 ? ' disabled' : ''}>← PREV</button>` +
+      `<span class="admin-sub">Page <b>${page + 1}</b>/${pages} · ${total} players · click one for its transactions</span>` +
+      `<button class="admin-back" type="button" data-pg="next"${page >= pages - 1 ? ' disabled' : ''}>NEXT →</button></div>`
+    : `<div class="admin-bar"><span class="admin-sub"><b>${total}</b> players · click one to see its transactions</span></div>`;
+  b.innerHTML = bar +
+    `<table class="admin-table"><thead><tr><th>#</th><th>PLAYER</th><th class="num">RANKING</th><th class="num">BALANCE</th></tr></thead>` +
     `<tbody>${rows}</tbody></table>`;
   b.querySelectorAll('.admin-row').forEach(row =>
     row.addEventListener('click', () => showTxs(row.dataset.pid, row.dataset.name)));
+  b.querySelector('[data-pg="prev"]')?.addEventListener('click', () => { page--; renderPlayersPage(); });
+  b.querySelector('[data-pg="next"]')?.addEventListener('click', () => { page++; renderPlayersPage(); });
 }
 
 // ---- One player's transactions ---------------------------------------------
@@ -82,7 +103,7 @@ async function showTxs(pid, name) {
     `<span class="admin-sub"><b>${escapeHtml(name)}</b> · balance <b>${fmt(data.bal)}</b> · ${txs.length} tx (recent window)</span></div>` +
     `<table class="admin-table"><thead><tr><th>WHEN</th><th>REASON</th><th class="num">AMOUNT</th></tr></thead>` +
     `<tbody>${rows}</tbody></table>`;
-  b.querySelector('.admin-back')?.addEventListener('click', showPlayers);
+  b.querySelector('.admin-back')?.addEventListener('click', renderPlayersPage); // back to the same page (cached)
 }
 
 // ---- open / close -----------------------------------------------------------
