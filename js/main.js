@@ -10,7 +10,8 @@ import {MiniGame} from './minigame.js';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from './traffic.js';
 import {updatePeds,ejectDriver,addBloodPuddle} from './pedestrians.js';
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
-import {updateRuralFolk} from './rural-folk.js'; // ambient rural NPCs (rednecks) in the peninsula
+import {updateRuralFolk} from './rural-folk.js'; // smart ambient rural NPCs (rednecks) in the peninsula
+import {updateRuralTraffic} from './rural-traffic.js'; // sparse country cars on the dirt road
 import {updateBeach} from './world.js';
 import {cops,heli,updateCops,updateHeli} from './police.js';
 import {updateArmy} from './army.js';
@@ -199,7 +200,7 @@ function step(dt){
   P.begin('traffic');updateTraffic(dt);P.end();
   P.begin('peds');updatePeds(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
-  updateRuralFolk(dt); // ambient rednecks idling around the fort / village / farms
+  P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
   P.begin('cops');if(state.mode!=='cut'&&!state.cine)updateCops(dt);P.end();
   P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
