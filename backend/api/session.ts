@@ -3,6 +3,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { redis } from '../lib/redis.js';
 import { cors, clientIp, jsonBody, sendError, safe } from '../lib/http.js';
 import * as C from '../lib/scores.js';
+import * as L from '../lib/ledger.js';
 
 // POST /api/session  (body opcional {pid, name})
 // O jogo chama isto ao INICIAR uma partida. Devolve um token de sessão único e
@@ -52,6 +53,19 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   }
   const money = save && Number.isFinite(save.money) ? Math.max(0, Math.floor(save.money)) : 0;
 
+  // LEDGER: saldo AUTORITATIVO do servidor (soma das transações). Se ainda está
+  // vazio (jogador anterior ao ledger), semeia com o `money` resolvido acima
+  // (idempotente via 'genesis'), pra ninguém perder dinheiro na migração. O cliente
+  // rebaseia no `bal` retornado de forma idempotente (ver economy.importLedger).
+  let ledger: { bal: number } | null = null;
+  if (pid) {
+    let snap = await L.readLedgerSnapshot(pid);
+    if (!snap && money > 0) { await L.seedLedger(pid, money); snap = await L.readLedgerSnapshot(pid); }
+    if (snap) ledger = { bal: snap.bal };
+  }
+  // base de plausibilidade = saldo do ledger quando existir (senão o money do save).
+  const baseMoney = ledger ? ledger.bal : money;
+
   const token = randomUUID();
   const startedAt = Date.now();
   // segredo por sessão: o cliente assina o envio de score com ele (HMAC) e o
@@ -61,9 +75,9 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   // Grava a identidade (pid+nick) junto do token: o /api/scores e o /api/minigame
   // exigem que o envio bata com isto, então um token (próprio ou copiado de outra
   // aba/cURL) não consegue gravar/sobrescrever o nome de OUTRO jogador no ranking.
-  const sess: C.SessionData = { at: startedAt, base: money, pid: pid || null, name: name || null, secret };
+  const sess: C.SessionData = { at: startedAt, base: baseMoney, pid: pid || null, name: name || null, secret };
   await redis.set(C.SESSION_PREFIX + token, sess, { ex: C.SESSION_TTL });
-  res.status(200).json({ token, startedAt, money, save, secret });
+  res.status(200).json({ token, startedAt, money: baseMoney, save, secret, ledger });
 }
 
 export default safe(handler);

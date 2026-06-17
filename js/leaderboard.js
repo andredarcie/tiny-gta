@@ -129,14 +129,26 @@ export async function startSession() {
     const data = await r.json();
     token = data.token;
     flushSecret = typeof data.secret === 'string' ? data.secret : '';
-    save = data.save || (data.money > 0 ? { money: Math.floor(data.money) } : null);
+    save = (data.save && typeof data.save === 'object') ? data.save : null;
+    // Dinheiro AUTORITATIVO do servidor: o saldo (#bal) do LEDGER vem somado das
+    // transações que o servidor aceitou — ele manda como `data.ledger.bal`. Esse é
+    // o saldo verdadeiro, então sobrescreve o `ledger`/`money` que estavam no blob
+    // (que eram só espelhos do último flush). O snapshot fica `{ckpt: bal, txs:[]}`:
+    // o cliente rebaseia em cima dele de forma idempotente (ver economy.importLedger).
+    if (data.ledger && Number.isFinite(data.ledger.bal)) {
+      save = save || {};
+      save.ledger = { ckpt: Math.max(0, Math.floor(data.ledger.bal)), seq: Number(save.ledger?.seq) || 0, txs: [] };
+      save.money = Math.max(0, Math.floor(data.ledger.bal));
+    } else if (!save && Number(data.money) > 0) {
+      save = { money: Math.floor(data.money) }; // servidor antigo (sem campo ledger)
+    }
   } catch (e) {}
   // Reconciliação com o espelho local (mesmo pid), priorizando NÃO PERDER
   // progresso: usa o espelho quando o backend não trouxe nada (rede/Redis falhou)
   // OU quando o espelho é MAIS NOVO que o save do servidor — caso de progresso
   // feito offline depois do último flush que chegou ao backend. Comparação por
-  // carimbo `t` (last-write-wins): o save mais recente é a verdade, tenha ele mais
-  // ou menos dinheiro (gastar é progresso legítimo também).
+  // carimbo `t` (last-write-wins): o save mais recente é a verdade. O espelho
+  // carrega seu próprio snapshot de ledger, então adotá-lo restaura o saldo offline.
   const m = readMirror();
   if (m && (!save || (Number(m.t) || 0) > (Number(save.t) || 0))) save = m;
   return save;
@@ -159,27 +171,38 @@ export function flush() {
   if (!token || !nickname) return;
   const save = refs.collectSave?.() || null;
   const money = save ? Math.max(0, Math.floor(Number(save.money) || 0)) : 0;
-  // dedupe pelo CONTEÚDO (sem o carimbo `t`, senão a assinatura mudaria todo
-  // frame e o flush postaria sem parar).
-  const sig = money + '#' + (save ? JSON.stringify(save) : '');
+  // Transações do LEDGER ainda não confirmadas pelo backend. O envio é IDEMPOTENTE
+  // (o servidor aplica cada uma por id via HSETNX), então reenviar em falha/unload
+  // não duplica nada. Limpas da fila só quando o POST retorna 200 (ackSyncedTxs).
+  const txs = refs.takeUnsyncedTxs?.() || [];
+  // dedupe pelo CONTEÚDO (sem o carimbo `t`) + os ids das txs pendentes — assim um
+  // earn+spend que zera o saldo (mesmo money, txs novas) ainda dispara o envio.
+  const sig = money + '#' + (save ? JSON.stringify(save) : '') + '#' + txs.map(x => x.id).join(',');
   if (sig === lastSig) return;       // nada mudou desde o último envio
   lastSig = sig;                     // otimista; em erro volta pra '' e tenta de novo
   // conteúdo mudou: carimba o instante (last-write-wins na reconciliação com o
   // espelho — ver startSession) e atualiza o backup local ANTES de postar, pra
   // que progresso feito offline sobreviva mesmo se o POST não chegar ao backend.
-  const t = save ? (save.t = Date.now()) : 0;
+  const t = save ? (save.t = Date.now()) : Date.now();
   if (save) writeMirror(save);
-  // assina (money.t) com o segredo da sessão (síncrono, sobrevive ao unload): o
-  // servidor rejeita um payload editado na aba Network sem re-assinar (precisa do
-  // segredo). Vazio quando o backend ainda não emite segredo (rollout).
-  const authSig = flushSecret ? hmacSha256Hex(flushSecret, money + '.' + t) : '';
+  // assina com o segredo da sessão (síncrono, sobrevive ao unload): freio contra
+  // edição casual do payload na aba Network. Sem txs a mensagem é `money.t` (compat);
+  // com txs vira `money.t|<id:amt,...>`, cobrindo os VALORES das transações pra o
+  // servidor rejeitar uma tx editada. DEVE casar com backend lib/scores.txDigest.
+  const txDigest = txs.map(x => x.id + ':' + x.amt).join(',');
+  const authMsg = txDigest ? (money + '.' + t + '|' + txDigest) : (money + '.' + t);
+  const authSig = flushSecret ? hmacSha256Hex(flushSecret, authMsg) : '';
+  const sentIds = txs.map(x => x.id);
   try {
     fetch(API + '/api/scores', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: nickname, money, token, pid, save, t, sig: authSig }),
+      body: JSON.stringify({ name: nickname, money, token, pid, save, txs, t, sig: authSig }),
       keepalive: true,
-    }).then(r => { if (!r.ok) lastSig = ''; }).catch(() => { lastSig = ''; });
+    }).then(r => {
+      if (!r.ok) { lastSig = ''; return; }
+      refs.ackSyncedTxs?.(sentIds); // backend gravou: tira da fila de pendentes
+    }).catch(() => { lastSig = ''; });
   } catch (e) { lastSig = ''; }
 }
 

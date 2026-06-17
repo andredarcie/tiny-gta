@@ -19,6 +19,9 @@ export type SaveBlob = {
 export type SessionData = { at: number; base: number; pid: string | null; name: string | null; secret: string | null };
 export type Account = { hash: string; salt: string; pid: string; at: number };
 export type MiniGameStats = { plays: number; wins: number; losses: number; earned: number; best: number };
+// Uma transação do LEDGER de dinheiro: amt assinado (+ ganho / − perda), id único
+// (append idempotente), why = motivo, t = carimbo. Ver lib/ledger.ts.
+export type Tx = { id: string; amt: number; why: string; t: number };
 
 export const LEADERBOARD_KEY = 'tinygta:leaderboard';
 export const SESSION_PREFIX = 'tinygta:sess:';
@@ -118,6 +121,94 @@ export function sanitizeSave(raw: unknown, maxMoney: number): SaveBlob | null {
   // barra o pior caso; este fecha a soma).
   if (JSON.stringify(o).length > 8192) return null;
   return o as SaveBlob;
+}
+
+// ----- LEDGER DE DINHEIRO (tabela separada por jogador) ---------------------
+// O saldo do jogador é a SOMA das suas transações. Cada uma vive como um campo de
+// um hash `tinygta:ledger:<pid>` (campo = id da tx), o que torna o append
+// IDEMPOTENTE por id (HSETNX só conta a primeira gravação de cada id). O saldo
+// dobrado fica no campo reservado '#bal'. Ver lib/ledger.ts para as operações.
+export const LEDGER_PREFIX = 'tinygta:ledger:';
+export const ledgerKey = (pid: string): string => LEDGER_PREFIX + pid;
+// Campo reservado do hash (prefixo '#', FORA do charset de id) com o saldo dobrado.
+export const LEDGER_BAL = '#bal';
+// Teto absoluto por transação: um payout legítimo fica muito abaixo disto; barra
+// uma única tx forjada gigante (o teto por plausibilidade no /api/scores limita o
+// acumulado, este limita o tijolo).
+export const LEDGER_TX_CAP = num(process.env.LEDGER_TX_CAP, 5_000_000);
+// Limites de tamanho do hash: mantém as txs recentes (auditoria/dedupe) e descarta
+// as mais antigas (a contribuição delas já está em '#bal'). Compactação preguiçosa.
+export const LEDGER_MAX = num(process.env.LEDGER_MAX, 240);
+export const LEDGER_KEEP = num(process.env.LEDGER_KEEP, 120);
+
+// Dígest determinístico do lote de transações (`id:amt` em ordem, separados por
+// vírgula; vazio para lote vazio). Vai no HMAC do flush para o servidor rejeitar um
+// VALOR de tx editado na aba Network. DEVE casar byte a byte com o cliente
+// (js/leaderboard.js flush) — amt sempre inteiro nos dois lados.
+export function txDigest(txs: unknown[]): string {
+  return txs.map((x) => {
+    const o = x && typeof x === 'object' ? (x as Record<string, unknown>) : {};
+    return `${String(o.id)}:${Math.trunc(Number(o.amt))}`;
+  }).join(',');
+}
+
+// Higieniza uma transação vinda do cliente. Rejeita id fora do charset (inclui '#',
+// reservado), amt não-inteiro ou acima do teto por tx, e trunca `why`.
+export function sanitizeTx(raw: unknown): Tx | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const id = typeof o.id === 'string' ? o.id : '';
+  if (!/^[A-Za-z0-9:_-]{1,32}$/.test(id)) return null;
+  const amt = Math.trunc(Number(o.amt));
+  if (!Number.isFinite(amt) || Math.abs(amt) > LEDGER_TX_CAP) return null;
+  const why = typeof o.why === 'string' ? o.why.slice(0, 32) : '';
+  const t = Math.floor(Number(o.t)) || Date.now();
+  return { id, amt, why, t };
+}
+
+// TETO POR FONTE de um pagamento ÚNICO, derivado da fórmula de recompensa de cada
+// mini-game (o máximo teórico de um payout) com FOLGA generosa, pra nunca rejeitar
+// ganho legítimo. Uma transação POSITIVA cujo `why` está aqui e passa do teto é
+// forjada e é descartada no servidor (ver payoutWithinCap). Fontes ausentes caem no
+// teto absoluto LEDGER_TX_CAP (txs de sistema 'start'/'fold' e 'cash-drop', que é
+// escalado por combo e ilimitado). AO ADICIONAR um mini-game novo, registre aqui.
+// (Valores e fórmulas conferidos nos callsites de economy.earn em js/*.js.)
+export const MG_MAX_PAYOUT: Record<string, number> = {
+  // corridas / provas cronometradas (1 payout por run; prêmio 700 + bônus 220 = 920)
+  race: 1500, offroad: 1500, 'boat-race': 1500,
+  taxi: 600,                  // 6 + dist*0.6 (máx ~313 na diagonal do mapa)
+  'car-crusher': 600,         // 80 + rand(0..220) = 300
+  dance: 800,                 // nota S = 500
+  'import-export': 1200,      // 150 + rand(0..250) + match 400 = 800
+  'weed-farm': 1200,          // 6 canteiros * 6 buds * $16 = 576
+  'rocket-rampage': 1500,     // fixo 1000
+  rick: 1200,                 // fixo 800
+  story: 1500,                // recompensa de missão até 1000
+  // por objetivo, escalam com o nível (nível é ilimitado; folga até ~nível 100)
+  vigilante: 5000,            // 50 * level
+  paramedic: 5000,            // 30*min(6,level) + 40*level
+  firefighter: 8000,          // 60*level + bônus de rapidez (90)
+  rampage: 10000,             // 250 + 50*(12 + level)
+  // por evento / coletáveis (valores fixos ou limitados)
+  'rc-toyz': 300,             // 100 por carro destruído
+  'hidden-package': 150,      // 50 por pacote
+  'hidden-package-bonus': 800,   // 500 a cada 10
+  'hidden-package-all': 6000,    // 5000 ao achar todos
+  loot: 400,                  // rand(60..180)
+  'stunt-jump': 1000,         // velocidade (<=300) + bônus de estreia 400
+  'stunt-jump-repeat': 600,   // velocidade (<=300)
+  delivery: 600,              // base da missão (<=240) + bônus de rapidez 120
+  overkill: 300,              // renda streamada; <= ~75/s por tick
+};
+
+// True se o valor da transação está dentro do teto da sua fonte. Transações
+// NEGATIVAS (gastos/multas) nunca são limitadas (só reduzem o saldo). Fontes
+// desconhecidas/de sistema passam (o teto absoluto LEDGER_TX_CAP já as cobre no
+// sanitizeTx). Usada pelo /api/scores pra DESCARTAR um payout forjado.
+export function payoutWithinCap(tx: Tx): boolean {
+  if (tx.amt <= 0) return true;
+  const cap = MG_MAX_PAYOUT[tx.why];
+  return cap == null ? true : tx.amt <= cap;
 }
 
 // pid do jogador: UUID v4 gerado no cliente. Aceita só o formato canônico para

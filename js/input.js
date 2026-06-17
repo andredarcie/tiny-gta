@@ -16,6 +16,7 @@ import {message,drawFullMap} from './hud.js';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from './weapons.js';
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from './weapon-wheel.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
+import {toggleAdmin,closeAdmin,isAdmin} from './admin.js';
 import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest,logout} from './leaderboard.js';
 import {applySave} from './save.js';
 import {hasProfanity} from './profanity.js';
@@ -99,6 +100,7 @@ export function performBack(){
   if(state.dlgActive)return 'consumed';                                   // cut-scene dialogue
   if(state.wheelOpen){closeWheel(false);return 'consumed';}
   if(state.mapOpen){closeFullMap();return 'consumed';}
+  if(state.adminOpen){closeAdmin();return 'consumed';}                    // admin dashboard (Y)
   performPauseToggle();                                                   // gameplay: pause / unpause
   return 'consumed';
 }
@@ -363,7 +365,10 @@ export function setupInput(){
     if(state.wheelOpen){if(e.code==='Escape')closeWheel(false);return;}
     // Mapa completo aberto: só M/Esc o fecham; o resto dos atalhos fica congelado
     if(state.mapOpen){if(e.code==='KeyM'||e.code==='Escape')closeFullMap();return;}
+    // Dashboard de admin aberto: só Y/Esc fecham; o resto congela (cliques no modal).
+    if(state.adminOpen){if(e.code==='KeyY'||e.code==='Escape')closeAdmin();return;}
     if(e.code==='KeyM'){toggleFullMap();return;}
+    if(e.code==='KeyY'&&isAdmin()){toggleAdmin();return;} // painel do dono (só 'REI')
     if(e.code==='KeyP'){performPauseToggle();return;}
     if(e.code==='KeyF'&&e.shiftKey){performFullscreenToggle();return;}
     if(e.code==='KeyR'){performRadioSwitch();return;} // rádio saiu do Tab (agora da roda de armas)

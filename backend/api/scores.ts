@@ -3,6 +3,7 @@ import { redis } from '../lib/redis.js';
 import { cors, clientIp, jsonBody, sendError, safe } from '../lib/http.js';
 import { scoreSig, safeEqualHex } from '../lib/auth.js';
 import * as C from '../lib/scores.js';
+import * as L from '../lib/ledger.js';
 
 // /api/scores
 //   GET  ?limit=100        -> ranking (nome + dinheiro), maior primeiro
@@ -62,36 +63,64 @@ async function submit(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (sess.name && sess.name !== name) return sendError(res, 403, 'session_mismatch');
   if (sess.pid && pid && sess.pid !== pid) return sendError(res, 403, 'session_mismatch');
 
-  // 3c) ASSINATURA anti-adulteração: o envio tem que vir assinado (HMAC money.t)
-  //     com o segredo da sessão. Um payload editado na aba Network sem re-assinar
-  //     (precisa do segredo) é rejeitado. Sessões antigas sem segredo (rollout) e
+  // Lote de transações do ledger (cru, na ordem enviada) — usado na assinatura
+  // (abaixo) e aplicado ao ledger (passo 5). Assinar as txs faz o servidor rejeitar
+  // um VALOR de transação editado na aba Network (sem o segredo, não re-assina).
+  const rawTxs = Array.isArray(body.txs) ? (body.txs as unknown[]) : [];
+  const txDigest = C.txDigest(rawTxs);
+
+  // 3c) ASSINATURA anti-adulteração: o envio tem que vir assinado (HMAC) com o
+  //     segredo da sessão. Sem txs, a mensagem é `money.t` (compat com clientes
+  //     antigos); com txs, é `money.t|<digest das txs>`. Um payload editado na aba
+  //     Network sem re-assinar é rejeitado. Sessões antigas sem segredo (rollout) e
   //     REQUIRE_SIG=0 pulam a checagem — ver lib/scores.REQUIRE_SIG.
   if (sess.secret && C.REQUIRE_SIG) {
     const tSig = Number(body.t) || 0;
     const sig = typeof body.sig === 'string' ? body.sig : '';
-    if (!safeEqualHex(sig, scoreSig(sess.secret, money, tSig))) return sendError(res, 403, 'bad_signature');
+    if (!safeEqualHex(sig, scoreSig(sess.secret, money, tSig, txDigest))) return sendError(res, 403, 'bad_signature');
   }
   const seconds = (Date.now() - sess.at) / 1000;
 
   // 4) teto de plausibilidade: dinheiro não passa do que cabe pelo tempo de
   //    partida, SOMADO ao saldo restaurado no início (sess.base) — quem volta
-  //    rico reenvia o que já estava salvo sem cair no teto por tempo.
-  const maxAllowed = C.maxPlausibleMoney(seconds) + sess.base;
+  //    rico reenvia o que já estava salvo sem cair no teto por tempo. Inteiro
+  //    (dinheiro é em dólares cheios; sem isto o clamp gravava saldo fracionário).
+  const maxAllowed = Math.floor(C.maxPlausibleMoney(seconds) + sess.base);
 
-  // 5) SAVE (progresso privado: saldo ATUAL + itens) — grava ANTES dos gates do
-  //    ranking. O blob é cravado no teto por sanitizeSave (não dá pra inflar),
-  //    então NEM partida curta (run_too_short) NEM o teto do ranking podem
-  //    DESTRUIR o progresso do dono. Chave nova = só pid (trocar de apelido não
-  //    perde mais o save). Inflar o save só afeta o jogo privado do dono — o
-  //    crava no teto impede usar a base pra furar o ranking na sessão seguinte.
+  // 5) LEDGER (tabela separada por jogador): aplica as transações do lote de forma
+  //    IDEMPOTENTE (HSETNX por id — reenvio não duplica) e deriva o saldo
+  //    AUTORITATIVO somando o que o servidor aceitou. O cliente não é mais a fonte
+  //    do saldo do ranking. ANTES dos gates, pra progresso não se perder.
+  let bal = money; // fallback p/ caminho sem pid (legado/borda)
+  if (pid) {
+    // higieniza + DESCARTA payouts acima do teto da fonte (anti-forja por mini-game:
+    // ex.: uma tx `why:'race'` valendo 50k é jogada fora). Gastos (amt<0) passam.
+    const valid = (rawTxs.map(C.sanitizeTx).filter(Boolean) as C.Tx[]).filter(C.payoutWithinCap);
+    if (rawTxs.length > 0) {
+      // Cliente COM ledger: aplica só as txs válidas. CRÍTICO: mesmo quando todas
+      // foram descartadas (forja), NÃO cai no ramo legado de semear pelo `money` —
+      // senão um payout descartado entraria pela porta da migração.
+      bal = valid.length ? await L.appendTxs(pid, valid) : await L.readBalance(pid);
+    } else {
+      // Cliente LEGADO (nunca manda txs): migra o saldo do `money` UMA vez pra o
+      // ranking não regredir. (Jogador que volta já teve o ledger semeado no
+      // /api/session, então aqui bal já é > 0; o teto do ranking no passo 8 — 422 —
+      // ainda barra um `money` implausível.)
+      bal = await L.readBalance(pid);
+      if (bal === 0 && money > 0) { await L.seedLedger(pid, money); bal = await L.readBalance(pid); }
+    }
+    // O '#bal' NÃO é clampado: ele é a soma verdadeira das transações (clampar
+    // perderia dinheiro legítimo de um ganho grande, sem auto-cura no modelo de
+    // delta). O freio do RANKING é o teto de plausibilidade no passo 8 (422).
+  }
+
+  // 6) SAVE (progresso privado: ITENS — armas/casa/coletáveis) — grava ANTES dos
+  //    gates do ranking. O blob é cravado no teto por sanitizeSave; `blob.money`
+  //    agora é só espelho (o saldo de verdade vem do ledger acima). Chave = só pid.
   if (pid && body.save) {
     const blob = C.sanitizeSave(body.save, maxAllowed);
     if (blob) {
-      // carimba o nick AUTORITATIVO (depois do sanitize, pra não ser truncado):
-      // a chave é só o pid, então é isto que deixa a ferramenta de manutenção
-      // (scripts/cleanup.ts) achar/remover o save de um nome. `blob.t` (carimbo
-      // de tempo do cliente) sobrevive ao sanitize e serve à reconciliação local.
-      blob.name = name;
+      blob.name = name;          // nick autoritativo (ferramenta de manutenção acha por nome)
       await redis.set(C.saveKey(pid), blob);
       // o jogador agora tem save de verdade: consome o seed de migração do nome
       // (idempotente; só faz algo na primeira gravação de cada nome semeado).
@@ -99,17 +128,15 @@ async function submit(req: VercelRequest, res: VercelResponse): Promise<void> {
     }
   }
 
-  // 6) gates do RANKING (não afetam mais o save acima):
-  //    partida curta demais não publica score (anti-forja), mas o save já foi
-  //    gravado — o cliente reenvia depois (o 403 faz reagendar) e aí entra no board.
+  // 7) gates do RANKING (não afetam o ledger/save acima):
+  //    partida curta demais não publica score (anti-forja), mas o ledger já foi
+  //    aplicado — o cliente reenvia depois (o 403 faz reagendar) e aí entra no board.
   if (seconds < C.MIN_RUN_SECONDS) return sendError(res, 403, 'run_too_short');
 
-  // 7) leaderboard = DINHEIRO ATUAL do jogador (não mais o pico): grava o valor
-  //    recebido por nome, SEM GT — quem gasta cai no ranking, quem acumula sobe.
-  //    O valor é CRAVADO no teto duro (em vez de rejeitar a requisição): quem
-  //    passa do teto continua salvando e só não infla o board. Continua barrado
-  //    pela plausibilidade por tempo (422 faz o cliente reagendar quando cresce).
-  const lbMoney = Math.min(money, C.MONEY_HARD_CAP);
+  // 8) leaderboard = SALDO ATUAL do jogador (somado do ledger, não o valor cru do
+  //    cliente). CRAVADO no teto duro; o teto por tempo só morde no caminho sem pid
+  //    (com pid o saldo já foi clampado a maxAllowed acima).
+  const lbMoney = Math.min(bal, C.MONEY_HARD_CAP);
   if (lbMoney > maxAllowed)
     return void res.status(422).json({ error: 'implausible_score', maxAllowed: Math.floor(maxAllowed) });
   await redis.zadd(C.LEADERBOARD_KEY, { score: lbMoney, member: name });

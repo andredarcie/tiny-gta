@@ -7,6 +7,7 @@ import handler from '../api/scores.js';
 import { makeReq, makeRes } from './helpers/http.js';
 import { scoreSig } from '../lib/auth.js';
 import * as C from '../lib/scores.js';
+import * as L from '../lib/ledger.js';
 
 const PID = '11111111-1111-4111-8111-111111111111';
 
@@ -110,6 +111,62 @@ describe('submit — anti-tamper signature', () => {
     const t = Date.now();
     const sig = scoreSig(SECRET, 500, t); // signed for 500
     const res = await post({ name: 'JOE', money: 999999, token, pid: PID, save: { money: 999999, t }, t, sig });
+    expect(res._status).toBe(403);
+    expect((res._json as { error: string }).error).toBe('bad_signature');
+  });
+});
+
+describe('submit — ledger transactions are idempotent end-to-end', () => {
+  const SECRET = 'b'.repeat(32);
+  async function seedSigned(at: number, base = 0) {
+    const token = 'tok-' + Math.random().toString(16).slice(2);
+    await redis.set(C.SESSION_PREFIX + token, { at, base, pid: PID, name: 'JOE', secret: SECRET });
+    return token;
+  }
+
+  it('resending the same signed batch does not double the balance/leaderboard', async () => {
+    const token = await seedSigned(Date.now() - 60000);
+    const txs = [{ id: 'genesis', amt: 250, why: 'start', t: 1 }, { id: 'r1', amt: 400, why: 'race', t: 2 }];
+    const t = Date.now();
+    const sig = scoreSig(SECRET, 650, t, C.txDigest(txs));
+    const body = { name: 'JOE', money: 650, token, pid: PID, save: { money: 650, t }, txs, t, sig };
+    expect((await post(body))._status).toBe(200);
+    expect(await redis.zscore(C.LEADERBOARD_KEY, 'JOE')).toBe(650);
+    // resend the identical batch (keepalive on unload / double-tap / retry)
+    expect((await post(body))._status).toBe(200);
+    expect(await redis.zscore(C.LEADERBOARD_KEY, 'JOE')).toBe(650); // not 1300
+    expect(await L.readBalance(PID)).toBe(650);
+  });
+
+  it('drops a forged mini-game payout above its source ceiling (even when signed)', async () => {
+    const token = await seedSigned(Date.now() - 60000);
+    // 'race' tops out far below 1500; a 50k 'race' tx is a forgery -> dropped.
+    const txs = [{ id: 'r1', amt: 50000, why: 'race', t: 1 }, { id: 'genesis', amt: 250, why: 'start', t: 2 }];
+    const t = Date.now();
+    const sig = scoreSig(SECRET, 50250, t, C.txDigest(txs)); // correctly signed (attacker WITH the secret)
+    const res = await post({ name: 'JOE', money: 50250, token, pid: PID, save: { money: 50250, t }, txs, t, sig });
+    expect(res._status).toBe(200);
+    expect(await L.readBalance(PID)).toBe(250);                  // only genesis landed; 50k 'race' dropped
+    expect(await redis.zscore(C.LEADERBOARD_KEY, 'JOE')).toBe(250);
+  });
+
+  it('accepts a legit mini-game payout within its ceiling', async () => {
+    const token = await seedSigned(Date.now() - 60000);
+    const txs = [{ id: 'r2', amt: 920, why: 'race', t: 1 }];     // 700 prize + 220 speed bonus
+    const t = Date.now();
+    const sig = scoreSig(SECRET, 920, t, C.txDigest(txs));
+    const res = await post({ name: 'JOE', money: 920, token, pid: PID, save: { money: 920, t }, txs, t, sig });
+    expect(res._status).toBe(200);
+    expect(await L.readBalance(PID)).toBe(920);
+  });
+
+  it('rejects a tampered tx amount carrying the old signature (bad_signature)', async () => {
+    const token = await seedSigned(Date.now() - 60000);
+    const signed = [{ id: 'r1', amt: 400, why: 'race', t: 2 }];
+    const t = Date.now();
+    const sig = scoreSig(SECRET, 400, t, C.txDigest(signed)); // signed for amt 400
+    const tampered = [{ id: 'r1', amt: 999999, why: 'race', t: 2 }];
+    const res = await post({ name: 'JOE', money: 999999, token, pid: PID, txs: tampered, t, sig });
     expect(res._status).toBe(403);
     expect((res._json as { error: string }).error).toBe('bad_signature');
   });

@@ -90,6 +90,13 @@ export const redis = {
     if (!h || h.size === 0) return null;
     return Object.fromEntries(h.entries()) as T;
   },
+  async hsetnx(key: string, field: string, value: Json): Promise<number> {
+    const h = hashes.get(key) ?? new Map<string, Json>();
+    hashes.set(key, h);
+    if (h.has(field)) return 0;
+    h.set(field, clone(value));
+    return 1;
+  },
   async hincrby(key: string, field: string, n: number): Promise<number> {
     const h = hashes.get(key) ?? new Map<string, Json>();
     hashes.set(key, h);
@@ -97,8 +104,23 @@ export const redis = {
     h.set(field, next);
     return next;
   },
-  async hdel(key: string, field: string): Promise<number> {
-    return hashes.get(key)?.delete(field) ? 1 : 0;
+  async hlen(key: string): Promise<number> { return hashes.get(key)?.size ?? 0; },
+  async hdel(key: string, ...fields: string[]): Promise<number> {
+    const h = hashes.get(key);
+    if (!h) return 0;
+    let n = 0;
+    for (const f of fields) if (h.delete(f)) n++;
+    return n;
+  },
+  // pipeline mínimo: enfileira chamadas e devolve os resultados em ordem no exec().
+  // Só implementa o que o ledger usa (hsetnx). Mesma assinatura do @upstash/redis.
+  pipeline() {
+    const ops: Array<() => Promise<unknown>> = [];
+    const api = {
+      hsetnx(key: string, field: string, value: Json) { ops.push(() => redis.hsetnx(key, field, value)); return api; },
+      async exec() { const out: unknown[] = []; for (const op of ops) out.push(await op()); return out; },
+    };
+    return api;
   },
   async scan(_cursor: string | number, opts?: { match?: string; count?: number }): Promise<[string, string[]]> {
     const re = opts?.match ? globToRe(opts.match) : null;

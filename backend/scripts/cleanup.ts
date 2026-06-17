@@ -21,6 +21,11 @@
 //       Lower every entry whose money > VALUE down to VALUE (squashes inflated
 //       scores without deleting players).
 //
+//   npm run cleanup -- setmoney "<NAME>" <VALUE> [--apply]
+//       Set a single player's money to VALUE: rewrites the leaderboard score AND
+//       the `.money` of every save blob for the name, and clears the player's money
+//       ledger hash so it re-seeds from the corrected money on the next session.
+//
 //   npm run cleanup -- remove "<NAME>" [--apply]
 //       Remove a name from the global board, delete its save blobs, drop its seed
 //       field, and remove it from every minigame board + its minigame hashes.
@@ -40,6 +45,9 @@ import { Redis } from '@upstash/redis';
 // ----- Redis key schema (mirrors backend/lib/scores.ts) ---------------------
 const LEADERBOARD_KEY = 'tinygta:leaderboard';
 const SAVE_PREFIX = 'tinygta:save:';          // + <pid> (atual) | + <pid>|<name> (legado)
+const LEDGER_PREFIX = 'tinygta:ledger:';      // + <pid> -> hash do ledger de dinheiro (#bal + txs)
+const ACCT_PREFIX = 'tinygta:acct:';          // + <username> -> {hash,salt,pid,at} (conta de login)
+const PIDACCT_PREFIX = 'tinygta:pidacct:';    // + <pid> -> <username> (1 conta por pid)
 const SEED_KEY = 'tinygta:seed';              // hash: field=name -> money
 const MG_BOARD_PREFIX = 'tinygta:mg:';        // + <game>            -> sorted set
 const mgBoardKey = (game: string): string => MG_BOARD_PREFIX + game;
@@ -68,7 +76,15 @@ const redis = Redis.fromEnv();
 // operands by position regardless of where --apply sits.
 const rawArgs = process.argv.slice(2);
 const APPLY = rawArgs.includes('--apply');
-const args = rawArgs.filter((a) => a !== '--apply');
+// --pid <value> scopes setmoney to a single identity (a name can span >1 pid).
+let PID_FILTER = '';
+const args: string[] = [];
+for (let i = 0; i < rawArgs.length; i++) {
+  const a = rawArgs[i] as string;
+  if (a === '--apply') continue;
+  if (a === '--pid') { PID_FILTER = rawArgs[++i] || ''; continue; }
+  args.push(a);
+}
 const cmd = args[0];
 
 // Tag every line so the reader always knows whether anything was written.
@@ -164,6 +180,14 @@ async function cmdInspect(): Promise<void> {
   const seed = await redis.hget(SEED_KEY, name);
   console.log(`  seed value: ${seed == null ? '(none)' : fmtMoney(seed)}`);
 
+  // 3b) login account (username -> {pid}; plus the reverse pid -> username)
+  const acct = await redis.get<{ pid?: string }>(ACCT_PREFIX + name);
+  console.log(`  account ${ACCT_PREFIX + name}: ${acct ? JSON.stringify(acct) : '(none)'}`);
+  if (acct?.pid) {
+    const back = await redis.get(PIDACCT_PREFIX + acct.pid);
+    console.log(`  pidacct ${PIDACCT_PREFIX + acct.pid}: ${back == null ? '(none)' : JSON.stringify(back)}`);
+  }
+
   // 4) per-minigame stats
   console.log('  minigame stats:');
   let anyMg = false;
@@ -211,6 +235,63 @@ async function cmdCap(): Promise<void> {
   for (const e of offenders) {
     await redis.zadd(LEADERBOARD_KEY, { score: value, member: e.name });
     console.log(`  capped ${e.name} -> ${fmtMoney(value)}`);
+  }
+}
+
+// Set ONE player's money to an exact value. Unlike `cap` (which only lowers
+// offenders), this writes the leaderboard score AND the `.money` of every save blob
+// for the name, preserving the rest of the blob. It also clears the player's money
+// ledger hash (tinygta:ledger:<pid>) so the new transaction system re-seeds the
+// balance from the corrected money on the next session (idempotent 'genesis').
+async function cmdSetMoney(): Promise<void> {
+  const name = args[1];
+  const value = Number(args[2]);
+  if (!name || !Number.isFinite(value) || value < 0) {
+    console.error('Usage: setmoney "<NAME>" <VALUE> [--apply]   (VALUE must be a non-negative number)');
+    process.exit(1);
+  }
+  console.log(`${tag} set "${name}" money -> ${fmtMoney(value)}`);
+
+  // Gather current state first so the dry run shows exactly what would change.
+  const cur = await redis.zscore(LEADERBOARD_KEY, name);
+  console.log(`  leaderboard: ${cur == null ? '(not on board)' : fmtMoney(cur)} -> ${fmtMoney(value)}`);
+
+  // pid for each save key (for the ledger reset). pid-only key => whole rest;
+  // legacy pid|name => part before the last '|'.
+  const pidOf = (key: string): string => {
+    const rest = key.slice(SAVE_PREFIX.length);
+    const p = rest.lastIndexOf('|');
+    return p >= 0 ? rest.slice(0, p) : rest;
+  };
+  let saveKeys = await findSaveKeysForName(name);
+  if (PID_FILTER) {
+    saveKeys = saveKeys.filter((k) => pidOf(k) === PID_FILTER);
+    console.log(`  --pid ${PID_FILTER}: scoping save blobs to this identity only`);
+  }
+  if (!saveKeys.length) console.log('  save blobs: (none found)');
+  for (const key of saveKeys) {
+    const blob = await redis.get<Record<string, unknown>>(key);
+    const old = blob && typeof blob === 'object' ? Number(blob.money) : NaN;
+    const pid = pidOf(key);
+    const hadLedger = (await redis.hlen(LEDGER_PREFIX + pid)) > 0;
+    console.log(`  ${key}: money ${Number.isFinite(old) ? fmtMoney(old) : '(none)'} -> ${fmtMoney(value)}`
+      + ` | ledger ${LEDGER_PREFIX + pid}: ${hadLedger ? 'will DEL (re-seeds)' : '(none)'}`);
+  }
+
+  if (!APPLY) {
+    console.log('  (dry run — pass --apply to write these changes)');
+    return;
+  }
+
+  await redis.zadd(LEADERBOARD_KEY, { score: value, member: name });
+  console.log(`  set leaderboard ${name} -> ${fmtMoney(value)}`);
+  for (const key of saveKeys) {
+    const blob = await redis.get<Record<string, unknown>>(key);
+    const next = blob && typeof blob === 'object' ? { ...blob, money: value } : { money: value, name };
+    await redis.set(key, next);
+    const pid = pidOf(key);
+    await redis.del(LEDGER_PREFIX + pid);
+    console.log(`  wrote ${key} (money=${fmtMoney(value)}), cleared ledger ${LEDGER_PREFIX + pid}`);
   }
 }
 
@@ -272,6 +353,20 @@ async function cmdRemove(): Promise<void> {
   }
   if (!mgHits.length) console.log('  (no minigame data)');
 
+  // login account (username -> {pid} + reverse pid -> username). Removing "the
+  // user" includes its login so the nickname can be registered fresh later.
+  const acct = await redis.get<{ pid?: string }>(ACCT_PREFIX + name);
+  if (acct) {
+    console.log(`  DEL ${ACCT_PREFIX + name}`);
+    if (APPLY) await redis.del(ACCT_PREFIX + name);
+    if (acct.pid) {
+      console.log(`  DEL ${PIDACCT_PREFIX + acct.pid}`);
+      if (APPLY) await redis.del(PIDACCT_PREFIX + acct.pid);
+    }
+  } else {
+    console.log('  (no login account)');
+  }
+
   if (!APPLY) console.log('  (dry run — pass --apply to write these changes)');
 }
 
@@ -281,9 +376,10 @@ async function main(): Promise<void> {
     case 'list': return cmdList();
     case 'inspect': return cmdInspect();
     case 'cap': return cmdCap();
+    case 'setmoney': return cmdSetMoney();
     case 'remove': return cmdRemove();
     default:
-      console.error('Unknown or missing command. Available: list | inspect | cap | remove');
+      console.error('Unknown or missing command. Available: list | inspect | cap | setmoney | remove');
       console.error('Run with no --apply for a dry run. See the header comment for examples.');
       process.exit(1);
   }

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {state,input,refs,keys} from './state.js';
+import {economy} from './economy.js'; // money ledger — imported here so the genesis tx seeds at boot
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from './engine.js';
 import {updateAudio} from './audio.js';
 import {drawMinimap,updateHUD,hideBig,tickFps} from './hud.js';
@@ -158,6 +159,7 @@ function step(dt){
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
   if(state.mapOpen){renderer.render(scene,camera);return;} // mapa completo (tecla M) congela o mundo
+  if(state.adminOpen){renderer.render(scene,camera);return;} // dashboard de admin (tecla Y) congela o mundo
   if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
   state.time+=dt;
@@ -321,6 +323,7 @@ window.render_game_to_text=()=>{
     activeMiniGame:state.activeMiniGame, // mini game em curso (trava "um por vez")
     interior:state.interior?.constructor?.name||null,
     money:state.money,
+    ledger:economy.debugLedger(), // {balance,checkpoint,window,pending,last[]} — money as a tx ledger
     wanted:state.wanted,
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,

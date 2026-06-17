@@ -715,3 +715,43 @@ body.map-open #touch-controls{display:none!important}
   .fm-title{font-size:clamp(18px,5vw,24px)}
   #fullmap-canvas{max-width:96vw;max-height:calc(94vh - 96px)}
 }
+
+/* ---- Admin dashboard (key Y, owner only) -------------------------------- */
+#admin-dash{position:fixed;inset:0;z-index:72;display:none;align-items:center;justify-content:center;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  background:radial-gradient(ellipse at 50% 40%,rgba(20,9,31,.85),rgba(8,4,16,.96));
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+#admin-dash.open{display:flex}
+.admin-box{display:flex;flex-direction:column;gap:10px;width:min(860px,96vw);max-height:92vh;
+  background:rgba(16,6,30,.94);border:2px solid var(--gold);border-radius:14px;padding:14px 14px 10px;
+  box-shadow:0 0 26px rgba(255,210,74,.4),inset 0 0 30px rgba(255,210,74,.08)}
+.admin-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.admin-title{font-family:'Bowlby One SC';font-size:clamp(18px,3vw,26px);color:var(--gold);
+  letter-spacing:1px;text-shadow:2px 2px 0 #6b4a00,0 0 18px rgba(255,210,74,.5)}
+#admin-close{font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;color:var(--cream);
+  background:rgba(255,210,74,.16);border:2px solid var(--gold);border-radius:8px;
+  width:36px;height:36px;flex:none;cursor:pointer;transition:background .15s,transform .15s}
+#admin-close:hover{background:rgba(255,210,74,.4);transform:scale(1.06)}
+#admin-body{overflow:auto;border-radius:10px;border:1px solid rgba(255,210,74,.25);
+  background:rgba(8,4,16,.5);font-family:'IBM Plex Mono',monospace;color:var(--cream)}
+.admin-msg{padding:18px;text-align:center;color:rgba(255,233,201,.7);letter-spacing:1px}
+.admin-table{width:100%;border-collapse:collapse;font-size:13px}
+.admin-table th{position:sticky;top:0;background:rgba(20,9,31,.96);color:var(--gold);
+  text-align:left;padding:8px 12px;font-weight:700;letter-spacing:1px;font-size:11px;border-bottom:1px solid rgba(255,210,74,.3)}
+.admin-table td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
+.admin-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.admin-row{cursor:pointer;transition:background .12s}
+.admin-row:hover{background:rgba(255,210,74,.12)}
+.admin-name{color:var(--cyan)}
+.admin-pos{color:rgba(255,233,201,.45)}
+.admin-amt-pos{color:#7dff8a}
+.admin-amt-neg{color:var(--pink)}
+.admin-bar{display:flex;align-items:center;gap:10px;padding:8px 4px;flex-wrap:wrap}
+.admin-back{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);background:var(--gold);
+  border:none;border-radius:7px;padding:6px 12px;cursor:pointer;font-weight:700;letter-spacing:1px}
+.admin-back:hover{filter:brightness(1.1)}
+.admin-sub{color:var(--cream);font-size:13px}
+.admin-sub b{color:var(--gold)}
+.admin-hint{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;color:rgba(255,233,201,.7)}
+.admin-hint b{color:var(--gold)}
+body.admin-open #touch-controls{display:none!important}

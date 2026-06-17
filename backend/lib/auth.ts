@@ -23,11 +23,14 @@ export function verifyPassword(pw: unknown, salt: unknown, hash: unknown): boole
   return timingSafeEqual(expected, actual);
 }
 
-// Assinatura anti-adulteração do envio de score: HMAC-SHA256(secret, `${money}.${t}`)
-// em hex. Igual ao cliente síncrono em js/sign.js — assim o servidor rejeita um
-// payload editado na aba Network (que não foi re-assinado com o segredo da sessão).
-export function scoreSig(secret: string, money: number, t: number): string {
-  return createHmac('sha256', secret).update(`${money}.${t}`).digest('hex');
+// Assinatura anti-adulteração do envio de score: HMAC-SHA256 em hex da mensagem
+//   sem txs: `${money}.${t}`            (compat com clientes antigos)
+//   com txs: `${money}.${t}|${txDigest}`  (txDigest = id:amt,... — ver scores.txDigest)
+// Igual ao cliente síncrono em js/leaderboard.js — assim o servidor rejeita um
+// payload (money OU valor de tx) editado na aba Network sem re-assinar.
+export function scoreSig(secret: string, money: number, t: number, txDigest = ''): string {
+  const msg = txDigest ? `${money}.${t}|${txDigest}` : `${money}.${t}`;
+  return createHmac('sha256', secret).update(msg).digest('hex');
 }
 
 // Assinatura do resultado de mini game: HMAC-SHA256(secret, `${game}.${score}.${won}.${t}`).
