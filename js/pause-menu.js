@@ -11,6 +11,7 @@ import {state,refs} from './state.js';
 import {economy} from './economy.js';
 import {API,getNickname,logout,flush} from './leaderboard.js';
 import {settings,setSetting,resetSettings} from './settings.js';
+import UPDATES from '../updates.json';
 
 const $=id=>document.getElementById(id);
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,
@@ -21,6 +22,20 @@ const fmtSigned=n=>(Number(n)<0?'-':'+')+fmtMoney(n);
 const moneyCompact=new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1});
 const fmtCompact=n=>'$'+moneyCompact.format(Math.max(0,Math.floor(Number(n)||0)));
 const fmtTime=t=>{try{return new Date(Number(t)).toLocaleString();}catch(e){return '';}};
+const fmtDate=d=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}catch(e){return String(d);}};
+
+// ---- updates / changelog (driven by the root updates.json, newest-first) ----
+// The newest entry's id is what we remember as "seen": when it differs from the
+// stored value, the menu shows a NEW badge until the player opens the panel.
+const UPDATES_SEEN_KEY='tinycrime_updates_seen';
+const latestUpdateId=()=>(UPDATES&&UPDATES[0]&&UPDATES[0].id)||'';
+function hasUnseenUpdates(){
+  if(!latestUpdateId())return false;
+  try{return localStorage.getItem(UPDATES_SEEN_KEY)!==latestUpdateId();}catch(e){return false;}
+}
+function markUpdatesSeen(){
+  try{localStorage.setItem(UPDATES_SEEN_KEY,latestUpdateId());}catch(e){}
+}
 
 // Friendly names for the ledger `why` source strings (see economy.js callsites).
 // Unknown sources fall back to a humanized version of the raw string.
@@ -42,7 +57,7 @@ const whyLabel=w=>WHY_LABELS[w]||(w?String(w).replace(/[-_]/g,' '):'—');
 const bodyEl=()=>$('pause-body');
 const setTitle=t=>{const e=$('pause-title');if(e)e.textContent=t;};
 
-// 'main' | 'leaderboard' | 'transactions' | 'settings'
+// 'main' | 'leaderboard' | 'transactions' | 'settings' | 'updates'
 let view='main';
 
 // ---- shared chrome ---------------------------------------------------------
@@ -65,6 +80,7 @@ function goMain(){
       `<button class="pause-btn pause-btn-go" data-act="resume">RESUME</button>`+
       `<button class="pause-btn" data-act="leaderboard">LEADERBOARD</button>`+
       `<button class="pause-btn" data-act="transactions">TRANSACTIONS</button>`+
+      `<button class="pause-btn" data-act="updates">UPDATES${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
       `<button class="pause-btn" data-act="settings">SETTINGS</button>`+
       `<button class="pause-btn" data-act="fullscreen">FULLSCREEN</button>`+
       `<button class="pause-btn" data-act="account">SWITCH ACCOUNT</button>`+
@@ -150,6 +166,28 @@ function renderTransactionsPage(){
     backBtn();
 }
 
+// ---- updates (player-facing changelog, newest-first) -----------------------
+function openUpdates(){
+  view='updates';
+  setTitle('UPDATES');
+  markUpdatesSeen(); // viewing the panel clears the NEW badge
+  renderUpdates();
+}
+function renderUpdates(){
+  const items=(UPDATES||[]).map(u=>
+    `<div class="pause-up">`+
+      `<div class="pause-up-head">`+
+        `<span class="pause-up-date">${escapeHtml(fmtDate(u.date))}</span>`+
+        `<span class="pause-up-title">${escapeHtml(u.title)}</span>`+
+      `</div>`+
+      `<p class="pause-up-desc">${escapeHtml(u.description)}</p>`+
+    `</div>`
+  ).join('');
+  bodyEl().innerHTML=
+    `<div class="pause-scroll pause-updates">${items||'<div class="pause-empty">No updates yet.</div>'}</div>`+
+    backBtn();
+}
+
 // ---- settings (graphics + audio) -------------------------------------------
 const SCHEMA=[
   {group:'AUDIO',items:[
@@ -217,6 +255,7 @@ function onBodyClick(e){
     case'resume': refs.togglePause?.(); break;       // input.js owns the pause state
     case'leaderboard': openLeaderboard(); break;
     case'transactions': openTransactions(); break;
+    case'updates': openUpdates(); break;
     case'settings': openSettings(); break;
     case'fullscreen': refs.toggleFullscreen?.(); break;
     case'account':

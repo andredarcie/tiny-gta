@@ -1,0 +1,80 @@
+[
+  {
+    "id": "2026-06-17-updates-panel",
+    "date": "2026-06-17",
+    "title": "See what's new",
+    "description": "This very screen is new! The pause menu now has an Updates panel that lists everything we add to the game, in plain language. A little NEW badge lets you know whenever there's something fresh to read."
+  },
+  {
+    "id": "2026-06-17-pause-menu",
+    "date": "2026-06-17",
+    "title": "All-new pause menu",
+    "description": "Hit pause at any time to open a proper menu. From one place you can check the global leaderboard, browse your full money history, change graphics and sound, go fullscreen, switch account, or quit to the title screen."
+  },
+  {
+    "id": "2026-06-17-island",
+    "date": "2026-06-17",
+    "title": "Sail to Paradise Isle",
+    "description": "Grab a boat and head out to sea. There's a brand-new tropical island waiting offshore that you can land on and explore on foot."
+  },
+  {
+    "id": "2026-06-17-sound",
+    "date": "2026-06-17",
+    "title": "Louder, sharper sound",
+    "description": "Police sirens now wail like the real thing, and the whole world is full of new sound effects that react to what's happening around you."
+  },
+  {
+    "id": "2026-06-17-countryside",
+    "date": "2026-06-17",
+    "title": "A livelier countryside",
+    "description": "The rural village got a football pitch behind the church, friendlier locals wandering the streets, and the occasional truck rumbling down the dirt roads. The mountain is smoother to drive over, too."
+  },
+  {
+    "id": "2026-06-16-first-person",
+    "date": "2026-06-16",
+    "title": "First-person view",
+    "description": "Press C to switch to a first-person camera. On foot you'll see your own hands and weapon; behind the wheel you get a detailed cockpit with hands gripping the steering wheel."
+  },
+  {
+    "id": "2026-06-16-pine-hollow",
+    "date": "2026-06-16",
+    "title": "New town: Pine Hollow",
+    "description": "A whole rural town has sprung up east of the mountain. Explore Pine Hollow with its dense pine forest, fort and farms — you can even climb aboard a tractor and drive it."
+  },
+  {
+    "id": "2026-06-16-weed-farm",
+    "date": "2026-06-16",
+    "title": "A hidden grow-op",
+    "description": "There's a secret weed-farm mini-game tucked away in the countryside, waiting for players who go exploring off the beaten path."
+  },
+  {
+    "id": "2026-06-15-activities",
+    "date": "2026-06-15",
+    "title": "More to do, more to win",
+    "description": "New activities, weapons and a fresh island arrived — each activity now has its own leaderboard. Boat races also got explosive water mines to dodge."
+  },
+  {
+    "id": "2026-06-15-save",
+    "date": "2026-06-15",
+    "title": "Your progress is saved",
+    "description": "Your money and progress now stick around between sessions, so you can pick up right where you left off. The in-game clock is synced to real time and shows the day of the week."
+  },
+  {
+    "id": "2026-06-14-map",
+    "date": "2026-06-14",
+    "title": "Full map & smoother play",
+    "description": "Press M to open a full map of the world, with clearer icons on the minimap. The whole game also runs noticeably smoother now."
+  },
+  {
+    "id": "2026-06-14-guns-boat",
+    "date": "2026-06-14",
+    "title": "Guns & speedboats",
+    "description": "Pick up guns and tear across the water in a Vice City-style speedboat that leaves a foamy wake behind it."
+  },
+  {
+    "id": "2026-06-13-launch",
+    "date": "2026-06-13",
+    "title": "Welcome to Tiny Crime",
+    "description": "The world opened up: a house and safe house to call home, motorcycles to ride, street races to win, a gym to train at, plus a prison, a hospital, talking pedestrians and the very first story missions."
+  }
+]
