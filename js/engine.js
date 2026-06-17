@@ -34,6 +34,20 @@ export function setRenderScale(s){
   return true;
 }
 export const getRenderScale=()=>renderScale;
+
+// --- Player-facing graphics toggles (driven by js/settings.js / the pause menu) ---
+// Shadows: the shadow map is throttled (autoUpdate=false; main.js flags needsUpdate
+// every ~12 frames). Flipping `enabled` off stops the shadow pass entirely; flipping
+// it back on, plus a one-shot needsUpdate, repaints the depth map on the next frame.
+export function setShadowsEnabled(on){
+  renderer.shadowMap.enabled=!!on;
+  renderer.shadowMap.needsUpdate=true;
+}
+// Brightness maps to the ACES tone-mapping exposure (default 1.25; see below).
+export function setBrightness(exposure){
+  renderer.toneMappingExposure=Math.max(.1,Number(exposure)||1.25);
+}
+
 renderer.shadowMap.enabled=true;
 // PCF simples: o PCFSoft fazia várias leituras extras da shadow map por pixel
 renderer.shadowMap.type=THREE.PCFShadowMap;

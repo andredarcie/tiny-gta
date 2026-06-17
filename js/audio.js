@@ -3,10 +3,19 @@ import {state,input,refs} from './state.js';
 export let AC=null,audioEngine=null,siren=null,hornG=null,master=null,screechG=null,heliG=null;
 let fireSirenG=null,hoseG=null; // sirene do caminhão de bombeiros + chiado da mangueira
 
+// Master volume (0..1). Cached at module scope so the value set BEFORE initAudio
+// (the settings module applies at boot, before the first user gesture) survives:
+// initAudio seeds the master gain from it, and setMasterVolume retunes it live.
+let masterVol=.5;
+export function setMasterVolume(v){
+  masterVol=Math.max(0,Math.min(1,Number(v)||0));
+  if(master)master.gain.value=masterVol;
+}
+
 export function initAudio(){
   if(AC)return;
   AC=new (window.AudioContext||window.webkitAudioContext)();
-  master=AC.createGain();master.gain.value=.5;master.connect(AC.destination);
+  master=AC.createGain();master.gain.value=masterVol;master.connect(AC.destination);
   // Engine — layered like a real one instead of a single buzzing drone: a sawtooth
   // "growl" with a slightly detuned second saw for the rough, uneven edge of
   // combustion, plus a sine sub-octave for the block rumble you feel more than

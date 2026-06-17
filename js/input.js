@@ -17,10 +17,12 @@ import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} fr
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from './weapon-wheel.js';
 import {toggleModelViewer,closeModelViewer} from './model-viewer.js';
 import {toggleAdmin,closeAdmin,isAdmin} from './admin.js';
-import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest,logout} from './leaderboard.js';
+import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest} from './leaderboard.js';
 import {applySave} from './save.js';
 import {hasProfanity} from './profanity.js';
 import {MiniGame} from './minigame.js';
+import {openPauseMenu,closePauseMenu,pauseBack} from './pause-menu.js';
+import {applySettings} from './settings.js';
 
 const gameCanvas=()=>document.getElementById('game');
 const isBlocked=()=>state.paused||state.mapOpen||state.wheelOpen||state.mode==='cut'||state.orientationBlocked||state.controlsLocked;
@@ -28,12 +30,6 @@ const isBlocked=()=>state.paused||state.mapOpen||state.wheelOpen||state.mode==='
 function lockPointer(){
   if(state.mobile||input.touchActive)return;
   gameCanvas()?.requestPointerLock?.();
-}
-
-function showPause(){
-  document.getElementById('pauseov').style.display=state.paused?'flex':'none';
-  // esconde os controles de toque (que ficam acima do overlay) p/ não cobrir o ranking
-  document.body.classList.toggle('paused',state.paused);
 }
 
 export function resetInput(keepTouch=false){
@@ -79,8 +75,8 @@ export function performRadioSwitch(){
 export function performPauseToggle(){
   if(!state.started||state.mode==='cut')return;
   state.paused=!state.paused;
-  if(state.paused){resetInput(true);refreshTopPlayers();} // ranking igual ao da tela inicial
-  showPause();
+  if(state.paused){resetInput(true);openPauseMenu();} // builds the menu (own leaderboard fetch)
+  else closePauseMenu();
 }
 
 // Android hardware "back" button. Mirrors the keydown Escape precedence so back
@@ -101,6 +97,7 @@ export function performBack(){
   if(state.wheelOpen){closeWheel(false);return 'consumed';}
   if(state.mapOpen){closeFullMap();return 'consumed';}
   if(state.adminOpen){closeAdmin();return 'consumed';}                    // admin dashboard (Y)
+  if(state.paused&&pauseBack())return 'consumed';                        // pause sub-panel -> main menu
   performPauseToggle();                                                   // gameplay: pause / unpause
   return 'consumed';
 }
@@ -178,6 +175,7 @@ export function startGameFromUserGesture(opts={}){
     document.body.classList.add('is-mobile');
   }
   initAudio();AC?.resume?.();
+  applySettings(); // now that the audio graph exists, push the saved master/music volumes into it
   document.getElementById('title').style.display='none';
   document.getElementById('hud').style.display='block';
   document.body.classList.add('playing'); // reveals the in-game pause button (hidden on title)
@@ -367,6 +365,14 @@ export function setupInput(){
     if(state.mapOpen){if(e.code==='KeyM'||e.code==='Escape')closeFullMap();return;}
     // Dashboard de admin aberto: só Y/Esc fecham; o resto congela (cliques no modal).
     if(state.adminOpen){if(e.code==='KeyY'||e.code==='Escape')closeAdmin();return;}
+    // Pause menu open: Esc backs out of a sub-panel (or unpauses at the main menu),
+    // P toggles pause, and every other shortcut is swallowed so gameplay keys are
+    // inert while the menu is up.
+    if(state.paused){
+      if(e.code==='Escape'){if(!pauseBack())performPauseToggle();return;}
+      if(e.code==='KeyP'){performPauseToggle();return;}
+      return;
+    }
     if(e.code==='KeyM'){toggleFullMap();return;}
     if(e.code==='KeyY'&&isAdmin()){toggleAdmin();return;} // painel do dono (só 'REI')
     if(e.code==='KeyP'){performPauseToggle();return;}
@@ -409,17 +415,10 @@ export function setupInput(){
     e.stopPropagation();
     performPauseToggle();
   });
-  // Fullscreen now lives inside the pause menu.
-  document.getElementById('btn-pause-fullscreen')?.addEventListener('click',e=>{
-    e.stopPropagation();
-    performFullscreenToggle();
-  });
-  // Trocar de conta / sair: confirma (recarrega pra tela inicial), salvando antes.
-  document.getElementById('btn-pause-account')?.addEventListener('click',e=>{
-    e.stopPropagation();
-    if(confirm('Switch account? Your progress is saved first, then you return to the title screen.'))
-      logout();
-  });
+  // Resume / fullscreen are driven from inside the pause menu (js/pause-menu.js) via
+  // late-bound refs, so it never has to import this module (which imports it).
+  refs.togglePause=performPauseToggle;
+  refs.toggleFullscreen=performFullscreenToggle;
   // Mapa completo: X fecha; tocar/clicar no radar abre (acesso no celular, sem tecla M)
   document.getElementById('fm-close')?.addEventListener('click',e=>{e.stopPropagation();closeFullMap();});
   document.getElementById('mapwrap')?.addEventListener('pointerdown',e=>{

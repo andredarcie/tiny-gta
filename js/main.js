@@ -34,6 +34,8 @@ import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
 import {setupInput,updateKeyboardInput,performShoot,performInteract} from './input.js';
+import {setupPauseMenu} from './pause-menu.js';
+import {applySettings} from './settings.js';
 import {setupTouchControls,updateTouchControls} from './touch-controls.js';
 import {setupNative} from './native.js'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
@@ -134,9 +136,13 @@ spawnDelivery();
 spawnInitialGangs();
 
 setupInput();
+setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)
 setupTouchControls();
 setupNative(); // hardware back button on Android; no-op in the browser
 setupWheel(); // roda de seleção de armas (overlay próprio; ver js/weapon-wheel.js)
+// Apply saved graphics/FPS settings at boot (audio is re-applied after initAudio,
+// from startGameFromUserGesture); the audio setters no-op until the graph exists.
+applySettings();
 
 const clock=new THREE.Clock();
 let shadowTick=0;

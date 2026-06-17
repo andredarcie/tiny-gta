@@ -229,14 +229,14 @@ const escapeHtml = s => String(s).replace(/[&<>"']/g,
 const moneyCompact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 const fmtMoney = n => '$' + moneyCompact.format(Math.max(0, Math.floor(Number(n) || 0)));
 
-// Atualiza o top 5 nas duas listas que usam o mesmo ranking: a tela inicial
-// (#lb-list) e o overlay de pausa (#pause-lb-list). Também mostra o total de
-// jogadores cadastrados no ranking (#lb-total / #pause-lb-total).
+// Atualiza o top 5 na tela inicial (#lb-list) + o total de jogadores no ranking
+// (#lb-total). O menu de pausa tem seu próprio ranking paginado (js/pause-menu.js),
+// que busca a lista completa sob demanda, então não passa mais por aqui.
 export async function refreshTopPlayers() {
-  const targets = ['lb-list', 'pause-lb-list']
+  const targets = ['lb-list']
     .map(id => document.getElementById(id))
     .filter(Boolean);
-  const totals = ['lb-total', 'pause-lb-total']
+  const totals = ['lb-total']
     .map(id => document.getElementById(id))
     .filter(Boolean);
   if (!targets.length) return;

@@ -243,6 +243,24 @@ class Economy{
     this.pending=this.pending.filter(t=>!ack.has(t.id));
   }
 
+  // Recent transactions for the pause-menu wallet, NEWEST FIRST. This is the live
+  // in-memory window (genesis + the last ~MAX_LEDGER moves); older txs were folded
+  // into the checkpoint by compaction, so it is "recent activity", not all-time.
+  // Lightweight copies so the UI can't mutate the ledger.
+  history(){
+    const out=[];
+    for(let i=this.ledger.length-1;i>=0;i--){
+      const t=this.ledger[i];
+      out.push({amt:t.amt,why:t.why,t:t.t});
+    }
+    return out;
+  }
+
+  // Wallet headline for the transactions panel: current balance + session totals.
+  stats(){
+    return {balance:state.money,earned:this.earned,spent:this.spent,count:this.ledger.length};
+  }
+
   // Compact summary for render_game_to_text (debug/tests).
   debugLedger(){
     return {

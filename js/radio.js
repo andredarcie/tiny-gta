@@ -12,6 +12,15 @@ export let stationIdx=0;
 let radioActive=false,radioGain=null,radioNodes=[];
 let radioHudTimer=null;
 
+// Music bus volume (0..~0.6). Cached so a value set BEFORE the radio bus exists
+// (settings applies at boot) is used when radioInit() finally builds radioGain,
+// and so setMusicVolume can retune the station volume live from the pause menu.
+let musicVol=.26;
+export function setMusicVolume(v){
+  musicVol=Math.max(0,Math.min(.6,Number(v)||0));
+  if(radioGain)radioGain.gain.value=musicVol;
+}
+
 function getAC(){return AC;}
 function getMaster(){return master;}
 function overkillActive(){return !!refs.getOverkillState?.()?.active;}
@@ -20,7 +29,7 @@ const mtof=m=>440*Math.pow(2,(m-69)/12);            // MIDI -> Hz (intervalos ce
 export function radioInit(){
   const _AC=getAC(),_master=getMaster();
   if(!_AC||radioGain)return;
-  radioGain=_AC.createGain();radioGain.gain.value=.26;radioGain.connect(_master);
+  radioGain=_AC.createGain();radioGain.gain.value=musicVol;radioGain.connect(_master);
 }
 
 export function radioOff(){
