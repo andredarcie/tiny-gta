@@ -455,7 +455,7 @@ addHayBales();
   // igreja no topo da praça (norte), torre/campanário voltados pra praça (sul)
   solids.push(addChurch(cx,38,Math.PI));
   // mercadinho + casas no lado norte da rua principal, de frente pro sul
-  solids.push(addGeneralStore(cx-30,22,Math.PI));
+  addGeneralStore(solids); // walk-in shop (exterior + off-map interior); pushes its own solids
   solids.push(addFarmHouse(cx+34,22,Math.PI));
   solids.push(addFarmHouse(cx+52,22,Math.PI));
   // moinho, casas e caixa d'água no lado sul, de frente pro norte

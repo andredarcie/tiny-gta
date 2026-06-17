@@ -374,6 +374,12 @@ function mmCircleIcon(ctx,px,py,b,scale=1){
       ctx.fillRect(-5.4,3.1,10.8,2.3);                                 // base
       ctx.fillRect(-1.1,-3.1,2.2,6.2);                                 // pistão
       break;
+    case'store': // sacola de compras (mercadinho rural)
+      ctx.fillRect(-4.3,-1.2,8.6,7);                                   // corpo da sacola
+      ctx.lineWidth=1.5;ctx.lineCap='round';
+      ctx.beginPath();ctx.arc(-1.7,-1.2,1.7,Math.PI,2*Math.PI);ctx.stroke(); // alças
+      ctx.beginPath();ctx.arc(1.7,-1.2,1.7,Math.PI,2*Math.PI);ctx.stroke();
+      break;
     default:
       ctx.lineWidth=1.8;ctx.strokeRect(-3.6,-5,7.2,10);
       ctx.beginPath();ctx.arc(1.7,.2,.65,0,Math.PI*2);ctx.fill();
