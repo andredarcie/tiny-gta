@@ -16,21 +16,12 @@ export function initAudio(){
   if(AC)return;
   AC=new (window.AudioContext||window.webkitAudioContext)();
   master=AC.createGain();master.gain.value=masterVol;master.connect(AC.destination);
-  // Engine — layered like a real one instead of a single buzzing drone: a sawtooth
-  // "growl" with a slightly detuned second saw for the rough, uneven edge of
-  // combustion, plus a sine sub-octave for the block rumble you feel more than
-  // hear. A resonant low-pass acts as the engine "throat" and opens up (brighter,
-  // more aggressive) as the revs climb. updateAudio drives pitch + cutoff.
-  const eo=AC.createOscillator();eo.type='sawtooth';
-  const eo2=AC.createOscillator();eo2.type='sawtooth';eo2.detune.value=-9; // beat/roughness vs eo
-  const esub=AC.createOscillator();esub.type='sine';                       // sub-octave block rumble
-  const ef=AC.createBiquadFilter();ef.type='lowpass';ef.frequency.value=620;ef.Q.value=3.2; // throaty resonance
-  const esubG=AC.createGain();esubG.gain.value=.4;                         // keep the sub from booming
+  // Engine — the original simple drone: a single sawtooth through a low-pass, gain
+  // and pitch driven by speed in updateAudio.
+  const o=AC.createOscillator();o.type='sawtooth';
+  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=620;
   const g=AC.createGain();g.gain.value=0;
-  eo.connect(ef);eo2.connect(ef);ef.connect(g);
-  esub.connect(esubG);esubG.connect(g);
-  g.connect(master);eo.start();eo2.start();esub.start();
-  audioEngine={o:eo,o2:eo2,sub:esub,f:ef,g};
+  o.connect(f);f.connect(g);g.connect(master);o.start();audioEngine={o,g};
   // Police siren — a realistic electronic patrol-car siren. A sawtooth "horn"
   // carrier is swept smoothly up and down by an audio-rate LFO (sample-accurate,
   // so the wail stays clean no matter the frame rate) instead of the old hard
@@ -280,11 +271,7 @@ export function updateAudio(){
   if(audioEngine){
     const sp=state.mode==='car'?Math.abs(cur?.speed||0):0;
     // moto ronca mais agudo que o carro
-    const f0=(cur?.bike?92:52)+sp*(cur?.bike?9:6.5);
-    audioEngine.o.frequency.value=f0;
-    audioEngine.o2.frequency.value=f0;            // detune supplies the offset
-    audioEngine.sub.frequency.value=f0*.5;        // sub-octave block rumble
-    audioEngine.f.frequency.value=420+f0*4+sp*22; // throat opens as revs climb
+    audioEngine.o.frequency.value=(cur?.bike?92:52)+sp*(cur?.bike?9:6.5);
     audioEngine.g.gain.value=state.mode==='car'?.028+sp/32*.035:0;
   }
   if(siren){
