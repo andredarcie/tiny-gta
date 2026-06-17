@@ -27,13 +27,14 @@ async function post(body: unknown) {
 }
 
 describe('submit — the save persists BEFORE the ranking gates', () => {
-  it('writes the save in a <20s session, then returns 403 run_too_short', async () => {
+  it('writes the save in a <20s session, then returns 200 ranked:false (not an error)', async () => {
     const token = await seedSession({ at: Date.now() - 5000 });
     const res = await post({ name: 'JOE', money: 300, token, pid: PID, save: { money: 300 } });
-    expect(res._status).toBe(403);
-    expect((res._json as { error: string }).error).toBe('run_too_short');
+    expect(res._status).toBe(200);
+    expect(res._json as { ranked: boolean; reason: string }).toMatchObject({ ranked: false, reason: 'run_too_short' });
+    expect(await redis.zscore(C.LEADERBOARD_KEY, 'JOE')).toBeNull(); // not published to the board
     const saved = await redis.get<C.SaveBlob>(C.saveKey(PID));
-    expect(saved?.money).toBe(300);
+    expect(saved?.money).toBe(300);  // but the save persisted
     expect(saved?.name).toBe('JOE'); // nick autoritativo carimbado
   });
 

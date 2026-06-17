@@ -128,10 +128,14 @@ async function submit(req: VercelRequest, res: VercelResponse): Promise<void> {
     }
   }
 
-  // 7) gates do RANKING (não afetam o ledger/save acima):
-  //    partida curta demais não publica score (anti-forja), mas o ledger já foi
-  //    aplicado — o cliente reenvia depois (o 403 faz reagendar) e aí entra no board.
-  if (seconds < C.MIN_RUN_SECONDS) return sendError(res, 403, 'run_too_short');
+  // 7) gate do RANKING (não afeta o ledger/save acima): partida curta demais NÃO
+  //    publica score (anti-forja de sessão recém-criada). Retorna 200 ranked:false
+  //    (NÃO 403): o save/ledger já foram gravados, então não é um erro — só "ainda
+  //    não rankeado". Antes era 403 e o cliente flushava a cada 3s nos primeiros 20s,
+  //    enchendo o console de 403 a cada sessão/reload. Quando o jogador ganha algo
+  //    depois dos 20s, a mudança de saldo dispara um novo flush que enfim rankeia.
+  if (seconds < C.MIN_RUN_SECONDS)
+    return void res.status(200).json({ ok: true, ranked: false, reason: 'run_too_short' });
 
   // 8) leaderboard = SALDO ATUAL do jogador (somado do ledger, não o valor cru do
   //    cliente). CRAVADO no teto duro; o teto por tempo só morde no caminho sem pid
