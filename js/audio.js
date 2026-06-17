@@ -7,28 +7,84 @@ export function initAudio(){
   if(AC)return;
   AC=new (window.AudioContext||window.webkitAudioContext)();
   master=AC.createGain();master.gain.value=.5;master.connect(AC.destination);
-  const o=AC.createOscillator();o.type='sawtooth';
-  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=620;
+  // Engine — layered like a real one instead of a single buzzing drone: a sawtooth
+  // "growl" with a slightly detuned second saw for the rough, uneven edge of
+  // combustion, plus a sine sub-octave for the block rumble you feel more than
+  // hear. A resonant low-pass acts as the engine "throat" and opens up (brighter,
+  // more aggressive) as the revs climb. updateAudio drives pitch + cutoff.
+  const eo=AC.createOscillator();eo.type='sawtooth';
+  const eo2=AC.createOscillator();eo2.type='sawtooth';eo2.detune.value=-9; // beat/roughness vs eo
+  const esub=AC.createOscillator();esub.type='sine';                       // sub-octave block rumble
+  const ef=AC.createBiquadFilter();ef.type='lowpass';ef.frequency.value=620;ef.Q.value=3.2; // throaty resonance
+  const esubG=AC.createGain();esubG.gain.value=.4;                         // keep the sub from booming
   const g=AC.createGain();g.gain.value=0;
-  o.connect(f);f.connect(g);g.connect(master);o.start();audioEngine={o,g};
-  const s=AC.createOscillator();s.type='triangle';
+  eo.connect(ef);eo2.connect(ef);ef.connect(g);
+  esub.connect(esubG);esubG.connect(g);
+  g.connect(master);eo.start();eo2.start();esub.start();
+  audioEngine={o:eo,o2:eo2,sub:esub,f:ef,g};
+  // Police siren — a realistic electronic patrol-car siren. A sawtooth "horn"
+  // carrier is swept smoothly up and down by an audio-rate LFO (sample-accurate,
+  // so the wail stays clean no matter the frame rate) instead of the old hard
+  // two-tone snap, then shaped by a resonant bandpass that mimics the piercing
+  // speaker formant of a real siren (and makes it swell brighter near the top of
+  // the sweep, like the real thing). The sweep rate alternates between a slow
+  // "wail" and a fast "yelp" in updateAudio, the way an officer cycles the siren
+  // during a pursuit. Only the gain gates it on/off.
+  const sCar=AC.createOscillator();sCar.type='sawtooth';sCar.frequency.value=1000; // sweep center (Hz)
+  const sLfo=AC.createOscillator();sLfo.type='triangle';sLfo.frequency.value=.5;    // sweep rate (wail)
+  const sDepth=AC.createGain();sDepth.gain.value=440;                               // ±Hz the pitch sweeps
+  sLfo.connect(sDepth);sDepth.connect(sCar.frequency);
+  const sForm=AC.createBiquadFilter();sForm.type='bandpass';sForm.frequency.value=1250;sForm.Q.value=.9; // horn formant
   const sg=AC.createGain();sg.gain.value=0;
-  s.connect(sg);sg.connect(master);s.start();siren={o:s,g:sg};
+  sCar.connect(sForm);sForm.connect(sg);sg.connect(master);
+  sCar.start();sLfo.start();siren={lfo:sLfo,g:sg,rate:0};
+  // Car horn — a brassy electric dual-tone instead of two clean square beeps.
+  // Two reedy sawtooth voices a major third apart (~400/500 Hz, like a real
+  // two-trumpet horn), each split into a slightly detuned pair so they beat and
+  // buzz like vibrating metal, then shaped by a band-pass that gives the piercing
+  // "honk" formant and tames the harshest fizz. hornG gates it in updateAudio.
   hornG=AC.createGain();hornG.gain.value=0;hornG.connect(master);
-  for(const fr of[392,494]){
-    const h=AC.createOscillator();h.type='square';h.frequency.value=fr;
-    const hg=AC.createGain();hg.gain.value=.5;h.connect(hg);hg.connect(hornG);h.start();
+  const hornBP=AC.createBiquadFilter();hornBP.type='bandpass';hornBP.frequency.value=1600;hornBP.Q.value=.7;
+  hornBP.connect(hornG);
+  for(const fr of[400,500]){
+    for(const det of[-6,6]){
+      const h=AC.createOscillator();h.type='sawtooth';h.frequency.value=fr;h.detune.value=det;
+      const hg=AC.createGain();hg.gain.value=.3;h.connect(hg);hg.connect(hornBP);h.start();
+    }
   }
   const nb=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);
   const nd=nb.getChannelData(0);
   for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
   const ns=AC.createBufferSource();ns.buffer=nb;ns.loop=true;
-  const bp=AC.createBiquadFilter();bp.type='bandpass';bp.frequency.value=950;bp.Q.value=1.2;
-  screechG=AC.createGain();screechG.gain.value=0;
-  ns.connect(bp);bp.connect(screechG);screechG.connect(master);
-  const lp=AC.createBiquadFilter();lp.type='lowpass';lp.frequency.value=170;
-  heliG=AC.createGain();heliG.gain.value=0;
-  ns.connect(lp);lp.connect(heliG);heliG.connect(master);
+  // Tyre screech — a resonant rubber squeal over a broadband skid roar, not just
+  // a soft "shhh". A high-Q band-pass rings out the tonal squeal and a slow LFO
+  // makes it waver, like a tyre chattering on tarmac; a low broad band-pass adds
+  // the friction roar underneath. screechG gates it when braking hard.
+  screechG=AC.createGain();screechG.gain.value=0;screechG.connect(master);
+  const skSqueal=AC.createBiquadFilter();skSqueal.type='bandpass';skSqueal.frequency.value=1350;skSqueal.Q.value=7;
+  const skLfo=AC.createOscillator();skLfo.type='sine';skLfo.frequency.value=7;   // squeal waver
+  const skLfoG=AC.createGain();skLfoG.gain.value=140;                            // ±Hz of the waver
+  skLfo.connect(skLfoG);skLfoG.connect(skSqueal.frequency);skLfo.start();
+  const skSquealG=AC.createGain();skSquealG.gain.value=.7;
+  const skRoar=AC.createBiquadFilter();skRoar.type='bandpass';skRoar.frequency.value=680;skRoar.Q.value=.8;
+  const skRoarG=AC.createGain();skRoarG.gain.value=.5;
+  ns.connect(skSqueal);skSqueal.connect(skSquealG);skSquealG.connect(screechG);
+  ns.connect(skRoar);skRoar.connect(skRoarG);skRoarG.connect(screechG);
+  // Helicopter — layered like a real one: a deep rotor "wash" of low-passed noise
+  // chopped by a smooth sine LFO at the blade-pass rate (the classic whump-whump,
+  // no clicky on/off toggle), plus a steady turbine whine on top. heliG gates the
+  // whole rig; the chop comes from the LFO so it stays smooth at any frame rate.
+  heliG=AC.createGain();heliG.gain.value=0;heliG.connect(master);
+  const heliWash=AC.createBiquadFilter();heliWash.type='lowpass';heliWash.frequency.value=190;
+  const heliChop=AC.createGain();heliChop.gain.value=.55;          // baseline; LFO swings it for the chop
+  const heliChopLfo=AC.createOscillator();heliChopLfo.type='sine';heliChopLfo.frequency.value=11; // blade-pass Hz
+  const heliChopDepth=AC.createGain();heliChopDepth.gain.value=.5;
+  heliChopLfo.connect(heliChopDepth);heliChopDepth.connect(heliChop.gain);heliChopLfo.start();
+  ns.connect(heliWash);heliWash.connect(heliChop);heliChop.connect(heliG);
+  const heliTurb=AC.createOscillator();heliTurb.type='triangle';heliTurb.frequency.value=540; // turbine whine
+  const heliTurbBP=AC.createBiquadFilter();heliTurbBP.type='bandpass';heliTurbBP.frequency.value=560;heliTurbBP.Q.value=3;
+  const heliTurbG=AC.createGain();heliTurbG.gain.value=.07;
+  heliTurb.connect(heliTurbBP);heliTurbBP.connect(heliTurbG);heliTurbG.connect(heliG);heliTurb.start();
   // chiado da mangueira: ruído da mesma fonte, passado por um band-pass agudo (a
   // água "assobia" ao sair). Gate por hoseG (ligado/desligado pelo firefighter).
   const hoseBP=AC.createBiquadFilter();hoseBP.type='bandpass';hoseBP.frequency.value=3000;hoseBP.Q.value=.5;
@@ -60,17 +116,41 @@ export function setHose(on){
   hoseG.gain.setTargetAtTime(on?.06:0,AC.currentTime,.05);
 }
 
+// Impact / collision. Layered like a real crash instead of one dull noise pop:
+// a low filtered-noise body (the mass), a deep sine "boom" punching down in
+// pitch (the weight behind the hit), and — on harder hits — a metallic crunch
+// transient (the contact crack / debris). `v` is the impact force (~6..20).
 export function thud(v){
   if(!AC)return;
-  const len=Math.floor(AC.sampleRate*.14);
+  const t0=AC.currentTime;
+  const clampVal=(x,a,b)=>Math.max(a,Math.min(b,x));
+  const hard=clampVal(v/20,0,1); // 0..1, how heavy the hit is
+  // Low body: filtered noise burst, the dull thump of the mass
+  const len=Math.floor(AC.sampleRate*(.12+hard*.12));
   const b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
   for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2);
   const src=AC.createBufferSource();src.buffer=b;
-  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=260+v*30;
-  const g=AC.createGain();
-  const clampVal=(x,a,b)=>Math.max(a,Math.min(b,x));
-  g.gain.value=clampVal(.15+v*.04,.15,.8);
-  src.connect(f).connect(g).connect(master);src.start();
+  const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=240+v*26;
+  const g=AC.createGain();g.gain.value=clampVal(.15+v*.04,.15,.8);
+  src.connect(f).connect(g).connect(master);src.start(t0);
+  // Deep boom: a sine dropping in pitch — the weight/inertia behind the hit
+  const o=AC.createOscillator();o.type='sine';
+  o.frequency.setValueAtTime(150+v*4,t0);
+  o.frequency.exponentialRampToValueAtTime(48,t0+.18);
+  const og=AC.createGain();
+  og.gain.setValueAtTime(clampVal(.2+hard*.5,.2,.7),t0);
+  og.gain.exponentialRampToValueAtTime(.001,t0+.2+hard*.12);
+  o.connect(og).connect(master);o.start(t0);o.stop(t0+.4);
+  // Metallic crunch on harder hits — the bright contact crack / debris
+  if(v>6){
+    const cl=Math.floor(AC.sampleRate*.05);
+    const cb=AC.createBuffer(1,cl,AC.sampleRate),cd=cb.getChannelData(0);
+    for(let i=0;i<cl;i++)cd[i]=(Math.random()*2-1)*Math.pow(1-i/cl,1.2);
+    const cs=AC.createBufferSource();cs.buffer=cb;
+    const cf=AC.createBiquadFilter();cf.type='bandpass';cf.frequency.value=2600;cf.Q.value=.8;
+    const cg=AC.createGain();cg.gain.value=clampVal(hard*.4,.05,.4);
+    cs.connect(cf).connect(cg).connect(master);cs.start(t0);
+  }
 }
 
 // Splash de água: jato de ruído filtrado caindo de agudo pra médio (a água
@@ -191,20 +271,32 @@ export function updateAudio(){
   if(audioEngine){
     const sp=state.mode==='car'?Math.abs(cur?.speed||0):0;
     // moto ronca mais agudo que o carro
-    audioEngine.o.frequency.value=(cur?.bike?92:52)+sp*(cur?.bike?9:6.5);
+    const f0=(cur?.bike?92:52)+sp*(cur?.bike?9:6.5);
+    audioEngine.o.frequency.value=f0;
+    audioEngine.o2.frequency.value=f0;            // detune supplies the offset
+    audioEngine.sub.frequency.value=f0*.5;        // sub-octave block rumble
+    audioEngine.f.frequency.value=420+f0*4+sp*22; // throat opens as revs climb
     audioEngine.g.gain.value=state.mode==='car'?.028+sp/32*.035:0;
   }
   if(siren){
-    siren.o.frequency.value=Math.floor(state.time*2.4)%2?640:860;
     const cops=refs.cops||[];
-    const tgt=cops.length?.045:0;
-    siren.g.gain.value+=(tgt-siren.g.gain.value)*.1;
+    const on=cops.length>0;
+    const tgt=on?.05:0;
+    siren.g.gain.value+=(tgt-siren.g.gain.value)*.08;
+    // Alternate slow "wail" / fast "yelp" every ~4s while cops are present,
+    // ramping the LFO rate so the rate change itself never clicks.
+    if(on){
+      const rate=Math.floor(state.time/4)%2?3.6:.5;
+      if(siren.rate!==rate){siren.rate=rate;siren.lfo.frequency.setTargetAtTime(rate,AC.currentTime,.06);}
+    }
   }
   if(hornG)hornG.gain.value=(state.mode==='car'&&input.horn)?.07:0;
   if(screechG)screechG.gain.value=
     (state.mode==='car'&&input.brake&&Math.abs(cur?.speed||0)>7)?.12:0;
   if(heliG){
+    // Chop is handled by the LFO in initAudio now, so this just fades the whole
+    // rig in/out smoothly when the chopper comes and goes.
     const heli=refs.getHeli?.();
-    heliG.gain.value=heli?(Math.floor(state.time*13)%2?.07:.015):0;
+    heliG.gain.value+=((heli?.06:0)-heliG.gain.value)*.1;
   }
 }
