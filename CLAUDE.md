@@ -22,6 +22,7 @@ There is **no unit-test framework and no linter**. Quick validation is still `no
 ## Deployment
 
 **🌿 BRANCHING MODEL — `dev` is the default integration branch; `main` is production only.**
+- **ALWAYS work in an isolated git worktree — never directly in the shared checkout.** This repo often has multiple sessions/agents running at once against the same `C:\repos\tiny-gta`; a plain `git checkout` in one flips the branch under the others and causes conflicts and lost work. Create a dedicated worktree off `dev` for every task (e.g. `git worktree add ../tg-<task> dev`, or use the harness's worktree isolation), do all your branch/commit/push work there, and verify the current branch before committing. One task = one worktree = no cross-contamination.
 - **Everything new goes to `dev`.** Cut every feature/fix branch **from `dev`**, and merge it **back into `dev`** — never branch from or merge into `main` during normal work.
 - **`dev` does not deploy.** Pushing `dev` (or any branch) ships nothing. It is just where work accumulates and integrates.
 - **Production ships ONLY on an explicit instruction from the user** ("ship to production" / "subir pra produção" / similar). Only then do you promote: merge **`dev` → `main`** and push `main`, which fires the itch.io pipeline. Do **not** touch `main` or merge `dev → main` on your own initiative — wait for that explicit word.
