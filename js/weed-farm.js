@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import {state,refs} from './state.js';
 import {scene} from './engine.js';
-import {playerPos,player} from './player.js';
+import {playerPos,player,idleCars,cameraRig,cur} from './player.js';
 import {economy} from './economy.js';
 import {addWanted} from './physics.js';
 import {groundHeight,TOWN_CX,RURAL_GAP} from './constants.js';
 import {blip} from './audio.js';
 import {message,bigText,hideBig} from './hud.js';
-import {makePed,animatePed} from './entities.js';
-import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,makeWeedPlant,makeBud,
-  makeBucket,makeWaterDrop} from '../assets/models/rural/weed-farm.js';
+import {makePed,animatePed,makeMotorcycle} from './entities.js';
+import {say} from './speech.js';
+import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HALF,
+  makeWeedPlant,makeBud,makeBucket,makeWaterDrop} from '../assets/models/rural/weed-farm.js';
 import {makeWeedBackpack} from '../assets/models/rural/weed-backpack.js';
 import {MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
@@ -48,6 +49,7 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',WEED_BUILD);
 
 // ---------- tuning ----------
 const RANGE=2.8;          // interaction radius to a bed / tap / sale table
+const BUCKET_DROP_DIST=18;// wander this far from the plot and a carried bucket is left behind
 const GROW_TIME=36;       // seconds of HYDRATED growth from seedling to ripe
 const HYD_DRAIN=4;        // hydration lost per second (a bucket lasts ~25 s)
 const DRY_DEATH=16;       // seconds bone-dry before the plant wilts and dies
@@ -112,6 +114,63 @@ let heat=0, runEarned=0, farmLinger=0;
 const HEAT_WARM=40, HEAT_HOT=60;
 const weedHud=typeof document!=='undefined'?document.getElementById('weedhud'):null;
 const nearFarm=()=>{const p=playerPos();return Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)<30;};
+
+// ---------- parked motorcycle waiting outside the gate ----------
+// A free idle bike (flag `bike`, like the city ones) always sits just NORTH of the
+// gate, off to the side so it never blocks the walk-in. Roll up, run the farm on
+// foot, then hop on it to start the delivery run. The worn backpack auto-hides on
+// any vehicle (see updateWeedFarm), and a driven vehicle can't ride in through the
+// gate (the gate guard in updateWeedFarm bounces it back out).
+(function spawnFarmBike(){
+  const x=WEED_GATE.x+4.5, z=WEED_GATE.z+0.8;          // beside the gate, clear of the opening
+  const g=makeMotorcycle(0x6a7c3f);                    // muted farm-green
+  g.position.set(x,groundHeight(x,z),z);g.rotation.y=0;// nose pointing away from the gate
+  idleCars.push({g,heading:0,speed:0,name:'DIRT RUNNER',police:false,bike:true});
+})();
+
+// ---------- buyers' patter: a fat pool of random, funny one-liners a buyer blurts
+// out when you deal to them (shown as a floating speech bubble during the deal). ----
+const pick=a=>a[(Math.random()*a.length)|0];
+const WEED_BUYER_LINES=[
+  "Thanks for the stash, partner!",
+  "This bud's gonna save my whole week.",
+  "Munchies are calling — gotta run!",
+  "You're a lifesaver, my guy.",
+  "Top shelf, just like you promised.",
+  "My couch and I thank you deeply.",
+  "Finally, the GOOD stuff!",
+  "Pleasure doing business, friend.",
+  "Smells like a great weekend already.",
+  "Keep it green, keep it clean.",
+  "I was THIS close to going sober. Phew.",
+  "Bless you and your little garden.",
+  "Tell the plants I said thanks.",
+  "It's medicinal. For my vibes.",
+  "Right on time, the snacks are waiting.",
+  "You grow it, I blow it!",
+  "Quality control approves.",
+  "My doctor won't, but my soul will.",
+  "Catch you next harvest, legend.",
+  "Discreet as always. Love that.",
+  "Gonna watch cartoons all night now.",
+  "Best dealer on the whole coast.",
+  "Smooth, green, and oh so serene.",
+  "Don't tell my landlord, alright?",
+  "I'll name my next houseplant after you.",
+  "Pizza's on the way — perfect timing.",
+  "You just made my whole Tuesday.",
+  "Worth the drive out here, every time.",
+  "Shhh — you didn't see me, I didn't see you.",
+  "Pairs great with absolutely nothing to do.",
+  "Couch mode: activated.",
+  "Sweet, sweet relief. Thank you, chief.",
+  "My cat's gonna love how chill I get.",
+  "Five stars. Would deal again.",
+  "Keep the change, keep the secret.",
+  "Dankest in the whole county, hands down.",
+  "Ahh, the cure for a long week.",
+  "Smells like home. Appreciate ya.",
+];
 
 let bucketObj=null;       // the 3D bucket parented to the player's hand while carrying
 let pourT=0;              // pour-animation timer (>0 while tipping the bucket)
@@ -322,9 +381,31 @@ function spawnBuyers(){
   });
 }
 function despawnBuyers(){ for(const b of buyers)if(b.ped)scene.remove(b.ped); buyers=[]; }
+// turn the player and the buyer to face each other and frame the camera on the deal
+function faceForDeal(b){
+  const p=playerPos();
+  const toBuyer=Math.atan2(b.x-p.x,b.z-p.z);
+  player.heading=toBuyer;player.g.rotation.set(0,toBuyer,0);
+  if(b.ped)b.ped.rotation.y=Math.atan2(p.x-b.x,p.z-b.z);
+  cameraRig.yaw=toBuyer;cameraRig.touchLookIdle=1;
+}
+// A brief hand-off "mini-cutscene": the two face off, the player reaches out with the
+// goods and the cash banner pops, then control returns. Runs in mode 'cut' (input
+// frozen) for one beat; the buyer's funny line is already floating from deliverTo.
+// Deferred bookkeeping (finishRun / fresh batch) happens when the beat ends, so the
+// buyer stays visible through the whole exchange.
+function dealCutscene(b,pay,after){
+  faceForDeal(b);
+  const l=playerLimbs();
+  if(l){l.rightArm.rotation.set(-1.25,0,-.2);l.rightForearm?.rotation.set(-.5,0,0);} // reach out
+  bigText(`+$${pay}`,'var(--gold)');
+  state.mode='cut';state.cutT=1.8;
+  state.cutFn=()=>{state.mode='foot';after();};
+}
+
 function deliverTo(b){
   if(!b||b.served||pack.buds<=0)return;
-  b.served=true;if(b.ped)scene.remove(b.ped);
+  b.served=true; // the buyer now STAYS put in the world (no longer vanishes the instant you deal)
   // STING: the hotter you are, the likelier a buyer is an undercover cop. No pay, the
   // law lands on you, and you bolt with the stash still on your back.
   if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
@@ -344,8 +425,15 @@ function deliverTo(b){
   pack.buds-=chunk;pack.val=Math.max(0,pack.val-chunk*perBud);
   message(`DEALT ${chunk} BUDS - +$${pay}${pack.buds>0?` (${pack.buds} LEFT)`:''}`,'var(--gold)');
   blip([523,659,784,1047],.08,'square',.16);
-  if(pack.buds<=0)finishRun();
-  else if(buyers.every(x=>x.served))spawnBuyers(); // out of buyers but still holding: fresh batch
+  // the buyer blurts a random funny line over the hand-off
+  if(b.ped)say(b.ped,pick(WEED_BUYER_LINES),{life:3.8,yOff:2.45});
+  const after=()=>{
+    if(pack.buds<=0)finishRun();
+    else if(buyers.every(x=>x.served))spawnBuyers(); // out of buyers but still holding: fresh batch
+  };
+  // mini-cutscene beat — but never freeze mid-chase: while WANTED the deal is instant
+  if(state.wanted<1&&state.mode==='foot')dealCutscene(b,pay,after);
+  else after();
 }
 
 // ---------- farm upgrades: reinvest earnings into watering gear ----------
@@ -582,16 +670,41 @@ export function updateWeedFarm(dt){
   }
   updateFx(dt);
 
+  // Carry the water only AT the plot: wander off (or hop on a vehicle) and a filled
+  // bucket is left behind — you refill at the tap when you come back. Stops the
+  // bucket dangling in the player's hand halfway across the map.
+  if(waterCharges>0&&pourT<=0){
+    const p=playerPos();
+    if(state.mode!=='foot'||Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)>BUCKET_DROP_DIST){
+      const walked=state.mode==='foot';
+      waterCharges=0;detachBucket();
+      if(walked)message('LEFT THE BUCKET BEHIND - REFILL AT THE TAP','var(--cream)');
+    }
+  }
+
+  // Vehicles can't ride into the grow-op. The gate gap stays open for the on-foot
+  // player (so the activity works), but a DRIVEN vehicle that noses into it is bounced
+  // back outside — keeps a moto/car out of the planter beds and off the crop.
+  if(state.mode==='car'&&cur){
+    const p=cur.g.position, gateZ=WEED_GATE.z-1.5; // the north wall line (gate plane)
+    if(Math.abs(p.x-WEED_CX)<GATE_HALF+1.3&&p.z<gateZ+1.3&&p.z>gateZ-20){
+      p.z=gateZ+1.3;cur.speed*=-.3;                // shove it back out the gate
+    }
+  }
+
   // drying rack: cure over time, then the hanging buds visibly shrink (dried)
   if(rack.state==='drying'){
     rack.t+=dt;
     if(rack.t>=CURE_TIME){rack.state='cured';for(const b of rack.fx)b.scale.multiplyScalar(.8);}
   }
 
-  // idle the delivery buyers so they read as living NPCs waiting on the corner
-  if(delivering)for(const b of buyers){if(b.served||!b.ped)continue;b.t+=dt;animatePed(b.ped,b.t*.9,.05);}
-  // the worn pack shows only on foot (hidden while seated in a car so it can't clip)
-  if(backpackObj)backpackObj.visible=(state.mode==='foot');
+  // idle the delivery buyers so they read as living NPCs waiting on the corner — and
+  // keep idling the ones already served, so a buyer you dealt to stays put and alive
+  // (it used to be deleted the instant you sold to it)
+  if(delivering)for(const b of buyers){if(!b.ped)continue;b.t+=dt;animatePed(b.ped,b.t*.9,.05);}
+  // the worn pack hides on any vehicle (so it can't clip a car/the moto), but stays on
+  // through the hand-off cut-scene (mode 'cut') — only a real vehicle is mode 'car'
+  if(backpackObj)backpackObj.visible=(state.mode!=='car');
   // heat cools over time; lingering at the farm while HOT draws a police raid
   if(heat>0)heat=Math.max(0,heat-dt*3);
   if(heat>HEAT_HOT&&nearFarm()){

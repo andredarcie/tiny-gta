@@ -27,7 +27,7 @@ import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.js';
 export const PLOT_W=22, PLOT_D=16;        // inner yard size (x, z)
 const HALF_W=12, HALF_D=9;                // wall ring half-extents (a touch outside the yard)
 const WALL_H=3, WALL_T=0.4;               // wall height / thickness
-const GATE_HALF=1.9;                      // half-width of the gate opening (north wall)
+export const GATE_HALF=1.9;               // half-width of the gate opening (north wall)
 
 // World placement: an open, deserted pocket of the south-east shore — clear of
 // the ploughed fields (x<=440), the ranch (550,-80), the mountain (x~509) and
