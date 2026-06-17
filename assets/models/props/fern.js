@@ -10,16 +10,16 @@ const fernM=matte({color:0x4f8a36,roughness:1,side:THREE.DoubleSide,flatShading:
 
 function build(){
   const g=new THREE.Group();
-  const blades=5+(Math.random()*3|0),len=rand(.5,.95);
+  const blades=6+(Math.random()*4|0),len=rand(.5,.95);
   for(let k=0;k<blades;k++){
     const pivot=new THREE.Group();
     pivot.rotation.order='YXZ';
-    const blade=new THREE.Mesh(new THREE.ConeGeometry(.1,len,3),fernM);
+    const blade=new THREE.Mesh(new THREE.ConeGeometry(.14,len,3),fernM);
     blade.position.y=len/2;        // base at the pivot, tip up
-    blade.scale.z=.35;             // flatten into a blade
+    blade.scale.z=.16;             // flatten into a broad flat frond
     blade.castShadow=false;pivot.add(blade);
     pivot.rotation.y=k/blades*Math.PI*2+rand(-.25,.25);
-    pivot.rotation.x=rand(.7,1.05); // lean the frond outward
+    pivot.rotation.x=rand(.78,1.12); // lean the frond outward
     g.add(pivot);
   }
   return g;

@@ -13,18 +13,20 @@ const leafB=matte({color:0x3c7d36,roughness:1,flatShading:true});
 const trunkM=matte({color:0x6b4a32,roughness:1});
 
 function build(){
-  const g=new THREE.Group(),h=rand(3.2,5.4);
+  const g=new THREE.Group(),h=rand(3.4,5.4);
   const leafM=Math.random()<.5?leafA:leafB;
-  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.13,.24,h*.62,6),trunkM);
-  tr.position.y=h*.3;tr.castShadow=false;g.add(tr);
-  // rounded crown: a clump of overlapping low-poly blobs around the trunk top
-  const cy=h*.66,cr=rand(1.3,2.0),blobs=3+(Math.random()<.6?1:0);
+  const trunkH=h*.6;
+  const tr=new THREE.Mesh(new THREE.CylinderGeometry(.12,.22,trunkH,6),trunkM);
+  tr.position.y=trunkH/2;tr.castShadow=false;g.add(tr);
+  // rounded crown sitting ON TOP of the trunk; blob size scales with height so
+  // the canopy never swallows the trunk on a short tree.
+  const cr=h*.28,cy=trunkH+cr*.5,blobs=4+(Math.random()<.5?1:0);
   for(let k=0;k<blobs;k++){
-    const r=cr*rand(.6,1);
+    const r=cr*rand(.72,1.05);
     const b=new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),leafM);
-    const a=Math.random()*Math.PI*2,d=k?rand(.25,.9)*cr:0;
-    b.position.set(Math.cos(a)*d,cy+rand(-.2,.7),Math.sin(a)*d);
-    b.scale.y=rand(.85,1.1);b.castShadow=false;g.add(b);
+    const a=Math.random()*Math.PI*2,d=k?rand(.35,.95)*cr:0;
+    b.position.set(Math.cos(a)*d,cy+rand(0,cr*.8),Math.sin(a)*d);
+    b.scale.y=rand(.85,1.05);b.castShadow=false;g.add(b);
   }
   return g;
 }

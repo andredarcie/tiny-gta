@@ -12,11 +12,12 @@ const bushB=matte({color:0x356b2c,roughness:1,flatShading:true});
 function build(){
   const g=new THREE.Group();
   const m=Math.random()<.5?bushA:bushB;
-  const s=rand(.5,1.05),n=2+(Math.random()*3|0);
+  const s=rand(.55,1.1),n=3+(Math.random()*2|0);
   for(let k=0;k<n;k++){
-    const r=s*rand(.5,.9);
+    const r=s*rand(.6,.9);
     const b=new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),m);
-    b.position.set(rand(-s,s),r*.72,rand(-s,s));
+    // tight spread so the blobs overlap into one rounded mass, not loose dots
+    b.position.set(rand(-s*.5,s*.5),r*.55,rand(-s*.5,s*.5));
     b.scale.set(1,rand(.6,.85),1);b.castShadow=false;g.add(b);
   }
   return g;

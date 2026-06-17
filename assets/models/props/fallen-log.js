@@ -17,8 +17,9 @@ function build(){
   log.rotation.z=Math.PI/2;log.position.y=r;log.castShadow=false;g.add(log);
   for(let k=0;k<3;k++){
     const mb=new THREE.Mesh(new THREE.IcosahedronGeometry(r*rand(.4,.7),0),mossM);
-    mb.position.set(rand(-len*.42,len*.42),r*1.15,rand(-r*.3,r*.3));
-    mb.castShadow=false;g.add(mb);
+    // nestle on the UPPER surface (log spans y 0..2r) so moss reads on top
+    mb.position.set(rand(-len*.42,len*.42),r*rand(1.7,1.95),rand(-r*.35,r*.35));
+    mb.scale.y=.7;mb.castShadow=false;g.add(mb);
   }
   for(const s of[-1,1]){
     const end=new THREE.Mesh(new THREE.CircleGeometry(r,10),ringM);
