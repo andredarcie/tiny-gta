@@ -131,7 +131,10 @@ export const getWeaponHud=()=>({
 // T segundos com mísseis (cada míssil destrói um carro de uma vez e a onda
 // de choque mata grupos inteiros). Ganhou, leva o prêmio; perdeu, fica tudo
 // normal. A lança-foguetes só existe durante o rampage e reaparece no campo depois.
-const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=1000;
+// Reward kept BELOW a race win ($700, the game's payout ceiling): wrecking 3
+// cars with one-shot rockets is quick and low-skill, and the frenzy is repeatable
+// once the launcher respawns — so it must not out-pay winning a race.
+const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=600;
 const rampage={active:false,end:0,kills:0};
 // mini game (sessão): igual à chacina das caveiras (js/rampage.js), trava o mundo
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.

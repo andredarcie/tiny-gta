@@ -109,7 +109,10 @@ function finishRampage(success,silent=false){
   endFlash=success?1.4:.9;             // dispara o flourish (halo pulsa no fim)
   endOk=success;
   if(success){
-    const reward=250+50*goal;
+    // Harder levels (bigger goal) pay more, but the payout is CAPPED at a race
+    // win ($700, the game's ceiling): a repeatable melee frenzy must never out-pay
+    // a race, and the per-level growth no longer climbs without bound.
+    const reward=Math.min(700,250+30*goal);
     economy.earn(reward,'rampage');
     bigText('FRENZY COMPLETE','var(--gold)');
     setTimeout(hideBig,1300);
