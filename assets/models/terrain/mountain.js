@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand,groundHeight,MOUNT_X,MOUNT_H} from '../../../js/constants.js';
+import {rand,groundHeight,MOUNT_X,MOUNT_H,MOUNT_S,MOUNT_SEG} from '../../../js/constants.js';
 
 export function makeMountain(size,segments){
   const geo=new THREE.PlaneGeometry(size,size,segments,segments);
@@ -30,5 +30,7 @@ export function makeMountain(size,segments){
   return m;
 }
 
-// Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Terrain',label:'Mountain',build:o=>makeMountain(o.size??60,o.segments??12)};
+// Model pattern: descriptor for the model-viewer (auto-discovery). Defaults to the
+// real in-game footprint/resolution so the gallery shows the same smooth dome the
+// world uses (mesh samples the shared analytic mountainH via groundHeight).
+export default {category:'Terrain',label:'Mountain',build:o=>makeMountain(o.size??MOUNT_S,o.segments??MOUNT_SEG)};
