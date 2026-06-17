@@ -1119,6 +1119,57 @@ function animateHeldWeapon(){
   if(u.lamp)u.lamp.visible=Math.floor(state.time*(plantedBomb?8:3))%2===0;
 }
 
+// ----- AIM ASSIST (mobile soft-lock) ---------------------------------------
+// Aiming with a thumb-stick is imprecise, so on mobile we give a gentle magnetic
+// pull toward the NEAREST shootable target in front of the player. It only eases
+// the camera YAW (the horizontal aim a third-person shot reads) a fraction toward
+// the target each frame — strongest when the target is already roughly centred and
+// fading to nothing at the edge of a cone — so manual aim still wins and a
+// deliberate stick sweep slides past with only light friction. Desktop is untouched.
+const ASSIST_RANGE=38;   // metres: ignore anything further than this
+const ASSIST_CONE=0.9;   // rad: half-angle of the assist cone (~51°) around the aim
+const ASSIST_RATE=9;     // how briskly the yaw eases onto a centred target
+
+// Scratch for the aim-assist scan, reused every frame so the per-frame scan allocates
+// nothing (matches the engine's no-per-frame-allocation pass).
+const _assist={best:null,bestD2:0};
+function considerAssist(g,px,pz,yaw){
+  const dx=g.position.x-px,dz=g.position.z-pz;
+  const d2=dx*dx+dz*dz;
+  if(d2>_assist.bestD2||d2<.36)return;            // too far, or basically on top of us
+  let err=Math.atan2(dx,dz)-yaw;                  // forward is (sin yaw, cos yaw)
+  err=Math.atan2(Math.sin(err),Math.cos(err));    // wrap to [-π,π]
+  if(Math.abs(err)>ASSIST_CONE)return;            // outside the cone: leave the aim alone
+  _assist.bestD2=d2;_assist.best=err;
+}
+
+// Nearest in-range, in-cone person/enemy target; returns the signed yaw error to it
+// (how far to rotate to face it), or null when there is nothing worth helping with.
+// Cars are deliberately excluded so the aim doesn't stick to parked traffic.
+function aimAssistError(px,pz,yaw){
+  _assist.best=null;_assist.bestD2=ASSIST_RANGE*ASSIST_RANGE;
+  for(const p of peds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
+  for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
+  for(const o of copOfficers)if(!o.dead)considerAssist(o.g,px,pz,yaw);
+  for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,yaw);
+  for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,yaw);
+  return _assist.best;
+}
+
+// Per-frame nudge of the camera yaw toward the nearest target. Mobile only, on foot,
+// with an aimed gun out (isWeaponHeld already gates mode/swimming/aimed). Pull strength
+// scales with how centred the target already is (align²), so it locks on smoothly
+// without yanking the view around when you point elsewhere.
+function updateAimAssist(dt){
+  if(!state.mobile||!isWeaponHeld()||rampage.active)return;
+  if(state.paused||state.dlgActive||state.orientationBlocked||state.controlsLocked||state.wheelOpen)return;
+  const pp=playerPos();
+  const err=aimAssistError(pp.x,pp.z,cameraRig.yaw);
+  if(err===null)return;
+  const align=1-Math.abs(err)/ASSIST_CONE;        // 0 at the cone edge, 1 dead-centre
+  cameraRig.yaw+=err*(1-Math.exp(-ASSIST_RATE*align*align*dt));
+}
+
 export function updateWeapons(dt){
   // nadando o jogador guarda a arma: nada de modelo na mão, pose de mira ou tiro
   // (a pose do nado controla os membros — ver player.js animateSwim)
@@ -1192,6 +1243,10 @@ export function updateWeapons(dt){
     m.g.userData.flame.scale.setScalar(.7+Math.random()*.6); // chama tremula
     addTracer(m.g.position.clone().addScaledVector(m.dir,-1.1),m.g.position);
   }
+  // Mobile soft-aim: nudges the camera yaw toward the nearest target in front (touch
+  // aim-assist help). Runs before the crosshair so the reticle colour already reflects
+  // the auto-adjust.
+  updateAimAssist(dt);
   // Alvo do crosshair (cor do retículo): findWeaponHit varre ~70 entidades. É
   // puramente cosmético, então recalcula a ~20fps em vez de todo frame.
   _xhairT-=dt;
