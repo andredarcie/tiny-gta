@@ -47,15 +47,16 @@ const GOLD_CHANCE=.12; // chance a fresh spawn is the rare golden bonus car (max
 const MOVE_CHANCE=.55; // chance a normal target cruises the streets instead of parking
 const SPAWN_MIN=18, SPAWN_MAX=72; // target spawn distance from the player/pad
 
-// Combo: wrecks within COMBO_WINDOW of each other chain. The multiplier steps up the
-// longer the chain runs; callouts fire as the streak crosses each tier.
+// Combo: wrecks within COMBO_WINDOW of each other chain. The cash multiplier steps
+// up the longer the chain runs (capped at ×3 to keep payouts near the original
+// per-kill and under the backend's plausibility cap); callouts fire per chain length.
 const COMBO_WINDOW=3.5;
-function comboMult(c){ return c>=10?4:c>=7?3:c>=4?2:1; }
+function comboMult(c){ return c>=7?3:c>=4?2:1; }
 const CALLOUTS=[
-  {c:14,txt:'UNSTOPPABLE!',col:'#ff3bd0'},
-  {c:10,txt:'RAMPAGE!',    col:'#ff5a2e'},
-  {c:7, txt:'MULTI KILL!', col:'#ffb02e'},
-  {c:4, txt:'TRIPLE!',     col:'#ffd23a'},
+  {c:12,txt:'UNSTOPPABLE!',col:'#ff3bd0'},
+  {c:8, txt:'RAMPAGE!',    col:'#ff5a2e'},
+  {c:5, txt:'MULTI KILL!', col:'#ffb02e'},
+  {c:3, txt:'TRIPLE!',     col:'#ffd23a'},
   {c:2, txt:'DOUBLE!',     col:'#5eff8a'},
 ];
 function callout(c){ for(const m of CALLOUTS)if(c>=m.c)return m; return null; }
@@ -324,21 +325,22 @@ function collectCrate(c){
   else if(c.type.id==='mega')megaT=MEGA_TIME;
   else{timeLeft=Math.min(TIME_CAP,timeLeft+CRATE_TIME);timeFlash=.9;}
   blip([784,1047,1319],.07,'square',.18);
+  state.shake=Math.max(state.shake,.18); // one-shot kick (no constant rumble)
   bigText(c.type.id==='time'?`+${CRATE_TIME}s`:c.type.label,cssHex(c.type.color));
   setTimeout(hideBig,650);
   crateCd=CRATE_RESPAWN;
 }
 function updateCrates(dt){
   const rp=rc.position;
-  for(const c of crates){
-    if(!c.alive)continue;
+  // backward walk so a collected crate can splice out in place (no per-frame alloc)
+  for(let i=crates.length-1;i>=0;i--){
+    const c=crates[i];
     c.t+=dt;
     c.g.position.y=c.base+Math.sin(c.t*2.2)*.18; // hover bob
     c.g.rotation.y+=1.4*dt;                        // slow spin
     if(c.g.userData.halo)c.g.userData.halo.rotation.z+=2.4*dt;
-    if(rp.distanceTo(c.g.position)<CRATE_RANGE){collectCrate(c);continue;}
+    if(rp.distanceTo(c.g.position)<CRATE_RANGE){collectCrate(c);crates.splice(i,1);}
   }
-  crates=crates.filter(c=>c.alive);
   if(crateCd>0)crateCd-=dt;
   if(crates.length<CRATE_POOL&&crateCd<=0){spawnCrate();crateCd=CRATE_RESPAWN;}
 }
@@ -407,7 +409,9 @@ function killTarget(t){
   if(t.gold)goldAlive=false;
   destroyed++;
   combo++;comboT=COMBO_WINDOW;bestCombo=Math.max(bestCombo,combo);
-  const cash=(t.gold?PER_KILL*GOLD_MULT:PER_KILL)*comboMult(combo);
+  // gold is its own flat bonus (not multiplied by the combo) so a single kill can
+  // never spike past the backend's per-second cap; it still advances the chain.
+  const cash=t.gold?PER_KILL*GOLD_MULT:PER_KILL*comboMult(combo);
   economy.earn(cash,'rc-toyz');
   timeLeft=Math.min(TIME_CAP,timeLeft+(t.gold?GOLD_TIME:TIME_PER_KILL)); // time-attack reward
   timeFlash=.7;
@@ -435,6 +439,7 @@ function detonate(){
   for(const t of targets){
     if(t.alive&&_hit.distanceTo(t.g.position)<=blast){const r=killTarget(t);kills++;cash+=r.cash;gold=gold||r.gold;}
   }
+  if(kills)targets=targets.filter(t=>t.alive); // drop wrecked cars so the array stays small over long rounds
   thud(megaT>0?13:10);                              // deeper, more satisfying blast
   state.shake=Math.max(state.shake,megaT>0?.34:.25);// camera kick on detonation
   parkRc(false);                                    // spend the RC: a fresh one on the pad
@@ -506,7 +511,7 @@ export function updateRcToyz(dt){
   timeLeft-=dt;
   if(timeFlash>0)timeFlash-=dt;
   if(comboT>0){comboT-=dt;if(comboT<=0)combo=0;} // chain expires: streak resets
-  if(nitroT>0){nitroT-=dt;rc.userData.speedMul=NITRO_MUL;state.shake=Math.max(state.shake,.05);if(nitroT<=0)rc.userData.speedMul=1;}
+  if(nitroT>0){nitroT-=dt;rc.userData.speedMul=NITRO_MUL;if(nitroT<=0)rc.userData.speedMul=1;}
   if(megaT>0)megaT-=dt;
   hudRound();      // wrecked count + combo + buffs + clock, every frame
   updateCrates(dt);// hover/spin power-ups and pick them up on contact

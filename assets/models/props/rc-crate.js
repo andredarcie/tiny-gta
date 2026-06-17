@@ -33,7 +33,7 @@ function buildRcCrate(color=0x19e3ff){
   g.add(halo);
   g.userData.halo=halo;
 
-  // ground glow disc under the crate so it pops against the asphalt
+  // soft glow disc beneath the crate so it pops out from the street
   const glow=new THREE.Mesh(new THREE.CircleGeometry(.9,20),
     new THREE.MeshBasicMaterial({color,transparent:true,opacity:.18,
       side:THREE.DoubleSide,depthWrite:false}));
