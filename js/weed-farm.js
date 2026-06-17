@@ -3,13 +3,18 @@ import {state,refs} from './state.js';
 import {scene} from './engine.js';
 import {playerPos,player} from './player.js';
 import {economy} from './economy.js';
-import {groundHeight} from './constants.js';
+import {addWanted} from './physics.js';
+import {groundHeight,TOWN_CX,RURAL_GAP} from './constants.js';
 import {blip} from './audio.js';
 import {message,bigText,hideBig} from './hud.js';
-import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,makeWeedPlant,makeBud,
+import {makePed,animatePed} from './entities.js';
+import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,makeWeedPlant,makeBud,
   makeBucket,makeWaterDrop} from '../assets/models/rural/weed-farm.js';
+import {makeWeedBackpack} from '../assets/models/rural/weed-backpack.js';
 import {MiniGameId} from './minigame.js';
 import {reportMiniGameResult} from './minigame-leaderboard.js';
+import {STRAINS,STRAIN_BY_ID,FERTILIZER,CURE_TIME,CURE_BONUS} from './strains.js';
+import {getDay} from './daynight.js';
 
 // ============================================================================
 // GREEN ACRES — the HIDDEN weed-farm activity, played entirely in the 3D world on
@@ -29,10 +34,13 @@ import {reportMiniGameResult} from './minigame-leaderboard.js';
 //   4. HARVEST— a ripe plant glistens (frosted cola + soft pulsing glow). Press E
 //               to cut it — buds burst off and you carry the FLOWERS. Better-tended
 //               plants give more, higher-grade buds (SCHWAG → FIRE).
-//   5. SELL   — take the flowers to the SALE TABLE crate and press E to box them.
-//               Bigger batches fetch a better price per bud.
+//   5. STASH  — drop the harvest in the DEPOSIT crate (no cash here, just storage).
+//   6. DELIVER— take the stash OUT of the box: the player straps on a backpack and
+//               enters a DELIVERY RUN. Carry it to buyers spread across the country
+//               and the city and DEAL it for cash (city buyers pay a premium). Touch
+//               the box again empty-handed to hand the backpack back.
 //
-// Open-world activity: a zone action + a per-frame update, no world lock.
+// Open-world activity: zone actions + a per-frame update, no world lock.
 // ============================================================================
 
 const WEED_BUILD=' ◆ GREEN ACRES';
@@ -51,15 +59,59 @@ const PILE_CAP=27;        // max bud nuggets shown piled in the crate
 const QUALITY_START=78, QUALITY_RECOVER=3, QUALITY_DROP=9, HYD_HEALTHY=30;
 const YIELD_MIN=2, YIELD_MAX=6; // buds from a ripe plant, by its locked quality
 
-// world-space slot / sale / tap positions (mirror the baked compound)
+// world-space slot / sale / tap / rack positions (mirror the baked compound)
 const slots=WEED_SLOTS.map(s=>({x:WEED_CX+s.x,z:WEED_CZ+s.z,plant:null}));
 const box={x:WEED_CX+WEED_BOX.x,z:WEED_CZ+WEED_BOX.z};
 const tap={x:WEED_CX+WEED_TAP.x,z:WEED_CZ+WEED_TAP.z};
+const rackPos={x:WEED_CX+WEED_RACK.x,z:WEED_CZ+WEED_RACK.z};
+const shackPos={x:WEED_CX-7.5,z:WEED_CZ-4};   // grow-shack front doubles as the upgrade bench
+// the drying rack: 'empty' → hang a harvest → 'drying' (cures over CURE_TIME) → 'cured'
+const rack={state:'empty',buds:0,val:0,t:0,fx:[]};
 
-let hasWater=false;       // the carried bucket holds one charge (filled at the tap)
-let carried=0;            // flowers in hand (harvested, not yet sold)
-let boxed=0;              // flowers sold this life (debug)
-const pile=[];            // visual bud nuggets in the crate
+let waterCharges=0;       // pours left in the carried bucket (filled at the tap)
+// ---------- farm upgrades (bought at the grow shack; persisted via the save) ----------
+// Tiers of watering gear cut the tap-trip tedium; the top tier waters the beds for you.
+const UPGRADES=[
+  {name:'BIGGER CAN',     price:60,  desc:'WATER 3 PLANTS PER FILL'},
+  {name:'GARDEN HOSE',    price:140, desc:'WATER 8 PLANTS PER FILL'},
+  {name:'DRIP SPRINKLERS',price:300, desc:'THE BEDS WATER THEMSELVES'},
+];
+const WATER_CAP=[1,3,8,8];   // bucket capacity by upgrade level
+let upLevel=0;               // 0 = bare bucket … 3 = sprinklers installed
+const canCapacity=()=>WATER_CAP[Math.min(upLevel,3)];
+const hasSprinklers=()=>upLevel>=3;
+let carried=0;            // FRESH flowers in hand (harvested, not yet stashed)
+let carriedVal=0;         // accrued cash value of the carried buds (strains differ in $/bud)
+let boxed=0;              // flowers delivered this life (debug)
+const pile=[];            // visual bud nuggets stashed in the deposit crate
+
+// ---------- deposit box → backpack → delivery run ----------
+// The crate is a DEPOSIT box: stashing pays nothing. Take the stash OUT and the
+// player straps on a backpack and enters a DELIVERY RUN — carry it to buyers spread
+// across the countryside and the city and DEAL it for cash (city buyers pay a premium
+// for the trek). Touch the box again (empty-handed) to hand the backpack back.
+const deposit={buds:0,val:0};                 // stash sitting in the box (no cash here)
+const pack={active:false,buds:0,val:0,orig:0}; // what the backpack carries on a run
+let backpackObj=null;                          // the 3D pack worn on the player's back
+let delivering=false;
+const DELIV_RANGE=2.6;
+// buyers: a few rural roadside spots + a couple of city road junctions (spawned only
+// during a run). All sit on open road/clearing ground — clear of buildings/fences.
+const DELIV_POINTS=[
+  {x:TOWN_CX,        z:12,  city:false}, // Pine Hollow village square (north of the flag)
+  {x:320+RURAL_GAP,  z:5,   city:false}, // open countryside, roadside (x=450)
+  {x:236+RURAL_GAP,  z:-6,  city:false}, // farmhouse row, out on the dirt road (x=366)
+  {x:49,             z:5,   city:true },  // city: by a central road junction
+  {x:-49,            z:5,   city:true },  // city: by a road junction
+];
+let buyers=[];   // live {x,z,city,ped,served,want,t}
+// HEAT — the push-your-luck risk. Each deal raises it (city more), it cools over time.
+// Above WARM, deals can be a STING (undercover cop → no pay + a wanted spike); linger
+// at the farm while HOT and you draw a RAID. The run HUD shows it so it's never blind RNG.
+let heat=0, runEarned=0, farmLinger=0;
+const HEAT_WARM=40, HEAT_HOT=60;
+const weedHud=typeof document!=='undefined'?document.getElementById('weedhud'):null;
+const nearFarm=()=>{const p=playerPos();return Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)<30;};
 
 let bucketObj=null;       // the 3D bucket parented to the player's hand while carrying
 let pourT=0;              // pour-animation timer (>0 while tipping the bucket)
@@ -74,9 +126,19 @@ const clamp01=v=>v<0?0:v>1?1:v;
 const playerLimbs=()=>player?.g?.userData?.limbs||null;
 
 const grade=q=>q>=85?'FIRE':q>=65?'DANK':q>=40?'MIDS':'SCHWAG';
-// total cash for selling n buds — a batch bonus rewards harvesting then selling
-// together rather than one bud at a time (+$2/bud per 4 buds, capped at +$6).
-const bulkPrice=n=>n*(PRICE+Math.min(6,((n/4)|0)*2));
+// ---------- seeds & strains ----------
+const seedCount=id=>state.seeds[id]|0;
+const totalSeeds=()=>STRAINS.reduce((s,st)=>s+seedCount(st.id),0);
+// which strain the next planting uses: the one selected at the store if you still
+// have it, else the first strain you DO have seeds of.
+function plantStrain(){
+  if(seedCount(state.seedSel)>0)return state.seedSel;
+  const s=STRAINS.find(st=>seedCount(st.id)>0);
+  return s?s.id:'';
+}
+// the street price swings each in-game day (a stable per-day factor ~0.8..1.45), so
+// WHEN you run the deliveries matters; city buyers add a premium on top.
+const marketFactor=()=>{const r=Math.abs(Math.sin((getDay()+1)*12.9898))%1;return 0.8+r*0.65;};
 
 // ---------- bucket carried in hand ----------
 function attachBucket(){
@@ -96,39 +158,41 @@ function detachBucket(){
 function plantSeed(slot){
   if(slot.plant)return;
   // seeds are bought at the rural General Store (js/general-store.js); no seed, no planting
-  if((state.seeds|0)<=0){
+  const sid=plantStrain();
+  if(!sid){
     message('NO SEEDS - BUY THEM AT THE GENERAL STORE','var(--pink)');
     blip([300,220],.06,'square',.08);
     return;
   }
-  state.seeds--;
+  state.seeds[sid]--;
+  const st=STRAIN_BY_ID[sid];
   const y=groundHeight(slot.x,slot.z)+.38;        // sits on the raised planter soil
-  const g=makeWeedPlant(1,false);
+  const g=makeWeedPlant(1,false,st.color);        // tinted to the strain
   g.position.set(slot.x,y,slot.z);g.rotation.y=rand(0,Math.PI*2);g.scale.setScalar(.3);
   // wet-soil decal: a dark disc over the bed whose opacity tracks hydration
   const wet=new THREE.Mesh(new THREE.CircleGeometry(.95,16),
     new THREE.MeshBasicMaterial({color:0x1c0d04,transparent:true,opacity:0,depthWrite:false}));
   wet.rotation.x=-Math.PI/2;wet.position.set(slot.x,y,slot.z);
   scene.add(g,wet);
-  slot.plant={g,wet,glow:null,stage:'seed',t:0,hyd:45,dryT:0,
+  slot.plant={g,wet,glow:null,stage:'seed',t:0,hyd:45,dryT:0,strain:sid,
     quality:QUALITY_START,baseY:y,phase:rand(0,6.28),pop:0};
-  message('PLANTED - FILL A BUCKET AT THE TAP AND POUR IT','var(--cyan)');
+  message(`PLANTED ${st.name} - FILL A BUCKET AT THE TAP AND POUR IT`,'var(--cyan)');
   blip([392,523],.06,'sine',.13);
 }
 
 function fillCan(){
-  if(hasWater)return;
-  hasWater=true;
-  attachBucket();                          // the player now visibly carries a full bucket
-  message('BUCKET FILLED - CARRY IT TO A PLANT','var(--cyan)');
+  if(waterCharges>0)return;
+  waterCharges=canCapacity();              // the player now visibly carries a full bucket
+  attachBucket();
+  message(canCapacity()>1?`BUCKET FILLED - ${canCapacity()} POURS`:'BUCKET FILLED - CARRY IT TO A PLANT','var(--cyan)');
   blip([392,523,659],.06,'sine',.13);
 }
 
-// Start pouring the bucket over a plant. The water only lands (and the bucket is
-// only emptied) partway through the pour animation — see updateWeedFarm.
+// Start pouring the bucket over a plant. The water only lands (and a charge is
+// only spent) partway through the pour animation — see updateWeedFarm.
 function water(slot){
   const pl=slot.plant;
-  if(!pl||pl.stage==='dead'||!hasWater||pourT>0)return; // need a full bucket; one pour at a time
+  if(!pl||pl.stage==='dead'||waterCharges<=0||pourT>0)return; // need water; one pour at a time
   pourSlot=slot;pourT=POUR_TIME;pourApplied=false;
   message('POURING THE WATER','var(--cyan)');
   blip([523,659],.05,'sine',.13);
@@ -138,7 +202,7 @@ function water(slot){
 function setRipe(slot){
   const pl=slot.plant;
   scene.remove(pl.g);
-  const g=makeWeedPlant(1,true);
+  const g=makeWeedPlant(1,true,STRAIN_BY_ID[pl.strain]?.color);
   g.position.set(slot.x,pl.baseY,slot.z);g.rotation.y=rand(0,Math.PI*2);g.scale.setScalar(1);
   const glow=new THREE.Mesh(new THREE.SphereGeometry(.2,10,8),
     new THREE.MeshBasicMaterial({color:0xeaffc0,transparent:true,opacity:.3,
@@ -172,17 +236,20 @@ function clearSlot(slot){
 function harvest(slot){
   const pl=slot.plant;
   const q=pl.quality;
-  const buds=Math.max(YIELD_MIN,Math.round(YIELD_MIN+(YIELD_MAX-YIELD_MIN)*(q/100)));
+  const st=STRAIN_BY_ID[pl.strain]||STRAIN_BY_ID.hybrid;
+  const fed=pl.fed?FERTILIZER.yieldMul:1;
+  const buds=Math.max(YIELD_MIN,Math.round((YIELD_MIN+(YIELD_MAX-YIELD_MIN)*(q/100))*st.yieldMul*fed));
   carried+=buds;
+  carriedVal+=buds*Math.round(PRICE*st.value);   // this strain's $/bud locked in now
   spawnBurst(slot);
   removePlant(slot);
-  bigText(`+${buds} ${grade(q)} FLOWERS`,'var(--gold)');setTimeout(hideBig,1000);
-  message(`CARRYING ${carried} BUDS - SELL THEM AT THE TABLE`,'var(--gold)');
+  bigText(`+${buds} ${st.name} ${grade(q)}`,'var(--gold)');setTimeout(hideBig,1000);
+  message(`CARRYING ${carried} BUDS - STASH THEM IN THE DEPOSIT BOX`,'var(--gold)');
   blip([659,880,1175],.07,'square',.18);
 }
 
 function addBudsToPile(n){
-  const y0=groundHeight(box.x,box.z)+1.05;   // on top of the sale crate
+  const y0=groundHeight(box.x,box.z)+1.05;   // piled inside the deposit crate
   for(let i=0;i<n&&pile.length<PILE_CAP;i++){
     const b=makeBud(rand(.8,1.1));
     const layer=(pile.length/8)|0;
@@ -191,18 +258,155 @@ function addBudsToPile(n){
     scene.add(b);pile.push(b);
   }
 }
+function clearPile(){ for(const b of pile)scene.remove(b); pile.length=0; }
 
-function sell(){
+// ---------- deposit box: stash (no pay) / take out (backpack + run) / return ----------
+function depositBuds(){
   if(carried<=0)return;
-  // regra 1x/dia: uma venda por dia in-game (anti-farm da plantação).
-  if(refs.mgPlayedToday?.(MiniGameId.WEED_FARM)){message('ALREADY SOLD TODAY - COME BACK TOMORROW','var(--pink)');return;}
-  const paid=economy.earn(bulkPrice(carried),'weed-farm');
-  boxed+=carried;
-  reportMiniGameResult(MiniGameId.WEED_FARM,{won:true,score:carried});
+  deposit.buds+=carried;deposit.val+=carriedVal;
   addBudsToPile(carried);
-  message(`SOLD ${carried} BUDS - +$${paid}`,'var(--gold)');
-  blip([523,659,784,1047],.09,'square',.18);
-  carried=0;
+  message(`STASHED ${carried} BUDS - NO CASH HERE; TAKE IT OUT TO RUN DELIVERIES`,'var(--gold)');
+  blip([330,392],.06,'sine',.12);
+  carried=0;carriedVal=0;
+}
+function withdrawPack(){
+  if(pack.active||deposit.buds<=0)return;
+  pack.active=true;pack.buds=deposit.buds;pack.val=deposit.val;pack.orig=deposit.buds;
+  deposit.buds=0;deposit.val=0;clearPile();
+  runEarned=0;
+  attachBackpack();spawnBuyers();delivering=true;
+  bigText('DELIVERY RUN','var(--gold)');setTimeout(hideBig,1100);
+  message(`${pack.buds} BUDS ON YOUR BACK - DEAL THEM TO BUYERS ON THE MAP (CITY PAYS MORE)`,'var(--gold)');
+  blip([392,523,659,784],.08,'sine',.14);
+}
+function returnPack(){
+  if(!pack.active)return;
+  deposit.buds+=pack.buds;deposit.val+=pack.val;
+  addBudsToPile(pack.buds);
+  endRunCleanup();
+  message('BACKPACK RETURNED - THE STASH IS BACK IN THE BOX','var(--cream)');
+  blip([300,240],.05,'square',.1);
+}
+function endRunCleanup(){
+  pack.active=false;pack.buds=0;pack.val=0;pack.orig=0;
+  delivering=false;detachBackpack();despawnBuyers();
+  if(weedHud)weedHud.classList.remove('show');
+}
+function finishRun(){
+  const sold=pack.orig;
+  reportMiniGameResult(MiniGameId.WEED_FARM,{won:true,score:sold});
+  boxed+=sold;
+  endRunCleanup();
+  bigText('ALL DELIVERED','var(--gold)');setTimeout(hideBig,1100);
+  message(`RUN COMPLETE - DELIVERED ${sold} BUDS`,'var(--gold)');
+  blip([659,880,1047,1319],.1,'square',.2);
+}
+
+// ---------- the worn backpack ----------
+function attachBackpack(){
+  detachBackpack();
+  backpackObj=makeWeedBackpack();
+  backpackObj.scale.setScalar(.92);
+  backpackObj.position.set(0,1.18,-0.22); // chest height, on the back (model faces +z)
+  player.g.add(backpackObj);
+}
+function detachBackpack(){ if(backpackObj){backpackObj.parent?.remove(backpackObj);backpackObj=null;} }
+
+// ---------- buyers spread across the map during a run ----------
+function spawnBuyers(){
+  despawnBuyers();
+  buyers=DELIV_POINTS.map(d=>{
+    const ped=makePed(d.city?0x6a4a8a:0x7a5a3a,0x2a2a30); // makePed adds itself to the scene
+    ped.position.set(d.x,groundHeight(d.x,d.z),d.z);ped.rotation.y=Math.random()*6.28;
+    return {x:d.x,z:d.z,city:d.city,ped,served:false,want:4+((Math.random()*5)|0),t:Math.random()*6};
+  });
+}
+function despawnBuyers(){ for(const b of buyers)if(b.ped)scene.remove(b.ped); buyers=[]; }
+function deliverTo(b){
+  if(!b||b.served||pack.buds<=0)return;
+  b.served=true;if(b.ped)scene.remove(b.ped);
+  // STING: the hotter you are, the likelier a buyer is an undercover cop. No pay, the
+  // law lands on you, and you bolt with the stash still on your back.
+  if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
+    addWanted(3,'SETUP! - IT WAS A STING','weed_sting');
+    heat=Math.max(0,heat-50);
+    message('BUSTED DEAL - RUN WITH THE STASH!','var(--pink)');
+    blip([400,200,400,160],.13,'square',.2);
+    if(buyers.every(x=>x.served))spawnBuyers();
+    return; // pack kept, nothing paid
+  }
+  const perBud=pack.val/Math.max(1,pack.buds);
+  const chunk=Math.min(pack.buds,b.want);
+  const pay=Math.max(1,Math.round(chunk*perBud*marketFactor()*(b.city?1.3:1)));
+  economy.earn(pay,'weed-deal'); // no anti-rapid-fire cooldown (deals can be close together)
+  runEarned+=pay;
+  heat=Math.min(100,heat+(b.city?14:8)); // dealing draws heat — city corners more so
+  pack.buds-=chunk;pack.val=Math.max(0,pack.val-chunk*perBud);
+  message(`DEALT ${chunk} BUDS - +$${pay}${pack.buds>0?` (${pack.buds} LEFT)`:''}`,'var(--gold)');
+  blip([523,659,784,1047],.08,'square',.16);
+  if(pack.buds<=0)finishRun();
+  else if(buyers.every(x=>x.served))spawnBuyers(); // out of buyers but still holding: fresh batch
+}
+
+// ---------- farm upgrades: reinvest earnings into watering gear ----------
+const sprMat=new THREE.MeshStandardMaterial({color:0x9aa0a6,roughness:.4,metalness:.55});
+let sprinklerFx=[];
+function installSprinklerVisuals(){
+  if(sprinklerFx.length)return;                 // a riser + nozzle in each bed corner
+  for(const s of slots){
+    const x=s.x+.95,z=s.z+.95,y=groundHeight(x,z);
+    const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.02,.025,.55,6),sprMat);
+    pipe.position.set(x,y+.28,z);scene.add(pipe);sprinklerFx.push(pipe);
+    const head=new THREE.Mesh(new THREE.SphereGeometry(.045,8,6),sprMat);
+    head.position.set(x,y+.56,z);scene.add(head);sprinklerFx.push(head);
+  }
+}
+function buyUpgrade(){
+  if(upLevel>=UPGRADES.length)return;
+  const u=UPGRADES[upLevel];
+  if(!economy.spend(u.price,'spend')){message(`NOT ENOUGH MONEY - NEED $${u.price}`,'var(--pink)');return;}
+  upLevel++;
+  if(hasSprinklers())installSprinklerVisuals();
+  bigText('FARM UPGRADED','var(--gold)');setTimeout(hideBig,1000);
+  message(`${u.name} INSTALLED - ${u.desc}`,'var(--gold)');
+  blip([523,659,784,1047],.09,'square',.16);
+}
+
+// ---------- fertilizer: feed a growing plant once for a bigger, better harvest ----------
+function fertilize(slot){
+  const pl=slot.plant;
+  if(!pl||pl.fed||pl.stage==='dead'||pl.stage==='ripe')return;
+  if((state.fertilizer|0)<=0){message('NO PLANT FOOD - BUY IT AT THE GENERAL STORE','var(--pink)');return;}
+  state.fertilizer--;
+  pl.fed=true;pl.pop=.4;
+  message(`FED ${STRAIN_BY_ID[pl.strain]?.name||''} - BIGGER, BETTER BUDS`,'var(--gold)');
+  blip([523,659,880],.07,'sine',.14);
+}
+
+// ---------- drying rack: hang a wet harvest, let it cure, collect for more cash ----------
+function hangBuds(){
+  if(rack.state!=='empty'||carried<=0)return;
+  rack.state='drying';rack.buds=carried;rack.val=carriedVal;rack.t=0;
+  const y0=groundHeight(rackPos.x,rackPos.z)+1.85;        // hang clusters along the top bar
+  const n=Math.min(8,Math.max(3,carried));
+  for(let i=0;i<n;i++){
+    const b=makeBud(rand(1.0,1.4));
+    b.position.set(rackPos.x-1.3+i*(2.6/(n-1||1)),y0-rand(.1,.3),rackPos.z);
+    b.rotation.set(rand(0,3),rand(0,3),rand(0,3));
+    scene.add(b);rack.fx.push(b);
+  }
+  carried=0;carriedVal=0;
+  message('HUNG TO DRY - COME BACK ONCE IT HAS CURED','var(--cyan)');
+  blip([392,330],.07,'sine',.12);
+}
+function collectCured(){
+  if(rack.state!=='cured')return;
+  carried=rack.buds;carriedVal=Math.round(rack.val*CURE_BONUS);
+  for(const b of rack.fx)scene.remove(b);rack.fx.length=0;
+  rack.state='empty';rack.buds=0;rack.val=0;rack.t=0;
+  bigText('CURED FLOWERS','var(--gold)');setTimeout(hideBig,1000);
+  message(`COLLECTED ${carried} CURED BUDS - STASH THEM IN THE DEPOSIT BOX`,'var(--gold)');
+  blip([659,880,1175],.08,'square',.18);
 }
 
 // ---------- particles (water droplets + harvest burst) ----------
@@ -240,17 +444,47 @@ function updateFx(dt){
 (refs.zoneActions||(refs.zoneActions=[])).push(()=>{
   if(state.mode!=='foot')return null;
   const p=playerPos();
-  if(carried>0&&dist(p,box)<RANGE)
-    return{label:'SELL',prompt:`SELL ${carried} BUD${carried>1?'S':''} ($${bulkPrice(carried)})`,enabled:true,run:sell};
-  if(dist(p,tap)<RANGE&&!hasWater)
+  if(dist(p,box)<RANGE){
+    if(carried>0) // fresh harvest in hand → stash it (no money here)
+      return{label:'STASH',prompt:`STASH ${carried} BUD${carried>1?'S':''} (NO PAY - DELIVER FOR CASH)`,enabled:true,run:depositBuds};
+    if(pack.active) // already on a run → hand the backpack back
+      return{label:'STASH',prompt:'RETURN THE DELIVERY BACKPACK',enabled:true,run:returnPack};
+    if(deposit.buds>0) // stash sitting in the box → strap on the backpack for a run
+      return{label:'TAKE',prompt:`TAKE ${deposit.buds} BUDS FOR DELIVERY`,enabled:true,run:withdrawPack};
+  }
+  if(dist(p,tap)<RANGE&&waterCharges<=0)
     return{label:'FILL',prompt:'FILL THE WATERING BUCKET',enabled:true,run:fillCan};
+  // drying rack: hang a wet harvest, watch it cure, then collect it for more cash
+  if(dist(p,rackPos)<RANGE){
+    if(rack.state==='cured')
+      return{label:'COLLECT',prompt:`COLLECT ${rack.buds} CURED BUDS`,enabled:true,run:collectCured};
+    if(rack.state==='drying')
+      return{label:'DRY',prompt:`DRYING - ${Math.ceil(CURE_TIME-rack.t)}s LEFT`,enabled:true,
+        run:()=>message('STILL DRYING - GIVE IT TIME','var(--cyan)')};
+    if(carried>0)
+      return{label:'DRY',prompt:`HANG ${carried} BUDS TO DRY (+${Math.round((CURE_BONUS-1)*100)}% WHEN CURED)`,
+        enabled:true,run:hangBuds};
+  }
+  // grow-shack: reinvest earnings into farm upgrades (watering gear → sprinklers)
+  if(dist(p,shackPos)<RANGE){
+    if(upLevel>=UPGRADES.length)
+      return{label:'SHED',prompt:'ALL FARM UPGRADES OWNED',enabled:false,run:()=>{}};
+    const u=UPGRADES[upLevel];
+    if(state.money<u.price)
+      return{label:'SHED',prompt:`NEED $${u.price} FOR ${u.name}`,enabled:true,
+        run:()=>message(`NOT ENOUGH MONEY - NEED $${u.price}`,'var(--pink)')};
+    return{label:'UPGRADE',prompt:`BUY ${u.name} $${u.price} - ${u.desc}`,enabled:true,run:buyUpgrade};
+  }
   let best=null,bd=RANGE;
   for(const s of slots){const d=dist(p,s);if(d<bd){bd=d;best=s;}}
   if(!best)return null;
   const pl=best.plant;
   if(!pl){
-    if((state.seeds|0)>0)
-      return{label:'PLANT',prompt:`PLANT A SEED (${state.seeds} LEFT)`,enabled:true,run:()=>plantSeed(best)};
+    const sid=plantStrain();
+    if(sid){
+      const st=STRAIN_BY_ID[sid];
+      return{label:'PLANT',prompt:`PLANT ${st.name} (${seedCount(sid)} LEFT)`,enabled:true,run:()=>plantSeed(best)};
+    }
     return{label:'PLANT',prompt:'NEED SEEDS - BUY AT THE GENERAL STORE',enabled:true,
       run:()=>plantSeed(best)}; // plantSeed shows the "buy seeds" hint when empty
   }
@@ -258,20 +492,74 @@ function updateFx(dt){
   if(pl.stage==='ripe')return{label:'HARVEST',prompt:`HARVEST THE ${grade(pl.quality)} FLOWERS`,enabled:true,run:()=>harvest(best)};
   // with a full bucket you can pour on any not-full plant; without one you simply
   // CANNOT water — a thirsty plant just tells you to go fill a bucket at the tap.
-  if(hasWater&&pl.hyd<92)return{label:'WATER',prompt:'POUR THE BUCKET',enabled:true,run:()=>water(best)};
+  if(waterCharges>0&&pl.hyd<92)return{label:'WATER',prompt:`POUR THE BUCKET${waterCharges>1?` (${waterCharges} LEFT)`:''}`,enabled:true,run:()=>water(best)};
   if(pl.hyd<35)return{label:'WATER',prompt:'NEEDS WATER - FILL A BUCKET AT THE TAP',enabled:true,
     run:()=>message('FILL A BUCKET AT THE TAP FIRST','var(--cyan)')};
-  return{label:'GROW',prompt:'GROWING - KEEP IT WATERED',enabled:true,
+  // well-watered & growing: offer to FEED it once if you carry plant food
+  if((pl.stage==='seed'||pl.stage==='growing')&&!pl.fed&&(state.fertilizer|0)>0)
+    return{label:'FEED',prompt:`FEED PLANT FOOD (${state.fertilizer} LEFT)`,enabled:true,run:()=>fertilize(best)};
+  return{label:'GROW',prompt:pl.fed?'GROWING (FED) - KEEP IT WATERED':'GROWING - KEEP IT WATERED',enabled:true,
     run:()=>message('STILL GROWING','var(--cyan)')};
 });
 
-// NO map blip on purpose — this grow-op is hidden; you have to find the walls.
+// ---------- second zone action: DEAL to a buyer during a delivery run ----------
+(refs.zoneActions||(refs.zoneActions=[])).push(()=>{
+  if(!delivering||state.mode!=='foot'||pack.buds<=0)return null;
+  const p=playerPos();
+  let best=null,bd=DELIV_RANGE;
+  for(const b of buyers){if(b.served)continue;const d=dist(p,b);if(d<bd){bd=d;best=b;}}
+  if(!best)return null;
+  const chunk=Math.min(pack.buds,best.want);
+  const pay=Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*(best.city?1.3:1)));
+  const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
+  return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${best.city?' CITY+':''}${risk}`,
+    enabled:true,run:()=>deliverTo(best)};
+});
+
+// The grow-op itself stays OFF the map (you find the walls). But while a delivery run
+// is on, the BUYERS show on the radar/map so you know where to take the stash.
+(refs.miniBlips||(refs.miniBlips=[])).push(()=>delivering
+  ? buyers.filter(b=>!b.served).map(b=>({x:b.x,z:b.z,icon:'person',
+      color:b.city?'#19e3ff':'#9dff2e',label:'BUYER'}))
+  : []);
 
 refs.getWeedFarmState=()=>{
   let planted=0,ripe=0;
   for(const s of slots){if(s.plant){planted++;if(s.plant.stage==='ripe')ripe++;}}
-  return{planted,ripe,carried,boxed,hasWater};
+  return{planted,ripe,carried,carriedVal,boxed,waterCharges,upLevel,sprinklers:hasSprinklers(),
+    seeds:{...state.seeds},seedSel:state.seedSel||plantStrain(),
+    deposit:{...deposit},delivering,heat:Math.round(heat),runEarned,
+    pack:{active:pack.active,buds:pack.buds},
+    buyers:buyers.filter(b=>!b.served).length};
 };
+
+// Persisted grow-op economy: the farm upgrade level + bought seeds/plant-food survive
+// a reload (crops/runs stay session-only). Save bridge in js/save.js.
+refs.getFarmSave=()=>({up:upLevel,seeds:{...state.seeds},fert:state.fertilizer|0});
+refs.restoreFarm=d=>{
+  if(!d||typeof d!=='object')return;
+  if(Number.isFinite(d.up))upLevel=Math.max(0,Math.min(UPGRADES.length,Math.floor(d.up)));
+  if(d.seeds&&typeof d.seeds==='object')state.seeds={...d.seeds};
+  if(Number.isFinite(d.fert))state.fertilizer=Math.max(0,Math.floor(d.fert));
+  if(hasSprinklers())installSprinklerVisuals();
+};
+
+// ---------- delivery-run HUD (buds left, cash, buyers, heat bar) ----------
+function updateWeedHud(){
+  if(!weedHud)return;
+  if(!delivering){weedHud.classList.remove('show');return;}
+  weedHud.classList.add('show');
+  const tag=heat>HEAT_HOT?'HOT':heat>HEAT_WARM?'WARM':'CHILL';
+  const col=heat>HEAT_HOT?'#ff4d4d':heat>HEAT_WARM?'#ffb43b':'#7fe07f';
+  const left=buyers.filter(b=>!b.served).length;
+  weedHud.innerHTML=
+    `<div class="weed-label">WEED RUN</div>`+
+    `<div class="weed-main"><span>BUDS</span><b>${pack.buds}</b></div>`+
+    `<div class="weed-row"><span>EARNED</span><b>$${runEarned}</b></div>`+
+    `<div class="weed-row"><span>BUYERS</span><b>${left}</b></div>`+
+    `<div class="weed-heat" style="color:${col}">HEAT ${tag}</div>`+
+    `<div class="weed-meter"><i style="width:${Math.min(100,heat)|0}%;background:${col}"></i></div>`;
+}
 
 // ---------- per-frame update (called from main.js, no world lock) ----------
 export function updateWeedFarm(dt){
@@ -290,34 +578,57 @@ export function updateWeedFarm(dt){
       if(pl&&pl.stage!=='dead'){pl.hyd=100;pl.pop=.35;}
       spawnDrops(pourSlot);
     }
-    if(pourT<=0){pourT=0;hasWater=false;pourSlot=null;detachBucket();}
+    if(pourT<=0){pourT=0;waterCharges=Math.max(0,waterCharges-1);pourSlot=null;if(waterCharges<=0)detachBucket();}
   }
   updateFx(dt);
+
+  // drying rack: cure over time, then the hanging buds visibly shrink (dried)
+  if(rack.state==='drying'){
+    rack.t+=dt;
+    if(rack.t>=CURE_TIME){rack.state='cured';for(const b of rack.fx)b.scale.multiplyScalar(.8);}
+  }
+
+  // idle the delivery buyers so they read as living NPCs waiting on the corner
+  if(delivering)for(const b of buyers){if(b.served||!b.ped)continue;b.t+=dt;animatePed(b.ped,b.t*.9,.05);}
+  // the worn pack shows only on foot (hidden while seated in a car so it can't clip)
+  if(backpackObj)backpackObj.visible=(state.mode==='foot');
+  // heat cools over time; lingering at the farm while HOT draws a police raid
+  if(heat>0)heat=Math.max(0,heat-dt*3);
+  if(heat>HEAT_HOT&&nearFarm()){
+    farmLinger+=dt;
+    if(farmLinger>6){addWanted(3,'POLICE RAID ON THE FARM!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
+  }else farmLinger=0;
+  updateWeedHud();
 
   for(const slot of slots){
     const pl=slot.plant;
     if(!pl)continue;
 
-    // hydration / growth / quality / death (only while still maturing)
+    // hydration / growth / quality / death (only while still maturing). Each strain
+    // grows at its own pace, drinks at its own rate and tolerates drought differently.
+    const st=STRAIN_BY_ID[pl.strain]||STRAIN_BY_ID.hybrid;
     if(pl.stage==='seed'||pl.stage==='growing'){
-      pl.hyd-=HYD_DRAIN*dt;if(pl.hyd<0)pl.hyd=0;
+      const growT=GROW_TIME*st.grow;
+      pl.hyd-=HYD_DRAIN*st.drain*dt;if(pl.hyd<0)pl.hyd=0;
+      // drip sprinklers (top upgrade): keep the beds watered hands-free
+      if(hasSprinklers()&&pl.hyd<95)pl.hyd=Math.min(95,pl.hyd+(HYD_DRAIN*st.drain+5)*dt);
       if(pl.hyd>0){
         pl.dryT=0;
-        if(pl.hyd>HYD_HEALTHY)pl.quality=Math.min(100,pl.quality+QUALITY_RECOVER*dt);
+        if(pl.hyd>HYD_HEALTHY)pl.quality=Math.min(100,pl.quality+QUALITY_RECOVER*(pl.fed?FERTILIZER.qualBoost:1)*dt);
         pl.t+=dt;
-        if(pl.t>=GROW_TIME)setRipe(slot);
-        else if(pl.t>=GROW_TIME*SEED_F)pl.stage='growing';
+        if(pl.t>=growT)setRipe(slot);
+        else if(pl.t>=growT*SEED_F)pl.stage='growing';
       }else{
         pl.dryT+=dt;
         pl.quality=Math.max(0,pl.quality-QUALITY_DROP*dt);
-        if(pl.dryT>=DRY_DEATH)killPlant(slot);
+        if(pl.dryT>=DRY_DEATH*st.hardy)killPlant(slot);
       }
     }
     if(pl.pop>0)pl.pop=Math.max(0,pl.pop-dt*1.5);
 
     // ---- diegetic state: the plant's body shows how it's doing ----
     if(pl.stage==='seed'||pl.stage==='growing'){
-      const f=Math.min(1,pl.t/GROW_TIME);
+      const f=Math.min(1,pl.t/(GROW_TIME*st.grow));
       const baseS=.3+.7*f+pl.pop*.15;
       const droop=clamp01((40-pl.hyd)/40);          // 0 perky → 1 parched & wilting
       pl.g.scale.set(baseS,baseS*(1-droop*.28),baseS);

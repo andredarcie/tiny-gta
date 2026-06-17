@@ -11,7 +11,9 @@ export const state={
   crosshairKick:0,crosshairTarget:false,
   mobile:false,orientationBlocked:false,controlsLocked:false,
   swimming:false,swimAir:1, // nadando agora? / fôlego restante (1→0); ver js/player.js updateSwim
-  seeds:0, // crop seeds in hand — bought at the rural General Store, spent planting at the weed farm
+  seeds:{}, // per-strain seed counts {indica,hybrid,sativa} — bought at the rural General Store
+  seedSel:'', // strain id selected to plant next (set when you buy seeds at the store)
+  fertilizer:0, // plant-food charges — bought at the General Store, fed to growing crops
   interior:null, // ambiente interno ativo (instância de Interior) ou null — ver js/interior.js
   armScale:1,armTarget:1,gymDay:-1, // academia: tamanho do braço, alvo e dia do último treino
   viewerOpen:false, // galeria de objetos (tecla I) aberta
