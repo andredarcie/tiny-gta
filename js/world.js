@@ -10,6 +10,7 @@ import {addLifeguard} from '../assets/models/props/lifeguard.js';
 import {addFarmHouse} from '../assets/models/props/farm-house.js';
 import {addPine} from '../assets/models/props/pine.js';
 import {addTree} from '../assets/models/props/tree.js';
+import {addParkBench} from '../assets/models/props/park-bench.js';
 import {addBush} from '../assets/models/props/bush.js';
 import {addFern} from '../assets/models/props/fern.js';
 import {addMushroom} from '../assets/models/props/mushroom.js';
@@ -31,7 +32,8 @@ import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../assets/models/rural
 import {addWeedFarm,WEED_CX,WEED_CZ} from '../assets/models/rural/weed-farm.js';
 import {addHayBales} from '../assets/models/rural/hay-bales.js';
 import {addSummitFlag} from '../assets/models/rural/summit-flag.js';
-import {addChurch} from '../assets/models/rural/church.js';
+import {addIgrejaDivino} from '../assets/models/rural/igreja-divino.js';
+import {addCoreto} from '../assets/models/rural/coreto.js';
 import {addGeneralStore} from '../assets/models/rural/general-store.js';
 import {addWaterTower} from '../assets/models/rural/water-tower.js';
 import {addWindmill} from '../assets/models/rural/windmill.js';
@@ -237,9 +239,26 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   x.beginPath();rp.forEach(([px,pz],i)=>i?x.lineTo(u(px),w(pz)):x.moveTo(u(px),w(pz)));x.stroke();
   // rua transversal N-S da vila (termina no pé da praça/igreja)
   x.beginPath();x.moveTo(u(TOWN_CX),w(-46));x.lineTo(u(TOWN_CX),w(34));x.stroke();
-  // praça central: clareira de terra batida mais clara
-  x.fillStyle='#c2a275';
-  x.beginPath();x.ellipse(u(TOWN_CX),w(0),16*sx0,16*sz0,0,0,Math.PI*2);x.fill();
+  // PRAÇA DA MATRIZ (proporções da matriz de Divinolândia): retângulo de grama com
+  // passeios de piso intertravado claro — passeio central (rumo à igreja), anel em
+  // volta do coreto e caminhos radiais. Ao NORTE da estrada (z>0): igreja na cabeceira
+  // (z≈40), coreto a ~64% rumo ao sul (z≈14). Ver reference/divinolandia-praca/.
+  {
+    const PX0=TOWN_CX-12,PX1=TOWN_CX+12,PZ0=2,PZ1=44,czCor=14,s=(sx0+sz0)/2;
+    x.fillStyle='#5f9e57';                                   // grama da praça
+    x.fillRect(u(PX0),w(PZ0),u(PX1)-u(PX0),w(PZ1)-w(PZ0));
+    x.fillStyle='#bdb6a6';                                   // piso: passeio central
+    x.fillRect(u(TOWN_CX-1.6),w(PZ0+1),u(TOWN_CX+1.6)-u(TOWN_CX-1.6),w(PZ1-4)-w(PZ0+1));
+    x.strokeStyle='#bdb6a6';x.lineCap='butt';
+    x.lineWidth=2.4*s;                                       // passeio de perímetro
+    x.strokeRect(u(PX0+1.5),w(PZ0+1.5),u(PX1-1.5)-u(PX0+1.5),w(PZ1-1.5)-w(PZ0+1.5));
+    x.lineWidth=1.7*s;                                       // caminhos radiais do coreto
+    for(let k=0;k<8;k++){const a=k*Math.PI/4;
+      x.beginPath();x.moveTo(u(TOWN_CX),w(czCor));
+      x.lineTo(u(TOWN_CX+Math.cos(a)*11),w(czCor+Math.sin(a)*11));x.stroke();}
+    x.lineWidth=2.6*s;                                       // anel em volta do coreto
+    x.beginPath();x.ellipse(u(TOWN_CX),w(czCor),6*sx0,6*sz0,0,0,Math.PI*2);x.stroke();
+  }
   // poeira ao longo da estrada
   for(let k=0;k<420;k++){
     const seg=rp[irand(0,rp.length-1)];
@@ -452,8 +471,9 @@ addHayBales();
   const cx=TOWN_CX;
   // placa de boas-vindas na entrada (oeste), de frente pra quem chega pela estrada
   solids.push(addTownSign(cx-54,9,-Math.PI/2));
-  // igreja no topo da praça (norte), torre/campanário voltados pra praça (sul)
-  solids.push(addChurch(cx,38,Math.PI));
+  // Igreja do Divino Espírito Santo na CABECEIRA (norte) da praça, fachada + torre
+  // voltadas pro sul (pra dentro da praça) — réplica da matriz de Divinolândia.
+  solids.push(addIgrejaDivino(cx,40,Math.PI));
   // mercadinho + casas no lado norte da rua principal, de frente pro sul
   addGeneralStore(solids); // walk-in shop (exterior + off-map interior); pushes its own solids
   solids.push(addFarmHouse(cx+34,22,Math.PI));
@@ -463,9 +483,16 @@ addHayBales();
   solids.push(addFarmHouse(cx-14,-24,0));
   solids.push(addFarmHouse(cx+22,-24,0));
   solids.push(addWaterTower(cx+50,-34));
-  // bandeira no centro da praça
-  addSummitFlag(cx,0,0);
-  // postes de luz ao longo da rua principal
+  // ----- PRAÇA DA MATRIZ: coreto + jardim (proporções de Divinolândia) -----
+  // retângulo ~24 (L-O) x 42 (N-S) ao norte da estrada; coreto a ~64% rumo ao sul,
+  // árvores nos quadrantes do jardim, bancos virados pro passeio central.
+  solids.push(addCoreto(cx,14));
+  for(const[tx,tz]of[[cx-8.5,30],[cx+8.5,30],[cx-8.5,20],[cx+8.5,20],
+    [cx-8.5,8],[cx+8.5,8],[cx-9,14],[cx+9,14]])addTree(tx,tz);
+  for(const[bx,bz,br]of[[cx-4.4,24,Math.PI/2],[cx+4.4,24,-Math.PI/2],
+    [cx-4.4,5,Math.PI/2],[cx+4.4,5,-Math.PI/2]])solids.push(addParkBench(bx,bz,br));
+  // postes de luz nos cantos da praça + ao longo da rua principal
+  for(const[lx,lz]of[[cx-11,41],[cx+11,41],[cx-11,4],[cx+11,4]])addStreetLamp(lx,lz);
   for(const lx of[cx-44,cx-18,cx+18,cx+44])addStreetLamp(lx,7);
   // pinheiros cercando a vila
   for(const[px,pz]of[[cx-58,-44],[cx-40,-50],[cx-10,-52],[cx+24,-52],[cx+54,-46],

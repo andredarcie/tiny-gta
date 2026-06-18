@@ -29,6 +29,17 @@ export const redis = {
     kv.set(key, clone(value));
     return 'OK';
   },
+  // GETDEL atômico: devolve o valor e remove a chave (null se ausente).
+  async getdel<T = unknown>(key: string): Promise<T | null> {
+    if (!kv.has(key)) return null;
+    const v = clone(kv.get(key)) as T;
+    kv.delete(key);
+    return v;
+  },
+  // MGET: valores na ordem das chaves (null para ausentes).
+  async mget<T extends unknown[]>(...keys: string[]): Promise<T> {
+    return keys.map((k) => (kv.has(k) ? clone(kv.get(k)) : null)) as T;
+  },
   async del(...keys: string[]): Promise<number> {
     let n = 0;
     for (const k of keys) { if (kv.delete(k)) n++; if (zsets.delete(k)) n++; if (hashes.delete(k)) n++; }
@@ -71,8 +82,12 @@ export const redis = {
     const i = sortedDesc(zsets.get(key) ?? new Map<string, number>()).indexOf(member);
     return i < 0 ? null : i;
   },
-  async zrem(key: string, member: string): Promise<number> {
-    return zsets.get(key)?.delete(member) ? 1 : 0;
+  async zrem(key: string, ...members: string[]): Promise<number> {
+    const z = zsets.get(key);
+    if (!z) return 0;
+    let n = 0;
+    for (const m of members) if (z.delete(m)) n++;
+    return n;
   },
   async hget<T = unknown>(key: string, field: string): Promise<T | null> {
     const h = hashes.get(key);

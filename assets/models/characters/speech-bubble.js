@@ -44,9 +44,14 @@ export function makeSpeechBubble(text,{worldWidth=3,font=30,pad=26,maxTextW=448}
   ctx.moveTo(cx-16,bh-1);ctx.lineTo(cx+16,bh-1);ctx.lineTo(cx,c.height-3);ctx.closePath();
   ctx.fillStyle='#f4f7f8';ctx.fill();
   ctx.lineWidth=5;ctx.strokeStyle='#15222a';
+  // contorno = MESMO caminho do fundo + a setinha embutida na borda inferior. O
+  // canto inferior-direito é arredondado igual ao fundo (arcTo mira o canto oposto
+  // p/ a tangente ficar na horizontal); só DEPOIS a borda segue reta pela base até a
+  // setinha. (Antes ia direto do canto pra ponta, cortando na diagonal — a borda
+  // direita ficava torta e não acompanhava o balão branco.)
   ctx.beginPath();
-  ctx.moveTo(r,2);ctx.arcTo(bw-2,2,bw-2,bh,r);ctx.arcTo(bw-2,bh,cx+16,bh,r);
-  ctx.lineTo(cx,c.height-3);ctx.lineTo(cx-16,bh);
+  ctx.moveTo(r,2);ctx.arcTo(bw-2,2,bw-2,bh,r);ctx.arcTo(bw-2,bh,2,bh,r);
+  ctx.lineTo(cx+16,bh);ctx.lineTo(cx,c.height-3);ctx.lineTo(cx-16,bh);
   ctx.arcTo(2,bh,2,2,r);ctx.arcTo(2,2,bw-2,2,r);ctx.closePath();
   ctx.stroke();
 

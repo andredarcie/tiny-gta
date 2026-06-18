@@ -166,6 +166,32 @@ export function sanitizeTx(raw: unknown): Tx | null {
   return { id, amt, why, t };
 }
 
+// ----- BLOODSTAINS (multiplayer ASSÍNCRONO estilo Demon's/Dark Souls) -------
+// Quando um jogador MORRE, deixa uma "poça" no lugar da morte carregando o dinheiro
+// que perdeu na morte (a "conta do hospital"). A poça fica visível para TODOS os
+// outros jogadores online (com o nome da vítima em cima); o PRIMEIRO outro jogador
+// a chegar nela leva o dinheiro. Cada poça é uma chave string
+// `tinygta:bloodstain:<id>` (JSON {name,x,z,money,pid,at}) com TTL; um sorted set
+// `tinygta:bloodstains` (score=at) indexa as ativas para a listagem. A coleta é um
+// GETDEL ATÔMICO na chave: só o primeiro a deletar recebe o valor — vencedor único
+// garantido pelo Redis, sem corrida. Ver backend/api/bloodstains.ts + js/bloodstains.js.
+export const BLOODSTAIN_PREFIX = 'tinygta:bloodstain:'; // + <id> -> JSON da poça
+export const BLOODSTAIN_INDEX = 'tinygta:bloodstains';  // sorted set (score=at) das poças ativas
+export const BLOODSTAIN_RL_PREFIX = 'tinygta:bsrl:';    // rate-limit por IP da criação de poça
+export const bloodstainKey = (id: string): string => BLOODSTAIN_PREFIX + id;
+// Validade da poça (s): some sozinha depois disso pra o mundo não acumular poças.
+export const BLOODSTAIN_TTL = num(process.env.BLOODSTAIN_TTL, 6 * 60 * 60);
+// Teto do dinheiro de UMA poça: a perda na morte é clampada nisto na criação e o
+// pagamento da coleta (claim) também — então quem coleta nunca recebe mais que isto
+// numa poça só, mantendo o ganho dentro do LEDGER_TX_CAP do ledger.
+export const BLOODSTAIN_MAX = num(process.env.BLOODSTAIN_MAX, 2_000_000);
+// Quantas poças o índice mantém (as mais novas) e quantas o GET devolve no máximo.
+export const BLOODSTAIN_KEEP = num(process.env.BLOODSTAIN_KEEP, 300);
+export const BLOODSTAIN_RETURN = num(process.env.BLOODSTAIN_RETURN, 120);
+// Limite de coordenada aceito na criação (clampa um x/z forjado absurdo). Folga
+// muito acima do mapa real (cidade + península rural cabem em ~±400).
+export const BLOODSTAIN_COORD = num(process.env.BLOODSTAIN_COORD, 5000);
+
 // TETO POR FONTE de um pagamento ÚNICO, derivado da fórmula de recompensa de cada
 // mini-game (o máximo teórico de um payout) com FOLGA generosa, pra nunca rejeitar
 // ganho legítimo. Uma transação POSITIVA cujo `why` está aqui e passa do teto é
@@ -200,6 +226,12 @@ export const MG_MAX_PAYOUT: Record<string, number> = {
   delivery: 600,              // base da missão (<=240) + bônus de rapidez 120
   overkill: 300,              // renda streamada; <= ~75/s por tick
 };
+// NOTE: 'bloodstain' (coleta da poça de outro jogador) NÃO entra aqui de propósito.
+// Esta tabela é o teto do payout de UM mini-game (todos << teto por tempo ~$12k); a
+// poça é uma TRANSFERÊNCIA do que outro jogador perdeu e pode ser bem maior, então
+// não cabe no modelo de plausibilidade por tempo. O valor já é clampado a
+// BLOODSTAIN_MAX na criação e no claim (backend/api/bloodstains.ts); o backstop de
+// uma tx 'bloodstain' forjada é o LEDGER_TX_CAP, igual a qualquer outra fonte não-listada.
 
 // True se o valor da transação está dentro do teto da sua fonte. Transações
 // NEGATIVAS (gastos/multas) nunca são limitadas (só reduzem o saldo). Fontes

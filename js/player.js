@@ -487,7 +487,11 @@ function wastedCut(){
   startCut('WASTED','#ff2e88',()=>{
     state.onRoof=null;roofFall=null;
     state.health=100; // wake up at the hospital fully healed
-    economy.penalty(.8,'wasted');state.wanted=0;state.bustT=0;
+    // dinheiro perdido na morte = "conta do hospital": vira uma POÇA no lugar onde o
+    // jogador caiu (multiplayer assíncrono estilo Souls), que outro jogador online
+    // pode pegar. penalty() devolve o valor perdido -> é o que a poça carrega.
+    refs.dropDeathPool?.(deathSpotX,deathSpotZ,economy.penalty(.8,'wasted'));
+    state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
     refs.clearArmy?.(); // army truck + soldiers (★6)
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
@@ -503,8 +507,12 @@ function wastedCut(){
 // Morte a pé: o corpo tomba de costas (rosto pra cima) com poça de sangue,
 // como os NPCs; o letreiro WASTED só aparece depois do corpo no chão
 let dying=null;
+// Onde o jogador morreu (x,z): o multiplayer assíncrono (js/bloodstains.js) deixa
+// aqui a "poça" com o dinheiro perdido na morte pra outro jogador online pegar.
+let deathSpotX=0,deathSpotZ=0;
 export function getWasted(){
   if(dying)return;
+  {const dp=playerPos();deathSpotX=dp.x;deathSpotZ=dp.z;} // lembra o lugar da morte (poça)
   // morrer nadando: endireita a postura do nado antes da animação de queda
   if(state.swimming){
     state.swimming=false;state.swimAir=1;
