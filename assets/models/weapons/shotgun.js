@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeWeaponMeshes} from './weapon-merge.js';
 
 // Espingarda pump-action: cano longo com tubo-magazine por baixo, bomba
 // (forend) deslizante de madeira, receiver de aço e coronha de madeira.
@@ -40,14 +41,15 @@ export function makeShotgunModel({pickup=false}={}){
   g.add(box(.062,.16,.04,blueMat,0,-.02,-.48)); // cano da coronha (butt plate)
   // mira de esfera na boca
   g.add(box(.012,.025,.012,steelMat,0,.05,.74));
+  const merged=mergeWeaponMeshes(g); // funde peças rígidas por material (visual-idêntico)
   if(pickup){
     const glow=new THREE.Mesh(new THREE.TorusGeometry(.6,.04,8,28),glowMat);
-    glow.rotation.x=Math.PI/2;glow.position.y=-.2;g.add(glow);
+    glow.rotation.x=Math.PI/2;glow.position.y=-.2;merged.add(glow);
   }
   const muzzlePoint=new THREE.Object3D();
   muzzlePoint.position.set(0,.02,.82);
-  g.userData.muzzlePoint=muzzlePoint;g.add(muzzlePoint);
-  return g;
+  merged.userData.muzzlePoint=muzzlePoint;merged.add(muzzlePoint);
+  return merged;
 }
 
 export default {category:'Weapons',label:'Shotgun',build:()=>makeShotgunModel()};

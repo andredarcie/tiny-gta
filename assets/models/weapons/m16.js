@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeWeaponMeshes} from './weapon-merge.js';
 
 // M16: fuzil preto de polímero com a alça de transporte (carry handle) e mira
 // triangular dianteira icônicas, handguard triangular, pente reto e coronha
@@ -43,14 +44,15 @@ export function makeM16Model({pickup=false}={}){
   // coronha fixa
   g.add(box(.055,.1,.24,blkMat,0,.0,-.26,.04));
   g.add(box(.06,.13,.035,blkMat,0,.0,-.39)); // butt plate
+  const merged=mergeWeaponMeshes(g); // funde peças rígidas por material (visual-idêntico)
   if(pickup){
     const glow=new THREE.Mesh(new THREE.TorusGeometry(.6,.04,8,28),glowMat);
-    glow.rotation.x=Math.PI/2;glow.position.y=-.3;g.add(glow);
+    glow.rotation.x=Math.PI/2;glow.position.y=-.3;merged.add(glow);
   }
   const muzzlePoint=new THREE.Object3D();
   muzzlePoint.position.set(0,.04,.82);
-  g.userData.muzzlePoint=muzzlePoint;g.add(muzzlePoint);
-  return g;
+  merged.userData.muzzlePoint=muzzlePoint;merged.add(muzzlePoint);
+  return merged;
 }
 
 export default {category:'Weapons',label:'M16',build:()=>makeM16Model()};

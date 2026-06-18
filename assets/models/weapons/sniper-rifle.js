@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeWeaponMeshes} from './weapon-merge.js';
 
 // Rifle de precisão: cano longo e fino, luneta (scope) grande em cima com
 // lentes, ferrolho (bolt) lateral, bipé recolhido e coronha de madeira com
@@ -50,14 +51,15 @@ export function makeSniperRifleModel({pickup=false}={}){
   // bipé recolhido sob o cano
   g.add(cyl(.008,.16,steelMat,-.03,-.06,.58,.5));
   g.add(cyl(.008,.16,steelMat,.03,-.06,.58,.5));
+  const merged=mergeWeaponMeshes(g); // funde peças rígidas por material (visual-idêntico)
   if(pickup){
     const glow=new THREE.Mesh(new THREE.TorusGeometry(.62,.04,8,28),glowMat);
-    glow.rotation.x=Math.PI/2;glow.position.y=-.22;g.add(glow);
+    glow.rotation.x=Math.PI/2;glow.position.y=-.22;merged.add(glow);
   }
   const muzzlePoint=new THREE.Object3D();
   muzzlePoint.position.set(0,.03,.88);
-  g.userData.muzzlePoint=muzzlePoint;g.add(muzzlePoint);
-  return g;
+  merged.userData.muzzlePoint=muzzlePoint;merged.add(muzzlePoint);
+  return merged;
 }
 
 export default {category:'Weapons',label:'Sniper Rifle',build:()=>makeSniperRifleModel()};

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeWeaponMeshes} from './weapon-merge.js';
 
 // Uzi (SMG compacta): corpo retangular curto, cano fininho na frente, pente
 // reto descendo do meio (também serve de pega), coronha de arame dobrável e
@@ -40,14 +41,15 @@ export function makeUziModel({pickup=false}={}){
   g.add(box(.13,.05,.02,steelMat,0,-.02,-.3));
   // mira simples
   g.add(box(.012,.03,.012,steelMat,0,.11,.14));
+  const merged=mergeWeaponMeshes(g); // funde peças rígidas por material (visual-idêntico)
   if(pickup){
     const glow=new THREE.Mesh(new THREE.TorusGeometry(.5,.04,8,28),glowMat);
-    glow.rotation.x=Math.PI/2;glow.position.y=-.34;g.add(glow);
+    glow.rotation.x=Math.PI/2;glow.position.y=-.34;merged.add(glow);
   }
   const muzzlePoint=new THREE.Object3D();
   muzzlePoint.position.set(0,-.01,.4);
-  g.userData.muzzlePoint=muzzlePoint;g.add(muzzlePoint);
-  return g;
+  merged.userData.muzzlePoint=muzzlePoint;merged.add(muzzlePoint);
+  return merged;
 }
 
 export default {category:'Weapons',label:'Uzi',build:()=>makeUziModel()};

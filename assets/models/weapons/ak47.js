@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeWeaponMeshes} from './weapon-merge.js';
 
 // AK-47: receiver de aço, furniture de madeira (forend + coronha), pente
 // banana curvo característico, tubo de gás acima do cano e cano com bloco de
@@ -44,14 +45,15 @@ export function makeAk47Model({pickup=false}={}){
   // garganta + coronha de madeira
   g.add(box(.06,.1,.1,woodMat,0,-.04,-.2,.2));
   g.add(box(.055,.12,.26,woodMat,0,.01,-.36,.05));
+  const merged=mergeWeaponMeshes(g); // funde peças rígidas por material (visual-idêntico)
   if(pickup){
     const glow=new THREE.Mesh(new THREE.TorusGeometry(.6,.04,8,28),glowMat);
-    glow.rotation.x=Math.PI/2;glow.position.y=-.34;g.add(glow);
+    glow.rotation.x=Math.PI/2;glow.position.y=-.34;merged.add(glow);
   }
   const muzzlePoint=new THREE.Object3D();
   muzzlePoint.position.set(0,.04,.7);
-  g.userData.muzzlePoint=muzzlePoint;g.add(muzzlePoint);
-  return g;
+  merged.userData.muzzlePoint=muzzlePoint;merged.add(muzzlePoint);
+  return merged;
 }
 
 export default {category:'Weapons',label:'AK47',build:()=>makeAk47Model()};

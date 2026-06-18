@@ -11,10 +11,18 @@ import {playerPos,cur,getWasted} from './player.js';
 import {spawnDrop} from './missions.js';
 import {makeBloodPuddle} from '../assets/models/effects/blood-puddle.js';
 
+// Scratch reaproveitado: quem chama consome o resultado NA HORA (set/position na
+// mesma linha), então um único array reusado evita 5 alocações de array por chamada.
+// Antes era um literal aninhado [[..],[..],[..],[..]] recriado por pedestre a CADA
+// frame no laço de updatePeds (estado 'walk') — GC sustentado à toa.
+const _corner=[0,0];
 export function pedCorner(p){
   const[i,j]=p.block;
   const xa=nodeX(i)+9,xb=nodeX(i+1)-9,za=nodeX(j)+9,zb=nodeX(j+1)-9;
-  return[[xa,za],[xb,za],[xb,zb],[xa,zb]][p.corner];
+  // cantos do quarteirão: 0:(xa,za) 1:(xb,za) 2:(xb,zb) 3:(xa,zb)
+  _corner[0]=(p.corner===1||p.corner===2)?xb:xa;
+  _corner[1]=p.corner>=2?zb:za;
+  return _corner;
 }
 
 export const peds=[];

@@ -263,6 +263,14 @@ function step(dt){
   updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
   updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
+  // Veículos parados (avião/barco/trator/bombeiro/ambulância/carro do jogador):
+  // não desenha os que estão ALÉM da névoa — lá já são invisíveis, então é
+  // visual-neutro. O corte acompanha a névoa (que abre na altitude). O carro
+  // dirigido não está em idleCars; os parados voltam a aparecer ao se aproximar.
+  {const vf=scene.fog?scene.fog.far:430,v2=vf*vf;
+   for(const c of idleCars){if(!c.g)continue;
+     const dx=c.g.position.x-pp.x,dz=c.g.position.z-pp.z;
+     c.g.visible=dx*dx+dz*dz<v2;}}
   P.end();
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);

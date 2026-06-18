@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeWeaponMeshes} from './weapon-merge.js';
 
 // Pistola PADRÃO do open-world: uma semi-automática cinza estilo Colt M1911 — o
 // traço que a distingue de uma Glock é o CÃO EXTERNO (spur hammer) na traseira,
@@ -95,18 +96,21 @@ export function makePistolModel({pickup=false}={}){
   grip.rotation.x=0;                  // punho reto/vertical (preferência do projeto)
   g.add(grip);
 
+  // funde as ~30 peças rígidas por material (visual-idêntico, ~6 draws)
+  const merged=mergeWeaponMeshes(g);
+
   if(pickup){
     const glow=new THREE.Mesh(new THREE.TorusGeometry(.9,.045,8,28),glowMat);
     glow.rotation.x=Math.PI/2;
     glow.position.y=mm(-110);
-    g.add(glow);
+    merged.add(glow); // transparente/pulsa no chão: fica fora da fusão
   }
 
   const muzzlePoint=new THREE.Object3D();
   muzzlePoint.position.set(0,yBore,zMuzzle+mm(8));
-  g.userData.muzzlePoint=muzzlePoint;
-  g.add(muzzlePoint);
-  return g;
+  merged.userData.muzzlePoint=muzzlePoint;
+  merged.add(muzzlePoint);
+  return merged;
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).

@@ -66,6 +66,9 @@ export const gangPeds=[];
 // são ramos mutuamente exclusivos → um único _gdir serve aos dois. Não usar em
 // m.tgt/m.vel (guardados no membro e lidos em frames posteriores).
 const _gdir=new THREE.Vector3();
+// LOD igual ao dos pedestres: membro de gangue além disso não é desenhado nem
+// simulado (cada um é uma SkinnedMesh cujo skeleton.update só roda quando renderiza).
+const GANG_CULL2=130*130;
 
 // Durante a corrida de rua as gangues somem (ficam invisíveis e congeladas) e
 // voltam quando a prova termina — ver js/race.js. Não destrói ninguém: só pausa.
@@ -219,6 +222,13 @@ export function updateGangs(dt){
     }
     const g=m.gang;
     const distP=Math.hypot(pp.x-p.x,pp.z-p.z);
+    // LOD: membro longe não desenha nem simula (mesma distância dos pedestres). A
+    // pausa (corrida/minigame não-rampage) tem prioridade: applyGangsVisibility já
+    // escondeu todos e aqui não os mostramos de novo. Membros em aggro/perseguição
+    // ficam dentro da faixa de aggro (~90m) < 130m, então não são afetados.
+    if(distP>=GANG_CULL2){m.g.visible=false;continue;}
+    if(!gangsPaused)m.g.visible=true;
+    if(!m.g.visible)continue;
     const playerInside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r;
     const aggro=state.started&&state.mode!=='cut'&&!playerSafe
       &&(playerInside||g.alarmT>0)&&distP<g.r+30;

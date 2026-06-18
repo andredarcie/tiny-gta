@@ -41,6 +41,14 @@ const mirrorG=new THREE.BoxGeometry(.13,.08,.06);
 const exhaustG=new THREE.CylinderGeometry(.04,.04,.18,6);
 const columnG=new THREE.CylinderGeometry(.03,.03,.52,6);
 const wheelG=new THREE.CylinderGeometry(.30,.30,.26,12);
+// CylinderGeometry gera 3 grupos (lateral, tampa de cima, tampa de baixo), e as
+// duas tampas são CONTÍGUAS no index buffer. Funde-as num grupo só: a roda passa
+// de 3 draws (pneu + 2 tampas) para 2 (pneu + cubo) com os MESMOS materiais e
+// pixels idênticos. O material array vira [pneu, cubo] (índice 1 nas duas tampas).
+if(wheelG.groups.length===3){
+  const g=wheelG.groups;
+  wheelG.groups=[g[0],{start:g[1].start,count:g[1].count+g[2].count,materialIndex:1}];
+}
 const hlG=new THREE.BoxGeometry(.26,.13,.06);
 const tlG=new THREE.BoxGeometry(.3,.11,.06);
 const seatBaseG=new THREE.BoxGeometry(.5,.14,.5);
@@ -193,7 +201,7 @@ function buildCar({color=0xff2e88,police=false}={}){
   g.userData.wheels=[];g.userData.front=[];
   for(const[sx,sz]of[[1,1.45],[-1,1.45],[1,-1.08],[-1,-1.08]]){
     const wg=new THREE.Group();wg.position.set(sx*.75,.30,sz);wg.rotation.order='YXZ';
-    const w=new THREE.Mesh(wheelG,[tireM,hubM,hubM]);
+    const w=new THREE.Mesh(wheelG,[tireM,hubM]);
     w.rotation.z=Math.PI/2;wg.add(w);
     g.add(wg);g.userData.wheels.push(wg);
     if(sz>0)g.userData.front.push(wg);
