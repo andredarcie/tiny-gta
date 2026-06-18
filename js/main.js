@@ -31,6 +31,7 @@ import {updateImportExport} from './import-export.js';     // Open-world: garage
 import {updateBombShop} from './bomb-shop.js';             // Open-world: o artificeiro arma o carro-bomba
 import {updateRcToyz} from './rc-toyz.js';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from './weapon-pickups.js';  // Open-world: as 12 armas escondidas pelo mapa
+import {updateBloodstains} from './bloodstains.js';       // Multiplayer assíncrono: poças de morte (estilo Souls)
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
 import {blinkBar} from './entities.js';
@@ -226,6 +227,7 @@ function step(dt){
   updateRcToyz(dt);
   updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
   updateWeaponPickups(dt);
+  updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   P.end();
   P.begin('weapons');updateWeapons(dt);P.end();
   P.begin('misc');
@@ -355,6 +357,7 @@ window.render_game_to_text=()=>{
     fertilizer:state.fertilizer|0, // plant-food charges
     generalStore:refs.getGeneralStoreState?.()||null,
     overkill:refs.getOverkillState?.()||null,
+    bloodstains:refs.getBloodstainsState?.()||null, // poças de morte ativas no mundo (multiplayer)
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],

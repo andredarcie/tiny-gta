@@ -39,6 +39,13 @@ export function mgSig(secret: string, game: string, score: number, won: number, 
   return createHmac('sha256', secret).update(`${game}.${score}.${won}.${t}`).digest('hex');
 }
 
+// Assinatura do CRIA-POÇA (bloodstain create): HMAC-SHA256(secret, `${x}.${z}.${money}.${t}`)
+// com x/z inteiros (Math.round nos dois lados). Igual ao cliente em js/bloodstains.js —
+// o servidor rejeita uma poça com valor/posição editados na aba Network sem re-assinar.
+export function bloodstainSig(secret: string, x: number, z: number, money: number, t: number): string {
+  return createHmac('sha256', secret).update(`${Math.round(x)}.${Math.round(z)}.${money}.${t}`).digest('hex');
+}
+
 // Compara dois hex de forma timing-safe; false em formato/tamanho inesperado.
 export function safeEqualHex(a: unknown, b: unknown): boolean {
   if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length || a.length === 0) return false;
