@@ -11,6 +11,7 @@ import {addFarmHouse} from '../assets/models/props/farm-house.js';
 import {addPine} from '../assets/models/props/pine.js';
 import {addTree} from '../assets/models/props/tree.js';
 import {addParkBench} from '../assets/models/props/park-bench.js';
+import {addFountain} from '../assets/models/props/fountain.js';
 import {addBush} from '../assets/models/props/bush.js';
 import {addFern} from '../assets/models/props/fern.js';
 import {addMushroom} from '../assets/models/props/mushroom.js';
@@ -145,10 +146,34 @@ const groundCv=document.createElement('canvas');groundCv.width=2048;groundCv.hei
 
 export {buildingMats}; // daynight.js controla emissiveIntensity (janelas acesas à noite)
 
+// Pracinhas da cidade: o chão já tem o gramado verde + os caminhos em cruz
+// (textura acima). Aqui mobiliamos cada uma como uma praça de verdade — fonte
+// central, bancos virados pra ela, postes nos cantos e árvores/arbustos nos
+// quadrantes — em vez das 7 palmeiras soltas de antes. Os 4 braços do caminho
+// (eixos x=cx e z=cz) ficam livres: tudo é colocado nos quadrantes (diagonais).
+function addCityPark(x0,z0,inner){
+  const cx=x0+inner/2,cz=z0+inner/2; // centro = cruzamento dos caminhos
+  // Fonte no centro (sólida: não dá pra atravessar a bacia).
+  solids.push(addFountain(cx,cz));
+  // Postes nos quatro cantos: dão estrutura à praça e a iluminam à noite.
+  for(const sx of[-1,1])for(const sz of[-1,1])addStreetLamp(cx+sx*9.5,cz+sz*9.5);
+  // Um banco em cada quadrante, encarando a fonte (mantém os caminhos livres).
+  for(const sx of[-1,1])for(const sz of[-1,1])
+    solids.push(addParkBench(cx+sx*3.6,cz+sz*3.6,Math.atan2(-sx,-sz)));
+  // Cada quadrante ganha uma árvore (às vezes palmeira) mais afastada e alguns
+  // arbustos/samambaias espalhados, sempre fora dos braços do caminho central.
+  for(const sx of[-1,1])for(const sz of[-1,1]){
+    (Math.random()<.7?addTree:addPalm)(cx+sx*rand(6,8.2),cz+sz*rand(6,8.2));
+    const n=irand(2,3);
+    for(let k=0;k<n;k++){
+      const r=Math.random();
+      (r<.5?addBush:r<.8?addFern:addMushroom)(cx+sx*rand(2.4,9),cz+sz*rand(2.4,9));
+    }
+  }
+}
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   if(!isPark(i,j))continue;
-  const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE,inner=BLOCK-2*SIDE;
-  for(let k=0;k<7;k++)addPalm(x0+rand(1,inner-1),z0+rand(1,inner-1));
+  addCityPark(nodeX(i)+ROAD/2+SIDE,nodeX(j)+ROAD/2+SIDE,BLOCK-2*SIDE);
 }
 for(const lot of cityLots){
   if(lot.empty)addAbandonedLot(lot.cx,lot.cz,lot.w,lot.d,solids);
