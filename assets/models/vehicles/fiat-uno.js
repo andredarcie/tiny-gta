@@ -74,12 +74,15 @@ function buildUno({color=0x3b7ac2}={}){
   // 2) hide the sedan greenhouse glass (renderOrder 3 mesh), the inherited boxy
   //    headlights (lone MeshBasic glow without a map) and the sedan bumpers.
   g.userData.dentable[1].visible=false; // inherited bumpers off
+  const drop=[];
   g.traverse(o=>{
     if(!o.isMesh)return;
     if(o.renderOrder===3)o.visible=false;
+    if(o.position.z>3)drop.push(o); // inherited headlight beam plane (z=4.8): inflates bounds
     const m=o.material;
     if(m&&m.isMeshBasicMaterial&&!m.map&&m.color&&m.color.getHex()===0xfff2c0)o.visible=false;
   });
+  for(const o of drop)o.parent.remove(o);
 
   // 3) move the brake lights up to the rear corners — Kamm-tail vertical lamps (keeps userData.tailM)
   g.traverse(o=>{if(o.isMesh&&o.material===g.userData.tailM)o.position.set(0,.28,.42);});
@@ -131,6 +134,6 @@ function buildUno({color=0x3b7ac2}={}){
 export function makeFiatUno(color){const g=buildUno({color});scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered) with a couple of paint variants.
-export default {category:'Vehicles',label:'Fiat Uno',build:buildUno,zoom:.82,yaw:.6,
+export default {category:'Vehicles',label:'Fiat Uno',build:buildUno,zoom:.7,yaw:.6,
   variants:[{label:'Fiat Uno — blue',opts:{color:0x3b7ac2}},
             {label:'Fiat Uno — red',opts:{color:0xc23b4e}}]};

@@ -80,12 +80,15 @@ function buildKombi(){
   // 2) hide the sedan greenhouse glass (renderOrder 3 mesh), the inherited boxy
   //    headlights (lone MeshBasic glow without a map) and the sedan bumpers.
   g.userData.dentable[1].visible=false; // inherited bumpers off
+  const drop=[];
   g.traverse(o=>{
     if(!o.isMesh)return;
     if(o.renderOrder===3)o.visible=false;
+    if(o.position.z>3)drop.push(o); // inherited headlight beam plane (z=4.8): inflates bounds
     const m=o.material;
     if(m&&m.isMeshBasicMaterial&&!m.map&&m.color&&m.color.getHex()===0xfff2c0)o.visible=false;
   });
+  for(const o of drop)o.parent.remove(o);
 
   // 3) move the brake lights to the rear corners at beltline height (keeps userData.tailM)
   g.traverse(o=>{if(o.isMesh&&o.material===g.userData.tailM)o.position.set(0,.27,-.16);});
@@ -130,14 +133,14 @@ function buildKombi(){
   // 7) round headlights with chrome bezels in the lower corners + VW roundel centred
   for(const sx of[-1,1]){
     const lamp=new THREE.Mesh(headG,hlM);
-    lamp.rotation.x=Math.PI/2;lamp.position.set(sx*.64,.62,2.32);g.add(lamp);
+    lamp.rotation.x=Math.PI/2;lamp.position.set(sx*.74,.6,2.32);g.add(lamp);
     const bezel=new THREE.Mesh(bezelG,chromeM);
-    bezel.position.set(sx*.64,.62,2.33);g.add(bezel);
+    bezel.position.set(sx*.74,.6,2.33);g.add(bezel);
   }
   const badge=new THREE.Mesh(badgeG,chromeM);
-  badge.rotation.x=Math.PI/2;badge.position.set(0,.64,2.33);g.add(badge);
+  badge.rotation.x=Math.PI/2;badge.position.set(0,.72,2.33);g.add(badge);
   const badgeRing=new THREE.Mesh(badgeRingG,trimM);
-  badgeRing.position.set(0,.64,2.355);g.add(badgeRing);
+  badgeRing.position.set(0,.72,2.355);g.add(badgeRing);
 
   // 8) chrome wrap bumpers (front & rear) + beltline trim down each side
   const fb=new THREE.Mesh(bumperG,chromeM);fb.position.set(0,.34,2.37);g.add(fb);
@@ -165,4 +168,4 @@ export function makeKombi(){const g=buildKombi();scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered). zoom<1 frames the tall van; yaw shows a
 // front 3/4 so the grille, headlights and roundel read straight away.
-export default {category:'Vehicles',label:'Kombi (Bus)',build:buildKombi,zoom:.6,yaw:.6};
+export default {category:'Vehicles',label:'Kombi (Bus)',build:buildKombi,zoom:.82,yaw:.6};
