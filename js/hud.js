@@ -10,7 +10,7 @@ import {inGangTerritory} from './gangs.js';
 
 const $=id=>document.getElementById(id);
 export const hudMoney=$('money'),hudClock=$('clock'),hudHealth=$('health-val'),
-  hudStars=[...document.querySelectorAll('#stars .s')],
+  hudStarsBox=$('stars'),hudStars=[...document.querySelectorAll('#stars .s')],
   hudCar=$('carname'),hudPrompt=$('prompt'),hudMsg=$('msg'),hudBig=$('bigtext'),
   hudWeaponIcon=$('weapon-icon'),hudWeaponAmmo=$('weapon-ammo'),hudWeaponName=$('weapon-name'),
   hudAmmoNow=$('ammo-now'),hudAmmoMax=$('ammo-max'),hudCrosshair=$('crosshair'),
@@ -743,7 +743,13 @@ export function updateHUD(dt){
   const hp=Math.max(0,Math.round(state.health));
   if(hp!==_health){hudHealth.textContent=hp;_health=hp;}
   const w=Math.floor(state.wanted);
-  if(w!==_wanted){hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));_wanted=w;}
+  if(w!==_wanted){
+    // As estrelas só aparecem com pelo menos 1 nível de procurado; em w=0 o
+    // container inteiro some (sem estrelas vazias na HUD).
+    hudStarsBox?.classList.toggle('show',w>0);
+    hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));
+    _wanted=w;
+  }
   // Fôlego: aparece nadando (e até reencher fora d'água); pisca/vermelho sem ar
   if(hudBreath){
     const showB=state.swimming||state.swimAir<.999;
