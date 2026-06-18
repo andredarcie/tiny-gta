@@ -3,20 +3,27 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '../../../js/engine.js';
 
-// VW Kombi (Type 2 "bread loaf" bus) — the classic Brazilian white van. Built on the
-// shared car rig (wheels, doors, steering wheel, dent system, brake lights) so it
-// drives, brakes, dents and gets stolen exactly like every other car; we only swap
-// the painted shell for a tall, boxy forward-control van and re-dress the front
-// (split windshield, round headlights, chrome roundel) and the rear glass.
+// VW Kombi (Type 2 "bay window" / "pão de forma") — the classic Brazilian white van,
+// modelled to the real T2: 4505 x 1720 x 1940 mm on a 2400 mm wheelbase (scaled here
+// to the shared car rig's 2.53-unit wheelbase). Built on that rig so it drives, brakes,
+// dents and gets stolen like any car; we swap the painted shell for the tall van and
+// re-dress the front exactly like the real thing:
+//   - ONE large, slightly curved windshield (the T2 dropped the T1 split screen)
+//   - a black grille panel under the windshield with AMBER turn-signals at its ends
+//   - two round headlights low in the front corners + the VW roundel centred between them
+//   - chrome wrap bumpers, a beltline trim, long side windows and the rear engine louvres
 //
-// Car coordinates: +z = forward, x = width, y = height from the ground (wheels touch
-// at y0). Front axle z=+1.45, rear axle z=-1.08 (inherited from car.js).
+// Car coordinates: +z = forward, x = width, y = height from the ground (wheels touch at
+// y0). Front axle z=+1.45, rear axle z=-1.08 (inherited from car.js).
 
-const paintM=new THREE.MeshStandardMaterial({color:0xf2f3f5,roughness:.5,metalness:.1});   // matte white body
+const paintM=new THREE.MeshStandardMaterial({color:0xeef0f2,roughness:.55,metalness:.08});  // matte white body
 const glassM=new THREE.MeshStandardMaterial({color:0x8fc3e0,roughness:.08,metalness:.6,
-  transparent:true,opacity:.42,depthWrite:false});                                          // same blue glass as the car
-const chromeM=new THREE.MeshStandardMaterial({color:0xc7ccd4,roughness:.3,metalness:.85});
-const hlM=new THREE.MeshBasicMaterial({color:0xfff2c0});
+  transparent:true,opacity:.42,depthWrite:false});                                           // same blue glass as the car
+const chromeM=new THREE.MeshStandardMaterial({color:0xc8ccd2,roughness:.28,metalness:.85});  // bumpers / bezels / roundel
+const trimM=new THREE.MeshStandardMaterial({color:0x20232a,roughness:.6,metalness:.3});      // grille panel + louvres
+const slatM=new THREE.MeshStandardMaterial({color:0x40444d,roughness:.6,metalness:.4});      // grille slats
+const amberM=new THREE.MeshBasicMaterial({color:0xff9a2e});                                   // turn-signal lenses
+const hlM=new THREE.MeshBasicMaterial({color:0xfff2c0});                                      // headlights
 
 // Clone a base geometry already positioned in car coordinates (same helper as car.js).
 function placed(geo,x,y,z,rx=0,rz=0){
@@ -27,27 +34,38 @@ function placed(geo,x,y,z,rx=0,rz=0){
   return g;
 }
 
-// Van shell fused into ONE mesh (replaces the sedan body, stays dentable): a tall
-// lower slab, a slightly narrower greenhouse set back from the nose, and a roof cap.
-// The lower nose juts ahead of the windshield base — the unmistakable Kombi profile.
+// Van shell fused into ONE mesh (replaces the sedan body, stays dentable): a tall lower
+// slab below the beltline, a window-band greenhouse, and a roof cap. The lower nose juts
+// ahead of the windshield base — the unmistakable bay-window face.
 const vanBodyGeo=mergeGeometries([
-  placed(new THREE.BoxGeometry(1.72,.66,4.04),0,.63,0),       // lower body slab
-  placed(new THREE.BoxGeometry(1.66,.94,3.84),0,1.43,-.05),   // greenhouse
-  placed(new THREE.BoxGeometry(1.54,.12,3.6),0,1.94,-.08),    // roof cap
+  placed(new THREE.BoxGeometry(1.78,.68,4.66),0,.66,-.03),    // lower body slab (below beltline)
+  placed(new THREE.BoxGeometry(1.72,.92,4.5),0,1.42,-.06),    // greenhouse (window band)
+  placed(new THREE.BoxGeometry(1.64,.14,4.2),0,1.93,-.10),    // rounded roof cap
 ],false);
 
 // Loose detail geometries.
-const winG=new THREE.BoxGeometry(.74,.78,.05);     // windshield pane (split, one each side)
-const dividerG=new THREE.BoxGeometry(.07,.8,.06);  // central windshield split bar
-const sideWinG=new THREE.BoxGeometry(.04,.7,2.7);  // long side window
-const rearWinG=new THREE.BoxGeometry(1.18,.7,.05);
-const headG=new THREE.CylinderGeometry(.13,.13,.05,16);  // round headlight disc
-const bezelG=new THREE.TorusGeometry(.135,.028,8,16);    // chrome rim around it
-const badgeG=new THREE.CylinderGeometry(.16,.16,.04,18); // VW-style nose roundel
-const doorPanelG=new THREE.BoxGeometry(.06,.72,1.0);     // taller cab door
+const windG=new THREE.BoxGeometry(1.5,.74,.05);    // single curved-ish windshield (one piece)
+const sideWinG=new THREE.BoxGeometry(.04,.56,3.4);  // long side window band
+const pillarG=new THREE.BoxGeometry(.08,.56,.08);   // B/C pillar splitting the side glass
+const rearWinG=new THREE.BoxGeometry(1.3,.52,.05);
+const grilleG=new THREE.BoxGeometry(1.24,.2,.05);   // black front grille panel
+const slatG=new THREE.BoxGeometry(1.12,.02,.06);    // grille slats
+const signalG=new THREE.BoxGeometry(.16,.16,.06);   // amber turn signal at a grille end
+const headG=new THREE.CylinderGeometry(.155,.155,.05,18); // round headlight
+const bezelG=new THREE.TorusGeometry(.16,.03,8,18);       // chrome rim
+const badgeG=new THREE.CylinderGeometry(.18,.18,.04,20);  // VW roundel disc
+const badgeRingG=new THREE.TorusGeometry(.18,.022,8,20);
+const beltG=new THREE.BoxGeometry(.03,.05,4.5);     // beltline chrome trim
+const bumperG=new THREE.BoxGeometry(1.74,.18,.26);  // wrap bumper
+const louvreG=new THREE.BoxGeometry(.02,.025,.55);  // rear engine-bay vent slat
+const doorPanelG=new THREE.BoxGeometry(.06,.6,1.0); // cab door panel
+const stalkG=new THREE.BoxGeometry(.14,.04,.04);    // mirror stalk
+const mirrorG=new THREE.BoxGeometry(.05,.2,.14);    // big cab-door mirror head
+const wiperG=new THREE.BoxGeometry(.5,.02,.025);    // windshield wiper
+const overG=new THREE.BoxGeometry(.1,.22,.1);       // bumper overrider nub
 
 function buildKombi(){
-  const g=carModel.build({color:0xf2f3f5}); // full car rig (NOT added to the scene)
+  const g=carModel.build({color:0xeef0f2}); // full car rig (NOT added to the scene)
 
   // 1) swap the sedan shell for the van silhouette (still dentable → dents on impact)
   const body=g.userData.dentable[0];
@@ -55,9 +73,10 @@ function buildKombi(){
   body.material=paintM;
   body.castShadow=true;
 
-  // 2) hide the sedan greenhouse glass (single mesh at renderOrder 3) and the inherited
-  //    boxy headlights (the only MeshBasic glow without a map) — we re-add van glass
-  //    and round lamps below.
+  // 2) hide the sedan greenhouse glass (renderOrder 3 mesh), the inherited boxy
+  //    headlights (lone MeshBasic glow without a map) and the sedan bumpers — all
+  //    re-modelled below to match the real van.
+  g.userData.dentable[1].visible=false; // inherited bumpers off
   g.traverse(o=>{
     if(!o.isMesh)return;
     if(o.renderOrder===3)o.visible=false;
@@ -65,43 +84,75 @@ function buildKombi(){
     if(m&&m.isMeshBasicMaterial&&!m.map&&m.color&&m.color.getHex()===0xfff2c0)o.visible=false;
   });
 
-  // 3) move the brake lights onto the van's tall rear (keeps userData.tailM working)
-  g.traverse(o=>{if(o.isMesh&&o.material===g.userData.tailM)o.position.set(0,.07,.16);});
+  // 3) move the brake lights to the rear corners at beltline height (keeps userData.tailM)
+  g.traverse(o=>{if(o.isMesh&&o.material===g.userData.tailM)o.position.set(0,.25,-.16);});
 
-  // 4) reshape the two front doors into tall cab doors hinged up by the nose
+  // 4) reshape the two front doors into the cab doors hinged at the A-pillar
   for(const pivot of g.userData.doors){
-    pivot.position.y=.66;pivot.position.z=1.18;
+    pivot.position.y=.66;pivot.position.z=1.7;
     const panel=pivot.children[0];
     panel.geometry=doorPanelG;
     panel.material=paintM;
     panel.position.set(0,0,-.5);
   }
 
-  // 5) split windshield (two panes + central bar)
-  for(const sx of[-1,1]){
-    const pane=new THREE.Mesh(winG,glassM);
-    pane.position.set(sx*.41,1.42,1.89);pane.renderOrder=3;g.add(pane);
-  }
-  const divider=new THREE.Mesh(dividerG,paintM);
-  divider.position.set(0,1.42,1.9);g.add(divider);
-
-  // 6) long side windows + rear window
+  // 5) single windshield + long side windows (split by B/C pillars) + rear window
+  const ws=new THREE.Mesh(windG,glassM);
+  ws.position.set(0,1.42,2.2);ws.rotation.x=-.16;ws.renderOrder=3;g.add(ws);
   for(const sx of[-1,1]){
     const w=new THREE.Mesh(sideWinG,glassM);
-    w.position.set(sx*.835,1.42,-.1);w.renderOrder=3;g.add(w);
+    w.position.set(sx*.87,1.42,-.1);w.renderOrder=3;g.add(w);
+    for(const pz of[.55,-.7]){
+      const p=new THREE.Mesh(pillarG,paintM);p.position.set(sx*.872,1.42,pz);g.add(p);
+    }
+    // rear engine-bay air louvres on the upper rear quarter
+    for(let i=0;i<4;i++){
+      const l=new THREE.Mesh(louvreG,trimM);l.position.set(sx*.875,1.34+i*.08,-1.92);g.add(l);
+    }
   }
   const rw=new THREE.Mesh(rearWinG,glassM);
-  rw.position.set(0,1.42,-1.99);rw.renderOrder=3;g.add(rw);
+  rw.position.set(0,1.42,-2.31);rw.renderOrder=3;g.add(rw);
 
-  // 7) round headlights with chrome bezels + the VW-style roundel on the nose
+  // 6) black grille panel (with slats) + amber turn signals at its ends, just under
+  //    the windshield
+  const grille=new THREE.Mesh(grilleG,trimM);
+  grille.position.set(0,.99,2.3);g.add(grille);
+  for(let i=0;i<3;i++){
+    const s=new THREE.Mesh(slatG,slatM);s.position.set(0,.92+i*.07,2.325);g.add(s);
+  }
+  for(const sx of[-1,1]){
+    const sig=new THREE.Mesh(signalG,amberM);sig.position.set(sx*.66,.99,2.31);g.add(sig);
+  }
+
+  // 7) round headlights with chrome bezels in the lower corners + VW roundel centred
   for(const sx of[-1,1]){
     const lamp=new THREE.Mesh(headG,hlM);
-    lamp.rotation.x=Math.PI/2;lamp.position.set(sx*.56,.62,2.03);g.add(lamp);
+    lamp.rotation.x=Math.PI/2;lamp.position.set(sx*.62,.62,2.31);g.add(lamp);
     const bezel=new THREE.Mesh(bezelG,chromeM);
-    bezel.position.set(sx*.56,.62,2.045);g.add(bezel);
+    bezel.position.set(sx*.62,.62,2.32);g.add(bezel);
   }
   const badge=new THREE.Mesh(badgeG,chromeM);
-  badge.rotation.x=Math.PI/2;badge.position.set(0,.74,2.04);g.add(badge);
+  badge.rotation.x=Math.PI/2;badge.position.set(0,.64,2.32);g.add(badge);
+  const badgeRing=new THREE.Mesh(badgeRingG,trimM);
+  badgeRing.position.set(0,.64,2.345);g.add(badgeRing);
+
+  // 8) chrome wrap bumpers (front & rear) + beltline trim down each side
+  const fb=new THREE.Mesh(bumperG,chromeM);fb.position.set(0,.34,2.37);g.add(fb);
+  const rb=new THREE.Mesh(bumperG,chromeM);rb.position.set(0,.34,-2.43);g.add(rb);
+  for(const sx of[-1,1]){
+    const belt=new THREE.Mesh(beltG,chromeM);belt.position.set(sx*.905,.99,-.06);g.add(belt);
+  }
+
+  // 9) cab-door mirrors on stalks, two windshield wipers, front bumper overriders
+  for(const sx of[-1,1]){
+    const stalk=new THREE.Mesh(stalkG,trimM);stalk.position.set(sx*.94,1.24,1.55);g.add(stalk);
+    const head=new THREE.Mesh(mirrorG,trimM);head.position.set(sx*1.0,1.24,1.52);g.add(head);
+    const over=new THREE.Mesh(overG,chromeM);over.position.set(sx*.5,.38,2.42);g.add(over);
+  }
+  for(const sx of[-1,1]){
+    const wiper=new THREE.Mesh(wiperG,trimM);
+    wiper.position.set(sx*.32,1.12,2.27);wiper.rotation.z=sx*.5;g.add(wiper);
+  }
 
   return g;
 }
@@ -110,5 +161,5 @@ function buildKombi(){
 export function makeKombi(){const g=buildKombi();scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered). zoom<1 frames the tall van; yaw shows a
-// rear 3/4 so the split windshield and roundel read straight away.
-export default {category:'Vehicles',label:'Kombi (Bus)',build:buildKombi,zoom:.62,yaw:-.5};
+// front 3/4 so the grille, headlights and roundel read straight away.
+export default {category:'Vehicles',label:'Kombi (Bus)',build:buildKombi,zoom:.6,yaw:.6};

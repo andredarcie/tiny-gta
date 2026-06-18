@@ -3,19 +3,25 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '../../../js/engine.js';
 
-// Fiat Uno (Mille / Fire) — the boxy little Brazilian hatchback ("quadrado"). Built on
-// the shared car rig so it drives, brakes, dents and gets stolen like any car; we just
-// swap the painted shell for a short, tall, sharp-edged two-box hatch with a steep
-// windshield, a near-vertical tailgate, rectangular headlights and a slim Fiat grille.
-// It keeps the rig's body paint, so a colour can be passed in like the sedan.
+// Fiat Uno (Mk1 / Brazilian "Mille Fire") — the tall, square little hatchback Giugiaro
+// drew with a Kamm tail. Modelled to the real Mk1: ~3689 x 1556 x 1410 mm on a 2362 mm
+// wheelbase (scaled here to the car rig's 2.53-unit wheelbase). Built on that rig so it
+// drives, brakes, dents and gets stolen like any car; we swap the shell for the boxy
+// hatch and dress it to match:
+//   - a TALL, upright greenhouse with a big glass area and a flat roof
+//   - a short, slightly dropping bonnet; a near-vertical tailgate
+//   - wide rectangular headlights with a slim grille between them
+//   - big matte-black plastic bumpers front & rear and a black side rub strip
+// It keeps the rig's body paint, so a colour is passed in like the sedan.
 //
-// Car coordinates: +z = forward, x = width, y = height from the ground (wheels touch
-// at y0). Front axle z=+1.45, rear axle z=-1.08 (inherited from car.js).
+// Car coordinates: +z = forward, x = width, y = height from the ground (wheels touch at
+// y0). Front axle z=+1.45, rear axle z=-1.08 (inherited from car.js).
 
 const glassM=new THREE.MeshStandardMaterial({color:0x8fc3e0,roughness:.08,metalness:.6,
   transparent:true,opacity:.42,depthWrite:false});                                          // same blue glass as the car
-const grilleM=new THREE.MeshStandardMaterial({color:0x1a1d24,roughness:.6,metalness:.3});
-const hlM=new THREE.MeshBasicMaterial({color:0xfff2c0});
+const blackM=new THREE.MeshStandardMaterial({color:0x14161b,roughness:.85,metalness:.05});  // plastic bumpers + rub strip
+const grilleM=new THREE.MeshStandardMaterial({color:0x20232a,roughness:.6,metalness:.3});
+const hlM=new THREE.MeshBasicMaterial({color:0xfff2c0});                                     // headlights
 
 // Clone a base geometry already positioned in car coordinates (same helper as car.js).
 function placed(geo,x,y,z,rx=0,rz=0){
@@ -26,23 +32,30 @@ function placed(geo,x,y,z,rx=0,rz=0){
   return g;
 }
 
-// Hatchback shell fused into ONE mesh (replaces the sedan body, stays dentable, keeps
-// the sedan paint material so it takes the requested colour): a low lower body, a
-// short flat hood up front, a TALL boxy cabin and a flat roof — no taper, all square.
+// Hatchback shell fused into ONE mesh (replaces the sedan body, keeps the sedan paint
+// material so it takes the requested colour, stays dentable): a low body, a short
+// dropping bonnet up front, a TALL boxy cabin and a flat roof — no taper, all square.
 const unoBodyGeo=mergeGeometries([
-  placed(new THREE.BoxGeometry(1.62,.62,3.9),0,.61,0),       // lower body
-  placed(new THREE.BoxGeometry(1.54,.18,1.16),0,.96,1.30),   // short hood
-  placed(new THREE.BoxGeometry(1.52,.62,2.34),0,1.16,-.3),   // tall boxy cabin
-  placed(new THREE.BoxGeometry(1.36,.1,2.0),0,1.50,-.35),    // flat roof cap
+  placed(new THREE.BoxGeometry(1.66,.56,3.83),0,.58,.13),     // lower body
+  placed(new THREE.BoxGeometry(1.58,.14,.95),0,.87,1.55,-.06),// short dropping bonnet
+  placed(new THREE.BoxGeometry(1.56,.66,2.5),0,1.15,-.25),    // tall boxy cabin
+  placed(new THREE.BoxGeometry(1.4,.1,2.1),0,1.48,-.3),       // flat roof cap
 ],false);
 
 // Loose detail geometries.
-const windG=new THREE.BoxGeometry(1.42,.6,.05);    // steep windshield
-const sideWinG=new THREE.BoxGeometry(.04,.4,1.86);  // long boxy side window
-const hatchG=new THREE.BoxGeometry(1.2,.5,.05);     // near-vertical tailgate glass
-const headG=new THREE.BoxGeometry(.32,.16,.06);     // rectangular headlight
-const grilleG=new THREE.BoxGeometry(.7,.12,.05);    // slim front grille
-const doorPanelG=new THREE.BoxGeometry(.06,.56,1.04);
+const windG=new THREE.BoxGeometry(1.5,.62,.05);    // steep windshield
+const sideWinG=new THREE.BoxGeometry(.04,.42,2.0);  // tall boxy side window
+const pillarG=new THREE.BoxGeometry(.05,.42,.06);   // B-pillar
+const hatchG=new THREE.BoxGeometry(1.3,.5,.05);     // near-vertical tailgate glass
+const headG=new THREE.BoxGeometry(.36,.18,.07);     // wide rectangular headlight
+const grilleG=new THREE.BoxGeometry(.66,.1,.05);    // slim front grille
+const bumperG=new THREE.BoxGeometry(1.62,.26,.3);   // big plastic bumper
+const intakeG=new THREE.BoxGeometry(.74,.09,.06);   // lower bumper intake slot
+const rubG=new THREE.BoxGeometry(.04,.08,2.7);      // black side rub strip
+const doorPanelG=new THREE.BoxGeometry(.06,.5,1.1); // door panel
+const badgeG=new THREE.BoxGeometry(.14,.09,.05);    // Fiat grille badge
+const stalkG=new THREE.BoxGeometry(.1,.03,.03);     // mirror stalk
+const mirrorG=new THREE.BoxGeometry(.05,.11,.12);   // door mirror head
 
 function buildUno({color=0x3b7ac2}={}){
   const g=carModel.build({color}); // full car rig in the requested colour (NOT added to the scene)
@@ -53,8 +66,9 @@ function buildUno({color=0x3b7ac2}={}){
   body.geometry=unoBodyGeo;
   body.castShadow=true;
 
-  // 2) hide the sedan greenhouse glass (renderOrder 3 mesh) and the inherited boxy
-  //    headlights (the lone MeshBasic glow without a map) — re-added to fit the hatch.
+  // 2) hide the sedan greenhouse glass (renderOrder 3 mesh), the inherited boxy
+  //    headlights (lone MeshBasic glow without a map) and the sedan bumpers.
+  g.userData.dentable[1].visible=false; // inherited bumpers off
   g.traverse(o=>{
     if(!o.isMesh)return;
     if(o.renderOrder===3)o.visible=false;
@@ -62,34 +76,48 @@ function buildUno({color=0x3b7ac2}={}){
     if(m&&m.isMeshBasicMaterial&&!m.map&&m.color&&m.color.getHex()===0xfff2c0)o.visible=false;
   });
 
-  // 3) move the brake lights onto the short tail (keeps userData.tailM working)
-  g.traverse(o=>{if(o.isMesh&&o.material===g.userData.tailM)o.position.set(0,.18,.24);});
+  // 3) move the brake lights up to the rear corners — Kamm-tail vertical lamps (keeps userData.tailM)
+  g.traverse(o=>{if(o.isMesh&&o.material===g.userData.tailM)o.position.set(0,.26,.42);});
 
   // 4) reshape the two doors to the compact hatch (keep the body-colour paint)
   for(const pivot of g.userData.doors){
-    pivot.position.y=.6;pivot.position.z=.6;
+    pivot.position.y=.58;pivot.position.z=.62;
     const panel=pivot.children[0];
     panel.geometry=doorPanelG;
-    panel.position.set(0,0,-.52);
+    panel.position.set(0,0,-.55);
   }
 
-  // 5) steep windshield + boxy side windows + near-vertical tailgate glass
+  // 5) steep windshield + tall boxy side windows (with a B-pillar) + tailgate glass
   const ws=new THREE.Mesh(windG,glassM);
-  ws.position.set(0,1.16,.84);ws.rotation.x=-.36;ws.renderOrder=3;g.add(ws);
+  ws.position.set(0,1.16,1.0);ws.rotation.x=-.32;ws.renderOrder=3;g.add(ws);
   for(const sx of[-1,1]){
     const w=new THREE.Mesh(sideWinG,glassM);
-    w.position.set(sx*.78,1.18,-.32);w.renderOrder=3;g.add(w);
+    w.position.set(sx*.79,1.18,-.3);w.renderOrder=3;g.add(w);
+    const p=new THREE.Mesh(pillarG,body.material);p.position.set(sx*.792,1.18,.12);g.add(p);
   }
   const hatch=new THREE.Mesh(hatchG,glassM);
-  hatch.position.set(0,1.18,-1.49);hatch.rotation.x=.16;hatch.renderOrder=3;g.add(hatch);
+  hatch.position.set(0,1.16,-1.52);hatch.rotation.x=.18;hatch.renderOrder=3;g.add(hatch);
 
-  // 6) rectangular headlights + slim Fiat grille across the nose
+  // 6) wide rectangular headlights + slim Fiat grille across the nose
   for(const sx of[-1,1]){
     const lamp=new THREE.Mesh(headG,hlM);
-    lamp.position.set(sx*.54,.8,1.9);g.add(lamp);
+    lamp.position.set(sx*.55,.82,2.04);g.add(lamp);
   }
   const grille=new THREE.Mesh(grilleG,grilleM);
-  grille.position.set(0,.66,1.9);g.add(grille);
+  grille.position.set(0,.8,2.05);g.add(grille);
+  const badge=new THREE.Mesh(badgeG,new THREE.MeshStandardMaterial({color:0xc8ccd2,roughness:.3,metalness:.8}));
+  badge.position.set(0,.8,2.07);g.add(badge); // Fiat badge centred on the grille
+
+  // 7) big black plastic bumpers (front with a lower intake) + black side rub strip
+  const fb=new THREE.Mesh(bumperG,blackM);fb.position.set(0,.46,2.07);g.add(fb);
+  const intake=new THREE.Mesh(intakeG,grilleM);intake.position.set(0,.4,2.23);g.add(intake);
+  const rb=new THREE.Mesh(bumperG,blackM);rb.position.set(0,.46,-1.82);g.add(rb);
+  for(const sx of[-1,1]){
+    const rub=new THREE.Mesh(rubG,blackM);rub.position.set(sx*.835,.6,.05);g.add(rub);
+    // door mirror on a short stalk
+    const stalk=new THREE.Mesh(stalkG,blackM);stalk.position.set(sx*.84,1.0,.62);g.add(stalk);
+    const head=new THREE.Mesh(mirrorG,blackM);head.position.set(sx*.9,1.0,.6);g.add(head);
+  }
 
   return g;
 }
@@ -98,6 +126,6 @@ function buildUno({color=0x3b7ac2}={}){
 export function makeFiatUno(color){const g=buildUno({color});scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered) with a couple of paint variants.
-export default {category:'Vehicles',label:'Fiat Uno',build:buildUno,
+export default {category:'Vehicles',label:'Fiat Uno',build:buildUno,zoom:.82,yaw:.6,
   variants:[{label:'Fiat Uno — blue',opts:{color:0x3b7ac2}},
             {label:'Fiat Uno — red',opts:{color:0xc23b4e}}]};
