@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {N,CELL,nodeX,pick,rand,irand,wrapA,clamp} from './constants.js';
 import {state,carNames,carColors} from './state.js';
-import {makeCar,spinWheels,dentCar,seatDriver,shirtColors} from './entities.js';
+import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from './entities.js';
 import {collideStatics,addWanted} from './physics.js';
 import {thud} from './audio.js';
 import {playerPos,cur,player,getWasted} from './player.js';
@@ -25,11 +25,22 @@ function pickNext(from,prev){
   return opts.length?pick(opts):prev;
 }
 
+// Body variety: mostly the regular sedan, plus the two Brazilian classics — a white
+// VW Kombi van and a boxy Fiat Uno (random colour). All three ride the SAME car rig,
+// so they drive, brake, dent, get stolen and seat a driver exactly the same way.
+function pickTrafficBody(){
+  const r=Math.random();
+  if(r<.12)return{g:makeKombi(),name:'BREAD LOAF VAN'};
+  if(r<.26){const ci=irand(0,carColors.length-1);return{g:makeFiatUno(carColors[ci]),name:'SQUARE FIRE'};}
+  const ci=irand(0,carColors.length-1);
+  return{g:makeCar(carColors[ci],false),name:carNames[ci]};
+}
+
 export function spawnTraffic(){
   const A=[irand(0,N),irand(0,N)],B=pick(neighborNodes(A[0],A[1]));
-  const ci=irand(0,carColors.length-1);
-  const t={g:makeCar(carColors[ci],false),A,B,C:pickNext(B,A),P:null,t:Math.random(),
-    speed:8.5,brakeT:0,name:carNames[ci],heading:0};
+  const body=pickTrafficBody();
+  const t={g:body.g,A,B,C:pickNext(B,A),P:null,t:Math.random(),
+    speed:8.5,brakeT:0,name:body.name,heading:0};
   t.driver=seatDriver(t.g,pick(shirtColors));
   traffic.push(t);
 }

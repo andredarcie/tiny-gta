@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import {state} from './state.js';
 export {beamMat,makeCar} from '../assets/models/vehicles/car.js';
+export {makeKombi} from '../assets/models/vehicles/kombi.js';
+export {makeFiatUno} from '../assets/models/vehicles/fiat-uno.js';
 export {makeMotorcycle} from '../assets/models/vehicles/motorcycle.js';
 export {makeBoat} from '../assets/models/vehicles/boat.js';
 import {makePed,makePlayerPed,shirtColors} from '../assets/models/characters/pedestrian.js';
