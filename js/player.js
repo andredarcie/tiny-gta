@@ -1141,18 +1141,26 @@ export function updateCamera(dt){
     else cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
     cameraRig.touchLookIdle=0;
   }else cameraRig.touchLookIdle+=dt;
-  // Auto-follow atrás do carro: assim que o jogador para de mexer a câmera por um
-  // instante, ela volta suavemente pra trás do carro (mesmo com pointer-lock do
-  // mouse), pra não precisar reajustar o tempo todo dirigindo. A pé continua como
-  // antes (só recentra quando não há pointer-lock nem toque ativo). Em FP a pé NÃO
-  // recentra (a mira é livre); em FP no carro ela ainda volta a olhar pra frente.
+  // Auto-follow atrás do alvo: assim que o jogador para de mexer a câmera por um
+  // instante, ela volta suavemente pra trás do carro OU do personagem (mesmo com
+  // pointer-lock do mouse), pra não precisar reajustar o tempo todo. A pé recentra
+  // atrás de player.heading (a direção que ele encara/anda), igual ao carro.
+  //
+  // Ressalva a pé: o movimento é RELATIVO à câmera (mv = camF*f + camR*side), então
+  // player.heading = yaw + offset do input. Perseguir esse heading enquanto se faz
+  // strafe (offset fixo ≠ 0) giraria a câmera num loop sem fim. Por isso o recentrar
+  // é suprimido enquanto há strafe ativo. Parado (sem input) é estável e é o caso
+  // principal — a câmera deriva pra trás de quem olhou pro lado. Andando reto pra
+  // frente, heading == yaw, então é um no-op inofensivo.
+  // FP a pé NÃO recentra (mira livre); FP no carro ainda volta a olhar pra frente.
   const idle=cameraRig.touchLookIdle>.45;
+  const footStrafe=state.mode==='foot'&&Math.abs(input.moveX)>.2;
   const autoFollow=fp
     ?(state.mode==='car'&&idle)
-    :(state.mode==='car'?idle:(!document.pointerLockElement&&!input.touchActive));
+    :(idle&&!footStrafe);
   if(autoFollow){
     const diff=THREE.MathUtils.euclideanModulo(heading-cameraRig.yaw+Math.PI,Math.PI*2)-Math.PI;
-    cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:.7));
+    cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:1.5));
   }
   if(fp)return updateCameraFP(dt,tgt);
   cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
