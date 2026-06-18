@@ -26,15 +26,19 @@ function windowTexPair(base){
     cx.fillStyle='rgba(0,0,0,.16)';cx.fillRect(0,r*32,256,3);
     cx.fillStyle='rgba(255,255,255,.08)';cx.fillRect(0,r*32+3,256,2);
   }
-  const glassCols=['#7fc4d9','#8fd0e4','#6eb4cc','#9fd8e8','#86c8d8'];
+  // Vidro de fachada realista: tons frios DESSATURADOS (azul-cinza-aço, leve
+  // verde) — reflexo de céu/entorno, não o cyan de desenho de antes.
+  const glassCols=['#79868c','#6c7c84','#84908f','#717f81','#67767c','#8b9390'];
   for(let r=0;r<16;r++)for(let q=0;q<8;q++){
     const wx=q*32+7,wy=r*32+9,ww=18,wh=17;
     cx.fillStyle='rgba(18,20,28,.55)';cx.fillRect(wx-2,wy-2,ww+4,wh+4);
-    cx.fillStyle='rgba(255,255,255,.2)';cx.fillRect(wx-3,wy+wh+2,ww+6,2);
+    cx.fillStyle='rgba(220,228,232,.16)';cx.fillRect(wx-3,wy+wh+2,ww+6,2);
     if(Math.random()<.12){
-      const col=pick(['#ffeec8','#fff4d8','#f0dcae']);
+      // Janela acesa: mistura de luz quente (residencial) e branca-fria
+      // (escritório/fluorescente), em vez de só o creme saturado de antes.
+      const col=pick(['#ffe8c2','#ffeed0','#f3e2bd','#e9eeec','#dfe8ea']);
       const g=cx.createLinearGradient(0,wy,0,wy+wh);
-      g.addColorStop(0,col);g.addColorStop(1,'#d9a85e');
+      g.addColorStop(0,col);g.addColorStop(1,'#c89a5e');
       cx.fillStyle=g;cx.fillRect(wx,wy,ww,wh);
       ex.fillStyle=col;ex.fillRect(wx,wy,ww,wh);
       if(Math.random()<.3){
@@ -43,10 +47,12 @@ function windowTexPair(base){
         ex.fillStyle='rgba(0,0,0,.6)';ex.fillRect(px,wy+6,5,11);
       }
     }else{
+      // Vidro apagado: reflexo de céu dessaturado no topo, corpo do vidro
+      // tingido no meio, e o interior escuro embaixo (dá profundidade).
       const g=cx.createLinearGradient(0,wy,0,wy+wh);
-      g.addColorStop(0,'#d4ecf4');g.addColorStop(.35,pick(glassCols));g.addColorStop(1,'#3f7f9e');
+      g.addColorStop(0,'#aeb9bd');g.addColorStop(.45,pick(glassCols));g.addColorStop(1,'#2c373d');
       cx.fillStyle=g;cx.fillRect(wx,wy,ww,wh);
-      if(Math.random()<.3){cx.fillStyle='rgba(238,232,214,.85)';cx.fillRect(wx,wy,ww,irand(4,10));}
+      if(Math.random()<.3){cx.fillStyle='rgba(206,216,220,.5)';cx.fillRect(wx,wy,ww,irand(4,10));}
       cx.fillStyle='rgba(18,20,28,.45)';cx.fillRect(wx+ww/2-1,wy,2,wh);
     }
   }
@@ -66,8 +72,11 @@ const texVariants=facadePalette.map(windowTexPair);
 // que permite fundir a cidade inteira em pouquíssimos meshes (draw calls).
 export const buildingMats=[];
 const sideMats=texVariants.map(v=>{
+  // Emissive BRANCO: o brilho de cada janela acesa vem da cor já pintada no
+  // mapa de emissão (quente p/ residência, frio p/ escritório). Antes um âmbar
+  // (0xffe9b0) tingia tudo de laranja, matando as luzes brancas-frias.
   const m=new THREE.MeshLambertMaterial({map:v.map,emissiveMap:v.emis,
-    emissive:0xffe9b0,emissiveIntensity:.3});
+    emissive:0xffffff,emissiveIntensity:.3});
   buildingMats.push(m);
   return m;
 });
@@ -111,13 +120,24 @@ function chunkFor(cx,cz){
 // Grupos de chunk prontos (cada um com seus meshes e o centro em userData).
 export const cityChunks=[];
 
-// Tiling que antes era texture.repeat/offset, agora por face nas UVs
+// Tiling que antes era texture.repeat/offset, agora por face nas UVs.
+// O atlas de janelas é uma grade de 8 colunas × 16 linhas (uma janela por
+// célula). Para a borda da fachada cair SEMPRE no vão entre janelas — e nunca
+// fatiar um vidro no topo, na base ou nos cantos — as UVs cobrem um número
+// INTEIRO de células e o offset desloca só por células inteiras. Antes a escala
+// era contínua (h/48) com offset fracionário aleatório, o que cortava a última
+// fileira/coluna de janelas. A densidade-alvo é a mesma: ~2,2 m por janela na
+// horizontal (17.6/8) e ~3 m por andar na vertical (48/16).
+const COL=1/8,ROW=1/16; // uma janela em U / V no atlas
 function bakeBoxUVs(geo,w,h,d){
   const uv=geo.attributes.uv;
-  const offU=Math.random(),offV=Math.random();
+  const rows=Math.max(1,Math.round(h/3)); // andares inteiros (~3 m cada)
+  const sv=rows*ROW;
+  const offU=irand(0,7)*COL,offV=irand(0,15)*ROW; // desloca por células inteiras
   const widths=[d,d,w,w,w,w]; // dimensão horizontal de cada face do box
   for(let f=0;f<6;f++){
-    const su=widths[f]/17.6,sv=h/48;
+    const cols=Math.max(1,Math.round(widths[f]/2.2)); // colunas inteiras (~2,2 m)
+    const su=cols*COL;
     for(let i=f*6;i<f*6+6;i++)uv.setXY(i,uv.getX(i)*su+offU,uv.getY(i)*sv+offV);
   }
 }
