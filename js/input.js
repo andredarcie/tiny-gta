@@ -409,6 +409,17 @@ export function setupInput(){
   const nickEnter=e=>{ if(e.key==='Enter'){e.preventDefault();doAccount('login');} };
   document.getElementById('nick-input')?.addEventListener('keydown',nickEnter);
   document.getElementById('nick-pass')?.addEventListener('keydown',nickEnter);
+
+  // Dev shortcut: on localhost, skip the whole title/login screen and jump
+  // straight into the game with a fixed nickname. Deferred to a macrotask so the
+  // rest of boot (pause menu, touch, wheel, settings) finishes first — then we
+  // start exactly as a "Play as guest" click would. Pointer-lock/audio simply
+  // engage on the first click, same as any auto-started page. LAN access (phone
+  // testing via the host IP) is NOT localhost, so it keeps the normal login.
+  const onLocalhost=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
+  if(onLocalhost){
+    setTimeout(()=>{ if(!state.started){ setNickname('localhost'); beginRun(); } },0);
+  }
   // Top-center button: opens/closes the in-game pause menu (only shown while playing).
   document.getElementById('btn-fullscreen')?.addEventListener('pointerdown',e=>{
     e.preventDefault();
