@@ -554,19 +554,36 @@ function updateDying(dt){
 // morre no impacto com o chão (queda de prédio mata na hora)
 let roofFall=null;
 function startRoofFall(){
-  roofFall={vy:0,dx:Math.sin(player.heading)*2.4,dz:Math.cos(player.heading)*2.4};
+  // Seed a tumbling ragdoll: a forward-ish body spin (wx) plus random roll/yaw so
+  // the body cartwheels off the edge and every limb goes loose on the way down.
+  roofFall={vy:0,dx:Math.sin(player.heading)*2.4,dz:Math.cos(player.heading)*2.4,t:0,
+    wx:2.6+Math.random()*2.4, wy:(Math.random()*2-1)*2.6, wz:(Math.random()*2-1)*3.4};
   state.controlsLocked=true;
   state.weaponHeld=false;
 }
 function updateRoofFall(dt){
-  const p=player.g.position;
-  roofFall.vy-=30*dt;
-  p.x+=roofFall.dx*dt;p.z+=roofFall.dz*dt;p.y+=roofFall.vy*dt;
+  const p=player.g.position,rf=roofFall;
+  rf.t+=dt;
+  rf.vy-=30*dt;
+  p.x+=rf.dx*dt;p.z+=rf.dz*dt;p.y+=rf.vy*dt;
   collideStatics(p,.5,SWIM_BOUND); // escorrega pela fachada em vez de entrar nela
-  player.bob+=dt*14;Entities.animatePed?.(player.g,player.bob,1); // se debate no ar
+  // RAGDOLL: tumble the whole body and let every limb flop loosely (membros moles).
+  const g=player.g;
+  g.rotation.x+=rf.wx*dt;g.rotation.y+=rf.wy*dt;g.rotation.z+=rf.wz*dt;
+  const L=g.userData.limbs;
+  if(L){
+    const tt=rf.t,jig=k=>Math.sin(tt*12+k)*.4; // fast, loose jiggle = limp/floppy
+    L.rightArm&&L.rightArm.rotation.set(-1.3+jig(0),0,-.5+jig(1));
+    L.leftArm&&L.leftArm.rotation.set(-1.3+jig(2),0,.5+jig(3));
+    L.rightForearm&&L.rightForearm.rotation.set(-1+jig(4),0,0);
+    L.leftForearm&&L.leftForearm.rotation.set(-1+jig(5),0,0);
+    L.rightLeg&&L.rightLeg.rotation.set(.45+jig(6),0,-.3+jig(7)*.5);
+    L.leftLeg&&L.leftLeg.rotation.set(.45+jig(8),0,.3+jig(9)*.5);
+  }
   const gh=groundHeight(p.x,p.z);
   if(p.y<=gh){
     p.y=gh;roofFall=null;state.controlsLocked=false;
+    g.rotation.x=0;g.rotation.z=0; // straighten the body before the death-on-ground anim
     thud(18);state.shake=.45;
     getWasted();
   }
