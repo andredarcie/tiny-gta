@@ -216,8 +216,11 @@ export function canPickWeapon(){
   return !!nearestWeaponPickup(3);
 }
 
-// Concede o arsenal inteiro com munição cheia (o pickup do mundo e o espólio
-// dos telhados em js/doors.js usam isto). Equipa a pistola se vier desarmado.
+// Concede o ARSENAL INTEIRO com munição cheia. Reservado a usos temporários/de
+// teste: a chacina da lança-foguetes (rampage.js, revertida no fim) e o atalho de
+// dev em localhost abaixo. Os pickups do mundo (parque/telhado) NÃO usam mais isto
+// — eles dão só a pistola via grantStarterWeapon(), pra a loja de armas seguir
+// sendo a progressão. Equipa a pistola se vier desarmado.
 export function grantWeapon(){
   const wasUnarmed=!state.hasGun;
   owned=[FIST,...ARSENAL];
@@ -228,6 +231,18 @@ export function grantWeapon(){
   blip([440,660,880],.07,'square',.14);
 }
 const byIdSafe=id=>WEAPONS.find(w=>w.id===id)||FIST;
+
+// Concede UMA arma — a pistola inicial — com munição cheia, e limpa os pickups do
+// parque do cenário (uma vez armado não dá pra recolhê-los; ver canPickWeapon). É o
+// que o pickup do mundo (pickupWeapon) e o espólio de telhado (js/doors.js) usam: o
+// resto do arsenal vem da loja ou dos pickups escondidos (js/weapon-pickups.js).
+// Devolve se o jogador estava desarmado (o chamador varia a mensagem).
+export function grantStarterWeapon(){
+  const wasUnarmed=!state.hasGun;
+  pickupArsenalWeapon('pistol'); // adiciona a pistola se faltar + recarrega; equipa se no punho
+  for(const g of weaponPickups)scene.remove(g);
+  return wasUnarmed;
+}
 
 // DEV: rodando em localhost o jogador já começa com o arsenal completo e munição
 // cheia (atalho de teste pra não ter que caçar a arma no parque). Em qualquer
@@ -387,8 +402,8 @@ export function restoreArsenal(snap){
 export function pickupWeapon(){
   const pickup=nearestWeaponPickup(3);
   if(!pickup)return;
-  grantWeapon();
-  message('WEAPONS PICKED UP - HOLD TAB (OR WPN) FOR WEAPON WHEEL','var(--gold)');
+  grantStarterWeapon(); // só a pistola — o resto vem da loja / dos pickups escondidos
+  message('PISTOL PICKED UP - LEFT CLICK TO SHOOT','var(--gold)');
 }
 
 export function confiscateWeapon(){

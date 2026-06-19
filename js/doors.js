@@ -7,7 +7,7 @@ import {buildingDoors} from '../assets/models/city/building.js';
 import {makeDoorArrow,arrowBob} from '../assets/models/city/door-arrow.js';
 import {makeMoneyDrop} from '../assets/models/missions/money-drop.js';
 import {makePistolModel} from '../assets/models/weapons/pistol.js';
-import {grantWeapon} from './weapons.js';
+import {grantStarterWeapon} from './weapons.js';
 import {irand} from './constants.js';
 import {message} from './hud.js';
 import {blip} from './audio.js';
@@ -52,8 +52,8 @@ function collectLoot(r){
     blip([660,880],.07,'square',.14);
   }else{
     const had=state.hasGun;
-    grantWeapon();
-    message(had?'AMMO RESTOCKED':'WEAPON PICKED UP - LEFT CLICK TO SHOOT','var(--gold)');
+    grantStarterWeapon(); // pistola + munição — não o arsenal inteiro
+    message(had?'AMMO RESTOCKED':'PISTOL PICKED UP - LEFT CLICK TO SHOOT','var(--gold)');
   }
   r.loot=null; // espólio é único: coletou, acabou
 }
