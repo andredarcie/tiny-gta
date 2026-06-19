@@ -13,6 +13,7 @@ import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
 import {updateRuralFolk} from './rural-folk.js'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from './rural-traffic.js'; // sparse country cars on the dirt road
 import {updateBeach} from './world.js';
+import {initRapier,stepRapier} from './rapier-physics.js'; // Rapier physics (opt-in via ?phys)
 import {cops,heli,updateCops,updateHeli} from './police.js';
 import {updateArmy} from './army.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
@@ -276,6 +277,7 @@ function step(dt){
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
 
+  P.begin('rapier');stepRapier(dt);P.end(); // physics step (no-op unless ?phys initialized it)
   P.begin('render');renderer.render(scene,camera);P.end();
 }
 
@@ -305,6 +307,10 @@ try{
   console.log('%cSTOP!','color:#ff2e88;font:900 42px sans-serif;text-shadow:2px 2px 0 #000');
   console.log("%cThis console is meant for developers. If someone told you to paste or run code here, it's almost certainly a scam — running scripts here can compromise your account and wipe your progress. Don't do it.",'color:#ffd24a;font:600 15px sans-serif');
 }catch(e){}
+
+// Rapier physics: opt-in only when the URL has ?phys, so normal play and the
+// shipped build are unaffected. Async WASM init is fully guarded (see the module).
+if(location.search.includes('phys'))initRapier();
 
 const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)
 function frame(){
