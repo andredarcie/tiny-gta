@@ -180,14 +180,19 @@ function makeSofa(){
   }
   return g;
 }
-function makeTv(){
+function makeTv(live){
   const g=new THREE.Group();
-  const stand=new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,.5),trimM);stand.position.y=.25;g.add(stand);
+  const media=new THREE.Mesh(new THREE.BoxGeometry(2,.55,.55),woodDoorM);media.position.y=.28;g.add(media);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(2.1,.06,.6),trimM);top.position.y=.57;g.add(top);
+  for(const sx of[-.5,.5]){
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(.9,.4,.03),matte({color:0x5e3c24}));
+    cab.position.set(sx,.28,.28);g.add(cab);
+  }
   const frame=new THREE.Mesh(new THREE.BoxGeometry(1.7,1,.12),
-    matte({color:0x14161c,roughness:.5}));frame.position.y=1.2;g.add(frame);
+    matte({color:0x14161c,roughness:.5}));frame.position.y=1.35;g.add(frame);
   const screen=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.82),
-    tvScreenMaterial());screen.position.set(0,1.2,.07);g.add(screen);
-  ranchFx.tv=screen;
+    tvScreenMaterial());screen.position.set(0,1.35,.07);g.add(screen);
+  if(live)ranchFx.tv=screen;
   return g;
 }
 function makeBed(){
@@ -210,6 +215,253 @@ function makeTable(){
     const leg=new THREE.Mesh(new THREE.BoxGeometry(.1,.75,.1),woodDoorM);leg.position.set(sx,.37,sz);g.add(leg);
   }
   return g;
+}
+
+// ===========================================================================
+// Interior decor: shared textures, props and a furnishing routine used by BOTH
+// the live off-map room (addRanchHouse) and the model-viewer cut-away preview,
+// so the two never drift apart.
+// ===========================================================================
+const mkBox=(w,h,d,mat)=>new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+const mkCyl=(rt,rb,h,seg,mat)=>new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),mat);
+const P=(m,x,y,z,ry=0)=>{m.position.set(x,y,z);if(ry)m.rotation.y=ry;return m;};
+function tex(w,h,draw){
+  const c=document.createElement('canvas');c.width=w;c.height=h;
+  draw(c.getContext('2d'),w,h);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
+}
+
+// wood plank floor (tiled)
+const plankTex=tex(256,256,(x,w,h)=>{
+  const cols=['#9c7850','#8f6c47','#a47e56','#946e4a'],pw=64;
+  for(let i=0;i<w/pw;i++){
+    x.fillStyle=cols[i%cols.length];x.fillRect(i*pw,0,pw,h);
+    x.strokeStyle='rgba(60,40,24,.16)';x.lineWidth=1;
+    for(let k=0;k<5;k++){const gy=((i*53+k*97)%h);x.beginPath();x.moveTo(i*pw+4,gy);x.lineTo(i*pw+pw-4,gy+((k%2)?5:-4));x.stroke();}
+    x.strokeStyle='rgba(40,26,14,.5)';x.lineWidth=2;x.strokeRect(i*pw+1,1,pw-2,h-2);
+  }
+  x.strokeStyle='rgba(40,26,14,.4)';x.lineWidth=2;
+  for(let y=128;y<h;y+=128){x.beginPath();x.moveTo(0,y);x.lineTo(w,y);x.stroke();}
+});
+plankTex.wrapS=plankTex.wrapT=THREE.RepeatWrapping;plankTex.repeat.set(4,3);
+const floorWoodM=matte({color:0xffffff,map:plankTex});
+
+// subtle wallpaper (tiled), shared by shell + preview walls
+const wallTex=tex(128,128,(x,w,h)=>{
+  x.fillStyle='#e9ddc4';x.fillRect(0,0,w,h);
+  for(let i=0;i<w;i+=16){x.fillStyle=((i/16)%2)?'rgba(255,255,255,.10)':'rgba(150,130,95,.06)';x.fillRect(i,0,8,h);}
+  for(let i=0;i<260;i++){x.fillStyle='rgba(120,100,70,.05)';x.fillRect((i*53)%w,(i*97)%h,2,2);}
+});
+wallTex.wrapS=wallTex.wrapT=THREE.RepeatWrapping;wallTex.repeat.set(6,2);
+
+// kitchen backsplash tile
+const tileTex=tex(64,64,(x,w,h)=>{
+  x.fillStyle='#cfe3e6';x.fillRect(0,0,w,h);
+  x.strokeStyle='rgba(120,150,155,.6)';x.lineWidth=3;
+  for(let i=0;i<=w;i+=16){x.beginPath();x.moveTo(i,0);x.lineTo(i,h);x.moveTo(0,i);x.lineTo(w,i);x.stroke();}
+});
+tileTex.wrapS=tileTex.wrapT=THREE.RepeatWrapping;tileTex.repeat.set(8,1.4);
+
+// patterned area rug
+const rugTex=tex(96,72,(x,w,h)=>{
+  x.fillStyle='#7a3b3b';x.fillRect(0,0,w,h);
+  x.strokeStyle='#caa15a';x.lineWidth=5;x.strokeRect(7,7,w-14,h-14);
+  x.lineWidth=2;x.strokeRect(15,15,w-30,h-30);
+  x.fillStyle='#caa15a';x.beginPath();x.moveTo(w/2,h*.32);x.lineTo(w*.64,h/2);x.lineTo(w/2,h*.68);x.lineTo(w*.36,h/2);x.closePath();x.fill();
+});
+
+// faux daylight window view (sunny countryside)
+const windowViewM=new THREE.MeshBasicMaterial({map:tex(200,160,(x,w,h)=>{
+  const sky=x.createLinearGradient(0,0,0,h*.65);sky.addColorStop(0,'#8fc6f0');sky.addColorStop(1,'#dcefff');
+  x.fillStyle=sky;x.fillRect(0,0,w,h*.65);
+  x.fillStyle='rgba(255,250,210,.95)';x.beginPath();x.arc(w*.76,h*.22,16,0,Math.PI*2);x.fill();
+  x.fillStyle='#86bd72';x.beginPath();x.moveTo(0,h*.65);
+  for(let i=0;i<=w;i+=20)x.lineTo(i,h*.55+Math.sin(i*.05)*9);
+  x.lineTo(w,h);x.lineTo(0,h);x.closePath();x.fill();
+  x.fillStyle='#6aa552';x.fillRect(0,h*.8,w,h*.2);
+  x.fillStyle='#5a3a22';x.fillRect(w*.22-4,h*.5,8,42);
+  x.fillStyle='#4f9a44';x.beginPath();x.arc(w*.22,h*.46,22,0,Math.PI*2);x.fill();
+})});
+
+// two framed paintings
+const artLandscapeM=new THREE.MeshBasicMaterial({map:tex(160,112,(x,w,h)=>{
+  const sky=x.createLinearGradient(0,0,0,h);sky.addColorStop(0,'#f3c884');sky.addColorStop(1,'#e89a63');
+  x.fillStyle=sky;x.fillRect(0,0,w,h);
+  x.fillStyle='rgba(255,240,200,.95)';x.beginPath();x.arc(w*.78,h*.28,12,0,Math.PI*2);x.fill();
+  x.fillStyle='#356b4a';x.fillRect(0,h*.62,w,h*.38);
+  x.fillStyle='#274f38';x.beginPath();x.moveTo(0,h*.62);x.lineTo(w*.42,h*.34);x.lineTo(w*.72,h*.62);x.closePath();x.fill();
+})});
+const artAbstractM=new THREE.MeshBasicMaterial({map:tex(96,120,(x,w,h)=>{
+  x.fillStyle='#22304a';x.fillRect(0,0,w,h);
+  const cols=['#ff7ab0','#67e8f9','#f8c14a','#82f38f'];
+  for(let i=0;i<6;i++){x.fillStyle=cols[i%4];x.fillRect(10,12+i*18,w-20,11);}
+})});
+
+const counterM=matte({color:0xcdb594,roughness:.7});
+const tileM=matte({color:0xffffff,map:tileTex});
+const stoveTopM=matte({color:0x232323,roughness:.45,metalness:.4});
+const curtainM=matte({color:0xb8553f,roughness:.9});
+const fireM=new THREE.MeshBasicMaterial({color:0xff8a2a,transparent:true,opacity:.9});
+const emberM=new THREE.MeshBasicMaterial({color:0xffd060,transparent:true,opacity:.55,depthWrite:false});
+const rugLivingM=matte({color:0xffffff,map:rugTex});
+const rugBedM=matte({color:0x5d6b7a,roughness:.95});
+const rugDiningM=matte({color:0x6f5f43,roughness:.95});
+
+const makeRug=(mat,w,d)=>{const r=new THREE.Mesh(new THREE.PlaneGeometry(w,d),mat);r.rotation.x=-Math.PI/2;return r;};
+function makeWallArt(mat,w=1.05,h=.66){
+  const g=new THREE.Group();
+  g.add(mkBox(w+.2,h+.2,.08,trimM));
+  g.add(P(new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat),0,0,.05));
+  return g;
+}
+function makeRangeHood(){
+  const g=new THREE.Group();
+  g.add(P(mkBox(1.1,.3,.7,metalM),0,0,0));
+  g.add(P(mkBox(.4,.7,.3,metalM),0,.5,-.15));
+  return g;
+}
+function makePlant(){
+  const g=new THREE.Group();
+  g.add(P(mkCyl(.2,.16,.45,10,matte({color:0xb06a3a})),0,.22,0));
+  const leafM=matte({color:0x3f8e4d,roughness:.9});
+  for(let i=0;i<9;i++){const a=i/9*Math.PI*2;const leaf=mkBox(.07,.8,.2,leafM);
+    leaf.position.set(Math.cos(a)*.13,.85,Math.sin(a)*.13);leaf.rotation.set(Math.cos(a)*.5,a,Math.sin(a)*.5);g.add(leaf);}
+  return g;
+}
+function makePendant(){
+  const g=new THREE.Group();
+  g.add(P(mkCyl(.015,.015,.6,5,trimM),0,.3,0));
+  g.add(P(new THREE.Mesh(new THREE.ConeGeometry(.32,.3,14,1,true),matte({color:0x2a2a2a})),0,-.05,0));
+  g.add(P(new THREE.Mesh(new THREE.SphereGeometry(.1,8,6),warmLampM),0,-.12,0));
+  return g;
+}
+function makeBookshelf(){
+  const g=new THREE.Group();
+  g.add(P(mkBox(1.4,2.2,.1,woodDoorM),0,1.1,-.16));
+  for(const sx of[-.7,.7])g.add(P(mkBox(.1,2.2,.42,woodDoorM),sx,1.1,0));
+  g.add(P(mkBox(1.4,.1,.42,woodDoorM),0,2.2,0));
+  const cols=[0x8a3b3b,0x33506e,0x4a7a52,0xd8995f,0x6b5440,0x85a7c9];
+  for(let i=0;i<4;i++){
+    const sy=.4+i*.5;g.add(P(mkBox(1.4,.08,.42,woodDoorM),0,sy,0));
+    for(let j=0;j<11;j++){const bh=.3+((i*5+j)%3)*.05;
+      g.add(P(mkBox(.1,bh,.3,matte({color:cols[(i*3+j)%6]})),-.62+j*.115,sy+.04+bh/2,.04));}
+  }
+  return g;
+}
+function makeDresser(){
+  const g=new THREE.Group();
+  g.add(P(mkBox(1.4,1.1,.6,woodDoorM),0,.55,0));
+  for(let i=0;i<3;i++){
+    g.add(P(mkBox(1.3,.3,.04,matte({color:0x7a5236})),0,.28+i*.33,.31));
+    for(const sx of[-.35,.35])g.add(P(mkBox(.08,.08,.06,metalM),sx,.28+i*.33,.34));
+  }
+  g.add(P(mkBox(1.5,.06,.66,trimM),0,1.13,0));
+  return g;
+}
+function makeHutch(){
+  const g=new THREE.Group();
+  g.add(P(mkBox(1.6,1,.5,woodDoorM),0,.5,0));
+  g.add(P(mkBox(1.6,1.4,.36,woodDoorM),0,1.7,-.06));
+  for(const sx of[-.4,.4])g.add(P(mkBox(.7,1.2,.03,winM),sx,1.7,.16));
+  for(let i=0;i<3;i++)g.add(P(new THREE.Mesh(new THREE.CircleGeometry(.18,14),whiteM),0,1.3+i*.35,.14));
+  g.add(P(mkBox(1.7,.08,.42,trimM),0,2.42,0));
+  return g;
+}
+function makeWindow(){
+  const g=new THREE.Group();
+  g.add(P(new THREE.Mesh(new THREE.PlaneGeometry(1.3,1.1),windowViewM),0,0,.02));
+  for(const[x,y,w,h]of[[-.72,0,.12,1.3],[.72,0,.12,1.3],[0,.66,1.56,.12],[0,-.66,1.56,.12]])
+    g.add(P(mkBox(w,h,.1,whiteM),x,y,.05));
+  g.add(P(mkBox(.05,1.1,.06,whiteM),0,0,.07));
+  g.add(P(mkBox(1.3,.05,.06,whiteM),0,0,.07));
+  g.add(P(mkBox(1.7,.12,.22,trimM),0,-.72,.08));
+  g.add(P(mkBox(1.8,.24,.1,curtainM),0,.82,.14));
+  for(const sx of[-.75,.75])g.add(P(mkBox(.32,1.5,.08,curtainM),sx,.05,.13));
+  return g;
+}
+function makeFireplace(){
+  const g=new THREE.Group();
+  g.add(P(mkBox(2.2,2.4,.5,brickM),0,1.2,-.15));
+  g.add(P(mkBox(1.2,1.2,.42,matte({color:0x141210})),0,.75,.02));
+  g.add(P(mkBox(2.6,.2,.72,woodDoorM),0,1.78,.02));
+  g.add(P(mkBox(2.0,.18,.72,concreteM),0,.09,.18));
+  for(const lx of[-.28,.02,.3]){const log=mkCyl(.08,.08,.7,7,woodDoorM);log.rotation.z=Math.PI/2;log.position.set(lx,.42,.06);g.add(log);}
+  g.add(P(mkBox(.8,.5,.18,fireM),0,.6,.06));
+  g.add(P(new THREE.Mesh(new THREE.PlaneGeometry(1.1,.9),emberM),0,.7,.2));
+  g.add(P(mkBox(1.3,1.2,.4,brickM),0,2.6,-.1));
+  g.add(P(makeWallArt(artLandscapeM,.7,.5),0,2.05,.04));
+  return g;
+}
+
+// Adds ALL the furniture into `g` relative to room center (ix,iz). `live` wires
+// the gameplay refs (ranchFx.food/tv); the preview passes false.
+function furnishInterior(g,ix,iz,live){
+  // --- kitchen (north-east) ---
+  g.add(P(mkBox(5,1,1,counterM),ix+3,.5,iz-5));
+  g.add(P(mkBox(5.2,.12,1.2,trimM),ix+3,1.06,iz-5));
+  g.add(P(mkBox(5,.85,.05,tileM),ix+3,1.62,iz-5.9));
+  for(const ox of[1.6,2.6,3.6,4.6]){
+    g.add(P(mkBox(.8,.8,.22,woodDoorM),ix+ox,2.55,iz-5.86));
+    g.add(P(mkBox(.05,.32,.04,metalM),ix+ox+.28,2.55,iz-5.72));
+  }
+  g.add(P(mkBox(.78,.08,.46,metalM),ix+2.15,1.14,iz-4.92));
+  g.add(P(mkBox(.9,.12,.58,stoveTopM),ix+3.45,1.16,iz-4.9));
+  for(const dx of[-.22,.22])for(const dz of[-.13,.13]){
+    const b=new THREE.Mesh(new THREE.TorusGeometry(.1,.015,6,12),metalM);
+    b.rotation.x=Math.PI/2;b.position.set(ix+3.45+dx,1.24,iz-4.9+dz);g.add(b);
+  }
+  g.add(P(makeRangeHood(),ix+3.45,2.0,iz-5.6));
+  const fridge=makeFridge();fridge.position.set(ix+7,0,iz-4.4);fridge.rotation.y=-Math.PI/2;g.add(fridge);
+  g.add(P(mkBox(.5,.32,.34,matte({color:0x2a2c30})),ix+1.3,1.28,iz-5));      // microwave
+  g.add(P(mkCyl(.1,.12,.22,10,metalM),ix+1.95,1.23,iz-5.2));                 // kettle
+  g.add(P(mkCyl(.16,.1,.12,12,matte({color:0xbf6a3a})),ix+4.4,1.18,iz-5));   // fruit bowl
+  for(const[fx,fc]of[[-.05,0xd0444a],[.05,0xe0a030],[0,0x6aae3a]])
+    g.add(P(new THREE.Mesh(new THREE.SphereGeometry(.06,8,6),matte({color:fc})),ix+4.4+fx,1.28,iz-5));
+  const food=makeFood();food.position.set(ix+7,1.2,iz-3);g.add(food);
+  if(live)ranchFx.food=food;
+
+  // --- living room (south-west) ---
+  g.add(P(makeRug(rugLivingM,3.2,2.4),ix-5,.03,iz+3));
+  const sofa=makeSofa();sofa.position.set(ix-5,0,iz+5);sofa.rotation.y=Math.PI;g.add(sofa);
+  const ctable=makeTable();ctable.scale.set(.8,.6,.8);ctable.position.set(ix-5,0,iz+3.3);g.add(ctable);
+  g.add(P(mkBox(.5,.06,.3,matte({color:0x33506e})),ix-5.2,.83,iz+3.3));
+  g.add(P(makeTv(live),ix-5,0,iz+1.2));
+  g.add(P(makeBookshelf(),ix-7.6,0,iz+3.2,Math.PI/2));
+  g.add(P(makePlant(),ix-7.1,0,iz+5.1));
+  g.add(P(mkCyl(.04,.04,1.05,8,metalM),ix-2.9,.55,iz+4.7));
+  g.add(P(new THREE.Mesh(new THREE.ConeGeometry(.34,.42,12),warmLampM),ix-2.9,1.22,iz+4.7));
+
+  // --- bedroom (north-west) ---
+  const bed=makeBed();bed.position.set(ix-5,0,iz-4);g.add(bed);
+  g.add(P(makeRug(rugBedM,2.6,1.6),ix-5,.03,iz-2.3));
+  const ns=makeTable();ns.scale.set(.38,.45,.38);ns.position.set(ix-2.9,0,iz-4.4);g.add(ns);
+  g.add(P(mkCyl(.05,.05,.3,8,metalM),ix-2.9,.5,iz-4.4));
+  g.add(P(new THREE.Mesh(new THREE.ConeGeometry(.16,.22,12),warmLampM),ix-2.9,.78,iz-4.4));
+  g.add(P(makeDresser(),ix-7.4,0,iz-4,Math.PI/2));
+
+  // --- dining (south-east) ---
+  g.add(P(makeRug(rugDiningM,2.8,2.4),ix+5,.03,iz+4));
+  const dining=makeTable();dining.position.set(ix+5,0,iz+4);g.add(dining);
+  g.add(P(mkBox(1.5,.04,1.0,matte({color:0xe8dcc4})),ix+5,.81,iz+4));
+  g.add(P(mkCyl(.07,.1,.26,10,matte({color:0x33506e})),ix+5,.94,iz+4));
+  for(let k=0;k<3;k++)g.add(P(new THREE.Mesh(new THREE.SphereGeometry(.06,8,6),flowerM),ix+5+(k-1)*.08,1.1,iz+4));
+  for(const[dx,dz,ry]of[[0,-.9,0],[0,.9,Math.PI],[-1,0,-Math.PI/2],[1,0,Math.PI/2]]){
+    const chair=new THREE.Group();
+    chair.add(P(mkBox(.55,.12,.55,woodDoorM),0,.48,0));
+    chair.add(P(mkBox(.55,.7,.1,woodDoorM),0,.84,.27));
+    for(const sx of[-.2,.2])for(const sz of[-.2,.2])chair.add(P(mkBox(.06,.48,.06,woodDoorM),sx,.24,sz));
+    chair.position.set(ix+5+dx,0,iz+4+dz);chair.rotation.y=ry;g.add(chair);
+  }
+  g.add(P(makeHutch(),ix+6.6,0,iz+5.4,Math.PI));
+  g.add(P(makePendant(),ix+5,3.3,iz+4));
+
+  // --- fireplace (east wall), faux windows, wall art ---
+  g.add(P(makeFireplace(),ix+7.7,0,iz,-Math.PI/2));
+  g.add(P(makeWindow(),ix-5,2.4,iz+5.9,Math.PI));   // living, south
+  g.add(P(makeWindow(),ix+3.2,2.4,iz+5.9,Math.PI)); // dining, south
+  g.add(P(makeWindow(),ix-5,2.6,iz-5.9));           // bedroom, north
+  g.add(P(makeWallArt(artLandscapeM),ix-7.9,2.6,iz,Math.PI/2));
+  g.add(P(makeWallArt(artAbstractM,.8,1.0),ix+7.9,2.4,iz+3,-Math.PI/2));
 }
 
 // monta tudo no mapa (chamado por js/world.js). Empurra colisões em `solids`.
@@ -410,14 +662,18 @@ export function addRanchHouse(solids){
   // ===== INTERIOR (sala a ~600m, no Group liga/desliga) =====
   const ix=INT_CENTER.x,iz=INT_CENTER.z;
   const shell=new THREE.Mesh(new THREE.BoxGeometry(16,4.4,12),
-    matte({color:0xe9ddc4,roughness:1,side:THREE.BackSide}));
+    matte({color:0xffffff,map:wallTex,side:THREE.BackSide}));
   shell.position.set(ix,2.2,iz);ranchInterior.add(shell);
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),
-    matte({color:0x9c7850,roughness:.85}));
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),floorWoodM);
   floor.rotation.x=-Math.PI/2;floor.position.set(ix,.02,iz);ranchInterior.add(floor);
   const ceil=new THREE.Mesh(new THREE.BoxGeometry(15.7,.08,11.7),
     matte({color:0xf0e6d2,roughness:.95}));
   ceil.position.set(ix,4.36,iz);ranchInterior.add(ceil);
+  // vigas aparentes + sanca no topo das paredes (clima de fazenda)
+  for(const bz of[iz-4,iz-1.3,iz+1.3,iz+4])
+    ranchInterior.add(P(mkBox(15.4,.2,.24,trimM),ix,4.18,bz));
+  for(const[x,z,w,d]of[[ix,iz-5.9,15.5,.14],[ix,iz+5.9,15.5,.14],[ix-7.9,iz,.14,11.5],[ix+7.9,iz,.14,11.5]])
+    ranchInterior.add(P(mkBox(w,.16,d,whiteM),x,4.05,z));
   // rodapés de madeira nas quatro paredes
   for(const[x,z,w,d]of[
     [ix,iz-5.92,15.6,.12],[ix,iz+5.92,15.6,.12],
@@ -431,79 +687,16 @@ export function addRanchHouse(solids){
     new THREE.MeshBasicMaterial({color:0x05060a,side:THREE.BackSide}));
   outer.position.set(ix,3.2,iz);ranchInterior.add(outer);
 
-  // cozinha (canto nordeste): bancada + geladeira; a comida fica à frente
-  const counter=new THREE.Mesh(new THREE.BoxGeometry(5,1,1),
-    matte({color:0xcdb594,roughness:.7}));
-  counter.position.set(ix+3,.5,iz-5);ranchInterior.add(counter);
-  const ctop=new THREE.Mesh(new THREE.BoxGeometry(5.2,.12,1.2),trimM);
-  ctop.position.set(ix+3,1.06,iz-5);ranchInterior.add(ctop);
-  for(const ox of[1.6,2.6,3.6,4.6]){
-    const cab=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.22),woodDoorM);
-    cab.position.set(ix+ox,2.55,iz-5.86);ranchInterior.add(cab);
-    const pull=new THREE.Mesh(new THREE.BoxGeometry(.05,.32,.04),metalM);
-    pull.position.set(ix+ox+.28,2.55,iz-5.72);ranchInterior.add(pull);
-  }
-  const sink=new THREE.Mesh(new THREE.BoxGeometry(.78,.08,.46),metalM);
-  sink.position.set(ix+2.15,1.14,iz-4.92);ranchInterior.add(sink);
-  const stove=new THREE.Mesh(new THREE.BoxGeometry(.9,.12,.58),
-    matte({color:0x232323,roughness:.45,metalness:.4}));
-  stove.position.set(ix+3.45,1.16,iz-4.9);ranchInterior.add(stove);
-  for(const dx of[-.22,.22])for(const dz of[-.13,.13]){
-    const burner=new THREE.Mesh(new THREE.TorusGeometry(.1,.015,6,12),metalM);
-    burner.rotation.x=Math.PI/2;burner.position.set(ix+3.45+dx,1.24,iz-4.9+dz);ranchInterior.add(burner);
-  }
-  const fridge=makeFridge();
-  fridge.position.set(ix+7,0,iz-4.4);fridge.rotation.y=-Math.PI/2;ranchInterior.add(fridge);
-  ranchFx.food=makeFood();
-  ranchFx.food.position.set(FOOD.x,1.2,FOOD.z);ranchInterior.add(ranchFx.food);
+  // toda a mobília (cozinha/sala/quarto/copa, lareira, janelas, quadros, tapetes)
+  furnishInterior(ranchInterior,ix,iz,true);
 
-  // sala de estar (sudoeste): sofá + mesa de centro + tapete + TV (divisória)
-  const rug=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.4),
-    matte({color:0x7a3b3b,roughness:.95}));
-  rug.rotation.x=-Math.PI/2;rug.position.set(ix-5,.03,iz+3);ranchInterior.add(rug);
-  const sofa=makeSofa();sofa.position.set(ix-5,0,iz+5);sofa.rotation.y=Math.PI;ranchInterior.add(sofa); // encosto na parede sul, assento virado pra TV (norte)
-  const ctable=makeTable();ctable.scale.set(.8,.6,.8);ctable.position.set(ix-5,0,iz+3.3);ranchInterior.add(ctable);
-  const tv=makeTv();tv.position.set(TV.x,0,TV.z);ranchInterior.add(tv); // tela pro sul (sofá)
-  const lampStand=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,1.05,8),metalM);
-  lampStand.position.set(ix-2.9,.55,iz+4.7);ranchInterior.add(lampStand);
-  const lampShade=new THREE.Mesh(new THREE.ConeGeometry(.34,.42,12),warmLampM);
-  lampShade.position.set(ix-2.9,1.22,iz+4.7);ranchInterior.add(lampShade);
-
-  // quarto (noroeste): cama encostada na parede norte
-  const bed=makeBed();bed.position.set(ix-5,0,iz-4);ranchInterior.add(bed);
-  const nightstand=makeTable();nightstand.scale.set(.38,.45,.38);
-  nightstand.position.set(ix-2.9,0,iz-4.4);ranchInterior.add(nightstand);
-
-  // copa (sudeste): mesa de jantar
-  const dining=makeTable();dining.position.set(ix+5,0,iz+4);ranchInterior.add(dining);
-  for(const[dx,dz,ry]of[[0,-.9,0],[0,.9,Math.PI],[-1,0,-Math.PI/2],[1,0,Math.PI/2]]){
-    const chair=new THREE.Group();
-    const seat=new THREE.Mesh(new THREE.BoxGeometry(.55,.12,.55),woodDoorM);seat.position.y=.48;chair.add(seat);
-    const backC=new THREE.Mesh(new THREE.BoxGeometry(.55,.7,.1),woodDoorM);backC.position.set(0,.84,.27);chair.add(backC);
-    for(const sx of[-.2,.2])for(const sz of[-.2,.2]){
-      const leg=new THREE.Mesh(new THREE.BoxGeometry(.06,.48,.06),woodDoorM);
-      leg.position.set(sx,.24,sz);chair.add(leg);
-    }
-    chair.position.set(ix+5+dx,0,iz+4+dz);chair.rotation.y=ry;ranchInterior.add(chair);
-  }
-
-  // quadros simples nas paredes para quebrar o visual de caixa vazia
-  for(const[x,y,z,ry,col]of[
-    [ix-1.8,2.35,iz+5.93,Math.PI,0x85a7c9],
-    [ix+2.2,2.25,iz+5.93,Math.PI,0xd8995f],
-    [ix-7.93,2.35,iz-2.0,Math.PI/2,0x8fbd7f],
-  ]){
-    const pic=new THREE.Group();
-    const frame=new THREE.Mesh(new THREE.BoxGeometry(1.25,.86,.08),trimM);pic.add(frame);
-    const art=new THREE.Mesh(new THREE.PlaneGeometry(1.05,.66),
-      new THREE.MeshBasicMaterial({color:col}));
-    art.position.z=.05;pic.add(art);
-    pic.position.set(x,y,z);pic.rotation.y=ry;ranchInterior.add(pic);
-  }
-
-  // luz quente da sala (só existe com a casa visível)
-  const light=new THREE.PointLight(0xffe6c0,55,40,1.6);
+  // luminária central + duas luzes quentes (só existem com a casa visível)
+  ranchInterior.add(P(new THREE.Mesh(new THREE.CylinderGeometry(.4,.5,.12,16),whiteM),ix,4.28,iz));
+  ranchInterior.add(P(new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),warmLampM),ix,4.12,iz));
+  const light=new THREE.PointLight(0xffe6c0,40,38,1.6);
   light.position.set(ix,3.6,iz);ranchInterior.add(light);
+  const light2=new THREE.PointLight(0xffe9cc,28,30,1.8); // realça cozinha/lareira
+  light2.position.set(ix+4.5,3.4,iz-2);ranchInterior.add(light2);
 
   // porta de saída (parede oeste) + seta de saída (animada por js/interior.js)
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.16,2.8,1.4),woodDoorM);
@@ -519,6 +712,22 @@ export function addRanchHouse(solids){
     {x0:ix+7.95,x1:ix+8.3,z0:iz-6,z1:iz+6,h:4},   // leste
     {x0:ix-8,x1:ix+8,z0:iz-6.3,z1:iz-5.95,h:4},   // norte
     {x0:ix-8,x1:ix+8,z0:iz+5.95,z1:iz+6.3,h:4},   // sul
+  );
+  // colisão da mobília: o jogador esbarra, não atravessa (corredores ficam livres;
+  // spawn, porta e a comida da geladeira ficam em piso aberto)
+  solids.push(
+    {x0:ix+.4,x1:ix+5.6,z0:iz-5.6,z1:iz-4.4,h:1.1},   // bancada da cozinha
+    {x0:ix+6.4,x1:ix+7.95,z0:iz-5,z1:iz-3.8,h:2.2},   // geladeira
+    {x0:ix-6.3,x1:ix-3.7,z0:iz+4.4,z1:iz+5.6,h:.9},   // sofá
+    {x0:ix-5.6,x1:ix-4.4,z0:iz+2.9,z1:iz+3.7,h:.6},   // mesa de centro
+    {x0:ix-5.8,x1:ix-4.2,z0:iz+.7,z1:iz+1.7,h:1.1},   // rack da TV
+    {x0:ix-6.1,x1:ix-3.9,z0:iz-5.6,z1:iz-2.5,h:.9},   // cama
+    {x0:ix-3.3,x1:ix-2.5,z0:iz-4.8,z1:iz-4,h:.7},     // criado-mudo
+    {x0:ix-7.95,x1:ix-7.1,z0:iz-4.8,z1:iz-3.2,h:1.2}, // cômoda
+    {x0:ix-7.95,x1:ix-7.3,z0:iz+2.2,z1:iz+4.2,h:2.2}, // estante de livros
+    {x0:ix+3.8,x1:ix+6.2,z0:iz+2.8,z1:iz+5.2,h:.9},   // mesa de jantar + cadeiras
+    {x0:ix+5.8,x1:ix+7.4,z0:iz+5,z1:iz+5.9,h:2.4},    // cristaleira
+    {x0:ix+7.2,x1:ix+7.95,z0:iz-.8,z1:iz+.8,h:1.5},   // lareira
   );
 }
 
@@ -593,10 +802,9 @@ function buildExteriorPreview(){
 // off-map, e deixa o model-viewer girar sem paredes bloqueando tudo.
 function buildInteriorPreview(){
   const g=new THREE.Group(),ix=0,iz=0;
-  const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),
-    matte({color:0x9c7850,roughness:.85}));
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),floorWoodM);
   floor.rotation.x=-Math.PI/2;floor.position.set(ix,.02,iz);g.add(floor);
-  const wallMat=matte({color:0xe9ddc4,roughness:1});
+  const wallMat=matte({color:0xffffff,map:wallTex});
   for(const[x,z,w,d]of[
     [ix,iz-5.95,15.6,.18],
     [ix-7.9,iz,.18,11.6],
@@ -614,67 +822,7 @@ function buildInteriorPreview(){
     baseboard.position.set(x,.18,z);g.add(baseboard);
   }
 
-  const counter=new THREE.Mesh(new THREE.BoxGeometry(5,1,1),
-    matte({color:0xcdb594,roughness:.7}));
-  counter.position.set(ix+3,.5,iz-5);g.add(counter);
-  const ctop=new THREE.Mesh(new THREE.BoxGeometry(5.2,.12,1.2),trimM);
-  ctop.position.set(ix+3,1.06,iz-5);g.add(ctop);
-  for(const ox of[1.6,2.6,3.6,4.6]){
-    const cab=new THREE.Mesh(new THREE.BoxGeometry(.8,.8,.22),woodDoorM);
-    cab.position.set(ix+ox,2.55,iz-5.86);g.add(cab);
-  }
-  const sink=new THREE.Mesh(new THREE.BoxGeometry(.78,.08,.46),metalM);
-  sink.position.set(ix+2.15,1.14,iz-4.92);g.add(sink);
-  const stove=new THREE.Mesh(new THREE.BoxGeometry(.9,.12,.58),
-    matte({color:0x232323,roughness:.45,metalness:.4}));
-  stove.position.set(ix+3.45,1.16,iz-4.9);g.add(stove);
-  const fridge=makeFridge();fridge.position.set(ix+7,0,iz-4.4);fridge.rotation.y=-Math.PI/2;g.add(fridge);
-  const food=makeFood();food.position.set(FOOD.x-INT_CENTER.x,1.2,FOOD.z-INT_CENTER.z);g.add(food);
-
-  const rug=new THREE.Mesh(new THREE.PlaneGeometry(3.2,2.4),
-    matte({color:0x7a3b3b,roughness:.95}));
-  rug.rotation.x=-Math.PI/2;rug.position.set(ix-5,.03,iz+3);g.add(rug);
-  const sofa=makeSofa();sofa.position.set(ix-5,0,iz+5);sofa.rotation.y=Math.PI;g.add(sofa);
-  const ctable=makeTable();ctable.scale.set(.8,.6,.8);ctable.position.set(ix-5,0,iz+3.3);g.add(ctable);
-  const tv=new THREE.Group();
-  const tvStand=new THREE.Mesh(new THREE.BoxGeometry(1.6,.5,.5),trimM);tvStand.position.y=.25;tv.add(tvStand);
-  const tvFrame=new THREE.Mesh(new THREE.BoxGeometry(1.7,1,.12),
-    matte({color:0x14161c,roughness:.5}));tvFrame.position.y=1.2;tv.add(tvFrame);
-  const tvScreen=new THREE.Mesh(new THREE.PlaneGeometry(1.5,.82),
-    tvScreenMaterial());tvScreen.position.set(0,1.2,.07);tv.add(tvScreen);
-  tv.position.set(ix-5,0,iz+1.2);g.add(tv);
-  const lampStand=new THREE.Mesh(new THREE.CylinderGeometry(.04,.04,1.05,8),metalM);
-  lampStand.position.set(ix-2.9,.55,iz+4.7);g.add(lampStand);
-  const lampShade=new THREE.Mesh(new THREE.ConeGeometry(.34,.42,12),warmLampM);
-  lampShade.position.set(ix-2.9,1.22,iz+4.7);g.add(lampShade);
-
-  const bed=makeBed();bed.position.set(ix-5,0,iz-4);g.add(bed);
-  const nightstand=makeTable();nightstand.scale.set(.38,.45,.38);
-  nightstand.position.set(ix-2.9,0,iz-4.4);g.add(nightstand);
-
-  const dining=makeTable();dining.position.set(ix+5,0,iz+4);g.add(dining);
-  for(const[dx,dz,ry]of[[0,-.9,0],[0,.9,Math.PI],[-1,0,-Math.PI/2],[1,0,Math.PI/2]]){
-    const chair=new THREE.Group();
-    const seat=new THREE.Mesh(new THREE.BoxGeometry(.55,.12,.55),woodDoorM);seat.position.y=.48;chair.add(seat);
-    const backC=new THREE.Mesh(new THREE.BoxGeometry(.55,.7,.1),woodDoorM);backC.position.set(0,.84,.27);chair.add(backC);
-    for(const sx of[-.2,.2])for(const sz of[-.2,.2]){
-      const leg=new THREE.Mesh(new THREE.BoxGeometry(.06,.48,.06),woodDoorM);
-      leg.position.set(sx,.24,sz);chair.add(leg);
-    }
-    chair.position.set(ix+5+dx,0,iz+4+dz);chair.rotation.y=ry;g.add(chair);
-  }
-  for(const[x,y,z,ry,col]of[
-    [ix-1.8,2.35,iz+5.84,Math.PI,0x85a7c9],
-    [ix+2.2,2.25,iz+5.84,Math.PI,0xd8995f],
-    [ix-7.84,2.35,iz-2.0,Math.PI/2,0x8fbd7f],
-  ]){
-    const pic=new THREE.Group();
-    const frame=new THREE.Mesh(new THREE.BoxGeometry(1.25,.86,.08),trimM);pic.add(frame);
-    const art=new THREE.Mesh(new THREE.PlaneGeometry(1.05,.66),
-      new THREE.MeshBasicMaterial({color:col}));
-    art.position.z=.05;pic.add(art);
-    pic.position.set(x,y,z);pic.rotation.y=ry;g.add(pic);
-  }
+  furnishInterior(g,ix,iz,false);
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.16,2.8,1.4),woodDoorM);
   exitDoor.position.set(ix-7.92,1.4,iz);g.add(exitDoor);
   return g;

@@ -113,6 +113,7 @@ function spawnTractor(x,z,heading){
   return t;
 }
 spawnTractor(398,40,Math.PI/2);
+spawnTractor(596,10,Math.PI/2);  // a second one parked by the rural village (Pine Hollow)
 
 export function playerPos(){return state.mode==='car'?cur.g.position:player.g.position;}
 
@@ -764,12 +765,21 @@ export function updateCar(dt){
     ?-st*clamp(cur.speed/18,0,1)*.42
     :-st*clamp(cur.speed/MAX,0,1)*.06;
   cur.g.rotation.z=THREE.MathUtils.lerp(cur.g.rotation.z,leanT,bike?6*dt:10*dt);
-  // Terreno: o carro acompanha a altura (dá pra subir a montanha) e inclina no morro
+  // Terreno: o carro acompanha a altura (dá pra subir a montanha) e inclina no morro.
+  // Segue a altura rápido o bastante pra não enterrar o nariz na rampa em alta.
   const gh=groundHeight(p.x,p.z);
-  p.y+=(gh-p.y)*Math.min(1,8*dt);
+  p.y+=(gh-p.y)*Math.min(1,12*dt);
+  if(p.y<gh)p.y=gh;                       // nunca afunda no terreno
   const fx=Math.sin(cur.heading),fz=Math.cos(cur.heading);
   const slope=groundHeight(p.x+fx*1.3,p.z+fz*1.3)-groundHeight(p.x-fx*1.3,p.z-fz*1.3);
   cur.g.rotation.x=THREE.MathUtils.lerp(cur.g.rotation.x,-Math.atan2(slope,2.6),Math.min(1,8*dt));
+  // A montanha "pesa": a gravidade na rampa segura a subida e puxa na descida, então
+  // o morro respeita a física — você precisa de embalo pra escalar e ganha na descida.
+  const grade=clamp(slope/2.6,-1.2,1.2);             // inclinação à frente (subida>0)
+  if(Math.abs(grade)>.02){
+    cur.speed-=grade*(trac?16:13)*dt;                // componente da gravidade ao longo da pista
+    cur.speed=clamp(cur.speed,trac?-6:(bike?-9:-12),MAX*1.15); // permite leve excesso na descida
+  }
   spinWheels(cur.g,cur.speed,dt,st);
   const tail=cur.g.userData.tailM;
   if(tail)tail.color.setHex(cur.speed<-.5?0xffd6d6:(th<0||hb)?0xff4444:0xa01515);

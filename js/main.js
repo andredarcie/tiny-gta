@@ -13,7 +13,6 @@ import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from './gangs.js';
 import {updateRuralFolk} from './rural-folk.js'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from './rural-traffic.js'; // sparse country cars on the dirt road
 import {updateBeach} from './world.js';
-import {initRapier,stepRapier} from './rapier-physics.js'; // Rapier physics (opt-in via ?phys)
 import {cops,heli,updateCops,updateHeli} from './police.js';
 import {updateArmy} from './army.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
@@ -32,6 +31,7 @@ import {updateImportExport} from './import-export.js';     // Open-world: garage
 import {updateBombShop} from './bomb-shop.js';             // Open-world: o artificeiro arma o carro-bomba
 import {updateRcToyz} from './rc-toyz.js';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from './weapon-pickups.js';  // Open-world: as 12 armas escondidas pelo mapa
+import {updateRuralLoot} from './rural-loot.js';  // armas + dinheiro escondidos em volta da cidade rural
 import {updateBloodstains} from './bloodstains.js';       // Multiplayer assíncrono: poças de morte (estilo Souls)
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
@@ -229,6 +229,7 @@ function step(dt){
   updateRcToyz(dt);
   updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
   updateWeaponPickups(dt);
+  updateRuralLoot(dt);   // hidden weapons + cash around the rural village
   updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   P.end();
   P.begin('weapons');updateWeapons(dt);P.end();
@@ -277,7 +278,6 @@ function step(dt){
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
 
-  P.begin('rapier');stepRapier(dt);P.end(); // physics step (no-op unless ?phys initialized it)
   P.begin('render');renderer.render(scene,camera);P.end();
 }
 
@@ -307,12 +307,6 @@ try{
   console.log('%cSTOP!','color:#ff2e88;font:900 42px sans-serif;text-shadow:2px 2px 0 #000');
   console.log("%cThis console is meant for developers. If someone told you to paste or run code here, it's almost certainly a scam — running scripts here can compromise your account and wipe your progress. Don't do it.",'color:#ffd24a;font:600 15px sans-serif');
 }catch(e){}
-
-// Rapier physics: now ON by default so the wooden crate stack spawns at the start
-// of every game (drive a car through it). Async WASM init is fully guarded, and
-// Rapier stays a separate dynamic-import chunk. Disable with ?nophys if needed.
-// (Before shipping to production, reconsider this — it adds a ~2MB WASM download.)
-if(!location.search.includes('nophys'))initRapier();
 
 const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)
 function frame(){

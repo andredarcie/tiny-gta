@@ -88,11 +88,15 @@ function startWork(f){f.state='work';f.stateT=rand(3,6);f.phase=0;f.face=rand(-M
 function startWave(f){f.state='wave';f.stateT=rand(2,3.2);f.phase=0;}
 function startFlee(f){f.state='flee';f.stateT=rand(1.4,2.4);}
 
+const SHOT_R=34;   // a gunshot scatters rural folk within this radius
+
 export function updateRuralFolk(dt){
   const pp=playerPos();
   const activeCur=cur;
   const carDanger=state.mode==='car'&&activeCur&&Math.abs(activeCur.speed)>6;
   const onFoot=state.mode==='foot';
+  // a recent gunshot (broadcast by js/weapons.js) panics anyone nearby
+  const shotRecent=state.time-(state.shotT??-99)<0.6;
   for(const f of folk){
     const dx=f.g.position.x-pp.x,dz=f.g.position.z-pp.z;
     if(dx*dx+dz*dz>CULL2){f.g.visible=false;continue;}
@@ -104,6 +108,11 @@ export function updateRuralFolk(dt){
     if(carDanger&&f.state!=='flee'){
       const cx=f.g.position.x-activeCur.g.position.x,cz=f.g.position.z-activeCur.g.position.z;
       if(cx*cx+cz*cz<11*11)startFlee(f);
+    }
+    // ...and a gunshot ringing out close by sends them running (from the shooter)
+    if(shotRecent&&f.state!=='flee'){
+      const gx=f.g.position.x-state.shotX,gz=f.g.position.z-state.shotZ;
+      if(gx*gx+gz*gz<SHOT_R*SHOT_R)startFlee(f);
     }
 
     f.stateT-=dt;

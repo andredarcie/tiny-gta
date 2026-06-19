@@ -1089,7 +1089,7 @@ const api={
     if(r.shake)state.shake=Math.max(state.shake,r.shake);
   },
   outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
-  gunshot(v){gunshot(v);},
+  gunshot(v){gunshot(v);const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z;}, // broadcast a shot so NPCs (rural folk) can scatter
   bullet(opts){fireOneBullet(opts);},
   melee(range,knock,lethal){meleeAttack(range,knock,lethal);},
   swoosh(){blip([200,130],.05,'sawtooth',.1);},
