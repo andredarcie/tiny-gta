@@ -494,10 +494,11 @@ function wastedCut(){
   startCut('WASTED','#ff2e88',()=>{
     state.onRoof=null;roofFall=null;
     state.health=100; // wake up at the hospital fully healed
-    // dinheiro perdido na morte = "conta do hospital": vira uma POÇA no lugar onde o
-    // jogador caiu (multiplayer assíncrono estilo Souls), que outro jogador online
-    // pode pegar. penalty() devolve o valor perdido -> é o que a poça carrega.
-    refs.dropDeathPool?.(deathSpotX,deathSpotZ,economy.penalty(.8,'wasted'));
+    // Hospital bill on death: a FIXED $100 fee (capped at the balance), not a
+    // percentage of the wallet. The lost cash drops as a PUDDLE where the player fell
+    // (Souls-like async multiplayer) that another online player can grab —
+    // flatPenalty() returns the amount lost, which is what the puddle carries.
+    refs.dropDeathPool?.(deathSpotX,deathSpotZ,economy.flatPenalty(100,'wasted'));
     state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
     refs.clearArmy?.(); // army truck + soldiers (★6)

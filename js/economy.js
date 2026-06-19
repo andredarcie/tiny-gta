@@ -170,6 +170,20 @@ class Economy{
     return lost;
   }
 
+  // Fixed loss on death/arrest: lose exactly `amount` (capped at the balance so the
+  // wallet never goes negative). Records the loss as a negative tx. Returns the
+  // amount actually lost (what the death-pool puddle carries).
+  flatPenalty(amount,reason=''){
+    const lost=Math.min(state.money,clean(amount));
+    if(lost>0){
+      this._apply({id:this._autoId(),amt:-lost,why:reason||'penalty',t:Date.now()});
+      this.spent+=lost;
+      saveBest();
+      refs.backupSave?.();
+    }
+    return lost;
+  }
+
   // Fold the oldest window txs into the checkpoint, keeping the last KEEP. Balance
   // is invariant (we just move amount from `sum` into `checkpoint`). Folded ids
   // leave `seen`: they are minutes/hours old, so a stale duplicate is implausible,

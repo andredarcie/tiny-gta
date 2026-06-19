@@ -22,6 +22,12 @@ const urlTod=parseFloat(new URLSearchParams(location.search).get('tod'));
 let tod=isNaN(urlTod)?.55:((urlTod%1)+1)%1;
 export const getTod=()=>tod;
 export const setTod=v=>{tod=((v%1)+1)%1;};
+// Resume the in-game clock from a save (js/minigame.js getDailySave). Without this the
+// clock snapped back to afternoon on every reload, so a short session never crossed an
+// in-game midnight — `dayCount` stayed frozen and the mini-games' "1x/dia" lock could
+// never clear across reloads. A ?tod=… debug pin still wins (don't clobber it).
+const todPinned=!isNaN(urlTod);
+export const restoreTod=v=>{ if(!todPinned&&Number.isFinite(v))setTod(v); };
 // Day counter: bumps every time the clock wraps past midnight. Used by the gym
 // (js/gym.js) to allow training only once per day.
 let dayCount=0;

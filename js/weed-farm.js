@@ -706,9 +706,14 @@ export function updateWeedFarm(dt){
   // keep idling the ones already served, so a buyer you dealt to stays put and alive
   // (it used to be deleted the instant you sold to it)
   if(delivering)for(const b of buyers){if(!b.ped)continue;b.t+=dt;animatePed(b.ped,b.t*.9,.05);}
-  // the worn pack hides on any vehicle (so it can't clip a car/the moto), but stays on
-  // through the hand-off cut-scene (mode 'cut') — only a real vehicle is mode 'car'
-  if(backpackObj)backpackObj.visible=(state.mode!=='car');
+  // the worn pack hides only INSIDE a closed car (body behind glass, pack would clip the
+  // roof) — it stays on foot, through the hand-off cut-scene (mode 'cut'), AND on any
+  // open/exposed ride (bike/boat/plane/tractor/RC) so the moto delivery run shows the
+  // rucksack on the rider's back. Same "real closed car" test as player.js updateCarCockpit.
+  if(backpackObj){
+    const closedCar=cur&&!cur.bike&&!cur.boat&&!cur.plane&&!cur.tractor&&!cur.remote;
+    backpackObj.visible=!closedCar;
+  }
   // heat cools over time; lingering at the farm while HOT draws a police raid
   if(heat>0)heat=Math.max(0,heat-dt*3);
   if(heat>HEAT_HOT&&nearFarm()){
