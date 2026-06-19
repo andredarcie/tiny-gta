@@ -87,11 +87,20 @@ describe('admin endpoint — data (admin authorized)', () => {
     expect(txs.find(t => t.why === 'god_gift')?.amt).toBe(30000);
   });
 
-  it('gift seeds the ledger from current money when empty, so nothing is lost', async () => {
+  it('gift seeds the ledger from the panel seed when empty, so nothing is lost', async () => {
     const token = await sessionFor(REI);
     const res = await post({ token, pid: REI, action: 'gift', target: OTHER, amount: 30000, seed: 1200 });
     expect(res._status).toBe(200);
     expect((res._json as { bal: number }).bal).toBe(31200); // 1200 seed + 30000 gift
+  });
+
+  it('gift seeds from server-side ranking money even with no seed (never loses money)', async () => {
+    await redis.set(C.saveKey(OTHER), { money: 800, name: 'BOB' });
+    await redis.zadd(C.LEADERBOARD_KEY, { score: 800, member: 'BOB' });
+    const token = await sessionFor(REI);
+    const res = await post({ token, pid: REI, action: 'gift', target: OTHER, amount: 30000 }); // no seed
+    expect(res._status).toBe(200);
+    expect((res._json as { bal: number }).bal).toBe(30800); // 800 (server) + 30000 gift
   });
 
   it('400 bad_amount for a non-positive or absurd gift', async () => {

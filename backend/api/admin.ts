@@ -53,15 +53,28 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
     const amount = Math.floor(Number(body.amount));
     if (!target) return sendError(res, 400, 'bad_target');
     if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000_000) return sendError(res, 400, 'bad_amount');
-    // Sem ledger ainda? Semeia com o dinheiro atual (idempotente, só quando vazio)
-    // ANTES de creditar, pra o presente SOMAR ao saldo em vez de zerar o jogador.
-    const seed = Math.max(0, Math.floor(Number(body.seed) || 0));
-    if (seed > 0 && !(await L.readLedgerSnapshot(target))) await L.seedLedger(target, seed);
+    // Sem ledger ainda? Semeia ANTES de creditar, pra o presente SOMAR ao saldo em
+    // vez de zerar o jogador (a sessão rebaseia o dinheiro no ledger). Usa o MAIOR
+    // entre o `seed` do painel e o dinheiro do ranking lido no servidor — assim
+    // NUNCA perde dinheiro, mesmo numa chamada direta à API sem `seed`. Idempotente.
+    if (!(await L.readLedgerSnapshot(target))) {
+      const seed = Math.max(0, Math.floor(Number(body.seed) || 0), await moneyForPid(target));
+      if (seed > 0) await L.seedLedger(target, seed);
+    }
     const id = 'gift-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
     const bal = await L.appendTxs(target, [{ id, amt: amount, t: Date.now(), why: 'god_gift' }]);
     return void res.status(200).json({ pid: target, bal });
   }
   sendError(res, 400, 'bad_action');
+}
+
+// Dinheiro atual (ranking) de um jogador pelo pid: lê o nome no save e o score do
+// leaderboard. Usado pra semear o ledger num presente sem perder o que ele já tinha.
+async function moneyForPid(pid: string): Promise<number> {
+  const blob = await redis.get<{ name?: string }>(C.saveKey(pid));
+  const name = blob && typeof blob.name === 'string' ? blob.name : null;
+  if (!name) return 0;
+  return Math.max(0, Math.floor(Number(await redis.zscore(C.LEADERBOARD_KEY, name)) || 0));
 }
 
 // Varre os save blobs pra mapear pid -> nome, e junta com o dinheiro do ranking e o
