@@ -617,9 +617,13 @@ refs.getWeedFarmState=()=>{
   return{planted,ripe,carried,carriedVal,boxed,waterCharges,upLevel,sprinklers:hasSprinklers(),
     seeds:{...state.seeds},seedSel:state.seedSel||plantStrain(),
     deposit:{...deposit},delivering,heat:Math.round(heat),runEarned,
-    pack:{active:pack.active,buds:pack.buds},
+    pack:{active:pack.active,buds:pack.buds,val:pack.val},
     buyers:buyers.filter(b=>!b.served).length};
 };
+
+// Busted while carrying the backpack: the crooked-cop shakedown (js/drug-bust.js)
+// seizes the stash — clears the run and pulls the pack off the player's back.
+refs.seizeDrugBackpack=()=>{const had=pack.active;if(had)endRunCleanup();return had;};
 
 // Persisted grow-op economy: the farm upgrade level + bought seeds/plant-food survive
 // a reload (crops/runs stay session-only). Save bridge in js/save.js.

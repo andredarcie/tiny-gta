@@ -54,6 +54,7 @@ import {gymTrainState} from './gym.js';
 import {updateGymGame} from './gym-game.js';
 import {updateWeedFarm} from './weed-farm.js'; // Rural: cultivo de erva (atividade no mundo, a pé)
 import './general-store.js'; // Rural: instancia a General Store em interiors[] + ação BUY SEEDS
+import './drug-bust.js'; // Busted carrying the delivery backpack → crooked-cop shakedown in the woods
 import {modShopState,modShopInteract,updateModShop,workshopBlip} from './mod-shop.js';
 import {hospitalAdmit} from './hospital.js';
 import {prisonAdmit} from './prison.js';

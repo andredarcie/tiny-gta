@@ -470,14 +470,20 @@ export function getBusted(){
   cancelEntering();
   startCut('BUSTED','#3e7bff',()=>{
     state.onRoof=null;roofFall=null; // presídio fica no chão, não no telhado
-    economy.penalty(.85,'busted');state.wanted=0;state.bustT=0;
+    state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
     refs.clearArmy?.(); // army truck + soldiers (★6)
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
     player.g.visible=true;
-    refs.confiscateWeapon?.();
     state.mode='foot';hudCar.style.display='none';radioOff();
+    // Busted while carrying the weed delivery backpack: a crooked cop drives you
+    // out to the woods and shakes you down for a bribe instead of booking you
+    // (see js/drug-bust.js). The seized stash + the bribe are the price — no
+    // booking happens, so no jail penalty and no weapon confiscation here.
+    if(refs.isCarryingDrugs?.()){refs.startDrugBust();return;}
+    economy.penalty(.85,'busted');
+    refs.confiscateWeapon?.();
     if(refs.prisonAdmit)refs.prisonAdmit();
     else{player.g.position.set(nodeX(2)+4,0,nodeX(2)+4);message('YOU WERE RELEASED. BEHAVE.','var(--cyan)');}
   });

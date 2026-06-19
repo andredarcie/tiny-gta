@@ -590,7 +590,7 @@ body.cine #cine-top,body.cine #cine-bottom{transform:none}
   text-shadow:2px 2px 2px #000,-1px -1px 1px #000,0 0 10px rgba(0,0,0,.9);
   opacity:0;transition:opacity .3s}
 body.cine #cine-sub{opacity:1}
-body.cine #hud,body.cine #touch-controls{display:none!important}
+body.cine #hud,body.cine #touch-controls,body.cine #weedhud{display:none!important}
 
 /* Faixa do modo OVERKILL: aparece no topo enquanto o modo está ligado */
 #overkill{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:40;
