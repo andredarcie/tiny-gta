@@ -14,6 +14,7 @@ import {updateRuralFolk} from './rural-folk.js'; // smart ambient rural NPCs (re
 import {updateRuralTraffic} from './rural-traffic.js'; // sparse country cars on the dirt road
 import {updateBeach} from './world.js';
 import {cops,heli,updateCops,updateHeli} from './police.js';
+import {updatePoliceBoats} from './police-boat.js'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
 import {updateArmy} from './army.js';
 import {delivery,spawnDelivery,updatePickups} from './missions.js';
 import {updateTaxi} from './taxi.js';
@@ -206,7 +207,7 @@ function step(dt){
   P.begin('peds');updatePeds(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
-  P.begin('cops');if(state.mode!=='cut'&&!state.cine)updateCops(dt);P.end();
+  P.begin('cops');if(state.mode!=='cut'&&!state.cine){updateCops(dt);updatePoliceBoats(dt);}P.end();
   P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
   updateHeli(dt);

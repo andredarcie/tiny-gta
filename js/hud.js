@@ -466,6 +466,11 @@ export function drawMinimap(){
     const[px,py]=mmBlip(c.g.position.x,c.g.position.z,pp,scale);
     mmCircleIcon(mm,px,py,{icon:'cop',color:'#3e7bff'},.78);
   }
+  // lanchas da polícia na perseguição marítima: mesmo distintivo das viaturas
+  for(const b of refs.policeBoats||[]){
+    const[px,py]=mmBlip(b.g.position.x,b.g.position.z,pp,scale);
+    mmCircleIcon(mm,px,py,{icon:'cop',color:'#3e7bff'},.78);
+  }
   // Sessão de mini game (não-corrida) em curso: o radar mostra SÓ os alvos dela.
   // Nada de POIs/entregas/história/outros mini games — o mapa fica limpo.
   if(mgActive){

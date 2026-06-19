@@ -32,6 +32,18 @@ const dashM=new THREE.MeshStandardMaterial({color:0x0c0e12,roughness:.5});
 const redLightM=new THREE.MeshBasicMaterial({color:0xd11f1f});   // luz de bombordo
 const greenLightM=new THREE.MeshBasicMaterial({color:0x2bd14a}); // luz de boreste
 const whiteLightM=new THREE.MeshBasicMaterial({color:0xfff4d0}); // mastro de popa
+// Police boat: blue hull stripe + a flashing light bar on an arch over the helm.
+// The two bar lights are exposed via userData.bar so the shared blinkBar() pulses
+// them in sync with the cop cars (entities.js). Materials are basic (unlit) so the
+// siren reads bright at any time of day.
+const copStripeM=new THREE.MeshStandardMaterial({color:0x1b2b66,roughness:.5,metalness:.3}); // faixa azul "POLICE"
+const copBarRedM=new THREE.MeshBasicMaterial({color:0xff2222});
+const copBarBlueM=new THREE.MeshBasicMaterial({color:0x2266ff});
+// arco do giroflex sobre o cockpit + a barra de luzes em si
+const copArchPostG=new THREE.CylinderGeometry(.03,.03,.95,8);
+const copArchBarG=new THREE.BoxGeometry(1.46,.05,.05);
+const copLightG=new THREE.BoxGeometry(.26,.13,.34);
+const copStripeG=new THREE.BoxGeometry(.06,.18,1.7); // faixa lateral nos dois bordos
 
 const paintCache=new Map();
 function paintFor(color){
@@ -134,7 +146,7 @@ const bowRailPostG=new THREE.CylinderGeometry(.02,.02,.2,6);
 const navG=new THREE.SphereGeometry(.045,8,6);
 const mastG=new THREE.CylinderGeometry(.015,.015,.32,6);
 
-function buildBoat({color=0xff5a3c}={}){
+function buildBoat({color=0xff5a3c,police=false}={}){
   const g=new THREE.Group();
   const paint=paintFor(color);
   // o anel do cockpit precisa de DoubleSide pra mostrar as paredes internas
@@ -255,6 +267,24 @@ function buildBoat({color=0xff5a3c}={}){
   const mast=new THREE.Mesh(mastG,chromeM);mast.position.set(0,.9,-1.95);g.add(mast);
   const mlight=new THREE.Mesh(navG,whiteLightM);mlight.position.set(0,1.08,-1.95);g.add(mlight);
 
+  // ---- livraria de polícia: arco com giroflex vermelho/azul + faixas azuis ----
+  // O arco sobe dos costados logo atrás do banco do capitão (sem encostar na
+  // cabeça do piloto) e carrega a barra de luzes piscante (userData.bar).
+  if(police){
+    for(const sx of[-1,1]){
+      const post=new THREE.Mesh(copArchPostG,chromeM);
+      post.position.set(sx*.72,1.05,-.55);g.add(post);
+      const stripe=new THREE.Mesh(copStripeG,copStripeM);
+      stripe.position.set(sx*.965,.5,-.05);g.add(stripe); // faixa "POLICE" no costado
+    }
+    const bar=new THREE.Mesh(copArchBarG,trimM);
+    bar.position.set(0,1.5,-.55);g.add(bar);
+    const r=new THREE.Mesh(copLightG,copBarRedM);
+    const b=new THREE.Mesh(copLightG,copBarBlueM);
+    r.position.set(-.22,1.56,-.55);b.position.set(.22,1.56,-.55);
+    g.add(r,b);g.userData.bar=[r,b]; // blinkBar() pulsa em sincronia com as viaturas
+  }
+
   g.userData.driver=null; // o gameplay segura o timão via setBoatPose
   return g;
 }
@@ -263,7 +293,8 @@ function buildBoat({color=0xff5a3c}={}){
 export default {category:'Vehicles',label:'Speedboat',build:buildBoat,
   variants:[{label:'Speedboat — coral',opts:{color:0xff5a3c}},
             {label:'Speedboat — aqua',opts:{color:0x1fc4c4}},
-            {label:'Speedboat — magenta',opts:{color:0xff2e88}}]};
+            {label:'Speedboat — magenta',opts:{color:0xff2e88}},
+            {label:'Speedboat — police',opts:{color:0xf2f4f8,police:true}}]};
 
-// Compat: gameplay usa makeBoat(color) e espera a lancha já na cena.
-export function makeBoat(color){const g=buildBoat({color});scene.add(g);return g;}
+// Compat: gameplay usa makeBoat(color,police) e espera a lancha já na cena.
+export function makeBoat(color,police){const g=buildBoat({color,police});scene.add(g);return g;}

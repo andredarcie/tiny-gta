@@ -79,6 +79,7 @@ export function clearCops(){
   copMissiles.length=0;
   for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
   tracers.length=0;
+  refs.clearPoliceBoats?.(); // tira também as lanchas da polícia (perseguição marítima)
 }
 refs.clearCops=clearCops;
 
