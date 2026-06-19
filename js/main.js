@@ -32,6 +32,7 @@ import {updateBombShop} from './bomb-shop.js';             // Open-world: o arti
 import {updateRcToyz} from './rc-toyz.js';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from './weapon-pickups.js';  // Open-world: as 12 armas escondidas pelo mapa
 import {updateRuralLoot} from './rural-loot.js';  // armas + dinheiro escondidos em volta da cidade rural
+import {updateIslandLoot} from './island-loot.js'; // secret heavy-weapon + cash cache out on the island
 import {updateBloodstains} from './bloodstains.js';       // Multiplayer assíncrono: poças de morte (estilo Souls)
 import {updateStory,storyNear,storyBlips,storyTargets} from './story.js';
 import {updateRick,rickInteract,rickNear,getRickState} from './rick.js';
@@ -230,6 +231,7 @@ function step(dt){
   updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
   updateWeaponPickups(dt);
   updateRuralLoot(dt);   // hidden weapons + cash around the rural village
+  updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
   updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   P.end();
   P.begin('weapons');updateWeapons(dt);P.end();

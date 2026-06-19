@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {state,refs} from './state.js';
 import {scene} from './engine.js';
-import {playerPos,player,idleCars,cameraRig,cur} from './player.js';
+import {playerPos,player,idleCars,cameraRig,cur,getBusted} from './player.js';
 import {economy} from './economy.js';
 import {addWanted} from './physics.js';
 import {groundHeight,TOWN_CX,RURAL_GAP} from './constants.js';
@@ -105,6 +105,8 @@ const DELIV_POINTS=[
   {x:236+RURAL_GAP,  z:-6,  city:false}, // farmhouse row, out on the dirt road (x=366)
   {x:49,             z:5,   city:true },  // city: by a central road junction
   {x:-49,            z:5,   city:true },  // city: by a road junction
+  {x:30,             z:200, city:false}, // city BEACH: a buyer down on the sand by the water
+  {x:-380,           z:-44, city:true },  // far ISLAND: needs a boat/plane to reach (premium rate)
 ];
 let buyers=[];   // live {x,z,city,ped,served,want,t}
 // HEAT — the push-your-luck risk. Each deal raises it (city more), it cools over time.
@@ -409,12 +411,15 @@ function deliverTo(b){
   // STING: the hotter you are, the likelier a buyer is an undercover cop. No pay, the
   // law lands on you, and you bolt with the stash still on your back.
   if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
-    addWanted(3,'SETUP! - IT WAS A STING','weed_sting');
+    // STING: the buyer was an undercover cop. Caught red-handed wearing the pack,
+    // you're nabbed ON THE SPOT — getBusted sees the backpack and runs the crooked-
+    // cop shakedown story cut-scene (js/drug-bust.js), wherever the deal happened
+    // (country / beach / island), since no patrol could ever corner you out here.
     heat=Math.max(0,heat-50);
-    message('BUSTED DEAL - RUN WITH THE STASH!','var(--pink)');
+    message('SETUP! - THE BUYER WAS AN UNDERCOVER COP!','var(--pink)');
     blip([400,200,400,160],.13,'square',.2);
-    if(buyers.every(x=>x.served))spawnBuyers();
-    return; // pack kept, nothing paid
+    getBusted(); // carrying the pack -> getBusted routes into the drug-bust cut-scene
+    return; // the shakedown seizes the stash; nothing paid
   }
   const perBud=pack.val/Math.max(1,pack.buds);
   const chunk=Math.min(pack.buds,b.want);
