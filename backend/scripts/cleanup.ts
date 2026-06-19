@@ -30,6 +30,13 @@
 //       Remove a name from the global board, delete its save blobs, drop its seed
 //       field, and remove it from every minigame board + its minigame hashes.
 //
+//   npm run cleanup -- grant "<NAME>" <AMOUNT> ["<WHY>"] [--pid <pid>] [--apply]
+//       Credit a player's money ledger by AMOUNT (default WHY "god gift"): appends an
+//       idempotent positive tx to tinygta:ledger:<pid> and bumps '#bal', so the player
+//       sees the new balance on their next session. Seeds the ledger from current money
+//       first if the player has none yet (the gift adds, never replaces). Use --pid to
+//       disambiguate when a nick spans more than one identity.
+//
 // DRY-RUN BY DEFAULT: without --apply nothing is written; the script only prints
 // what WOULD change. Pass --apply to actually mutate Redis.
 //
@@ -46,6 +53,7 @@ import { Redis } from '@upstash/redis';
 const LEADERBOARD_KEY = 'tinygta:leaderboard';
 const SAVE_PREFIX = 'tinygta:save:';          // + <pid> (atual) | + <pid>|<name> (legado)
 const LEDGER_PREFIX = 'tinygta:ledger:';      // + <pid> -> hash do ledger de dinheiro (#bal + txs)
+const LEDGER_BAL = '#bal';                    // reserved hash field: running balance (mirrors scores.ts)
 const ACCT_PREFIX = 'tinygta:acct:';          // + <username> -> {hash,salt,pid,at} (conta de login)
 const PIDACCT_PREFIX = 'tinygta:pidacct:';    // + <pid> -> <username> (1 conta por pid)
 const SEED_KEY = 'tinygta:seed';              // hash: field=name -> money
@@ -132,6 +140,13 @@ async function findSaveKeysForName(name: string): Promise<string[]> {
 
 function fmtMoney(n: unknown): string {
   return Number(n).toLocaleString('en-US');
+}
+
+// Running balance ('#bal') of a ledger hash, clamped >= 0 (mirrors ledger.ts readBalance).
+async function readLedgerBal(key: string): Promise<number> {
+  const v = await redis.hget<string | number>(key, LEDGER_BAL);
+  const n = Math.floor(Number(v));
+  return Number.isFinite(n) ? Math.max(0, n) : 0;
 }
 
 // ----- commands -------------------------------------------------------------
@@ -370,6 +385,94 @@ async function cmdRemove(): Promise<void> {
   if (!APPLY) console.log('  (dry run — pass --apply to write these changes)');
 }
 
+// Grant a one-off CREDIT to a player's money ledger (a "god gift", refund, etc.).
+// Appends a POSITIVE tx to tinygta:ledger:<pid> idempotently (HSETNX by a deterministic
+// id) and bumps the reserved '#bal' by the delta — the exact append the API does, so
+// the player picks the new balance up on their next /api/session (the client rebases on
+// '#bal'). If the player has NO ledger yet (pre-ledger save), it first seeds 'genesis'
+// with their current money so the gift ADDS to it instead of replacing it.
+//   grant "<NAME>" <AMOUNT> ["<WHY>"] [--pid <pid>] [--apply]
+async function cmdGrant(): Promise<void> {
+  const name = args[1];
+  const amount = Math.floor(Number(args[2]));
+  const why = (args[3] || 'god gift').slice(0, 32);
+  if (!name || !Number.isFinite(amount) || amount <= 0) {
+    console.error('Usage: grant "<NAME>" <AMOUNT> ["<WHY>"] [--pid <pid>] [--apply]   (AMOUNT must be a positive number)');
+    process.exit(1);
+  }
+
+  // Resolve identity -> pid(s): the login account's pid (authoritative) plus any pids
+  // from save blobs (a guest nick can span >1 pid/device).
+  const pidOf = (key: string): string => {
+    const rest = key.slice(SAVE_PREFIX.length);
+    const p = rest.lastIndexOf('|');
+    return p >= 0 ? rest.slice(0, p) : rest;
+  };
+  const pids = new Set<string>();
+  const acct = await redis.get<{ pid?: string }>(ACCT_PREFIX + name);
+  if (acct?.pid) pids.add(acct.pid);
+  for (const key of await findSaveKeysForName(name)) pids.add(pidOf(key));
+
+  let targets = [...pids];
+  if (PID_FILTER) targets = targets.filter((p) => p === PID_FILTER);
+
+  console.log(`${tag} grant "${name}" +${fmtMoney(amount)}  why="${why}"`);
+  if (!targets.length) {
+    console.error(`  no pid found for "${name}"${PID_FILTER ? ` matching --pid ${PID_FILTER}` : ''} — nothing to do.`);
+    process.exit(1);
+  }
+  if (targets.length > 1) {
+    console.error(`  "${name}" maps to ${targets.length} pids: ${targets.join(', ')}`);
+    console.error('  refusing to grant to all — re-run with --pid <pid> to pick ONE.');
+    process.exit(1);
+  }
+  const pid = targets[0] as string;
+  const key = LEDGER_PREFIX + pid;
+
+  // Deterministic id so a re-run of --apply never double-credits (HSETNX no-ops).
+  const slug = why.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'gift';
+  const txId = `gift:${slug}:${amount}`.slice(0, 32);
+
+  const hlen = Number(await redis.hlen(key)) || 0;
+  const needSeed = hlen === 0;
+  const curBal = await readLedgerBal(key);
+  const exists = (await redis.hget(key, txId)) != null;
+  // pre-ledger seed = current money (save blob .money, fallback leaderboard score).
+  const blob = await redis.get<{ money?: number }>(SAVE_PREFIX + pid);
+  const lbScore = await redis.zscore(LEADERBOARD_KEY, name);
+  const seedMoney = blob && Number.isFinite(blob.money)
+    ? Math.max(0, Math.floor(Number(blob.money)))
+    : (lbScore != null ? Math.max(0, Math.floor(Number(lbScore))) : 0);
+
+  console.log(`  pid ${pid}`);
+  console.log(`  ledger ${key}: ${hlen ? `exists, #bal=${fmtMoney(curBal)}` : '(empty — will seed from current money first)'}`);
+  if (needSeed) console.log(`  seed genesis = ${fmtMoney(seedMoney)}  (from save blob money / leaderboard)`);
+  console.log(`  tx ${txId} = "${amount}:<t>:${why}"`);
+  if (exists) {
+    console.log('  tx id already present — grant is a NO-OP (idempotent). Nothing added.');
+    return;
+  }
+  const base = needSeed ? seedMoney : curBal;
+  console.log(`  #bal: ${fmtMoney(base)} -> ${fmtMoney(base + amount)}`);
+
+  if (!APPLY) {
+    console.log('  (dry run — pass --apply to write)');
+    return;
+  }
+  if (needSeed && seedMoney > 0) {
+    const created = await redis.hsetnx(key, 'genesis', `${seedMoney}:${Date.now()}:start`);
+    if (Number(created) === 1) await redis.hincrby(key, LEDGER_BAL, seedMoney);
+    console.log(`  seeded genesis=${fmtMoney(seedMoney)}`);
+  }
+  const added = await redis.hsetnx(key, txId, `${amount}:${Date.now()}:${why}`);
+  if (Number(added) === 1) {
+    const newBal = await redis.hincrby(key, LEDGER_BAL, amount);
+    console.log(`  granted +${fmtMoney(amount)} -> #bal=${fmtMoney(newBal)}`);
+  } else {
+    console.log('  tx already existed at write time — no double credit.');
+  }
+}
+
 // ----- dispatch -------------------------------------------------------------
 async function main(): Promise<void> {
   switch (cmd) {
@@ -378,8 +481,9 @@ async function main(): Promise<void> {
     case 'cap': return cmdCap();
     case 'setmoney': return cmdSetMoney();
     case 'remove': return cmdRemove();
+    case 'grant': return cmdGrant();
     default:
-      console.error('Unknown or missing command. Available: list | inspect | cap | setmoney | remove');
+      console.error('Unknown or missing command. Available: list | inspect | cap | setmoney | remove | grant');
       console.error('Run with no --apply for a dry run. See the header comment for examples.');
       process.exit(1);
   }
