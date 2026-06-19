@@ -41,6 +41,13 @@ describe('admin endpoint — authorization', () => {
   it('400 bad_request without token/pid', async () => {
     expect((await post({ action: 'players' }))._status).toBe(400);
   });
+
+  it('403 not_admin cannot gift money to anyone', async () => {
+    const token = await sessionFor(OTHER);
+    const res = await post({ token, pid: OTHER, action: 'gift', target: OTHER, amount: 1000 });
+    expect(res._status).toBe(403);
+    expect(await L.readBalance(OTHER)).toBe(0); // nothing credited
+  });
 });
 
 describe('admin endpoint — data (admin authorized)', () => {
@@ -67,5 +74,30 @@ describe('admin endpoint — data (admin authorized)', () => {
     expect(bal).toBe(870);
     expect(txs.map(t => t.why)).toEqual(['ammo', 'race']); // sorted by time desc
     expect(txs.find(t => t.why === 'ammo')?.amt).toBe(-50);
+  });
+
+  it('gift credits an existing ledger and returns the new balance', async () => {
+    await L.appendTxs(OTHER, [{ id: 'a', amt: 500, why: 'race', t: 1000 }]); // existing wallet
+    const token = await sessionFor(REI);
+    const res = await post({ token, pid: REI, action: 'gift', target: OTHER, amount: 30000, seed: 480 });
+    expect(res._status).toBe(200);
+    expect((res._json as { bal: number }).bal).toBe(30500); // 500 + 30000 (seed ignored: ledger exists)
+    expect(await L.readBalance(OTHER)).toBe(30500);
+    const txs = await L.readLedgerTxs(OTHER);
+    expect(txs.find(t => t.why === 'god_gift')?.amt).toBe(30000);
+  });
+
+  it('gift seeds the ledger from current money when empty, so nothing is lost', async () => {
+    const token = await sessionFor(REI);
+    const res = await post({ token, pid: REI, action: 'gift', target: OTHER, amount: 30000, seed: 1200 });
+    expect(res._status).toBe(200);
+    expect((res._json as { bal: number }).bal).toBe(31200); // 1200 seed + 30000 gift
+  });
+
+  it('400 bad_amount for a non-positive or absurd gift', async () => {
+    const token = await sessionFor(REI);
+    expect((await post({ token, pid: REI, action: 'gift', target: OTHER, amount: 0 }))._status).toBe(400);
+    expect((await post({ token, pid: REI, action: 'gift', target: OTHER, amount: -5 }))._status).toBe(400);
+    expect((await post({ token, pid: REI, action: 'gift', target: OTHER, amount: 1e9 }))._status).toBe(400);
   });
 });

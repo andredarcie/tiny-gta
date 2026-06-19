@@ -12,7 +12,11 @@ import * as L from '../lib/ledger.js';
 //
 // POST {token, pid, action, target?}
 //   action 'players' -> lista {pid,name,money(ranking),bal(ledger)} de todo mundo
-//   action 'txs' {target:<pid>} -> {pid,bal,txs[]} (transações retidas do jogador)
+//   action 'txs'  {target:<pid>} -> {pid,bal,txs[]} (transações retidas do jogador)
+//   action 'gift' {target:<pid>, amount, seed?} -> credita o jogador com uma tx
+//                 'god_gift' (presente do dono). `seed` = dinheiro atual do jogador,
+//                 usado pra semear o ledger se ele ainda não tem um (senão a sessão
+//                 rebaseia no saldo só-do-presente e ele perderia o que tinha).
 const ADMIN_NAME = C.sanitizeName(process.env.ADMIN_NAME || 'REI') || 'REI';
 
 async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -43,6 +47,19 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
     if (!target) return sendError(res, 400, 'bad_target');
     const [bal, txs] = await Promise.all([L.readBalance(target), L.readLedgerTxs(target)]);
     return void res.status(200).json({ pid: target, bal, txs });
+  }
+  if (action === 'gift') {
+    const target = C.sanitizePid(body.target);
+    const amount = Math.floor(Number(body.amount));
+    if (!target) return sendError(res, 400, 'bad_target');
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 100_000_000) return sendError(res, 400, 'bad_amount');
+    // Sem ledger ainda? Semeia com o dinheiro atual (idempotente, só quando vazio)
+    // ANTES de creditar, pra o presente SOMAR ao saldo em vez de zerar o jogador.
+    const seed = Math.max(0, Math.floor(Number(body.seed) || 0));
+    if (seed > 0 && !(await L.readLedgerSnapshot(target))) await L.seedLedger(target, seed);
+    const id = 'gift-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+    const bal = await L.appendTxs(target, [{ id, amt: amount, t: Date.now(), why: 'god_gift' }]);
+    return void res.status(200).json({ pid: target, bal });
   }
   sendError(res, 400, 'bad_action');
 }
