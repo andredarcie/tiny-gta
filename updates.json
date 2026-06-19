@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-19-plane-village-fix",
+    "date": "2026-06-19",
+    "title": "Planes stop blowing up over the village",
+    "description": "Flying over the countryside village, your plane could suddenly explode in mid-air for no reason — it was clipping the invisible top of the church tower. Planes now cruise cleanly over every rooftop, tower and windmill; you'll only crash if you're flying low enough to actually hit something."
+  },
+  {
     "id": "2026-06-19-countryside-and-homes",
     "date": "2026-06-19",
     "title": "A living countryside and two made-over hideouts",
