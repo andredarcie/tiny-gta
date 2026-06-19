@@ -654,13 +654,17 @@ function updatePlane(dt){
     if(c.vy<-14||(gh2>1&&c.speed>20))return wreckPlane();
     p.y=gh2;c.vy=0;
   }
-  // colisões: prédios têm altura, acima deles o céu é livre
-  if(p.y<50){
-    if(collideStatics(p,2.1,520)){
-      if(c.speed>16)return wreckPlane();
-      c.speed*=-.25;thud(Math.abs(c.speed)+4);
-    }
-  }else{p.x=clamp(p.x,-520,520);p.z=clamp(p.z,-520,520);}
+  // O limite do mundo (±520) vale em qualquer altura.
+  p.x=clamp(p.x,-520,520);p.z=clamp(p.z,-520,520);
+  // Colisão com PRÉDIOS só vale rente aos telhados (decolagem/pouso/voo rasante).
+  // Acima disso o céu é livre: o avião cruza a cidade/vila por cima de tudo —
+  // inclusive da torre alta da igreja, da caixa d'água e do moinho — sem mais
+  // explodir "do nada" só por sobrevoar a vila (a caixa de colisão da torre
+  // sobe ~22u; antes qualquer prédio até y<50 derrubava o avião).
+  if(p.y<12&&collideStatics(p,2.1,520)){
+    if(c.speed>16)return wreckPlane();
+    c.speed*=-.25;thud(Math.abs(c.speed)+4);
+  }
   // visual: nariz acompanha a subida/descida, asa inclina na curva
   c.g.rotation.y=c.heading;
   c.g.rotation.x=THREE.MathUtils.lerp(c.g.rotation.x,
