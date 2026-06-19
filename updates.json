@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-19-weapon-pickup-one-gun",
+    "date": "2026-06-19",
+    "title": "Weapon pickups give you one gun, not the whole armory",
+    "description": "Grabbing the weapon pickup in the park (and the loot stash on a rooftop) used to instantly hand you every weapon in the game for free. Now it gives you a pistol to get started — the rest of the arsenal comes from the gun shop or from the weapon stashes hidden around the edges of the map. The temporary full arsenal you get during the rocket frenzy is unchanged."
+  },
+  {
     "id": "2026-06-19-beach-island-runs",
     "date": "2026-06-19",
     "title": "Beach & island weed runs, island treasure, and a sting that bites",
