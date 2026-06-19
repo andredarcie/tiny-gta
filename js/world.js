@@ -84,9 +84,16 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   }
 }
 
+// Static ground textures are drawn into a <canvas> ONCE. On mobile, sending the
+// tab to the background can drop the WebGL context and/or purge a large 2D canvas
+// backing store; on return the ground texture is re-uploaded from a now-blank
+// canvas and renders solid black. Each ground registers a repaint closure here so
+// it can be redrawn on context-restore / foreground (see refreshGroundTextures).
+const groundTexRedraws=[];
+
 // Ground texture (asphalt, sidewalks, crosswalks)
 const groundCv=document.createElement('canvas');groundCv.width=2048;groundCv.height=2048;
-{
+function paintCityGround(){
   const x=groundCv.getContext('2d'),s=2048/GROUND,M=v=>(v+GROUND/2)*s;
   x.fillStyle='#46464a';x.fillRect(0,0,2048,2048);                // asfalto neutro
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
@@ -138,10 +145,14 @@ const groundCv=document.createElement('canvas');groundCv.width=2048;groundCv.hei
     x.fillStyle=`rgba(${irand(120,200)},${irand(120,190)},${irand(130,200)},.1)`;
     x.fillRect(Math.random()*2048,Math.random()*2048,irand(2,7),irand(2,7));
   }
+}
+{
+  paintCityGround();
   const gt=new THREE.CanvasTexture(groundCv);gt.colorSpace=THREE.SRGBColorSpace;
   gt.anisotropy=renderer.capabilities.getMaxAnisotropy();
   const ground=makeTexturedPlane(GROUND,GROUND,gt);
   scene.add(ground);
+  groundTexRedraws.push(()=>{paintCityGround();gt.needsUpdate=true;});
 }
 
 export {buildingMats}; // daynight.js controla emissiveIntensity (janelas acesas à noite)
@@ -241,6 +252,8 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   const c=document.createElement('canvas');c.width=1024;c.height=512;
   const x=c.getContext('2d');
   const u=v=>(v-RURAL_X0)/RW*1024,w=v=>(v+RURAL_HALF)/RD*512;
+  // Painted into a function so it can be re-run after a context loss (see groundTexRedraws).
+  const paintRural=()=>{
   x.fillStyle='#69a85e';x.fillRect(0,0,1024,512);
   for(let k=0;k<2600;k++){
     x.fillStyle=`rgba(${irand(70,115)},${irand(130,175)},${irand(60,95)},.22)`;
@@ -300,6 +313,8 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
     else if(e===1)x.fillRect(Math.random()*1024,512-16+Math.random()*16,irand(3,8),irand(2,5));
     else x.fillRect(1024-16+Math.random()*16,Math.random()*512,irand(2,5),irand(3,8));
   }
+  };
+  paintRural();
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   // Chão rural com colinas suaves no corredor. Mesma orientação do
   // makeTexturedPlane (plano XY girado -90° no X): o relevo vai no Z local, que
@@ -314,7 +329,15 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   ground.rotation.x=-Math.PI/2;ground.position.set(rcx,-.02,0);
   ground.receiveShadow=true;
   scene.add(ground);
+  groundTexRedraws.push(()=>{paintRural();t.needsUpdate=true;});
 }
+
+// Repaint the static ground textures + flag a GPU re-upload whenever the WebGL
+// context is restored or the page returns to the foreground. On mobile, both can
+// invalidate the original canvas upload and leave the ground rendering black.
+function refreshGroundTextures(){for(const redraw of groundTexRedraws)redraw();}
+renderer.domElement.addEventListener('webglcontextrestored',refreshGroundTextures,false);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshGroundTextures();});
 
 // Farmhouse positions, kept as data so the forest pass below can leave a clearing
 // around each one (the houses sit in the gap between the road and the fields,
