@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import {scene} from '../../../js/engine.js';
 import {ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR,islandHeight,
-  rand,irand,pick,clamp} from '../../../js/constants.js';
+  clamp} from '../../../js/constants.js';
+import {makeRng} from '../../../js/rng.js';
+// Seeded so the paradise island's palms/rocks/props land in the same spot every
+// load (the rest of the world is baked to world.json; this island is still built
+// procedurally, just deterministically now — externalizing it is a follow-up).
+const {random,rand,irand,pick}=makeRng(0x15a4d);
 import {matte} from '../matte.js';
 import {bakeProp} from '../props/prop-merge.js';
 import {addLighthouse} from '../props/lighthouse.js';
@@ -348,7 +353,7 @@ export function buildIslandParadise(solids){
     const a=rand(0,Math.PI*2),rr=rand(4,52);
     const x=CX+Math.cos(a)*rr,z=CZ+Math.sin(a)*rr,y=gh(x,z);
     if(y<=0.2||y>15)continue;
-    (Math.random()<.55?addShrubAt:addGrassTuftAt)(x,y,z);
+    (random()<.55?addShrubAt:addGrassTuftAt)(x,y,z);
   }
   // franja de capim bem na linha da praia
   for(let k=0;k<26;k++){

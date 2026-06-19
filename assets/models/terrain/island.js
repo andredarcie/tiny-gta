@@ -1,7 +1,10 @@
 import * as THREE from 'three';
 import {scene,renderer} from '../../../js/engine.js';
-import {cityCoastR,ruralHalf,RURAL_X0,RURAL_TIP,irand,pick}
+import {cityCoastR,ruralHalf,RURAL_X0,RURAL_TIP}
   from '../../../js/constants.js';
+import {makeRng} from '../../../js/rng.js';
+// Seeded so the coast sand-speckle texture is identical every load.
+const {random,irand,pick}=makeRng(0x15a4e);
 
 // ====== Ilha: areia + raso + espuma seguindo a costa irregular ==============
 // Substitui as peças QUADRADAS antigas (praia da cidade, anéis de shallows, bordas
@@ -25,12 +28,12 @@ function sandTexture(){
   x.fillStyle='#e7d29a';x.fillRect(0,0,256,256);
   for(let k=0;k<2200;k++){
     x.fillStyle=`rgba(${irand(195,238)},${irand(168,208)},${irand(118,158)},.18)`;
-    x.fillRect(Math.random()*256,Math.random()*256,irand(2,5),irand(2,5));
+    x.fillRect(random()*256,random()*256,irand(2,5),irand(2,5));
   }
   // conchinhas/estrelas esparsas
   for(let k=0;k<70;k++){
     x.fillStyle=pick(['rgba(255,244,235,.8)','rgba(255,170,185,.7)','rgba(255,214,140,.7)','rgba(190,235,255,.65)']);
-    x.fillRect(Math.random()*256,Math.random()*256,irand(1,3),irand(1,3));
+    x.fillRect(random()*256,random()*256,irand(1,3),irand(1,3));
   }
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   t.wrapS=t.wrapT=THREE.RepeatWrapping;

@@ -3,6 +3,14 @@ import {N,CELL,ROAD,BLOCK,SIDE,HALF,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
   RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,
   TOWN_CX,ruralRoadPath,groundHeight,ruralHillH} from './constants.js';
 import {scene,renderer} from './engine.js';
+// Fixed, baked world layout. Every procedurally-placed object (city lots, park
+// vegetation, beach props, the whole forest, mountain rocks) is read from this
+// file instead of being re-rolled at boot, so the map is identical every load and
+// can be hand-edited / opened by a future map editor. Regenerate from the seed
+// with `npm run bake` (js/world-gen.js). Terrain heightfields and the hand-authored
+// landmarks (named buildings, village, fences, fort) still come from the code below.
+import worldData from '../world.json';
+import {makeRng} from './rng.js';
 import {addPalm} from '../assets/models/props/palm.js';
 import {addUmbrella} from '../assets/models/props/umbrella.js';
 import {addChair} from '../assets/models/props/chair.js';
@@ -50,39 +58,14 @@ import {makeMountain} from '../assets/models/terrain/mountain.js';
 import {addMountainRock} from '../assets/models/terrain/mountain-rock.js';
 
 export const solids=[];
-export const parks=new Set();
-while(parks.size<6){
-  const i=irand(0,N-1),j=irand(0,N-1);
-  if(i===CLUB_I&&j===CLUB_J)continue; // quarteirão reservado pra boate
-  if(i===GYM_I&&j===GYM_J)continue;   // quarteirão reservado pra academia
-  if(i===HOSP_I&&j===HOSP_J)continue; // quarteirão reservado pro hospital
-  if(i===PRISON_I&&j===PRISON_J)continue; // quarteirão reservado pro presídio
-  if(i===GUNSHOP_I&&j===GUNSHOP_J)continue; // quarteirão reservado pra loja de armas
-  if(i===WORKSHOP_I&&j===WORKSHOP_J)continue; // quarteirão reservado pra oficina de custom
-  if(Math.abs(i-4)+Math.abs(j-4)>1)parks.add(i+'_'+j);
-}
+// Park blocks are baked into world.json (js/world-gen.js picks the 6 of them).
+export const parks=new Set(worldData.parks);
 export const isPark=(i,j)=>parks.has(i+'_'+j);
 
-// Lotes da cidade, sorteados ANTES da textura do chão: ~1/3 não ganha prédio
-// e vira lote abandonado (terra batida pintada no canvas + entulho 3D)
-const cityLots=[];
-for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  if(isPark(i,j))continue;
-  if(i===CLUB_I&&j===CLUB_J)continue; // o quarteirão da boate não vira lote
-  if(i===GYM_I&&j===GYM_J)continue;   // nem o da academia
-  if(i===HOSP_I&&j===HOSP_J)continue; // nem o do hospital
-  if(i===PRISON_I&&j===PRISON_J)continue; // nem o do presídio
-  if(i===GUNSHOP_I&&j===GUNSHOP_J)continue; // nem o da loja de armas
-  if(i===WORKSHOP_I&&j===WORKSHOP_J)continue; // nem o da oficina de custom
-  const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE,inner=BLOCK-2*SIDE;
-  const sx=Math.random()<.5?1:2,sz=Math.random()<.5?1:2;
-  const bcx=x0+inner/2,bcz=z0+inner/2; // janelas só nas faces viradas pra fora do quarteirão
-  for(let a=0;a<sx;a++)for(let b=0;b<sz;b++){
-    const cx=x0+(a+.5)*inner/sx,cz=z0+(b+.5)*inner/sz;
-    cityLots.push({cx,cz,w:inner/sx-1.6,d:inner/sz-1.6,empty:Math.random()<1/3,
-      win:{e:cx>=bcx,w:cx<bcx,s:cz>=bcz,n:cz<bcz}});
-  }
-}
+// City lots — which blocks get a building vs an abandoned lot, their 1×1/2×2 split
+// and window orientation — are baked into world.json (js/world-gen.js). The ground
+// texture below paints the abandoned lots, so the data must be ready before it.
+const cityLots=worldData.cityLots;
 
 // Static ground textures are drawn into a <canvas> ONCE. On mobile, sending the
 // tab to the background can drop the WebGL context and/or purge a large 2D canvas
@@ -95,6 +78,9 @@ const groundTexRedraws=[];
 const groundCv=document.createElement('canvas');groundCv.width=2048;groundCv.height=2048;
 function paintCityGround(){
   const x=groundCv.getContext('2d'),s=2048/GROUND,M=v=>(v+GROUND/2)*s;
+  // Re-seeded each call so the speckle/debris noise is deterministic AND identical
+  // on every repaint (the mobile context-restore redraw, see groundTexRedraws).
+  const {random:rnd,irand}=makeRng(0x6017c1);
   x.fillStyle='#46464a';x.fillRect(0,0,2048,2048);                // asfalto neutro
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     const x0=nodeX(i)+ROAD/2,z0=nodeX(j)+ROAD/2;
@@ -113,10 +99,10 @@ function paintCityGround(){
     const lx=M(lot.cx-lot.w/2),lz=M(lot.cz-lot.d/2),lw=lot.w*s,ld=lot.d*s;
     x.fillStyle='#8a7a62';x.fillRect(lx,lz,lw,ld);
     for(let k=0;k<46;k++){
-      x.fillStyle=Math.random()<.3
+      x.fillStyle=rnd()<.3
         ?`rgba(${irand(80,110)},${irand(120,150)},${irand(60,85)},.5)`
         :`rgba(${irand(125,165)},${irand(108,140)},${irand(82,112)},.5)`;
-      x.fillRect(lx+Math.random()*lw,lz+Math.random()*ld,irand(2,6),irand(2,6));
+      x.fillRect(lx+rnd()*lw,lz+rnd()*ld,irand(2,6),irand(2,6));
     }
   }
   for(let i=0;i<=N;i++){
@@ -143,7 +129,7 @@ function paintCityGround(){
   }
   for(let k=0;k<5000;k++){
     x.fillStyle=`rgba(${irand(120,200)},${irand(120,190)},${irand(130,200)},.1)`;
-    x.fillRect(Math.random()*2048,Math.random()*2048,irand(2,7),irand(2,7));
+    x.fillRect(rnd()*2048,rnd()*2048,irand(2,7),irand(2,7));
   }
 }
 {
@@ -171,21 +157,26 @@ function addCityPark(x0,z0,inner){
   // Um banco em cada quadrante, encarando a fonte (mantém os caminhos livres).
   for(const sx of[-1,1])for(const sz of[-1,1])
     solids.push(addParkBench(cx+sx*3.6,cz+sz*3.6,Math.atan2(-sx,-sz)));
-  // Cada quadrante ganha uma árvore (às vezes palmeira) mais afastada e alguns
-  // arbustos/samambaias espalhados, sempre fora dos braços do caminho central.
-  for(const sx of[-1,1])for(const sz of[-1,1]){
-    (Math.random()<.7?addTree:addPalm)(cx+sx*rand(6,8.2),cz+sz*rand(6,8.2));
-    const n=irand(2,3);
-    for(let k=0;k<n;k++){
-      const r=Math.random();
-      (r<.5?addBush:r<.8?addFern:addMushroom)(cx+sx*rand(2.4,9),cz+sz*rand(2.4,9));
-    }
-  }
+  // Park vegetation (trees/palms/bushes/ferns/mushrooms per quadrant) is baked
+  // into world.json and built by plantSmall in the loop below.
+}
+// Build a small decorative prop by type. Shared by the park vegetation and the
+// rural forest — both come from world.json now. These all merge into the batched
+// prop meshes at finalizeProps (the last line of the world build).
+function plantSmall(t,x,z){
+  if(t==='pine')addPine(x,z);
+  else if(t==='palm')addPalm(x,z);
+  else if(t==='bush')addBush(x,z);
+  else if(t==='fern')addFern(x,z);
+  else if(t==='mushroom')addMushroom(x,z);
+  else if(t==='log')addFallenLog(x,z);
+  else addTree(x,z); // 'tree'
 }
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   if(!isPark(i,j))continue;
   addCityPark(nodeX(i)+ROAD/2+SIDE,nodeX(j)+ROAD/2+SIDE,BLOCK-2*SIDE);
 }
+for(const v of worldData.cityParkVeg)plantSmall(v.t,v.x,v.z);
 for(const lot of cityLots){
   if(lot.empty)addAbandonedLot(lot.cx,lot.cz,lot.w,lot.d,solids);
   else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids,lot.win);
@@ -213,29 +204,13 @@ const coastFoam=buildIsland();
 // assets/models/terrain/island-paradise.js.
 const islandFoam=buildIslandParadise(solids);
 
-function beachSpot(margin=4){
-  const inner=GROUND/2+3,outer=GROUND/2+BEACH-margin;
-  for(;;){
-    const side=irand(0,3),along=rand(-outer,outer),depth=rand(inner,outer);
-    const[x,z]=side===0?[along,-depth]:side===1?[along,depth]:side===2?[-depth,along]:[depth,along];
-    // a faixa leste virou zona rural — nada de guarda-sol no pasto
-    if(!(x>RURAL_X0-2&&Math.abs(z)<RURAL_HALF+2))return[x,z];
-  }
-}
-for(let k=0;k<46;k++){const[bx,bz]=beachSpot(5);addPalm(bx,bz);}
-
-for(let k=0;k<16;k++){const[bx,bz]=beachSpot(7);addUmbrella(bx,bz);}
-
-for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
-
-// half-buried rock clusters near the water
+// Beach props (palms, umbrellas, chairs, half-buried rock clusters) are baked into
+// world.json — see js/world-gen.js (rejection-sampled around the coast).
+for(const p of worldData.beachPalms)addPalm(p.x,p.z);
+for(const p of worldData.beachUmbrellas)addUmbrella(p.x,p.z);
+for(const p of worldData.beachChairs)addChair(p.x,p.z);
 {
-  for(let k=0;k<10;k++){
-    const[bx,bz]=beachSpot(3);
-    for(let r=0;r<irand(2,4);r++){
-      addBeachRock(bx+rand(-1.6,1.6),bz+rand(-1.6,1.6),rand(.3,.9));
-    }
-  }
+  for(const r of worldData.beachRocks)addBeachRock(r.x,r.z,r.s);
 }
 
 // lifeguard towers, one per side facing the sea
@@ -254,10 +229,11 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   const u=v=>(v-RURAL_X0)/RW*1024,w=v=>(v+RURAL_HALF)/RD*512;
   // Painted into a function so it can be re-run after a context loss (see groundTexRedraws).
   const paintRural=()=>{
+  const {random:rnd,rand,irand}=makeRng(0x73a17e); // deterministic, repaint-stable noise
   x.fillStyle='#69a85e';x.fillRect(0,0,1024,512);
   for(let k=0;k<2600;k++){
     x.fillStyle=`rgba(${irand(70,115)},${irand(130,175)},${irand(60,95)},.22)`;
-    x.fillRect(Math.random()*1024,Math.random()*512,irand(2,7),irand(2,7));
+    x.fillRect(rnd()*1024,rnd()*512,irand(2,7),irand(2,7));
   }
   // roças: terra arada com linhas de plantação
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
@@ -309,9 +285,9 @@ for(let k=0;k<14;k++){const[bx,bz]=beachSpot(8);addChair(bx,bz);}
   for(let k=0;k<900;k++){
     x.fillStyle=`rgba(${irand(150,195)},${irand(168,205)},${irand(110,150)},.5)`;
     const e=irand(0,2);
-    if(e===0)x.fillRect(Math.random()*1024,Math.random()*16,irand(3,8),irand(2,5));
-    else if(e===1)x.fillRect(Math.random()*1024,512-16+Math.random()*16,irand(3,8),irand(2,5));
-    else x.fillRect(1024-16+Math.random()*16,Math.random()*512,irand(2,5),irand(3,8));
+    if(e===0)x.fillRect(rnd()*1024,rnd()*16,irand(3,8),irand(2,5));
+    else if(e===1)x.fillRect(rnd()*1024,512-16+rnd()*16,irand(3,8),irand(2,5));
+    else x.fillRect(1024-16+rnd()*16,rnd()*512,irand(2,5),irand(3,8));
   }
   };
   paintRural();
@@ -367,108 +343,15 @@ addWeedFarm(solids);
 // and ferns) and decay detail (mushroom clusters and fallen logs) to make it
 // feel alive rather than an even grid of dots.
 {
-  const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
-    .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
-  // Keep a clear strip along the actual dirt road (the SAME polyline that draws
-  // it): straight out of town, the arc looping NORTH around the mountain, then
-  // straight through the village. Point-to-segment distance so the arc gaps and
-  // the eastern leg are covered too — not just the western straight.
-  const road=ruralRoadPath();
-  const nearRoad=(px,pz)=>{
-    for(let i=1;i<road.length;i++){
-      const ax=road[i-1][0],az=road[i-1][1],dx=road[i][0]-ax,dz=road[i][1]-az;
-      let t=((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz||1);t=t<0?0:t>1?1:t;
-      const ex=px-(ax+t*dx),ez=pz-(az+t*dz);
-      if(ex*ex+ez*ez<49)return true;   // within 7m of the road centreline
-    }
-    return false;
-  };
-  // A forest spot is valid only off the road, off rock, and clear of the ranch,
-  // ploughed fields, weed plot, the village square and the ruined fort (trees
-  // sprouting inside a building or a field would look wrong).
-  const okForest=(px,pz)=>{
-    if(px<RURAL_X0+6||px>RURAL_X1-8||Math.abs(pz)>RURAL_HALF-6)return false;
-    if(nearRoad(px,pz))return false;                        // dirt road (incl. mountain bypass)
-    if(groundHeight(px,pz)>18)return false;                 // high slope is rock
-    if(Math.hypot(px-RANCH_CX,pz-RANCH_CZ)<18)return false;  // ranch yard/porch/sign
-    if(Math.hypot(px-GARAGE_PAD.x,pz-GARAGE_PAD.z)<12)return false; // garage approach
-    if(Math.hypot(px-WEED_CX,pz-WEED_CZ)<18)return false;   // weed farm clearing
-    if(Math.hypot(px-TOWN_CX,pz)<78)return false;           // Pine Hollow village clearing
-    if(Math.hypot(px-606,pz-88)<33)return false;            // abandoned fort compound (44m wide)
-    if(Math.hypot(px-BARN_CX,pz-BARN_CZ)<13)return false;   // barn + silo
-    if(FARMHOUSES.some(([fx,fz])=>Math.hypot(px-fx,pz-fz)<9))return false; // farmhouse yards
-    if(fields.some(([a,b,d,e])=>px>a-2&&px<b+2&&pz>d-2&&pz<e+2))return false;
-    return true;
-  };
-  // Plant a tree at a valid spot: mostly conifers, with broadleaf trees mixed in
-  // for variety. Returns whether it took.
-  const plantTree=(px,pz)=>{
-    if(!okForest(px,pz))return false;
-    (Math.random()<.72?addPine:addTree)(px,pz);return true;
-  };
-  // Grove centres [x, z, radiusX, radiusZ, count]: thick stands on the north and
-  // south flanks, bands creeping up the wooded foot of the mountain, and stands
-  // wrapping the far peninsula and the woods between the mountain and the village.
-  const G=RURAL_GAP;
-  const groves=[
-    [228+G, 90, 30, 34, 40],[268+G, 96, 28, 30, 38],[306+G, 92, 26, 28, 34],
-    [224+G,-92, 30, 34, 40],[266+G,-98, 28, 30, 38],[302+G,-96, 26, 28, 34],
-    [MOUNT_X-MOUNT_R-12, 64, 32, 30, 40],[MOUNT_X-MOUNT_R-12,-64, 32, 30, 40],
-    [350+G, 74, 26, 28, 34],[350+G,-74, 26, 28, 34],
-    [245+G,108, 24, 9, 18],[285+G,-110, 24, 9, 16],
-    [560, 70, 26, 30, 34],[560,-70, 26, 30, 34],
-  ];
-  let placed=0;
-  for(const[gx,gz,rx,rz,count]of groves){
-    let n=0,g2=0;
-    while(n<count&&g2++<count*6){
-      // gaussian-ish clump: sum of two uniforms biases toward the centre
-      const ox=(Math.random()+Math.random()-1)*rx, oz=(Math.random()+Math.random()-1)*rz;
-      if(plantTree(gx+ox,gz+oz)){n++;placed++;}
-    }
-  }
-  // denser scatter between the groves so the whole peninsula reads as woodland
-  let guard=0;
-  while(placed<470&&guard++<4000){
-    if(plantTree(rand(RURAL_X0+6,RURAL_X1-8),rand(-RURAL_HALF+6,RURAL_HALF-6)))placed++;
-  }
-  // a double row of pines lining each side of the dirt road on the way out of town
-  for(let px=RURAL_X0+24;px<MOUNT_X-MOUNT_R-6;px+=rand(7,11)){
-    for(const sz of[-1,1]){
-      const pz=sz*rand(9,13);
-      if(okForest(px,pz))addPine(px,pz);
-    }
-  }
-  // ---- Undergrowth & forest floor ----
-  // Bushes thicken the ground layer; bias most toward the groves so the stands
-  // read as dense thicket, with the rest scattered through the open wood.
-  let bushes=0,bg=0;
-  while(bushes<320&&bg++<5200){
-    let px,pz;
-    if(Math.random()<.7){
-      const[gx,gz,rx,rz]=groves[irand(0,groves.length-1)];
-      px=gx+(Math.random()+Math.random()-1)*(rx+8);
-      pz=gz+(Math.random()+Math.random()-1)*(rz+8);
-    }else{
-      px=rand(RURAL_X0+6,RURAL_X1-8);pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
-    }
-    if(okForest(px,pz)){addBush(px,pz);bushes++;}
-  }
-  // Ferns dotted across the shaded floor.
-  let ferns=0,fg=0;
-  while(ferns<240&&fg++<4200){
-    const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
-    if(okForest(px,pz)){addFern(px,pz);ferns++;}
-  }
-  // Mushroom clusters & mossy fallen logs as life/decay detail, near the stands.
-  let detail=0,dg=0;
-  while(detail<80&&dg++<1600){
-    const[gx,gz,rx,rz]=groves[irand(0,groves.length-1)];
-    const px=gx+(Math.random()+Math.random()-1)*(rx+6),pz=gz+(Math.random()+Math.random()-1)*(rz+6);
-    if(!okForest(px,pz))continue;
-    if(Math.random()<.62)addMushroom(px,pz);else addFallenLog(px,pz);
-    detail++;
-  }
+  // The whole rural forest (clustered trees, the pines lining the dirt road, the
+  // undergrowth and the mushroom/log decay detail) is baked into world.json — see
+  // js/world-gen.js for the clustering/exclusion rules. Every prop merges into the
+  // batched chunk meshes at finalizeProps, so a thick wood is nearly free.
+  const f=worldData.forest;
+  for(const o of f.trees)plantSmall(o.t,o.x,o.z);    // 'pine' | 'tree'
+  for(const o of f.bushes)addBush(o.x,o.z);
+  for(const o of f.ferns)addFern(o.x,o.z);
+  for(const o of f.details)plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
 }
 
 // fardos de feno nas roças
@@ -502,12 +385,8 @@ addHayBales();
 {
   const m=makeMountain(MOUNT_S,MOUNT_SEG);
   m.position.set(MOUNT_X,.02,0);scene.add(m);
-  // pedras espalhadas nas encostas
-  for(let k=0;k<14;k++){
-    const a=rand(0,Math.PI*2),d=rand(MOUNT_R*.3,MOUNT_R*.9);
-    const rx=MOUNT_X+Math.cos(a)*d,rz=Math.sin(a)*d;
-    addMountainRock(rx,rz,rand(.5,1.3));
-  }
+  // Rocks scattered on the slopes are baked into world.json (js/world-gen.js).
+  for(const r of worldData.mountainRocks)addMountainRock(r.x,r.z,r.s);
   // mirante no pico: mastro com bandeira (e a vista da cidade)
   addSummitFlag(MOUNT_X,MOUNT_H,0);
 }
