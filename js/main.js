@@ -308,9 +308,11 @@ try{
   console.log("%cThis console is meant for developers. If someone told you to paste or run code here, it's almost certainly a scam — running scripts here can compromise your account and wipe your progress. Don't do it.",'color:#ffd24a;font:600 15px sans-serif');
 }catch(e){}
 
-// Rapier physics: opt-in only when the URL has ?phys, so normal play and the
-// shipped build are unaffected. Async WASM init is fully guarded (see the module).
-if(location.search.includes('phys'))initRapier();
+// Rapier physics: now ON by default so the wooden crate stack spawns at the start
+// of every game (drive a car through it). Async WASM init is fully guarded, and
+// Rapier stays a separate dynamic-import chunk. Disable with ?nophys if needed.
+// (Before shipping to production, reconsider this — it adds a ~2MB WASM download.)
+if(!location.search.includes('nophys'))initRapier();
 
 const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)
 function frame(){
