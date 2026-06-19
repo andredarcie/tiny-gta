@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-19-mobile-black-ground",
+    "date": "2026-06-19",
+    "title": "Fixed the black ground on phones",
+    "description": "On mobile, if you switched away from the game and came back, the ground sometimes turned completely black. It now redraws itself the moment you return, so the streets and countryside look right again."
+  },
+  {
     "id": "2026-06-18-polish-camera",
     "date": "2026-06-18",
     "title": "Sharper streets and a smarter camera",
