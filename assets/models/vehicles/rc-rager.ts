@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {applyVehicleEnv} from './vehicle-env.ts';
 
 // Carrinho de controle remoto MINÚSCULO estilo brinquedo (~1.2m):
 // chassi baixo e largo, 4 rodas grandes "de off-road" e uma anteninha fina
@@ -73,4 +74,4 @@ function buildRcRager(): THREE.Group{
 export default {category:'Vehicles',label:'RC rager',build:buildRcRager};
 
 // Compat com o padrão dos outros veículos: factory direta.
-export function makeRcRager(): THREE.Group{return buildRcRager();}
+export function makeRcRager(): THREE.Group{const g=buildRcRager();applyVehicleEnv(g);return g;}

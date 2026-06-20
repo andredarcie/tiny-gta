@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {applyVehicleEnv} from './vehicle-env.ts';
 
 // ARMY truck (military transport style): low cab up front + open bed at the back with
 // side lockers and canvas bows, GREEN CAMO paint (procedural <canvas> texture),
@@ -156,6 +157,6 @@ function buildArmyTruck(): THREE.Group{
   return g;
 }
 
-export function makeArmyTruck(): THREE.Group{return buildArmyTruck();}
+export function makeArmyTruck(): THREE.Group{const g=buildArmyTruck();applyVehicleEnv(g);return g;}
 
 export default {category:'Vehicles',label:'Army truck',build:buildArmyTruck,zoom:.55,yaw:-.6};

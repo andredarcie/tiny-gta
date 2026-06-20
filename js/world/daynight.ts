@@ -19,14 +19,18 @@ const NIGHT_MULT=6.6;
 // ?tod=0..1 in the URL pins the STARTING time of day (debug); default is early
 // afternoon, so the first sunset arrives in ~1 min. The clock keeps advancing.
 const urlTod=parseFloat(new URLSearchParams(location.search).get('tod') as string);
-let tod=isNaN(urlTod)?.55:((urlTod%1)+1)%1;
+// Dev (localhost): o jogo SEMPRE começa ao meio-dia (.5), pra avaliar o visual com luz
+// alta. O relógio segue andando depois; um ?tod=… explícito ainda vence.
+const isLocalhost=location.hostname==='localhost'||location.hostname==='127.0.0.1';
+let tod=isNaN(urlTod)?(isLocalhost?.5:.55):((urlTod%1)+1)%1;
 export const getTod=()=>tod;
 export const setTod=(v:number)=>{tod=((v%1)+1)%1;};
 // Resume the in-game clock from a save (js/activities/minigame.ts getDailySave). Without this the
 // clock snapped back to afternoon on every reload, so a short session never crossed an
 // in-game midnight — `dayCount` stayed frozen and the mini-games' "1x/dia" lock could
 // never clear across reloads. A ?tod=… debug pin still wins (don't clobber it).
-const todPinned=!isNaN(urlTod);
+// No localhost o save NÃO restaura a hora (pra sempre COMEÇAR ao meio-dia).
+const todPinned=!isNaN(urlTod)||isLocalhost;
 export const restoreTod=(v:number)=>{ if(!todPinned&&Number.isFinite(v))setTod(v); };
 // Day counter: bumps every time the clock wraps past midnight. Used by the gym
 // (js/places/gym.ts) to allow training only once per day.
@@ -125,6 +129,17 @@ const RURAL_HAZE=new THREE.Color(0xeef1e9);
 // Bulbo do poste: apagado (cinza) de dia, quente e brilhante à noite
 const BULB_DAY=new THREE.Color(0x9a948e),BULB_NIGHT=new THREE.Color(0xffd9a0);
 
+// Realism grade. The time-of-day keyframes are deliberately candy-bright; this eases the
+// whole SAMPLED palette toward a more grounded, photographic tone every frame — saturation
+// pulled in (toward luminance) and exposure dialled back a touch. One lever for the look of
+// the entire game; applied in updateDayNight after sampleKeyframes(), before sky/fog/lights.
+const REAL_DESAT=0.26;   // 0 = keep the vivid keyframes, 1 = greyscale (higher = more sober/filmic)
+const REAL_EXP=0.85;     // exposure multiplier (lower = less blown highlights, moodier)
+function desat(c:THREE.Color,k:number):void{
+  const l=c.r*0.299+c.g*0.587+c.b*0.114;
+  c.r+=(l-c.r)*k;c.g+=(l-c.g)*k;c.b+=(l-c.b)*k;
+}
+
 // Farol do carro do jogador: um único SpotLight real que ilumina a rua à frente
 const headSpot=new THREE.SpotLight(0xffe9b8,0,38,.6,.55,1.4);
 headSpot.castShadow=false;
@@ -147,6 +162,11 @@ export function updateDayNight(dt:number){
   }
   twinkleT+=dt;
   sampleKeyframes();
+  // realism grade (REAL_DESAT/REAL_EXP): ease the saturation of the sampled palette before
+  // it drives the sky dome, fog and lights below. Exposure is eased at the apply site.
+  for(const c of cur.sky)desat(c,REAL_DESAT);
+  desat(cur.fog,REAL_DESAT);desat(cur.hs,REAL_DESAT);desat(cur.hg,REAL_DESAT*0.6);
+  desat(cur.sun,REAL_DESAT*0.5);desat(cur.cloud,REAL_DESAT*0.7);
   skyAccum+=dt;
   if(skyAccum>=.08){skyAccum=0;drawSky();} // redesenho/upload do céu throttlado (~12fps)
 
@@ -172,7 +192,7 @@ export function updateDayNight(dt:number){
   // mantêm o mirante: do alto da montanha o horizonte reabre.
   (scene.fog as THREE.Fog).near=120-ruralF*48;
   (scene.fog as THREE.Fog).far=Math.min(300-ruralF*145+(ppos?Math.max(0,ppos.y)*14:0),430);
-  renderer.toneMappingExposure=cur.exp;
+  renderer.toneMappingExposure=cur.exp*REAL_EXP;
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;
   for(const m of buildingMats)m.emissiveIntensity=cur.win;

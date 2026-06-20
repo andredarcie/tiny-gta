@@ -25,7 +25,6 @@ const toonEyelidG=new THREE.SphereGeometry(.07,16,12);
 const toonHeadG=new THREE.SphereGeometry(.24,28,20);
 const toonHandG=new THREE.SphereGeometry(.062,12,10);
 const toonFootG=new THREE.SphereGeometry(.1,12,10);
-const shoeSoleG=new THREE.BoxGeometry(.17,.06,.4);   // shoe sole — a distinct mesh, separate from the leg/pants
 // Smooth skinned body. Each limb is ONE continuous surface (no thigh-stuck-to-shin
 // seam): the torso is a single capsule (rigid, so rounded caps suffice), and the
 // arms/legs are cylinders with many HEIGHT segments so skinning bends the single
@@ -144,9 +143,10 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
     add(tinted(toonHandG,partM([sx*SX,.85,.005],null,[.82,1.3,.46]),skin),LA,LA);   // flat paddle palm
     add(tinted(toonHandG,partM([sx*(SX-.045),.88,.03],null,[.42,.62,.42]),skin),LA,LA); // thumb
     add(tinted(skLegG,partM([sx*LX,.5,0]),pants),UL,LL,.52,.06,{kind:'flat',role:'pants'});         // leg: PANTS only (the shoe is its own mesh below)
-    // SHOE: its own mesh (flat sole + rounded upper), separate from the leg/pants, on the ankle bone
-    add(tinted(shoeSoleG,partM([sx*LX,.035,.09],null,[1,1,1]),shoe),LL,LL,0,0,{kind:'flat',role:'shoe'});
-    add(tinted(toonFootG,partM([sx*LX,.085,.03],null,[.85,.72,1.35]),shoe),LL,LL,0,0,{kind:'flat',role:'shoe'});
+    // SHOE: the original-size foot mesh (realistic proportions), its own geometry separate
+    // from the leg/pants, on the ankle bone — recoloured by the clothing store (subtle, but
+    // it keeps the realistic look the player preferred).
+    add(tinted(toonFootG,partM([sx*LX,.05,.06],null,[.78,.5,1.7]),shoe),LL,LL,0,0,{kind:'flat',role:'shoe'});
   }
   for(const sx of[-1,1]){
     add(tinted(toonScleraG,onHead([sx*.089,.026,.196],null,[.95,.74,.42]),SCLERA_COLOR),HEAD,HEAD);

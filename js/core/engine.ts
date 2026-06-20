@@ -3,19 +3,20 @@ import {makeSea} from '../../assets/models/environment/sea.ts';
 import {makeClouds} from '../../assets/models/environment/clouds.ts';
 
 export const canvas=document.getElementById('game') as HTMLCanvasElement;
-export const renderer=new THREE.WebGLRenderer({canvas,antialias:true,
+// antialias OFF on purpose: gives crisp, slightly jagged edges for a lighter, more RETRO
+// look (and saves the MSAA resolve cost). Paired with the 1.0 pixel-ratio cap below.
+export const renderer=new THREE.WebGLRenderer({canvas,antialias:false,
   powerPreference:'high-performance'});
 const isMobileLike=()=>matchMedia('(pointer: coarse)').matches||innerWidth<900;
 const viewportSize=()=>({
   w:Math.round(window.visualViewport?.width||innerWidth),
   h:Math.round(window.visualViewport?.height||innerHeight)
 });
-// Teto do pixel ratio. Desktop também limitado a 1.5 (era 2): em telas HiDPI
-// (DPR≥2) renderizar a 2x = 4x os pixels, e ao varrer a câmera pela cidade o
-// custo de fill-rate/overdraw estourava (medido: pico de 175ms, ~70fps girando).
-// A 1.5x fica suave (pico ~29ms) e, com antialias, ainda nítido. Telas com DPR
-// ≤1.5 (a maioria dos desktops) não mudam nada — Math.min preserva o DPR real.
-function pixelRatioLimit(){return 1.5;}
+// Teto do pixel ratio = 1.0 (era 1.5). Renderiza na resolução base, sem oversampling:
+// deixa o jogo mais LEVE (bem menos fill-rate em telas HiDPI) e com um visual mais RETRÔ,
+// levemente serrilhado — junto com o antialias DESLIGADO (ver renderer acima). Em telas
+// 1x o serrilhado vem do AA off; em HiDPI vem também da menor resolução interna.
+function pixelRatioLimit(){return 1.0;}
 const initialSize=viewportSize();
 // Resolução adaptativa: basePR é o teto pelo DPR do aparelho; renderScale
 // (0.72..1) é ajustado em runtime por adaptResolution() (main.js) pra segurar a

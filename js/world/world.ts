@@ -20,7 +20,6 @@ import {addAbandonedHouse} from '../../assets/models/props/abandoned-house.ts';
 import {addPine} from '../../assets/models/props/pine.ts';
 import {addTree} from '../../assets/models/props/tree.ts';
 import {addParkBench} from '../../assets/models/props/park-bench.ts';
-import {addFountain} from '../../assets/models/props/fountain.ts';
 import {addBush} from '../../assets/models/props/bush.ts';
 import {addFern} from '../../assets/models/props/fern.ts';
 import {addMushroom} from '../../assets/models/props/mushroom.ts';
@@ -36,6 +35,8 @@ import {addHospital,HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
 import {addPrison,PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
 import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../../assets/models/city/gun-shop.ts';
 import {addClothingStore} from '../../assets/models/city/clothing-store.ts';
+import {buildPark} from '../../assets/models/city/park.ts';
+import {buildSidewalks} from '../../assets/models/city/sidewalk.ts';
 import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../../assets/models/city/workshop.ts';
 import {addBarnWithSilo} from '../../assets/models/rural/barn-with-silo.ts';
 import {addAbandonedFort} from '../../assets/models/rural/abandoned-fort.ts';
@@ -78,14 +79,48 @@ const cityLots=worldData.cityLots;
 // it can be redrawn on context-restore / foreground (see refreshGroundTextures).
 const groundTexRedraws:(()=>void)[]=[];
 
-// Ground texture (asphalt, sidewalks, crosswalks)
-const groundCv=document.createElement('canvas');groundCv.width=2048;groundCv.height=2048;
+// Ground texture (asphalt, sidewalks, crosswalks). Resolução ADAPTATIVA: 4096 no
+// desktop (mais texels por unidade → faixas e asfalto NÍTIDOS de perto), 2048 no
+// mobile (evita estouro de memória / perda de contexto), nunca acima do limite do GPU.
+const groundCv=document.createElement('canvas');
+{
+  const mobile=matchMedia('(pointer: coarse)').matches||innerWidth<900;
+  groundCv.width=groundCv.height=Math.min(mobile?2048:4096,renderer.capabilities.maxTextureSize);
+}
 function paintCityGround(){
-  const x=groundCv.getContext('2d')!,s=2048/GROUND,M=(v:number):number=>(v+GROUND/2)*s;
+  // GSIZE segue o canvas; s = px por unidade de mundo; SC = escala vs. o design
+  // original 2048 (1 no mobile, 2 a 4096) — px do DETALHE (ruído, trincas, remendos)
+  // multiplicam por SC e as contagens por SC², então a densidade/tamanho do grão fica
+  // IGUAL em qualquer resolução (só mais nítido). As faixas usam M()/s e já escalam.
+  const x=groundCv.getContext('2d')!,GSIZE=groundCv.width,s=GSIZE/GROUND,
+    SC=GSIZE/2048,M=(v:number):number=>(v+GROUND/2)*s;
   // Re-seeded each call so the speckle/debris noise is deterministic AND identical
   // on every repaint (the mobile context-restore redraw, see groundTexRedraws).
   const {random:rnd,irand}=makeRng(0x6017c1);
-  x.fillStyle='#46464a';x.fillRect(0,0,2048,2048);                // asfalto neutro
+  // Asfalto: base + textura realista. Pintado no canvas INTEIRO primeiro; o loop de
+  // quarteirões/lotes abaixo cobre calçadas e lotes, então o detalhe sobrevive só nas
+  // RUAS. Usa um RNG PRÓPRIO (não desloca o grão determinístico dos lotes/grão final).
+  x.fillStyle='#45454b';x.fillRect(0,0,GSIZE,GSIZE);              // asfalto base
+  {
+    const {random:ar,irand:ai}=makeRng(0x4a5fa1);
+    const A=SC*SC; // densidade independente de resolução (contagens ∝ área)
+    // manchas tonais largas e SUAVES (elipses, sem contorno): trechos desbotados pelo
+    // sol (claros) e oleosos (escuros). Não formam quadrados — só variação de tom.
+    for(let k=0;k<150*A;k++){
+      x.fillStyle=ar()<.5?`rgba(98,100,108,${(.04+ar()*.05).toFixed(3)})`
+                         :`rgba(22,22,28,${(.04+ar()*.06).toFixed(3)})`;
+      const r=ai(40,180)*SC;
+      x.beginPath();x.ellipse(ar()*GSIZE,ar()*GSIZE,r,r*(.5+ar()*.7),ar()*Math.PI,0,7);x.fill();
+    }
+    // trincas finas e quebradas espalhadas pelo asfalto
+    x.strokeStyle='rgba(12,12,16,.4)';x.lineWidth=Math.max(1,SC);
+    for(let k=0;k<110*A;k++){
+      let cx0=ar()*GSIZE,cy0=ar()*GSIZE;
+      x.beginPath();x.moveTo(cx0,cy0);
+      for(let s2=0;s2<ai(2,5);s2++){cx0+=ai(-30,30)*SC;cy0+=ai(-30,30)*SC;x.lineTo(cx0,cy0);}
+      x.stroke();
+    }
+  }
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     const x0=nodeX(i)+ROAD/2,z0=nodeX(j)+ROAD/2;
     x.fillStyle='#bcb6a8';x.fillRect(M(x0),M(z0),BLOCK*s,BLOCK*s); // calçadão claro
@@ -113,10 +148,16 @@ function paintCityGround(){
     const r=nodeX(i);
     for(let j=0;j<N;j++){
       const a=nodeX(j)+ROAD/2+2.5,b=nodeX(j+1)-ROAD/2-2.5;
-      x.fillStyle='#f0bd2e';
+      // contorno escuro sob a linha central: faz o amarelo "saltar" e ficar definido
+      x.fillStyle='rgba(16,16,12,.45)';
+      x.fillRect(M(r-.66),M(a),.54*s,(b-a)*s);x.fillRect(M(r+.12),M(a),.54*s,(b-a)*s);
+      x.fillRect(M(a),M(r-.66),(b-a)*s,.54*s);x.fillRect(M(a),M(r+.12),(b-a)*s,.54*s);
+      // linha central dupla amarela (tom de tinta de via, levemente mais saturado)
+      x.fillStyle='#f3c233';
       x.fillRect(M(r-.55),M(a),.32*s,(b-a)*s);x.fillRect(M(r+.23),M(a),.32*s,(b-a)*s);
       x.fillRect(M(a),M(r-.55),(b-a)*s,.32*s);x.fillRect(M(a),M(r+.23),(b-a)*s,.32*s);
-      x.fillStyle='rgba(240,240,245,.7)';
+      // bordas brancas (linhas de bordo) — um pouco mais nítidas
+      x.fillStyle='rgba(242,242,247,.82)';
       x.fillRect(M(r-ROAD/2+.5),M(a),.22*s,(b-a)*s);x.fillRect(M(r+ROAD/2-.72),M(a),.22*s,(b-a)*s);
       x.fillRect(M(a),M(r-ROAD/2+.5),(b-a)*s,.22*s);x.fillRect(M(a),M(r+ROAD/2-.72),(b-a)*s,.22*s);
     }
@@ -131,9 +172,9 @@ function paintCityGround(){
       x.fillRect(M(cx+ROAD/2+.6),M(cz+k*2.4-.7),1.6*s,1.4*s);
     }
   }
-  for(let k=0;k<5000;k++){
+  for(let k=0;k<5000*SC*SC;k++){
     x.fillStyle=`rgba(${irand(120,200)},${irand(120,190)},${irand(130,200)},.1)`;
-    x.fillRect(rnd()*2048,rnd()*2048,irand(2,7),irand(2,7));
+    x.fillRect(rnd()*GSIZE,rnd()*GSIZE,irand(2,7)*SC,irand(2,7)*SC);
   }
 }
 {
@@ -153,16 +194,13 @@ export {buildingMats}; // daynight.js controla emissiveIntensity (janelas acesas
 // quadrantes — em vez das 7 palmeiras soltas de antes. Os 4 braços do caminho
 // (eixos x=cx e z=cz) ficam livres: tudo é colocado nos quadrantes (diagonais).
 function addCityPark(x0:number,z0:number,inner:number){
-  const cx=x0+inner/2,cz=z0+inner/2; // centro = cruzamento dos caminhos
-  // Fonte no centro (sólida: não dá pra atravessar a bacia).
-  solids.push(addFountain(cx,cz));
-  // Postes nos quatro cantos: dão estrutura à praça e a iluminam à noite.
-  for(const sx of[-1,1])for(const sz of[-1,1])addStreetLamp(cx+sx*9.5,cz+sz*9.5);
-  // Um banco em cada quadrante, encarando a fonte (mantém os caminhos livres).
-  for(const sx of[-1,1])for(const sz of[-1,1])
-    solids.push(addParkBench(cx+sx*3.6,cz+sz*3.6,Math.atan2(-sx,-sz)));
-  // Park vegetation (trees/palms/bushes/ferns/mushrooms per quadrant) is baked
-  // into world.json and built by plantSmall in the loop below.
+  const cx=x0+inner/2,cz=z0+inner/2; // centre = where the two paths cross
+  // Rich "pracinha" build (assets/models/city/park.ts): fountain, corner + path lamps,
+  // benches, a clipped hedge border, a paved plaza ring + stone path edging, raised flower
+  // beds and planters bursting with colour, and denser trees/bushes — all baked.
+  buildPark(cx,cz,inner,solids);
+  // Extra baked vegetation (trees/palms/bushes per quadrant) still comes from world.json
+  // via plantSmall in the loop below.
 }
 // Build a small decorative prop by type. Shared by the park vegetation and the
 // rural forest — both come from world.json now. These all merge into the batched
@@ -183,7 +221,7 @@ for(let i=0;i<N;i++)for(let j=0;j<N;j++){
 for(const v of worldData.cityParkVeg)plantSmall(v.t,v.x,v.z);
 for(const lot of cityLots){
   if(lot.empty)addAbandonedLot(lot.cx,lot.cz,lot.w,lot.d,solids);
-  else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids,lot.win as any);
+  else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids); // windows on ALL sides (omit lot.win → default {e:1,w:1,s:1,n:1})
 }
 addNightclub(solids); // boate de frente pro mar no quarteirão reservado
 addGym(solids);       // academia no quarteirão reservado (nordeste)
@@ -195,6 +233,7 @@ addWorkshop(solids);  // oficina de custom (MOD GARAGE) no quarteirão reservado
 finalizeBuildings();     // funde a cidade inteira em ~18 meshes (draw calls)
 finalizeAbandonedLots(); // e todos os lotes abandonados em ~5
 finalizeDoorArrows();    // todas as setinhas de porta num único mesh
+buildSidewalks();        // calçadas elevadas (meio-fio) — uma laje fundida
 
 // Ilha de verdade: a areia, o raso turquesa e a espuma seguem UMA costa irregular
 // contínua (cidade + península), no lugar da antiga praia quadrada / anéis

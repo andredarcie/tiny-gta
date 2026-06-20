@@ -1,5 +1,6 @@
 import carModel from './car.ts';
 import * as THREE from 'three';
+import {applyVehicleEnv} from './vehicle-env.ts';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 
@@ -131,7 +132,7 @@ function buildUno({color=0x3b7ac2}: {color?: number}={}): THREE.Group{
 }
 
 // Back-compat factory: build + add to the scene (mirrors makeCar/makeAmbulance).
-export function makeFiatUno(color: number): THREE.Group{const g=buildUno({color});scene.add(g);return g;}
+export function makeFiatUno(color: number): THREE.Group{const g=buildUno({color});applyVehicleEnv(g);scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered) with a couple of paint variants.
 export default {category:'Vehicles',label:'Fiat Uno',build:buildUno,zoom:.7,yaw:.6,

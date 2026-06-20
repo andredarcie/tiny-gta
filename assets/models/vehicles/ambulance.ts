@@ -1,5 +1,6 @@
 import carModel from './car.ts';
 import * as THREE from 'three';
+import {applyVehicleEnv} from './vehicle-env.ts';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 
@@ -142,7 +143,7 @@ function buildAmbulance(): THREE.Group{
 }
 
 // Compat: gameplay usa makeAmbulance() e espera o veículo já na cena.
-export function makeAmbulance(): THREE.Group{const g=buildAmbulance();scene.add(g);return g;}
+export function makeAmbulance(): THREE.Group{const g=buildAmbulance();applyVehicleEnv(g);scene.add(g);return g;}
 
 // Padrão de modelo: build() puro; descriptor pro model-viewer (descoberta
 // automática). zoom<1 aproxima a câmera (a van é grande, então enquadra melhor);

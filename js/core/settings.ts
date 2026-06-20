@@ -18,6 +18,7 @@ interface Settings {
   brightness: number;
   fps: boolean;
   aimAssist: boolean;
+  filmGrain: boolean;
 }
 
 // Single source of truth for defaults. They are picked to REPRODUCE the game's
@@ -32,6 +33,7 @@ export const DEFAULTS: Settings={
   brightness:100, // 50..150 % -> toneMappingExposure (100 = the original 1.25)
   fps:true,       // show the FPS readout (top-left)
   aimAssist:true, // gentle aim assist while aiming/on touch (read live by weapons.ts)
+  filmGrain:true, // animated film-grain overlay (#grain) + cinematic look
 };
 
 export const settings: Settings={...DEFAULTS};
@@ -60,10 +62,14 @@ export function applyFpsSetting(){
   const el=document.getElementById('fps');
   if(el)el.style.display=settings.fps?'':'none';
 }
+export function applyFilmGrain(){
+  document.body.classList.toggle('no-grain',!settings.filmGrain);
+}
 export function applySettings(){
   applyAudioSettings();
   applyGraphicsSettings();
   applyFpsSetting();
+  applyFilmGrain();
 }
 
 // Set one key, persist, and re-apply only the affected group (so dragging a slider
@@ -75,6 +81,7 @@ export function setSetting(key: string,val: number|boolean){
   if(key==='master'||key==='music'||key==='muted')applyAudioSettings();
   else if(key==='shadows'||key==='brightness')applyGraphicsSettings();
   else if(key==='fps')applyFpsSetting();
+  else if(key==='filmGrain')applyFilmGrain();
 }
 
 export function resetSettings(){

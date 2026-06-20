@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {scene} from '@/core/engine.ts';
+import {applyVehicleEnv} from './vehicle-env.ts';
 
 // Classic farm TRACTOR — a slow, chunky utility vehicle for the rural area. Detailed:
 // a long tapering engine hood with a radiator grille and headlights, a vertical
@@ -123,7 +124,7 @@ export function buildTractor(): THREE.Group{
 }
 
 // Back-compat factory: build + add to the scene (mirrors makeCar/makeMotorcycle).
-export function makeTractor(): THREE.Group{const g=buildTractor();scene.add(g);return g;}
+export function makeTractor(): THREE.Group{const g=buildTractor();applyVehicleEnv(g);scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered).
 export default {category:'Vehicles',label:'Tractor',build:buildTractor};

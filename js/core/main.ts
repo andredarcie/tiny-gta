@@ -458,3 +458,15 @@ auditRefs();
 // O custo migra pro boot (tela de título), onde é invisível.
 try{warmupShaders();}catch(e){}
 frame();
+
+// World built + first frame rendering: the menu behind the splash is ready, so fade the
+// intro now — but hold it for a minimum so the reveal animation plays. Gating the fade on
+// THIS point (not a fixed timer) means the splash only lifts once the game is actually
+// loaded, even on a slow connection. boot.ts armed the skip + a long safety fallback.
+{
+  const introEl=document.getElementById('intro');
+  if(introEl){
+    const fade=()=>{introEl.classList.add('intro-gone');setTimeout(()=>introEl.remove(),800);};
+    setTimeout(fade,Math.max(0,3000-performance.now()));
+  }
+}

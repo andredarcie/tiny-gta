@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {applyVehicleEnv} from './vehicle-env.ts';
 
 // Caminhão de bombeiros: cabine baixa na frente + módulo/baú traseiro MAIS ALTO
 // (silhueta clássica de fire engine), two-tone vermelho/branco, painel da bomba
@@ -184,7 +185,7 @@ function buildFireTruck(): THREE.Group{
 
 // Compat: gameplay usa makeFireTruck() e espera o veículo já como Object3D pronto.
 // (Não dá scene.add aqui; quem usa decide quando inserir na cena.)
-export function makeFireTruck(): THREE.Group{return buildFireTruck();}
+export function makeFireTruck(): THREE.Group{const g=buildFireTruck();applyVehicleEnv(g);return g;}
 
 // Padrão de modelo: build() puro; descriptor pro model-viewer (descoberta automática).
 export default {category:'Vehicles',label:'Fire truck',build:buildFireTruck,zoom:.55,yaw:-.6};

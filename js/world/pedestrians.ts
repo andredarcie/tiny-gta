@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,CELL,HALF,nodeX,irand,rand,pick,clamp} from '@/core/constants.ts';
+import {N,CELL,HALF,nodeX,irand,rand,pick,clamp,groundHeight} from '@/core/constants.ts';
 import {state} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,setOpacity,shirtColors} from '@/core/entities.ts';
@@ -53,7 +53,9 @@ const _rnd=new THREE.Vector3();
 
 export function addBloodPuddle(x:number,z:number){
   const puddle=makeBloodPuddle();
-  puddle.position.set(x+rand(-.12,.12),0,z+rand(-.12,.12));
+  // assenta na altura do chão (+ folga) pra a poça aparecer SOBRE o meio-fio da
+  // calçada, não enterrada na laje (a calçada virou objeto elevado)
+  puddle.position.set(x+rand(-.12,.12),groundHeight(x,z)+.02,z+rand(-.12,.12));
   puddle.rotation.y=rand(0,Math.PI*2);
   scene.add(puddle);
   bloodPuddles.push(puddle);
@@ -103,8 +105,9 @@ export function updatePeds(dt:number){
     if(p.state==='fly'){
       p.g.position.addScaledVector(p.vel,dt);
       p.vel.y-=22*dt;p.g.rotation.x+=9*dt;
-      if(p.g.position.y<.35&&p.vel.y<0){
-        p.g.position.y=.35;p.state='dead';p.t=0;
+      const land=groundHeight(p.g.position.x,p.g.position.z)+.35; // pousa no chão/meio-fio
+      if(p.g.position.y<land&&p.vel.y<0){
+        p.g.position.y=land;p.state='dead';p.t=0;
         p.g.rotation.set(-Math.PI/2,p.g.rotation.y,0);
         leaveBlood(p);
       }
@@ -163,7 +166,8 @@ export function updatePeds(dt:number){
     collideStatics(p.g.position,.4);
     p.g.rotation.y=Math.atan2(d.x,d.z);
     p.t+=dt*spd*2.2;
-    p.g.position.y=Math.abs(Math.sin(p.t))*.07;
+    // segue a altura do chão (sobe no meio-fio da calçada) + bob da passada
+    p.g.position.y=groundHeight(p.g.position.x,p.g.position.z)+Math.abs(Math.sin(p.t))*.07;
     Entities.animatePed?.(p.g,p.t,Math.min(1,spd/5.5));
   }
 }

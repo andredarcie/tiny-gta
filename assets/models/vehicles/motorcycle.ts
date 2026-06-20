@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {scene} from '@/core/engine.ts';
 import {beamMat} from './car.ts'; // mesma luz de farol do carro (daynight liga à noite)
+import {applyVehicleEnv} from './vehicle-env.ts';
 
 // Moto estilo Open-world: cruiser/street compacta, ~2.1m de comprimento, rodas Ø.68,
 // banco a ~.80 de altura (o piloto fica visível por cima, diferente do carro).
@@ -158,4 +159,4 @@ export default {category:'Vehicles',label:'Motorcycle',build:buildMotorcycle,
             {label:'Motorcycle — gold',opts:{color:0xe0a52a}}]};
 
 // Compat: gameplay usa makeMotorcycle(color) e espera a moto já na cena.
-export function makeMotorcycle(color: number): THREE.Group{const g=buildMotorcycle({color});scene.add(g);return g;}
+export function makeMotorcycle(color: number): THREE.Group{const g=buildMotorcycle({color});applyVehicleEnv(g);scene.add(g);return g;}

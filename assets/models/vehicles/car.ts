@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
+import {applyVehicleEnv} from './vehicle-env.ts';
 
 function taperTop(geo: THREE.BufferGeometry,sx: number,sz: number): THREE.BufferGeometry{
   const p=geo.attributes.position;
@@ -151,7 +152,7 @@ beamMat.visible=false;
 const paintCache=new Map<number,THREE.MeshStandardMaterial>();
 function paintFor(color: number): THREE.MeshStandardMaterial{
   if(!paintCache.has(color))
-    paintCache.set(color,new THREE.MeshStandardMaterial({color,roughness:.3,metalness:.5}));
+    paintCache.set(color,new THREE.MeshStandardMaterial({color,roughness:.2,metalness:.5}));
   return paintCache.get(color)!;
 }
 
@@ -232,4 +233,4 @@ export default {category:'Vehicles',label:'Car',build:buildCar,
             {label:'Car — police',opts:{color:0x1b2b4a,police:true}}]};
 
 // Compat: gameplay usa makeCar(color,police) e espera o carro já na cena.
-export function makeCar(color: number,police: boolean): THREE.Group{const g=buildCar({color,police});scene.add(g);return g;}
+export function makeCar(color: number,police: boolean): THREE.Group{const g=buildCar({color,police});applyVehicleEnv(g);scene.add(g);return g;}

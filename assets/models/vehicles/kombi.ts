@@ -1,5 +1,6 @@
 import carModel from './car.ts';
 import * as THREE from 'three';
+import {applyVehicleEnv} from './vehicle-env.ts';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 
@@ -164,7 +165,7 @@ function buildKombi(): THREE.Group{
 }
 
 // Back-compat factory: build + add to the scene (mirrors makeCar/makeAmbulance).
-export function makeKombi(): THREE.Group{const g=buildKombi();scene.add(g);return g;}
+export function makeKombi(): THREE.Group{const g=buildKombi();applyVehicleEnv(g);scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered). zoom<1 frames the tall van; yaw shows a
 // front 3/4 so the grille, headlights and roundel read straight away.

@@ -11,7 +11,13 @@
 </head>
 <body>
 <canvas id="game"></canvas>
-<div class="vignette"></div><div class="scanlines"></div>
+<div class="vignette"></div><div class="scanlines"></div><div id="grain" aria-hidden="true"></div>
+
+<div id="intro" aria-hidden="true">
+  <div id="intro-name">André N. Darcie</div>
+  <div id="intro-presents">presents</div>
+  <div id="intro-wipe"></div>
+</div>
 
 <div id="hud">
   <div id="fps" style="position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));font:600 11px 'IBM Plex Mono',monospace;letter-spacing:1px;opacity:.85;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000"></div>
@@ -229,7 +235,7 @@
   </div>
 </div>
 
-<script type="module" src="js/core/main.ts"></script>
+<script type="module" src="js/core/boot.ts"></script>
 
 </body>
 </html>

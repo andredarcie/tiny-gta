@@ -45,7 +45,15 @@ export function finalizeProps(): void{
     const group=new THREE.Group();
     for(const[mat,b]of cm){
       if(!b.geos.length)continue;
-      const m=new THREE.Mesh(mergeGeometries(b.geos),mat);
+      // mergeGeometries exige índice CONSISTENTE: se um material reúne geometria
+      // indexada (Box/Cylinder) E não-indexada (Icosahedron/Shape) no mesmo balde,
+      // o merge falha e devolve null. Normaliza tudo para não-indexado nesse caso.
+      let geos=b.geos;
+      if(geos.some(g=>g.index)&&geos.some(g=>!g.index))
+        geos=geos.map(g=>g.index?g.toNonIndexed():g);
+      const merged=mergeGeometries(geos);
+      if(!merged)continue; // balde incompatível por outro motivo não derruba o mundo
+      const m=new THREE.Mesh(merged,mat);
       m.castShadow=b.cast;m.receiveShadow=b.receive;m.renderOrder=b.order;
       // mesh fundido nunca se move: congela a matriz local (sem recompose/frame)
       m.matrixAutoUpdate=false;m.updateMatrix();

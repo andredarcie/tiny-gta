@@ -211,6 +211,7 @@ const SCHEMA: { group: string; items: SettingItem[] }[]=[
     {key:'shadows',   type:'toggle',label:'Shadows'},
     {key:'brightness',type:'range', label:'Brightness',min:50,max:150,step:5,suffix:'%'},
     {key:'fps',       type:'toggle',label:'Show FPS'},
+    {key:'filmGrain', type:'toggle',label:'Film grain'},
   ]},
 ];
 const findItem=(key: string): SettingItem | null=>{for(const g of SCHEMA)for(const it of g.items)if(it.key===key)return it;return null;};

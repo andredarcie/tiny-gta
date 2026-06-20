@@ -2,6 +2,10 @@ import type { Racer, PrizeStreak } from '@/core/types.ts';
 
 export const N=8, CELL=44, ROAD=14, BLOCK=30, SIDE=4, HALF=N*CELL/2;
 export const GROUND=N*CELL+ROAD;
+// Altura da calçada (curb) acima da rua. A calçada deixou de ser só um desenho
+// no chão: agora é uma laje elevada de verdade (ver assets/models/city/sidewalk.ts).
+// Baixa de propósito (~um meio-fio real) — eleva levemente sem virar degrau.
+export const CURB_H=0.18;
 export const BEACH=38;                  // largura da faixa de areia ao redor da cidade
 export const BOUND=HALF+ROAD/2+BEACH-5; // limite de NPCs: andam na areia, não entram no mar
 export const WATER=HALF+ROAD/2+BEACH-3; // linha d'água: além disso é mar (nado/afundamento)
@@ -107,16 +111,31 @@ export function islandHeight(x: number, z: number): number {
   return Math.max(0,h);
 }
 
+// Altura do meio-fio (calçada elevada) em (x,z). Fonte ÚNICA, compartilhada pela
+// física (groundHeight, abaixo) e pelo visual (assets/models/city/sidewalk.ts):
+// quem anda/dirige sobe na MESMA laje que se vê. Cada quarteirão da cidade é
+// emoldurado por um anel de largura SIDE entre a rua e o lote; o miolo (prédio/
+// lote/praça) e a rua ficam no nível 0. Puro/barato — entra no caminho quente do
+// groundHeight (early-out fora da grade da cidade e na faixa da rua).
+export function cityCurbH(x: number, z: number): number {
+  if(x<=-HALF||x>=HALF||z<=-HALF||z>=HALF)return 0;   // fora da grade da cidade
+  const tx=((x+HALF)%CELL+CELL)%CELL,tz=((z+HALF)%CELL+CELL)%CELL; // local na célula (0 = eixo da rua)
+  const R=ROAD/2;
+  if(tx<R||tx>CELL-R||tz<R||tz>CELL-R)return 0;       // na rua (não no quarteirão)
+  const ex=Math.min(tx-R,CELL-R-tx),ez=Math.min(tz-R,CELL-R-tz); // distância à borda do quarteirão
+  return ex<SIDE||ez<SIDE?CURB_H:0;                   // anel externo (SIDE) = calçada; miolo = lote
+}
 // Terrain height. Each landform is its OWN single source of truth, shared with its
-// visual mesh: the island (islandHeight), the corridor hills (ruralHillH) and the
-// mountain (mountainH). The hills and the mountain never overlap in x, so summing
-// them is safe — one is always 0 where the other rises.
+// visual mesh: the island (islandHeight), the corridor hills (ruralHillH), the
+// mountain (mountainH) and the city sidewalks (cityCurbH). The hills and the
+// mountain never overlap in x, so summing them is safe — one is always 0 where the
+// other rises; the curb only lifts the city sidewalk rings (0 on roads/lots).
 export function groundHeight(x: number, z: number): number {
   if(x<-300){                  // ilha a oeste: relevo próprio, isolada no mar
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2){const ih=islandHeight(x,z);if(ih>0)return ih;}
   }
-  return ruralHillH(x,z)+mountainH(x,z);
+  return ruralHillH(x,z)+mountainH(x,z)+cityCurbH(x,z);
 }
 // ===== Ilha: costa irregular unificada (fonte ÚNICA de verdade) ============
 // Hoje o mundo parece "dois blocos" (cidade quadrada + península retangular).
