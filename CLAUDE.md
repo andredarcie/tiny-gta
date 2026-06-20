@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Tiny Crime — a browser open-world-style game built with vanilla JavaScript ES modules and Three.js, bundled by Vite. No framework, no TypeScript. The whole world (city, terrain, characters, vehicles, effects) is generated procedurally in code; there are **no image/model binary assets** loaded at runtime — textures are drawn to `<canvas>` and geometry is built from Three.js primitives.
+Tiny Crime — a browser open-world-style game built with **TypeScript (strict)** ES modules and Three.js, bundled by Vite. No UI framework. The whole world (city, terrain, characters, vehicles, effects) is generated procedurally in code; there are **no image/model binary assets** loaded at runtime — textures are drawn to `<canvas>` and geometry is built from Three.js primitives.
 
 ## Commands
 
@@ -13,11 +13,20 @@ npm install        # install deps (three, vite)
 npm run dev        # dev server at http://localhost:5173 (exposed on LAN via host:true for phone testing)
 npm run build      # production build → dist/
 npm run preview    # serve the production build
-node --check js/<file>.js   # syntax-check a single module (the de-facto per-file validation)
+npm run typecheck  # tsc --noEmit (strict) — the de-facto static check on the files you touched
+npm run lint       # ESLint (flat config in eslint.config.ts)
+npm run test:unit  # UNIT tests (Vitest, Node) — pure logic: math, RNG, world-gen, money ledger
 npm test           # browser end-to-end tests (Playwright) — see "Testing" below
 ```
 
-There is **no unit-test framework and no linter**. Quick validation is still `node --check` on the files you touched, plus a build. For *gameplay* changes there is now a browser test harness (`npm test`) that drives the real game — see the Testing section. Do not stand up new ad-hoc Playwright scripts; use the shared harness in `test/`.
+The codebase is **TypeScript in strict mode**. Static validation is `npm run typecheck` (`tsc --noEmit`) + `npm run lint` (ESLint), plus a `npm run build`. There are **two** test layers: a **Vitest unit suite** (`npm run test:unit`, `test/unit/**/*.test.ts`, runs in Node on pure/deterministic logic — safe to run yourself), and the **Playwright browser harness** (`npm test`) that drives the real game for *gameplay* changes (see the Testing section — that one is user-run). Do not stand up new ad-hoc test scripts; add unit tests under `test/unit/` and gameplay specs via the shared harness in `test/`.
+
+**TypeScript conventions (post-migration):**
+- **Folder layout.** `js/` is grouped by domain: `core/` (loop, state, engine, input, physics, save, economy, types, refs, rng, util), `world/` (map, daynight, traffic, peds, rural ambient), `actors/` (player + NPCs/authorities), `combat/` (weapons + heat modes), `activities/` (missions/minigames/jobs), `places/` (interiors/shops/property), `story/`, `ui/` (HUD/menus/overlays/input surfaces), `audio/`, `loot/`. (`assets/models/` stays grouped by its own domains.)
+- **Imports use the `@/` alias → `js/`** (e.g. `import {state} from '@/core/state.js'`), configured in `tsconfig.json` (`paths`), `vite.config.ts` and `vitest.config.ts`. Prefer `@/...` for cross-module imports; relative imports are fine within the same folder and for `assets/models/**`. Specifiers keep the `.js` extension even though files are `.ts` (bundler resolution maps `.js`→`.ts`) — **never rewrite a specifier to `.ts`**.
+- **`import.meta.glob` patterns** (model-viewer/warmup) must stay **relative** (aliases don't work in glob) and match **`*.ts`** (the models are `.ts`).
+- Shared cross-module types live in `js/core/types.ts` (`GameState`/`InputState`/`Refs`/`Vehicle`/`ModelDescriptor`/ledger/save); `state` is a closed `GameState`, `refs` has an index signature. `tsconfig.json` is strict with `allowJs:false`. Node tools (`npm run bake`, `npm run island-check`) run via `tsx`, not `node`.
+- The file paths named in the **Architecture** section below predate this reorg — each module now lives under its domain folder (e.g. `js/main.js` → `js/core/main.ts`, `js/player.js` → `js/actors/player.ts`).
 
 ## Deployment
 

@@ -1,0 +1,30 @@
+{
+  // Front-end (the game) type-check config. The backend has its own tsconfig.
+  // The build is still Vite/esbuild (which strips types without checking); this
+  // config powers `npm run typecheck` (tsc --noEmit) and editor type-checking.
+  //
+  // MIGRATION MODE: allowJs+checkJs:false lets not-yet-migrated .js files pass
+  // through untouched while every renamed .ts file is checked in full strict mode.
+  // When the last file is .ts this flips to allowJs:false (see the migration plan).
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "strict": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "noEmit": true,
+    "allowJs": false,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "paths": { "@/*": ["./js/*"] }
+  },
+  "include": ["js", "assets", "vite-env.d.ts"],
+  "exclude": ["node_modules", "dist", "backend", "android", "public", "fp-preview", "comparacoes", "output", "test", "tools", "scripts"]
+}
