@@ -33,7 +33,7 @@ export const DEFAULTS: Settings={
   brightness:100, // 50..150 % -> toneMappingExposure (100 = the original 1.25)
   fps:true,       // show the FPS readout (top-left)
   aimAssist:true, // gentle aim assist while aiming/on touch (read live by weapons.ts)
-  filmGrain:true, // animated film-grain overlay (#grain) + cinematic look
+  filmGrain:!(matchMedia('(pointer: coarse)').matches||innerWidth<900), // on (desktop); OFF on mobile — fullscreen mix-blend-mode is costly there. Toggle in Settings → Graphics.
 };
 
 export const settings: Settings={...DEFAULTS};
