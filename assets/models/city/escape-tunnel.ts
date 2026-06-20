@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
-import {groundHeight} from '../../../js/constants.js';
+import {scene} from '@/core/engine.js';
+import {groundHeight} from '@/core/constants.js';
 
 // Hidden ESCAPE TUNNEL linking the prison cell-block hole to the abandoned fort in
 // the rural area. The tunnel room lives off-map (toggled by the Interior in

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
-import {rand} from '../../../js/constants.js';
+import {scene} from '@/core/engine.js';
+import {rand} from '@/core/constants.js';
 import {makePed} from '../characters/pedestrian.js';
 import {makeDoorArrow} from './door-arrow.js';
 

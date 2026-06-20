@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
-import {rand,groundHeight} from '../../../js/constants.js';
+import {rand,groundHeight} from '@/core/constants.js';
 
 // A fallen, mossy log lying on the forest floor: dark bark cylinder, pale cut
 // rings at the ends, and a few moss blobs along the top. Decay/age detail that

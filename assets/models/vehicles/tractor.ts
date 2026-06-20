@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 
 // Classic farm TRACTOR — a slow, chunky utility vehicle for the rural area. Detailed:
 // a long tapering engine hood with a radiator grille and headlights, a vertical

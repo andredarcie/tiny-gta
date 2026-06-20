@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
-import {rand,pick} from '../../../js/constants.js';
+import {rand,pick} from '@/core/constants.js';
 
 const ruralWallCols=[0xf4e3c2,0xe8d8c8,0xd9e4d0,0xf0d9b0,0xe4c9b0];
 const roofCols=[0xb05438,0x8a4a3a,0xa05a40];

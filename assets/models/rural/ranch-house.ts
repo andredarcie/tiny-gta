@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
-import {RURAL_GAP} from '../../../js/constants.js';
+import {scene} from '@/core/engine.js';
+import {RURAL_GAP} from '@/core/constants.js';
 import {makeDoorArrow} from '../city/door-arrow.js';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world), no mesmo molde dos demais

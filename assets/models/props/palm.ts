@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
-import {rand} from '../../../js/constants.js';
-import type {ModelDescriptor} from '../../../js/types.js';
+import {rand} from '@/core/constants.js';
+import type {ModelDescriptor} from '@/core/types.js';
 
 const palmLeafMat=matte({color:0x3aa856,roughness:1});
 const palmTrunkMat=matte({color:0x96704e,roughness:1});

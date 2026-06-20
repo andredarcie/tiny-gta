@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 
 // Model convention: default-export {category,label,build}. build(opts) is PURE — it
 // creates and returns a fresh Object3D and never calls scene.add. The model viewer

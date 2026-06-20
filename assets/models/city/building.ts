@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '../../../js/engine.js';
-import {rand,irand,pick,clamp} from '../../../js/constants.js';
+import {scene} from '@/core/engine.js';
+import {rand,irand,pick,clamp} from '@/core/constants.js';
 import {addDoorArrow} from './door-arrow.js';
 
 // Portas funcionais: encostar nelas leva o jogador ao telhado do prédio

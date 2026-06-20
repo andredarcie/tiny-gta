@@ -1,7 +1,7 @@
 import carModel from './car.js';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 
 // Ambulância: parte do carro branco JÁ EQUIPADO (rodas, portas, volante, dentable,
 // faróis, lanternas, sombra) e REMODELA a silhueta pra uma van de resgate de

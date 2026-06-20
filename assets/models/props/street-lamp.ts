@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 import {bakeProp} from './prop-merge.js';
 
 function lampTex(): THREE.CanvasTexture{

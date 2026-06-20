@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from '../props/prop-merge.js';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 import {makePed} from '../characters/pedestrian.js';
 import {makeDoorArrow} from '../city/door-arrow.js';
 import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.js'; // night porch light
-import {STRAINS,FERTILIZER} from '../../../js/strains.js'; // seed-counter + plant-food display data
+import {STRAINS,FERTILIZER} from '@/activities/strains.js'; // seed-counter + plant-food display data
 
 // ============================================================================
 // GENERAL STORE — the small-town country shop on the main street of the rural

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from '../props/prop-merge.js';
-import {rand,groundHeight} from '../../../js/constants.js';
+import {rand,groundHeight} from '@/core/constants.js';
 
 const rockM=matte({color:0x84868f,roughness:.95});
 

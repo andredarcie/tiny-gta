@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 
 function taperTop(geo: THREE.BufferGeometry,sx: number,sz: number): THREE.BufferGeometry{
   const p=geo.attributes.position;

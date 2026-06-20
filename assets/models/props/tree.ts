@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
-import {rand,groundHeight} from '../../../js/constants.js';
+import {rand,groundHeight} from '@/core/constants.js';
 
 // Broadleaf tree: a rounded, leafy crown to break up the conifer pines and give
 // the rural wood some variety. Like the pine it is a tiny merged prop (trunk +

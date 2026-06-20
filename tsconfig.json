@@ -22,7 +22,8 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": { "@/*": ["./js/*"] }
   },
   "include": ["js", "assets", "vite-env.d.ts"],
   "exclude": ["node_modules", "dist", "backend", "android", "public", "fp-preview", "comparacoes", "output", "test", "tools", "scripts"]

@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   clamp, wrapA, diminishPrize, rubberSpeed, smoothPace,
   isLand, groundHeight, separateRacers, MOUNT_X,
-} from '../../js/constants.js';
-import type { Racer, PrizeStreak } from '../../js/types.js';
+} from '@/core/constants.js';
+import type { Racer, PrizeStreak } from '@/core/types.js';
 
 describe('math helpers', () => {
   it('clamp bounds a value', () => {

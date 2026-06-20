@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
-import {RURAL_GAP} from '../../../js/constants.js';
+import {scene} from '@/core/engine.js';
+import {RURAL_GAP} from '@/core/constants.js';
 
 // build() puro: celeiro + silo num grupo na origem (coords relativas ao centro
 // do celeiro). addBarnWithSilo posiciona no mundo e registra a colisao.

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from './prop-merge.js';
-import {rand,pick} from '../../../js/constants.js';
+import {rand,pick} from '@/core/constants.js';
 
 const umbCols=[0xff2e88,0x19e3ff,0xffd24a,0x9dff2e,0xff8c2e];
 

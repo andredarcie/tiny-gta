@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
 import {bakeProp} from '../props/prop-merge.js';
-import {scene} from '../../../js/engine.js'; // halo sprites are added individually (bakeProp skips sprites)
+import {scene} from '@/core/engine.js'; // halo sprites are added individually (bakeProp skips sprites)
 // Shared night-faded lamp materials (driven by js/daynight.js): the ground-glow
 // pool + bulb tint + halo sprite that street lamps use. Reusing them lights the
 // grow yard at night for free — no real lights, no daynight edits.

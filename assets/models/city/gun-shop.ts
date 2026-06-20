@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
-import {rand} from '../../../js/constants.js';
+import {scene} from '@/core/engine.js';
+import {rand} from '@/core/constants.js';
 import {makePed} from '../characters/pedestrian.js';
 import {makeDoorArrow} from './door-arrow.js';
-import {ARSENAL} from '../../../js/weapon-catalog.js';
+import {ARSENAL} from '@/combat/weapon-catalog.js';
 
 // Loja de armas "AMMO DEPOT": prédio num quarteirão reservado pelo world.js
 // (mesmo molde da academia/boate/hospital/presídio) e um interior separado a

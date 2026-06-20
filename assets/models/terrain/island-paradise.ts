@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 import {ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR,islandHeight,
-  clamp} from '../../../js/constants.js';
-import {makeRng} from '../../../js/rng.js';
+  clamp} from '@/core/constants.js';
+import {makeRng} from '@/core/rng.js';
 // Seeded so the paradise island's palms/rocks/props land in the same spot every
 // load (the rest of the world is baked to world.json; this island is still built
 // procedurally, just deterministically now — externalizing it is a follow-up).

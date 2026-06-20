@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 
 // Oficina de customização "MOD GARAGE" (estilo pintura / tuning do open-world).
 // Diferente dos outros prédios especiais, NÃO tem interior off-map: é um galpão

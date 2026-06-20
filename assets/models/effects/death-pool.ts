@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand} from '../../../js/constants.js';
+import {rand} from '@/core/constants.js';
 
 // DEATH POOL ("bloodstain") do multiplayer assíncrono — estilo Demon's/Dark Souls.
 // É a poça que um jogador MORTO deixa no mundo, visível pra todos os outros online.

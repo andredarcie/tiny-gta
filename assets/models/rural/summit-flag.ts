@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.js';
-import {scene} from '../../../js/engine.js';
+import {scene} from '@/core/engine.js';
 
 // build() puro: mastro + bandeira num grupo na origem. addSummitFlag posiciona.
 function build(): THREE.Group {

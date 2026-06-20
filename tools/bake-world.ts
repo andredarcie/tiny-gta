@@ -8,7 +8,7 @@
 import {writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
-import {generateWorldSpec} from '../js/world-gen.js';
+import {generateWorldSpec} from '@/world/world-gen.js';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const SEED=Number(process.argv[2])||1337;

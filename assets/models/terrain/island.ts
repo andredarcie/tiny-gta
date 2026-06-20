@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {scene,renderer} from '../../../js/engine.js';
+import {scene,renderer} from '@/core/engine.js';
 import {cityCoastR,ruralHalf,RURAL_X0,RURAL_TIP}
-  from '../../../js/constants.js';
-import {makeRng} from '../../../js/rng.js';
+  from '@/core/constants.js';
+import {makeRng} from '@/core/rng.js';
 // Seeded so the coast sand-speckle texture is identical every load.
 const {random,irand,pick}=makeRng(0x15a4e);
 

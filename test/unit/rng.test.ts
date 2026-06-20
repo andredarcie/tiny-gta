@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { makeRng } from '../../js/rng.js';
+import { makeRng } from '@/core/rng.js';
 
 describe('makeRng (deterministic PRNG)', () => {
   it('produces the same stream for the same seed', () => {

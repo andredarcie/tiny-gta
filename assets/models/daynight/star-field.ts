@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand} from '../../../js/constants.js';
+import {rand} from '@/core/constants.js';
 
 export function makeStarField(): {points: THREE.Points; material: THREE.PointsMaterial} {
   const n=420,pos=new Float32Array(n*3),col=new Float32Array(n*3);
