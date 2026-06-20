@@ -26,6 +26,7 @@ export function collectSave(): SaveBlob {
     stunts: refs.getStuntsSave?.() || [],
     daily: refs.getDailySave?.() || null, // dia in-game + travas "1x por dia" dos mini-games
     farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
+    clothing: refs.getClothingSave?.() || null, // player outfit: shirt/pants/shoe colours + accessories
   };
 }
 
@@ -49,6 +50,7 @@ export function applySave(blob: unknown): void {
   refs.restoreStunts?.(b.stunts);
   refs.restoreDaily?.(b.daily);
   refs.restoreFarm?.(b.farm);
+  refs.restoreClothing?.(b.clothing);
 }
 
 refs.collectSave = collectSave;

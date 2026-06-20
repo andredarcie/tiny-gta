@@ -35,6 +35,7 @@ import {addGym,GYM_I,GYM_J} from '../../assets/models/city/gym.ts';
 import {addHospital,HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
 import {addPrison,PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
 import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../../assets/models/city/gun-shop.ts';
+import {addClothingStore} from '../../assets/models/city/clothing-store.ts';
 import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../../assets/models/city/workshop.ts';
 import {addBarnWithSilo} from '../../assets/models/rural/barn-with-silo.ts';
 import {addAbandonedFort} from '../../assets/models/rural/abandoned-fort.ts';
@@ -189,6 +190,7 @@ addGym(solids);       // academia no quarteirão reservado (nordeste)
 addHospital(solids);  // hospital no quarteirão reservado (sudeste)
 addPrison(solids);    // presídio no quarteirão reservado (busted)
 addGunShop(solids);   // loja de armas (AMMU-NATION) no quarteirão reservado
+addClothingStore(solids); // loja de roupas (THREADS) no quarteirão reservado (3,6)
 addWorkshop(solids);  // oficina de custom (MOD GARAGE) no quarteirão reservado
 finalizeBuildings();     // funde a cidade inteira em ~18 meshes (draw calls)
 finalizeAbandonedLots(); // e todos os lotes abandonados em ~5

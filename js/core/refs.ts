@@ -61,12 +61,12 @@ export const KNOWN = new Set<string>([
   'canPickWeapon','isWeaponHeld','canAttack','switchWeapon','selectWeaponSlot',
   'getWeaponHud','confiscateWeapon','gymTrainState','clubDanceState','modShopState',
   'modShopInteract','workshopBlip','hospitalAdmit','prisonAdmit','gunShopState',
-  'gunShopBuy','gunShopTargets','inGunShopRange','overkillNear','endOverkill',
+  'gunShopBuy','gunShopTargets','inGunShopRange','clothesShopState','clothesShopInteract','overkillNear','endOverkill',
   'getOverkillState','exitCar','houseBuyState','houseEatState','houseGarageState',
   'getHouseState','houseTvState','getHouseTvState',
   // economy.ts / save.ts / leaderboard.ts
   'serializeLedger','importLedger','takeUnsyncedTxs','ackSyncedTxs','debugLedger',
-  'collectSave','applySave','backupSave',
+  'collectSave','applySave','backupSave','getClothingSave','restoreClothing',
   // hud.ts / input.ts
   'message','togglePause','toggleFullscreen','toggleAim',
   // minigame.ts

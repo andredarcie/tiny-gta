@@ -23,7 +23,7 @@ import {N,ROAD,BLOCK,SIDE,GROUND,BEACH,RURAL_X0,RURAL_X1,RURAL_HALF,RURAL_GAP,
 import {makeRng} from '@/core/rng.ts';
 
 // Reserved city blocks (mirror CLUB/GYM/HOSP/PRISON/GUNSHOP/WORKSHOP _I/_J).
-const RESERVED:[number,number][]=[[0,3],[7,1],[6,6],[2,2],[1,5],[5,2]];
+const RESERVED:[number,number][]=[[0,3],[7,1],[6,6],[2,2],[1,5],[5,2],[3,6]];
 // Rural landmark footprints the forest must keep clear of (mirror the modules).
 const RANCH_CX=420+RURAL_GAP, RANCH_CZ=-80;
 const GARAGE={x:409+RURAL_GAP,z:-80};

@@ -27,6 +27,7 @@ export const state: GameState = {
   adminOpen:false, // dashboard de admin (tecla Y, só p/ o dono 'REI') aberto — congela o mundo
   firstPerson:false, // first-person camera (key C) — see js/actors/player.ts updateCamera
   aiming:false, // GTA-style aim mode toggle — see weapons.toggleAim / player.updateCamera
+  clothing:{shirt:0x19e3ff,pants:0x202435,shoe:0x111117,hat:0,glasses:0}, // player outfit (clothing store) — see js/places/clothing-store.ts
   wheelOpen:false, // roda de seleção de armas (js/combat/weapon-wheel.ts) aberta — câmera lenta
   activeMiniGame:null, // id (MiniGameId) do mini game em curso, ou null — trava "um por vez"
                        // (ver js/activities/minigame.ts); enquanto setado o mapa fica sem outros

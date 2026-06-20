@@ -631,7 +631,15 @@ function carryPose(){
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
   const h: Hold=curWeapon.hold||{};
-  heldHolder.position.set(limbs.rightArm.position.x+.16+(h.x||0),.96+(h.y||0),.2+(h.z||0));
+  // Seat the weapon IN the (walk-animated) right hand so it stays gripped and swings with
+  // the arm, instead of floating at a fixed body point. We do NOT pose the arms here —
+  // animatePed (run earlier in the frame) keeps the normal walk cycle; we only read the
+  // current hand bone and place the holder there, like posePlayerWithGun but without aiming.
+  player.g.updateWorldMatrix(true,true);
+  const fore=limbs.rightForearm||limbs.rightArm;
+  _hand.set(0,-.28,0).applyMatrix4(fore.matrixWorld);
+  player.g.worldToLocal(_hand);
+  heldHolder.position.set(_hand.x+(h.x||0),_hand.y+(h.y||0),_hand.z+(h.z||0));
   heldHolder.rotation.set(.5+(h.rx||0),(h.ry||0),-.25+(h.rz||0));
 }
 
@@ -1257,14 +1265,16 @@ function animateHeldWeapon(){
 // the target each frame — strongest when the target is already roughly centred and
 // fading to nothing at the edge of a cone — so manual aim still wins and a
 // deliberate stick sweep slides past with only light friction. Desktop is untouched.
-const ASSIST_RANGE=38;   // metres: ignore anything further than this
+const ASSIST_RANGE=14;   // metres: assist only NEARBY NPCs (close combat) — ignore anything further
 const ASSIST_CONE=0.9;   // rad: half-angle of the assist cone (~51°) around the aim
 const ASSIST_RATE=9;     // how briskly the yaw eases onto a centred target
+const ASSIST_VRANGE=3.5; // metres of vertical slack: NPCs far above/below (e.g. the street while you're on a rooftop) are out of view/reach and ignored
 
 // Scratch for the aim-assist scan, reused every frame so the per-frame scan allocates
 // nothing (matches the engine's no-per-frame-allocation pass).
 const _assist: {best: number|null;bestErr: number}={best:null,bestErr:0};
-function considerAssist(g: THREE.Object3D,px: number,pz: number,yaw: number){
+function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: number){
+  if(Math.abs(g.position.y-py)>ASSIST_VRANGE)return; // far above/below us (e.g. the street while on a rooftop) — out of view
   const dx=g.position.x-px,dz=g.position.z-pz;
   const d2=dx*dx+dz*dz;
   if(d2>ASSIST_RANGE*ASSIST_RANGE||d2<.36)return; // out of range, or basically on top of us
@@ -1282,14 +1292,14 @@ function considerAssist(g: THREE.Object3D,px: number,pz: number,yaw: number){
 // Nearest in-range, in-cone person/enemy target; returns the signed yaw error to it
 // (how far to rotate to face it), or null when there is nothing worth helping with.
 // Cars are deliberately excluded so the aim doesn't stick to parked traffic.
-function aimAssistError(px: number,pz: number,yaw: number): number|null{
+function aimAssistError(px: number,pz: number,py: number,yaw: number): number|null{
   _assist.best=null;_assist.bestErr=ASSIST_CONE;
-  for(const p of peds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
-  for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
-  for(const o of copOfficers)if(!o.dead)considerAssist(o.g,px,pz,yaw);
-  for(const n of npcs)if(!n.dead)considerAssist(n.g,px,pz,yaw);
-  for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,yaw);
-  for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,yaw);
+  for(const p of peds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,py,yaw);
+  for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,py,yaw);
+  for(const o of copOfficers)if(!o.dead)considerAssist(o.g,px,pz,py,yaw);
+  for(const n of npcs)if(!n.dead)considerAssist(n.g,px,pz,py,yaw);
+  for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
+  for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   return _assist.best;
 }
 
@@ -1310,7 +1320,7 @@ function updateAimAssist(dt: number){
   // Measuring from the body tugged toward the body→target bearing, pulling you OFF a
   // target the reticle was already on. From the camera, err≈0 when the reticle is on the
   // target, so there's no tug once you're aimed dead-on.
-  const err=aimAssistError(camera.position.x,camera.position.z,cameraRig.yaw);
+  const err=aimAssistError(camera.position.x,camera.position.z,playerPos().y,cameraRig.yaw);
   if(err===null)return;
   const align=1-Math.abs(err)/ASSIST_CONE;        // 0 at the cone edge, 1 dead-centre
   const rate=state.mobile?ASSIST_RATE:3.5;        // mobile: full touch assist; PC aim: light nudge

@@ -1,5 +1,17 @@
 [
   {
+    "id": "2026-06-20-clothing-store",
+    "date": "2026-06-20",
+    "title": "Dress up at the new clothing store",
+    "description": "A new clothing store, THREADS, has opened in the city — look for the pink storefront on the map. Step inside, stand on the podium in front of the mirror and press the action button to open the wardrobe: pick the colour of your shirt, pants and shoes, and top it off with a hat (cap or beanie) and shades. Everything is previewed live on you as you turn on the podium, and you pay only for what you keep. Your outfit is saved to your account, so you'll keep your look on any device."
+  },
+  {
+    "id": "2026-06-20-aim-assist-nearby",
+    "date": "2026-06-20",
+    "title": "Aim assist only helps with nearby enemies",
+    "description": "The aim assist is now more honest: it only nudges your aim toward enemies who are close by and roughly on your level. No more snapping toward someone far away — or toward people down on the street while you're up on a rooftop. As before, you can turn it off entirely in Settings → Gameplay."
+  },
+  {
     "id": "2026-06-20-aim-mode",
     "date": "2026-06-20",
     "title": "New over-the-shoulder aim mode",

@@ -62,6 +62,7 @@ import {modShopState,modShopInteract,updateModShop,workshopBlip} from '@/places/
 import {hospitalAdmit} from '@/places/hospital.ts';
 import {prisonAdmit} from '@/places/prison.ts';
 import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from '@/places/gun-shop.ts';
+import {clothesShopState,clothesShopInteract,updateClothesShop} from '@/places/clothing-store.ts';
 import {scheduleFlush} from '@/ui/leaderboard.ts';
 import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from '@/places/property.ts';
 import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.ts';
@@ -141,6 +142,8 @@ refs.prisonAdmit=prisonAdmit;     // ser preso leva o jogador pra dentro do pres
 refs.gunShopState=gunShopState;   // HUD mostra BUY $X perto de uma arma na loja
 refs.gunShopBuy=gunShopBuy;       // performInteract compra a arma do balcão
 refs.gunShopTargets=gunShopTargets; // armas.js acerta os alvos da sala de treino
+refs.clothesShopState=clothesShopState;   // HUD mostra CHANGE OUTFIT no provador da loja de roupas
+refs.clothesShopInteract=clothesShopInteract; // performInteract abre/fecha o menu de roupas
 refs.inGunShopRange=inGunShopRange; // tiros na sala de treino não geram wanted
 refs.overkillNear=overkillNear;   // HUD/interact mostram a ação no totem
 refs.endOverkill=endOverkill;     // a morte do jogador encerra o modo overkill
@@ -191,6 +194,7 @@ function step(dt: number){
   if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
+  if(updateClothesShop(dt)){renderer.render(scene,camera);return;} // provador da loja de roupas congela o mundo
   if(state.mapOpen){renderer.render(scene,camera);return;} // mapa completo (tecla M) congela o mundo
   if(state.adminOpen){renderer.render(scene,camera);return;} // dashboard de admin (tecla Y) congela o mundo
   if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"

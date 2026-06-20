@@ -5,6 +5,7 @@ import {state,input,carNames,carColors,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
+import {makeHat,makeGlasses} from '../../assets/models/characters/accessories.ts';
 import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
@@ -74,6 +75,40 @@ export const player:Player={g:makePlayerPed(0x19e3ff),heading:0,bob:0,
   swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
 noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
+
+// Player outfit (clothing store): push state.clothing colours into the player model's
+// in-place recolour (see assets/models/characters/pedestrian.ts setClothing). Defaults
+// already match the freshly-built model, so this only matters after a store change/restore.
+// Apply an arbitrary outfit to the player model RIGHT NOW (live preview in the clothing
+// store) without touching state. applyPlayerClothing() applies the saved/committed outfit.
+export function previewPlayerClothing(o:{shirt:number;pants:number;shoe:number;hat:number;glasses:number}):void{
+  player.g.userData.setClothing?.({shirt:o.shirt,pants:o.pants,shoe:o.shoe});
+  setAccessory('hat',o.hat,makeHat);
+  setAccessory('glasses',o.glasses,makeGlasses);
+}
+export function applyPlayerClothing():void{ previewPlayerClothing(state.clothing); }
+// Attach/swap a head accessory on the player group, keyed by slot. Rebuilds only when the
+// variant changes; variant 0 removes it. Accessories ride in player-local space (the head
+// is static relative to the body), so they follow the player's position and aim turns.
+function setAccessory(slot:string,variant:number,make:(v:number)=>THREE.Object3D|null):void{
+  const ud=player.g.userData as Record<string,unknown>;
+  if(ud[slot+'V']===variant&&(variant===0||ud[slot]))return;
+  if(ud[slot]){player.g.remove(ud[slot] as THREE.Object3D);ud[slot]=null;}
+  ud[slot+'V']=variant;
+  const obj=make(variant);
+  if(obj){player.g.add(obj);ud[slot]=obj;}
+}
+refs.getClothingSave=()=>({...state.clothing});
+refs.restoreClothing=(d:{shirt?:number;pants?:number;shoe?:number;hat?:number;glasses?:number}|null)=>{
+  if(!d||typeof d!=='object')return;
+  const c=state.clothing;
+  if(Number.isFinite(d.shirt))c.shirt=d.shirt!;
+  if(Number.isFinite(d.pants))c.pants=d.pants!;
+  if(Number.isFinite(d.shoe))c.shoe=d.shoe!;
+  if(Number.isFinite(d.hat))c.hat=d.hat!;
+  if(Number.isFinite(d.glasses))c.glasses=d.glasses!;
+  applyPlayerClothing();
+};
 document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ CAM-R ◆ BIKE');
 export const cameraRig:CameraRig={
   yaw:player.heading,

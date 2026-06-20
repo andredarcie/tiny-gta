@@ -104,6 +104,8 @@ function computeInteractAction(): InteractAction {
     }
     const shop=refs.gunShopState?.(); // perto de uma arma dentro da loja de armas
     if(shop)return shop;
+    const wear=refs.clothesShopState?.(); // perto do provador dentro da loja de roupas
+    if(wear)return wear;
     if(!MiniGame.busy){ // num mini game não dá pra começar outro (um por vez)
       const ov=refs.overkillNear?.(); // perto do totem do modo overkill
       if(ov)return{label:'OVERKILL',prompt:ov,enabled:true};

@@ -25,6 +25,7 @@ const toonEyelidG=new THREE.SphereGeometry(.07,16,12);
 const toonHeadG=new THREE.SphereGeometry(.24,28,20);
 const toonHandG=new THREE.SphereGeometry(.062,12,10);
 const toonFootG=new THREE.SphereGeometry(.1,12,10);
+const shoeSoleG=new THREE.BoxGeometry(.17,.06,.4);   // shoe sole — a distinct mesh, separate from the leg/pants
 // Smooth skinned body. Each limb is ONE continuous surface (no thigh-stuck-to-shin
 // seam): the torso is a single capsule (rigid, so rounded caps suffice), and the
 // arms/legs are cylinders with many HEIGHT segments so skinning bends the single
@@ -109,7 +110,12 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
   // Because a torso vertex is never assigned to an arm bone, the shoulder/hip is a
   // clean cut — swinging a limb can't stretch a web of skin ("bat wing").
   const parts: THREE.BufferGeometry[]=[];
-  const add=(geo: THREE.BufferGeometry,top: number,bot: number,yJ=0,band=0)=>{
+  // Garment recolor map: each clothing part records its vertex range in the merged
+  // geometry plus a recipe (flat colour from a role, or a Y-gradient between two roles),
+  // so g.userData.setClothing() can rewrite ONLY those vertices at runtime — no rebuild.
+  const recolorOps: {start:number;count:number;kind:'flat'|'yblend';role?:string;bot?:string;top?:string;yMid?:number;band?:number}[]=[];
+  let voff=0;
+  const add=(geo: THREE.BufferGeometry,top: number,bot: number,yJ=0,band=0,recolor?: {kind:'flat'|'yblend';role?:string;bot?:string;top?:string;yMid?:number;band?:number})=>{
     const p=geo.attributes.position,nn=p.count;
     const si=new Uint16Array(nn*4),sw=new Float32Array(nn*4);
     for(let i=0;i<nn;i++){
@@ -118,25 +124,29 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
     }
     geo.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(si,4));
     geo.setAttribute('skinWeight',new THREE.Float32BufferAttribute(sw,4));
+    if(recolor)recolorOps.push({start:voff,count:nn,...recolor});
+    voff+=nn;
     parts.push(geo);
   };
 
   // torso (→spine) + broad shoulder yoke + neck/head/nose (→head bone); all static
   // during walking. Yoke makes the shoulders wider than the chest so the arms hang
   // OUTSIDE the torso (a real armpit gap, not arms glued to the sides).
-  add(tintedY(skTorsoG,partM([0,1.13,0],null,[.98,1,.7]),pants,color,1.0,.05),SPINE,SPINE);
-  add(tinted(skYokeG,partM([0,1.43,0],[0,0,Math.PI/2],[1,1,.82]),color),SPINE,SPINE);
+  add(tintedY(skTorsoG,partM([0,1.13,0],null,[.98,1,.7]),pants,color,1.0,.05),SPINE,SPINE,0,0,{kind:'yblend',bot:'pants',top:'shirt',yMid:1.0,band:.05});
+  add(tinted(skYokeG,partM([0,1.43,0],[0,0,Math.PI/2],[1,1,.82]),color),SPINE,SPINE,0,0,{kind:'flat',role:'shirt'});
   add(tinted(pedNeckG,partM([0,1.49,0],null,[.6,.7,.6]),skin),HEAD,HEAD);
   add(tinted(toonHeadG,headM,skin),HEAD,HEAD);
   add(tinted(noseG,onHead([0,-.03,.246],[Math.PI/2,0,0],[.42,.42,.42]),skin),HEAD,HEAD);
   for(const sx of[-1,1]){
     const UA=sx<0?UAL:UAR,LA=sx<0?LAL:LAR,UL=sx<0?ULL:ULR,LL=sx<0?LLL:LLR;
-    add(tinted(skShoulderG,partM([sx*SX,1.44,0]),color),UA,UA);                     // small shoulder = shirt sleeve
-    add(tintedY(skArmG,partM([sx*SX,1.17,0]),skin,color,1.3,.05),UA,LA,1.13,.07);   // sleeve top, bare arm below; bends at elbow
+    add(tinted(skShoulderG,partM([sx*SX,1.44,0]),color),UA,UA,0,0,{kind:'flat',role:'shirt'});      // small shoulder = shirt sleeve
+    add(tintedY(skArmG,partM([sx*SX,1.17,0]),skin,color,1.3,.05),UA,LA,1.13,.07,{kind:'yblend',bot:'skin',top:'shirt',yMid:1.3,band:.05}); // sleeve top, bare arm below; bends at elbow
     add(tinted(toonHandG,partM([sx*SX,.85,.005],null,[.82,1.3,.46]),skin),LA,LA);   // flat paddle palm
     add(tinted(toonHandG,partM([sx*(SX-.045),.88,.03],null,[.42,.62,.42]),skin),LA,LA); // thumb
-    add(tinted(skLegG,partM([sx*LX,.5,0]),pants),UL,LL,.52,.06);                    // leg, bends at knee
-    add(tinted(toonFootG,partM([sx*LX,.05,.06],null,[.78,.5,1.7]),shoe),LL,LL);
+    add(tinted(skLegG,partM([sx*LX,.5,0]),pants),UL,LL,.52,.06,{kind:'flat',role:'pants'});         // leg: PANTS only (the shoe is its own mesh below)
+    // SHOE: its own mesh (flat sole + rounded upper), separate from the leg/pants, on the ankle bone
+    add(tinted(shoeSoleG,partM([sx*LX,.035,.09],null,[1,1,1]),shoe),LL,LL,0,0,{kind:'flat',role:'shoe'});
+    add(tinted(toonFootG,partM([sx*LX,.085,.03],null,[.85,.72,1.35]),shoe),LL,LL,0,0,{kind:'flat',role:'shoe'});
   }
   for(const sx of[-1,1]){
     add(tinted(toonScleraG,onHead([sx*.089,.026,.196],null,[.95,.74,.42]),SCLERA_COLOR),HEAD,HEAD);
@@ -187,6 +197,32 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
     leftLeg:ulL,rightLeg:ulR,leftCalf:llL,rightCalf:llR,
   };
   g.userData.fadeMats=[mat,mouthMat];
+
+  // Runtime re-clothing (used by the clothing store): rewrite the per-vertex colour for
+  // each tagged garment range without rebuilding the mesh. Roles map to live colours; the
+  // skin/hair/face vertices were never tagged, so they stay. Y-gradient parts (torso line,
+  // sleeve cuff) are recomputed from the merged position so the clothing seam stays clean.
+  const colAttr=geo.getAttribute('color') as THREE.BufferAttribute;
+  const posAttr=geo.getAttribute('position') as THREE.BufferAttribute;
+  const _rc=new THREE.Color(),_rcA=new THREE.Color(),_rcB=new THREE.Color();
+  g.userData.clothing={shirt:color,pants,shoe,skin};
+  g.userData.setClothing=(cols: {shirt?: number;pants?: number;shoe?: number})=>{
+    const c=Object.assign(g.userData.clothing,cols) as Record<string,number>;
+    for(const op of recolorOps){
+      if(op.kind==='flat'){
+        _rc.set(c[op.role!]);
+        for(let i=op.start;i<op.start+op.count;i++)colAttr.setXYZ(i,_rc.r,_rc.g,_rc.b);
+      }else{
+        _rcA.set(c[op.bot!]);_rcB.set(c[op.top!]);
+        const yMid=op.yMid!,band=op.band!;
+        for(let i=op.start;i<op.start+op.count;i++){
+          const t=Math.max(0,Math.min(1,(posAttr.getY(i)-(yMid-band))/(2*band)));
+          _rc.copy(_rcA).lerp(_rcB,t);colAttr.setXYZ(i,_rc.r,_rc.g,_rc.b);
+        }
+      }
+    }
+    colAttr.needsUpdate=true;
+  };
   return g;
 }
 

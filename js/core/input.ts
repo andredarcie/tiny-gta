@@ -147,6 +147,7 @@ export function performInteract(): void {
     if(!MiniGame.busy&&gymTrain())return; // treino na academia (perto do supino)
     if(!MiniGame.busy&&clubDance())return; // dança na pista da boate (perto do centro da pista)
     if(refs.gunShopBuy?.())return; // comprar arma no balcão da loja de armas
+    if(refs.clothesShopInteract?.())return; // abrir o provador (menu de roupas) na loja de roupas
     // num mini game não dá pra começar outro (um por vez): overkill e zonas travados
     if(!MiniGame.busy&&startOverkill())return; // liga o modo overkill (perto do totem)
     if(refs.rickInteract?.())return; // missão secreta do Rick no acampamento rural

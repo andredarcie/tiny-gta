@@ -402,6 +402,39 @@ body.mod-shop-open #btn-fullscreen{display:none!important}
   #modshop-panel{width:auto;left:max(10px,env(safe-area-inset-left));top:auto;height:46vh}
   #modshop{background:linear-gradient(0deg,rgba(2,0,8,.8) 0%,rgba(2,0,8,.3) 46%,rgba(2,0,8,0) 70%)}
 }
+/* THREADS clothing store — reuses the .ms-* option classes; mirrors the mod-shop chrome */
+#clothesshop{position:fixed;inset:0;z-index:64;display:none;pointer-events:none;
+  background:linear-gradient(90deg,rgba(8,0,8,0) 38%,rgba(8,0,8,.42) 62%,rgba(8,0,8,.74) 100%)}
+#clothesshop.open{display:block}
+#clothesshop-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));pointer-events:none}
+#clothesshop-title{font-family:'Bowlby One SC';font-size:clamp(18px,3vw,26px);color:var(--cream);
+  letter-spacing:2px;text-shadow:2px 2px 0 #000,0 0 18px rgba(255,111,174,.55)}
+#clothesshop-money{font:800 clamp(15px,2.4vw,20px) 'IBM Plex Mono',monospace;color:var(--gold);text-shadow:1px 1px 0 #000;margin-left:auto}
+#clothesshop-exit{pointer-events:auto;touch-action:none;min-width:84px;height:46px;padding:0 18px;border-radius:10px;
+  border:2px solid var(--gold);background:rgba(31,9,24,.9);color:var(--gold);font-family:'Bowlby One SC';font-size:14px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,210,74,.4)}
+#clothesshop-panel{position:absolute;top:64px;right:max(16px,env(safe-area-inset-right));
+  bottom:max(16px,env(safe-area-inset-bottom));width:min(40vw,380px);display:flex;flex-direction:column;gap:10px;pointer-events:auto;
+  background:rgba(18,5,18,.74);border:2px solid #ff6fae;border-radius:14px;padding:12px;
+  box-shadow:0 0 28px rgba(255,111,174,.22),0 14px 40px rgba(0,0,0,.6)}
+#clothesshop-cats{display:flex;flex-wrap:wrap;gap:6px}
+#clothesshop-opts{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#clothesshop-cart{display:flex;align-items:center;gap:10px;border-top:2px solid rgba(255,111,174,.25);padding-top:10px}
+#clothesshop-total{flex:1;font:800 15px 'IBM Plex Mono',monospace;color:var(--gold);letter-spacing:.5px;text-shadow:1px 1px 0 #000}
+#clothesshop-buy{pointer-events:auto;touch-action:none;min-height:44px;padding:0 16px;border-radius:10px;
+  border:2px solid #9dff2e;background:rgba(20,31,9,.85);color:#9dff2e;font-family:'Bowlby One SC';font-size:13px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 16px rgba(157,255,46,.35);cursor:pointer}
+#clothesshop-buy:disabled{opacity:.4;border-color:rgba(255,233,201,.3);color:rgba(255,233,201,.5);box-shadow:none;cursor:default}
+#clothesshop-buy.confirm{border-color:var(--gold);color:var(--gold);background:rgba(31,22,9,.9);box-shadow:0 0 18px rgba(255,210,74,.5)}
+#clothesshop-toast{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(10px);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;
+  font:800 16px 'Bowlby One SC','IBM Plex Mono',monospace;letter-spacing:1px;color:#9dff2e;text-shadow:2px 2px 0 #000,0 0 16px rgba(157,255,46,.5)}
+#clothesshop-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (max-width:760px){
+  #clothesshop-panel{width:auto;left:max(10px,env(safe-area-inset-left));top:auto;height:46vh}
+  #clothesshop{background:linear-gradient(0deg,rgba(8,0,8,.8) 0%,rgba(8,0,8,.3) 46%,rgba(8,0,8,0) 70%)}
+}
 #btn-fullscreen{position:fixed;top:max(12px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
   z-index:72;min-width:92px;height:44px;padding:0 18px;border:2px solid var(--gold);border-radius:8px;
   background:rgba(20,9,31,.78);color:var(--gold);font-family:'Bowlby One SC';font-size:15px;

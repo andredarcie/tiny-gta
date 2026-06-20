@@ -69,6 +69,7 @@ export interface GameState {
   adminOpen: boolean;
   firstPerson: boolean;
   aiming: boolean; // GTA-style aim mode (RMB toggle / mobile AIM): closer cam + reticle + tight spread
+  clothing: { shirt: number; pants: number; shoe: number; hat: number; glasses: number }; // player outfit (clothing store)
   wheelOpen: boolean;
   activeMiniGame: string | null;
   mgIntro: string | null;
@@ -136,6 +137,7 @@ export interface SaveBlob {
   stunts: unknown;
   daily: unknown;
   farm: unknown;
+  clothing?: unknown;
 }
 
 // ---- HUD / world registries ------------------------------------------------
