@@ -1,4 +1,4 @@
-import {AC,master} from '@/audio/audio.js';
+import {AC,master} from '@/audio/audio.ts';
 
 // Trilha FRENÉTICA do modo overkill (Web Audio puro, sem asset). Independente do
 // rádio do carro: liga só enquanto o modo está ativo. Loop rápido (~176 BPM) com

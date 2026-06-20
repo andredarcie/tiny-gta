@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 function buildHeli(opts={}): THREE.Group{
   const g=new THREE.Group();

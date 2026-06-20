@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '@/core/engine.js';
-import {rand,irand} from '@/core/constants.js';
+import {scene} from '@/core/engine.ts';
+import {rand,irand} from '@/core/constants.ts';
 
 // Lote abandonado no lugar de prédio que não nasceu: entulho, pneus, mato e
 // caçamba de entulho. Mesmo truque do building.js:

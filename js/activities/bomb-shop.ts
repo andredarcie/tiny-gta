@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos,cur,idleCars} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {N,nodeX,clamp,groundHeight} from '@/core/constants.js';
-import {makeBombGarage} from '../../assets/models/props/bomb-garage.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import type {ZoneAction} from '@/core/types.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos,cur,idleCars} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {N,nodeX,clamp,groundHeight} from '@/core/constants.ts';
+import {makeBombGarage} from '../../assets/models/props/bomb-garage.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import type {ZoneAction} from '@/core/types.ts';
 
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. As ações ARM/DETONATE já ficam indisponíveis durante uma sessão
@@ -19,7 +19,7 @@ new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Demo Garage',exclusive:false});
 // garagem e pague pra instalar uma bomba. Depois saia a pé, afaste-se e DETONE —
 // a explosão (refs.explodeAt) mata/danifica gangues e policiais ao redor, ótimo
 // pra emboscadas. Só 1 carro armado por vez; o carro-bomba pisca em vermelho pra
-// avisar que está armado. Modelo PURO vem de assets/models/props/bomb-garage.js;
+// avisar que está armado. Modelo PURO vem de assets/models/props/bomb-garage.ts;
 // este módulo só orquestra (zona, dinheiro, feedback, explosão).
 
 // galpão clandestino na ORLA OESTE (fora da rua), longe dos outros mini games.

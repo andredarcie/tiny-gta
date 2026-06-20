@@ -1,19 +1,19 @@
 import * as THREE from 'three';
-import {state,input,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos,cur,idleCars,cameraRig} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,thud} from '@/audio/audio.js';
-import {N,nodeX,HALF,CELL,ROAD,SIDE,irand,pick,clamp,wrapA,groundHeight} from '@/core/constants.js';
-import {makeCar,spinWheels} from '@/core/entities.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {makeRcRager} from '../../assets/models/vehicles/rc-rager.js';
-import {makeRcPad} from '../../assets/models/props/rc-pad.js';
-import {makeRcCrate} from '../../assets/models/props/rc-crate.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import type {ZoneAction} from '@/core/types.js';
+import {state,input,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos,cur,idleCars,cameraRig} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,thud} from '@/audio/audio.ts';
+import {N,nodeX,HALF,CELL,ROAD,SIDE,irand,pick,clamp,wrapA,groundHeight} from '@/core/constants.ts';
+import {makeCar,spinWheels} from '@/core/entities.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeRcRager} from '../../assets/models/vehicles/rc-rager.ts';
+import {makeRcPad} from '../../assets/models/props/rc-pad.ts';
+import {makeRcCrate} from '../../assets/models/props/rc-crate.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import type {ZoneAction} from '@/core/types.ts';
 
 // RC SMASH — a remote-control demolition mini-game: you pilot a tiny RC car that is
 // a MOBILE BOMB. Ram a gang car (or press fire to detonate) and the RC blows up,

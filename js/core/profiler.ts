@@ -8,7 +8,7 @@
 //
 // Hooks de debug em window: window.profilerToggle(), window.profilerReport()
 // (snapshot JSON — útil pra colar num relatório de performance).
-import {renderer,getRenderScale} from '@/core/engine.js';
+import {renderer,getRenderScale} from '@/core/engine.ts';
 
 let on=new URLSearchParams(location.search).has('prof');
 

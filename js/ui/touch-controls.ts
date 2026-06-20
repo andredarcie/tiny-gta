@@ -1,10 +1,10 @@
-import {state,input,refs} from '@/core/state.js';
+import {state,input,refs} from '@/core/state.ts';
 import {
   startGameFromUserGesture,requestStart,performInteract,performPauseToggle,
   performRadioSwitch,performShoot,resetInput
-} from '@/core/input.js';
-import {getInteractAction} from '@/ui/hud.js';
-import {openWheel,closeWheel} from '@/combat/weapon-wheel.js';
+} from '@/core/input.ts';
+import {getInteractAction} from '@/ui/hud.ts';
+import {openWheel,closeWheel} from '@/combat/weapon-wheel.ts';
 
 const DEAD=.12,CURVE=1.35,YAW_SPEED=2.4,PITCH_SPEED=1.35;
 

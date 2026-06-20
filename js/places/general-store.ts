@@ -1,25 +1,25 @@
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {animatePed} from '@/core/entities.js';
-import {blip} from '@/audio/audio.js';
-import {Interior} from '@/world/interior.js';
-import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.js';
-import type {Strain} from '@/activities/strains.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {animatePed} from '@/core/entities.ts';
+import {blip} from '@/audio/audio.ts';
+import {Interior} from '@/world/interior.ts';
+import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
+import type {Strain} from '@/activities/strains.ts';
 import {generalStoreInterior,genStoreFx,GENSTORE_DOOR,GENSTORE_SPAWN_OUT,
   INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,SEED_DISPLAYS,FERT_DISPLAY}
-  from '../../assets/models/rural/general-store.js';
+  from '../../assets/models/rural/general-store.ts';
 
 // GENERAL STORE — the rural village's walk-in shop. Extends the base Interior
-// (js/interior.js handles door/teleport/world-limit/camera/emergency-exit); the
+// (js/world/interior.ts handles door/teleport/world-limit/camera/emergency-exit); the
 // extra behavior is BUYING SEEDS at the counter.
 //
 // Like the gun-shop, the counter has SEVERAL displays — one per cannabis strain
-// (js/strains.js). Walk up to a display and the prompt offers THAT strain; press E
+// (js/activities/strains.ts). Walk up to a display and the prompt offers THAT strain; press E
 // to buy a pack. Seeds go into state.seeds[strain] and that strain becomes the one
 // the weed farm plants next (state.seedSel). Each strain has its own price and its
-// own grow-op mechanics (see js/weed-farm.js).
+// own grow-op mechanics (see js/activities/weed-farm.ts).
 //
 // Single-tap buy (seeds are cheap consumables bought in bulk, so a confirm step
 // would just be friction). The prompt shows the strain, its traits, the price and

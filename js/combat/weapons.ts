@@ -1,36 +1,36 @@
 import * as THREE from 'three';
-import {state,input,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene,camera} from '@/core/engine.js';
-import {N,ROAD,BLOCK,SIDE,rand,irand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.js';
-import {isPark} from '@/world/world.js';
-import {blip,thud,gunshot} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {addWanted,collideStatics} from '@/core/physics.js';
-import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.js';
-import {peds,addBloodPuddle} from '@/world/pedestrians.js';
-import {traffic,spawnTraffic} from '@/world/traffic.js';
-import {cops,officers as copOfficers,killOfficer} from '@/actors/police.js';
-import {spawnDrop} from '@/story/missions.js';
-import {gangPeds,killGangPed} from '@/actors/gangs.js';
-import {npcs} from '@/actors/npc.js'; // unified NPC registry (rural folk + any future type)
-import {dentCar,poseAiming,disposeGeometries} from '@/core/entities.js';
-import {makePistolModel} from '../../assets/models/weapons/pistol.js';
-import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.js';
-import {makeGrenadeModel} from '../../assets/models/weapons/grenade.js';
-import {makeMolotovModel} from '../../assets/models/weapons/molotov.js';
-import {makeExplosionModel} from '../../assets/models/effects/explosion.js';
-import {makeImpactRing} from '../../assets/models/effects/impact-ring.js';
-import {makeBulletModel} from '../../assets/models/effects/bullet.js';
-import {makeFireModel} from '../../assets/models/effects/fire.js';
-import {makeFlameJetModel} from '../../assets/models/effects/flame-jet.js';
-import {makeWeaponTracerLine} from '../../assets/models/effects/weapon-tracer.js';
-import {makeFpHands} from '../../assets/models/characters/fp-hands.js';
-import {WEAPONS,ARSENAL,FIST,bySlot} from '@/combat/weapon-catalog.js';
-import type {Weapon,WeaponApi,Recoil,Hold} from '@/combat/weapon-types.js';
-import type {Vehicle} from '@/core/types.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
+import {state,input,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene,camera} from '@/core/engine.ts';
+import {N,ROAD,BLOCK,SIDE,rand,irand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {isPark} from '@/world/world.ts';
+import {blip,thud,gunshot} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {addWanted,collideStatics} from '@/core/physics.ts';
+import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.ts';
+import {peds,addBloodPuddle} from '@/world/pedestrians.ts';
+import {traffic,spawnTraffic} from '@/world/traffic.ts';
+import {cops,officers as copOfficers,killOfficer} from '@/actors/police.ts';
+import {spawnDrop} from '@/story/missions.ts';
+import {gangPeds,killGangPed} from '@/actors/gangs.ts';
+import {npcs} from '@/actors/npc.ts'; // unified NPC registry (rural folk + any future type)
+import {dentCar,poseAiming,disposeGeometries} from '@/core/entities.ts';
+import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
+import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.ts';
+import {makeGrenadeModel} from '../../assets/models/weapons/grenade.ts';
+import {makeMolotovModel} from '../../assets/models/weapons/molotov.ts';
+import {makeExplosionModel} from '../../assets/models/effects/explosion.ts';
+import {makeImpactRing} from '../../assets/models/effects/impact-ring.ts';
+import {makeBulletModel} from '../../assets/models/effects/bullet.ts';
+import {makeFireModel} from '../../assets/models/effects/fire.ts';
+import {makeFlameJetModel} from '../../assets/models/effects/flame-jet.ts';
+import {makeWeaponTracerLine} from '../../assets/models/effects/weapon-tracer.ts';
+import {makeFpHands} from '../../assets/models/characters/fp-hands.ts';
+import {WEAPONS,ARSENAL,FIST,bySlot} from '@/combat/weapon-catalog.ts';
+import type {Weapon,WeaponApi,Recoil,Hold} from '@/combat/weapon-types.ts';
+import type {Vehicle} from '@/core/types.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // ----- shared local types ----------------------------------------------------
 // One entry of the cycle inventory, consumed by the selection wheel (weapon-wheel.ts).
@@ -89,8 +89,8 @@ if(!weaponPickups.length)makeWeaponPickup(nodeX(4)+12,nodeX(4)+12);
 // ----- INVENTÁRIO -----
 // `owned` é o que o jogador tem (sempre ao menos o punho); `curWeapon` é a
 // selecionada. O modelo na mão vive em `heldHolder` (filho do player) e é
-// reconstruído na troca. O catálogo (js/weapon-catalog.js) define todas as
-// armas como instâncias da classe base Weapon (js/weapon-types.js).
+// reconstruído na troca. O catálogo (js/combat/weapon-catalog.ts) define todas as
+// armas como instâncias da classe base Weapon (js/combat/weapon-types.ts).
 let owned: Weapon[]=[FIST];
 let curWeapon: Weapon=FIST;
 let heldModel: THREE.Object3D|null=null,curMuzzle: THREE.Object3D|null=null;
@@ -137,7 +137,7 @@ export function selectWeaponSlot(slot: number){
   const w=bySlot(slot);
   if(w&&owned.includes(w)){equip(w);blip([560,700],.05,'square',.1);}
 }
-// Inventário atual (na ordem do ciclo) para a roda de seleção (js/weapon-wheel.js).
+// Inventário atual (na ordem do ciclo) para a roda de seleção (js/combat/weapon-wheel.ts).
 export function getInventory(): InventoryItem[]{
   return owned.map(w=>({
     id:w.id,name:w.name,category:w.category,
@@ -172,7 +172,7 @@ export const getWeaponHud=()=>({
 // once the launcher respawns — so it must not out-pay winning a race.
 const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=600;
 const rampage={active:false,end:0,kills:0};
-// mini game (sessão): igual à chacina das caveiras (js/rampage.js), trava o mundo
+// mini game (sessão): igual à chacina das caveiras (js/combat/rampage.ts), trava o mundo
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.
 const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Frenzy'});
 const missiles: MissileFx[]=[];
@@ -190,7 +190,7 @@ player.g.add(heldRocket);
 
 const rampageEl=document.getElementById('rampage');
 
-// tocar a lança-foguetes começa a chacina (igual à das caveiras em js/rampage.js):
+// tocar a lança-foguetes começa a chacina (igual à das caveiras em js/combat/rampage.ts):
 // pega a trava do mundo via rampageGame.begin(), que também abre o briefing (top 5)
 // e congela até o jogador "passar". Aborta se outra sessão de mini game já roda.
 function beginRampage(){
@@ -270,8 +270,8 @@ const byIdSafe=(id: string)=>WEAPONS.find(w=>w.id===id)||FIST;
 
 // Concede UMA arma — a pistola inicial — com munição cheia, e limpa os pickups do
 // parque do cenário (uma vez armado não dá pra recolhê-los; ver canPickWeapon). É o
-// que o pickup do mundo (pickupWeapon) e o espólio de telhado (js/doors.js) usam: o
-// resto do arsenal vem da loja ou dos pickups escondidos (js/weapon-pickups.js).
+// que o pickup do mundo (pickupWeapon) e o espólio de telhado (js/world/doors.ts) usam: o
+// resto do arsenal vem da loja ou dos pickups escondidos (js/combat/weapon-pickups.ts).
 // Devolve se o jogador estava desarmado (o chamador varia a mensagem).
 export function grantStarterWeapon(){
   const wasUnarmed=!state.hasGun;
@@ -288,7 +288,7 @@ if(location.hostname==='localhost'||location.hostname==='127.0.0.1')grantWeapon(
 // Já tem essa arma? (a loja mostra "OWNED" e bloqueia recompra)
 export function ownsWeapon(id: string){return owned.some(w=>w.id===id);}
 
-// Compra de UMA arma na loja (js/gun-shop.js): adiciona ao inventário com
+// Compra de UMA arma na loja (js/places/gun-shop.ts): adiciona ao inventário com
 // munição cheia, mantém a ordem do catálogo e equipa se ainda estava só no
 // punho. Quem cobra o dinheiro é a loja; aqui só concede a arma.
 export function buyWeapon(id: string){
@@ -346,7 +346,7 @@ export function pickupArsenalWeapon(id: string|undefined){
   return isNew;
 }
 
-// ----- SAVE: inventário persistente (js/save.js) -----
+// ----- SAVE: inventário persistente (js/core/save.ts) -----
 // Serializa as armas possuídas (sem o punho) + munição atual, pra restaurar na
 // próxima sessão. Salvamos a munição pra não dar recarga grátis nem devolver a
 // arma vazia. Armas de munição infinita guardam só o id.
@@ -1135,7 +1135,7 @@ function detonatorAction(){
   }
 }
 
-// Objeto injetado nas classes de arma (js/weapon-types.js): expõe mira, pose,
+// Objeto injetado nas classes de arma (js/combat/weapon-types.ts): expõe mira, pose,
 // recuo, sons e os spawns de projétil/efeito sem que as classes importem este
 // módulo (evita ciclo de import).
 const api: WeaponApi={

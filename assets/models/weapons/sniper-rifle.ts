@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeWeaponMeshes} from './weapon-merge.js';
+import {mergeWeaponMeshes} from './weapon-merge.ts';
 
 // Rifle de precisão: cano longo e fino, luneta (scope) grande em cima com
 // lentes, ferrolho (bolt) lateral, bipé recolhido e coronha de madeira com

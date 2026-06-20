@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import {nodeX,ROAD,SIDE,BLOCK,N,GROUND,BEACH,rand,irand,pick,MOUNT_X,groundHeight} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene,camera} from '@/core/engine.js';
-import {makePed} from '@/core/entities.js';
-import {AC,master,blip,thud} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {parks} from '@/world/world.js';
-import {player,playerPos} from '@/actors/player.js';
-import {addBloodPuddle} from '@/world/pedestrians.js';
-import {setTod} from '@/world/daynight.js';
-import {makeStoryGem} from '../../assets/models/missions/story-gem.js';
-import {makeStoryUsb} from '../../assets/models/missions/story-usb.js';
-import {makeStoryBottle} from '../../assets/models/missions/story-bottle.js';
-import {makeStoryBox} from '../../assets/models/missions/story-box.js';
-import {makeStoryMarker} from '../../assets/models/missions/story-marker.js';
-import {makeStoryBeacon} from '../../assets/models/missions/story-beacon.js';
-import {makeStoryArrow} from '../../assets/models/missions/story-arrow.js';
-import {MiniGame} from '@/activities/minigame.js';
+import {nodeX,ROAD,SIDE,BLOCK,N,GROUND,BEACH,rand,irand,pick,MOUNT_X,groundHeight} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene,camera} from '@/core/engine.ts';
+import {makePed} from '@/core/entities.ts';
+import {AC,master,blip,thud} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {parks} from '@/world/world.ts';
+import {player,playerPos} from '@/actors/player.ts';
+import {addBloodPuddle} from '@/world/pedestrians.ts';
+import {setTod} from '@/world/daynight.ts';
+import {makeStoryGem} from '../../assets/models/missions/story-gem.ts';
+import {makeStoryUsb} from '../../assets/models/missions/story-usb.ts';
+import {makeStoryBottle} from '../../assets/models/missions/story-bottle.ts';
+import {makeStoryBox} from '../../assets/models/missions/story-box.ts';
+import {makeStoryMarker} from '../../assets/models/missions/story-marker.ts';
+import {makeStoryBeacon} from '../../assets/models/missions/story-beacon.ts';
+import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
+import {MiniGame} from '@/activities/minigame.ts';
 
 // ---- shapes for the story mission descriptors / engine ----------------------
 interface Voice { freq: number; type: OscillatorType; }
@@ -229,7 +229,7 @@ const subEl=document.getElementById('cine-sub') as HTMLElement;
 const hintEl=document.getElementById('cine-hint') as HTMLElement | null;
 
 // Minimal mission/actor shapes the cut-scene machine needs (so playCutscene can
-// pass a stub for missions that live outside STORY — e.g. js/rick.js).
+// pass a stub for missions that live outside STORY — e.g. js/story/rick.ts).
 interface CineMission { npc: { voice: Voice }; }
 interface CineActor { ped: THREE.Object3D; marker: { visible: boolean }; }
 
@@ -292,7 +292,7 @@ function startCutscene(m: CineMission,actor: CineActor,lines: string[],onDone?: 
   nextLine();
 }
 // Cut-scene genérica para missões FORA do STORY (ex.: a missão secreta do Rick
-// em js/rick.js). Reaproveita toda a máquina de câmera/legendas/voz: passa um
+// em js/story/rick.ts). Reaproveita toda a máquina de câmera/legendas/voz: passa um
 // "ator" mínimo (ped + marcador fantasma) e a voz; updateCine/advanceCine já
 // rodam pelo updateStory. ped precisa ter userData.limbs/mouth (vale pra buildToonPlayer).
 export function playCutscene(ped: THREE.Object3D,voice: Voice,lines: string[],onDone?: () => void){

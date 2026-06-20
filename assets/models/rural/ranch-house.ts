@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {RURAL_GAP} from '@/core/constants.js';
-import {makeDoorArrow} from '../city/door-arrow.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {RURAL_GAP} from '@/core/constants.ts';
+import {makeDoorArrow} from '../city/door-arrow.ts';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world), no mesmo molde dos demais
 // interiores (boate/academia/hospital/presídio): fachada no mapa + ambiente
-// interno a ~600m num Group visible=false. Diferenças (ver js/property.js):
+// interno a ~600m num Group visible=false. Diferenças (ver js/places/property.ts):
 //   - só ABRE depois de comprada (placa FOR SALE na frente);
 //   - dentro tem uma geladeira com comida que cura a vida;
 //   - tem uma GARAGEM ao lado pra guardar um carro, que volta salvo até depois
@@ -26,7 +26,7 @@ export const INT_SPAWN={x:-805.8,z:80};         // nasce ao lado da porta, olhan
 export const INT_BOUNDS={x0:-807.6,x1:-792.4,z0:74.4,z1:85.6,y1:4.0};
 export const FOOD={x:-793,z:77};                // comida da geladeira: cura quem come
 export const TV={x:INT_CENTER.x-5,z:INT_CENTER.z+1.2,y:1.2}; // tela da TV da sala
-export const HOUSE_PRICE=1;                      // preço da casa (1 dólar pra teste; js/property.js importa)
+export const HOUSE_PRICE=1;                      // preço da casa (1 dólar pra teste; js/places/property.ts importa)
 
 const wallM=matte({color:0xf3ecd8,roughness:.95});      // tábuas claras (lambris)
 const roofM=matte({color:0x7c3b2c,roughness:.85});      // telha de barro escura
@@ -152,7 +152,7 @@ function makeFridge(): THREE.Group{
   }
   return g;
 }
-// comida (prato + sanduíche) que flutua e gira (animada por js/property.js)
+// comida (prato + sanduíche) que flutua e gira (animada por js/places/property.ts)
 function makeFood(): THREE.Group{
   const g=new THREE.Group();
   const plate=new THREE.Mesh(new THREE.CylinderGeometry(.32,.28,.05,16),
@@ -467,7 +467,7 @@ function furnishInterior(g: THREE.Object3D,ix: number,iz: number,live: boolean):
   g.add(P(makeWallArt(artAbstractM,.8,1.0),ix+7.9,2.4,iz+3,-Math.PI/2));
 }
 
-// monta tudo no mapa (chamado por js/world.js). Empurra colisões em `solids`.
+// monta tudo no mapa (chamado por js/world/world.ts). Empurra colisões em `solids`.
 export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[]): void{
   const cx=RANCH_CX,cz=RANCH_CZ;
 
@@ -646,11 +646,11 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   slab.rotation.x=-Math.PI/2;slab.position.set(gx,.03,gz);slab.receiveShadow=true;scene.add(slab);
 
   // placa FOR SALE no quintal, bem onde o gatilho de compra fica (RANCH_SALE).
-  // Depois da compra ela some por completo (js/property.js).
+  // Depois da compra ela some por completo (js/places/property.ts).
   ranchFx.saleSign=makeSign(false);
   ranchFx.saleSign.position.set(RANCH_SALE.x,0,RANCH_SALE.z);scene.add(ranchFx.saleSign);
   ranchFx.soldSign=null;
-  // seta quicando na porta (só visível quando comprada — js/property.js)
+  // seta quicando na porta (só visível quando comprada — js/places/property.ts)
   ranchFx.facadeArrow=makeDoorArrow();
   ranchFx.facadeArrow.position.set(cx,1.7,cz-6);ranchFx.facadeArrow.visible=false;facade.add(ranchFx.facadeArrow);
 
@@ -701,7 +701,7 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   const light2=new THREE.PointLight(0xffe9cc,28,30,1.8); // realça cozinha/lareira
   light2.position.set(ix+4.5,3.4,iz-2);ranchInterior.add(light2);
 
-  // porta de saída (parede oeste) + seta de saída (animada por js/interior.js)
+  // porta de saída (parede oeste) + seta de saída (animada por js/world/interior.ts)
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.16,2.8,1.4),woodDoorM);
   exitDoor.position.set(ix-7.95,1.4,iz);ranchInterior.add(exitDoor);
   ranchFx.exitArrow=makeDoorArrow();

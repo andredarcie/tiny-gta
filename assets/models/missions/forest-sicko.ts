@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // "Doente da floresta": criaturinha pequena e verde, doentia, alvo da missão
-// secreta do Rick (js/rick.js). Corcunda, olhos grandes amarelos, boca babando e
+// secreta do Rick (js/story/rick.ts). Corcunda, olhos grandes amarelos, boca babando e
 // manchas escuras de podridão. Fica escondida pela zona rural; sem indicador no
 // mapa — o jogador precisa caçar de verdade.
 

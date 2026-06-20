@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Ícone do modo OVERKILL: apenas uma caveira flutuante. É o objeto do cenário
 // com que o jogador interage pra ligar o modo.

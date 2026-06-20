@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Country church: light board nave on a stone plinth, dark gable roof, corner
 // buttresses, a pointed-arch double door under a rose window, Gothic pointed

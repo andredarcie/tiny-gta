@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {rand} from '@/core/constants.js';
-import {makePed} from '../characters/pedestrian.js';
-import {makeDoorArrow} from './door-arrow.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {rand} from '@/core/constants.ts';
+import {makePed} from '../characters/pedestrian.ts';
+import {makeDoorArrow} from './door-arrow.ts';
 
 // Hospital "SANTA CASA", no mesmo molde da boate/academia: prédio num quarteirão
 // reservado pelo world.js, interior separado a ~600m do mapa num Group
-// visible=false. É pra onde o jogador é levado quando morre (js/player.js), e
-// tem um kit de cura no centro pra quando ele entrar ferido. Ver js/hospital.js.
+// visible=false. É pra onde o jogador é levado quando morre (js/actors/player.ts), e
+// tem um kit de cura no centro pra quando ele entrar ferido. Ver js/places/hospital.ts.
 
 export const HOSP_I=6,HOSP_J=6; // quarteirão reservado (sudeste da cidade)
 
@@ -22,7 +22,7 @@ export const HOSP_SPAWN_OUT={x:99.4,z:110};
 export const INT_CENTER={x:-800,z:180};
 export const INT_DOOR={x:-812.2,z:180};
 export const INT_SPAWN={x:-810.4,z:180};  // entrada normal: ao lado da porta, olhando pra dentro
-export const HOSP_BED={x:-800,z:180};     // morte: acorda no meio da sala (ver js/hospital.js)
+export const HOSP_BED={x:-800,z:180};     // morte: acorda no meio da sala (ver js/places/hospital.ts)
 export const INT_BOUNDS={x0:-812.3,x1:-787.7,z0:172.7,z1:187.3,y1:4.9};
 // kit de cura no meio da sala (cruz verde): cura quem entra ferido
 export const HOSP_HEAL={x:-801,z:176};
@@ -290,7 +290,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   const band=new THREE.Mesh(new THREE.BoxGeometry(16.3,.5,16.3),tealM);
   band.position.set(cx,5.4,cz);scene.add(band);
 
-  // Objetos da PORTA num grupo 'facade' que js/interior.js esconde quando a
+  // Objetos da PORTA num grupo 'facade' que js/world/interior.ts esconde quando a
   // câmera entra na pegada do prédio (senão flutuam ao sair). O corpo (caixa)
   // some sozinho por culling. Ver hospFx.facade/footprint/facadeArrow.
   const facade=new THREE.Group();
@@ -312,7 +312,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   hospFx.sign=new THREE.Mesh(new THREE.PlaneGeometry(9,2.3),
     new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
   hospFx.sign.position.set(cx-8.13,6,cz);hospFx.sign.rotation.y=-Math.PI/2;facade.add(hospFx.sign);
-  // seta quicando na entrada (mesh próprio, no grupo; animada por js/interior.js)
+  // seta quicando na entrada (mesh próprio, no grupo; animada por js/world/interior.ts)
   hospFx.facadeArrow=makeDoorArrow();
   hospFx.facadeArrow.position.set(cx-9.3,1.7,cz);facade.add(hospFx.facadeArrow);
   scene.add(facade);
@@ -425,7 +425,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   const clock=new THREE.Mesh(new THREE.CircleGeometry(.5,24),clockM);
   clock.position.set(-806.5,3.6,172.32);hospInterior.add(clock);
 
-  // ---- NPCs: equipe e pacientes (animados por js/hospital.js) ----
+  // ---- NPCs: equipe e pacientes (animados por js/places/hospital.ts) ----
   const DOCTOR=0xf4f6f7,DOCPANTS=0x33424a,NURSE=0x2aa6a0,NPANTS=0x1f7a76,GOWN=0xbcd6dc;
   // adiciona um ped ao interior e registra pra animação
   const addPed=(shirt:number,pants:number,x:number,z:number,faceYaw:number,kind:string,extra:Record<string,unknown>={}):void=>{
@@ -442,7 +442,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
     hospFx.peds.push({g,kind:'lie'});
     return g;
   };
-  hospFx.sickPatient=addLying(-806); // este fala quando o jogador chega perto (js/hospital.js)
+  hospFx.sickPatient=addLying(-806); // este fala quando o jogador chega perto (js/places/hospital.ts)
   addLying(-796);                    // segundo paciente internado
   addPed(NURSE,NPANTS,-800,173.4,0,'idle');    // enfermeira na recepção (olha pra sala)
   addPed(DOCTOR,DOCPANTS,-797.5,181,-Math.PI/2,'idle'); // médico examinando o leito da ponta
@@ -451,7 +451,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   addPed(GOWN,GOWN,-808,182.5,Math.PI/2,'idle'); // paciente em pé perto da espera
 
   // ----- kit de cura: cruz verde flutuando no centro, com anel/halo no chão -----
-  // (a cruz é animada por js/hospital.js; o anel/halo/coluna são decoração estática)
+  // (a cruz é animada por js/places/hospital.ts; o anel/halo/coluna são decoração estática)
   const ring=new THREE.Mesh(new THREE.TorusGeometry(1.05,.06,8,32),greenM);
   ring.rotation.x=Math.PI/2;ring.position.set(HOSP_HEAL.x,.05,HOSP_HEAL.z);hospInterior.add(ring);
   const disc=new THREE.Mesh(new THREE.CircleGeometry(1,28),glowM);
@@ -499,7 +499,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
 
   // ----- furniture collision -----
   // The big props get solid AABBs (x0,x1,z0,z1,h) so the player bumps them
-  // instead of walking through. collideStatics() (js/physics.js) only skips a
+  // instead of walking through. collideStatics() (js/core/physics.ts) only skips a
   // solid when p.y>h, and the on-foot player sits at y≈0, so even low items
   // block. These live 600m off-map and never touch city movement. Aisles
   // between the beds/props stay clear; spawns + the heal kit sit in open floor.

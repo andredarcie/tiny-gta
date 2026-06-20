@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {rand} from '@/core/constants.js';
-import {makePed} from '../characters/pedestrian.js';
-import {makeDoorArrow} from './door-arrow.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {rand} from '@/core/constants.ts';
+import {makePed} from '../characters/pedestrian.ts';
+import {makeDoorArrow} from './door-arrow.ts';
 
 // County jail / presidio: exterior on a reserved city block and a separate
 // interior group, same pattern as hospital, nightclub, and gym.
@@ -20,7 +20,7 @@ export const PRISON_RELEASE={x:-808.8,z:329.4}; // busted spawn, release corrido
 export const INT_BOUNDS={x0:-814.3,x1:-760.5,z0:320.7,z1:339.3,y1:5.2};
 // The clandestine hole in the open cell at the far east of the cell-block wing
 // (filled in by addPrison). Stepping on it drops into the escape tunnel — see
-// js/jail-break.js.
+// js/activities/jail-break.ts.
 export const TUNNEL_HOLE={x:-763,z:337};
 
 const concreteM=matte({color:0x6b7378,roughness:.96});
@@ -245,7 +245,7 @@ export function addPrison(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
 
   // ===== Cell-block wing (escape route): barred cells fill the east half of the
   // room. The FAR cell stands OPEN over a clandestine HOLE dug down to a dirt tunnel
-  // (see js/jail-break.js). Walk east from processing straight into the cells. =====
+  // (see js/activities/jail-break.ts). Walk east from processing straight into the cells. =====
   const WF=334.3,WB=339.7;                        // wing cell front / back z
   const wp=[-783,-777.3,-771.6,-765.9,-760.2];    // 4 cells between 5 partitions
   for(const x of wp){

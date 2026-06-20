@@ -1,28 +1,28 @@
-import {state,keys,input,refs} from '@/core/state.js';
-import {initAudio,AC} from '@/audio/audio.js';
-import {radioSwitch} from '@/ui/radio.js';
-import {enterCar,exitCar,cur,player,cameraRig,toggleFirstPerson,applyMouseLook} from '@/actors/player.js';
-import {storyInteract,advanceCine} from '@/story/story.js';
-import {gymTrain} from '@/places/gym.js';
-import {gymGameActive,gymGamePress,closeGymGame} from '@/places/gym-game.js';
-import {clubDance} from '@/places/club.js';
-import {danceGameActive,closeDanceGame,pressLane,danceGameConfirm} from '@/places/dance-game.js';
-import {modShopActive,closeModShop} from '@/places/mod-shop.js';
-import {houseBuy,houseEat,houseGaragePark} from '@/places/property.js';
-import {houseTvInteract,closeHouseTv} from '@/places/house-tv.js';
-import {startOverkill} from '@/combat/overkill.js';
-import {setMissionHUD} from '@/story/missions.js';
-import {message,drawFullMap} from '@/ui/hud.js';
-import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from '@/combat/weapons.js';
-import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.js';
-import {toggleModelViewer,closeModelViewer} from '@/ui/model-viewer.js';
-import {toggleAdmin,closeAdmin,isAdmin} from '@/ui/admin.js';
-import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest} from '@/ui/leaderboard.js';
-import {applySave} from '@/core/save.js';
-import {hasProfanity} from '@/core/profanity.js';
-import {MiniGame} from '@/activities/minigame.js';
-import {openPauseMenu,closePauseMenu,pauseBack} from '@/ui/pause-menu.js';
-import {applySettings} from '@/core/settings.js';
+import {state,keys,input,refs} from '@/core/state.ts';
+import {initAudio,AC} from '@/audio/audio.ts';
+import {radioSwitch} from '@/ui/radio.ts';
+import {enterCar,exitCar,cur,player,cameraRig,toggleFirstPerson,applyMouseLook} from '@/actors/player.ts';
+import {storyInteract,advanceCine} from '@/story/story.ts';
+import {gymTrain} from '@/places/gym.ts';
+import {gymGameActive,gymGamePress,closeGymGame} from '@/places/gym-game.ts';
+import {clubDance} from '@/places/club.ts';
+import {danceGameActive,closeDanceGame,pressLane,danceGameConfirm} from '@/places/dance-game.ts';
+import {modShopActive,closeModShop} from '@/places/mod-shop.ts';
+import {houseBuy,houseEat,houseGaragePark} from '@/places/property.ts';
+import {houseTvInteract,closeHouseTv} from '@/places/house-tv.ts';
+import {startOverkill} from '@/combat/overkill.ts';
+import {setMissionHUD} from '@/story/missions.ts';
+import {message,drawFullMap} from '@/ui/hud.ts';
+import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from '@/combat/weapons.ts';
+import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.ts';
+import {toggleModelViewer,closeModelViewer} from '@/ui/model-viewer.ts';
+import {toggleAdmin,closeAdmin,isAdmin} from '@/ui/admin.ts';
+import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest} from '@/ui/leaderboard.ts';
+import {applySave} from '@/core/save.ts';
+import {hasProfanity} from '@/core/profanity.ts';
+import {MiniGame} from '@/activities/minigame.ts';
+import {openPauseMenu,closePauseMenu,pauseBack} from '@/ui/pause-menu.ts';
+import {applySettings} from '@/core/settings.ts';
 
 const gameCanvas=(): HTMLElement | null=>document.getElementById('game');
 const isBlocked=(): boolean=>state.paused||state.mapOpen||state.wheelOpen||state.mode==='cut'||state.orientationBlocked||state.controlsLocked;
@@ -82,7 +82,7 @@ export function performPauseToggle(): void {
 // Android hardware "back" button. Mirrors the keydown Escape precedence so back
 // closes whatever overlay is open (mini-game, map, weapon wheel, TV, …) before
 // falling back to pause. Returns 'exit' only at the very top (title/nick screen)
-// so the native shell can leave the app; otherwise 'consumed'. See js/native.js.
+// so the native shell can leave the app; otherwise 'consumed'. See js/core/native.ts.
 export function performBack(): 'exit' | 'consumed' {
   if(state.cine)return 'consumed';                                        // cut-scene: ignore back
   if(gymGameActive()){closeGymGame();return 'consumed';}
@@ -426,7 +426,7 @@ export function setupInput(): void {
     e.stopPropagation();
     performPauseToggle();
   });
-  // Resume / fullscreen are driven from inside the pause menu (js/pause-menu.js) via
+  // Resume / fullscreen are driven from inside the pause menu (js/ui/pause-menu.ts) via
   // late-bound refs, so it never has to import this module (which imports it).
   refs.togglePause=performPauseToggle;
   refs.toggleFullscreen=performFullscreenToggle;

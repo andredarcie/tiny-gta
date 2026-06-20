@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import {buildHand,buildGripHand} from '../characters/fp-hands.js';
+import {buildHand,buildGripHand} from '../characters/fp-hands.ts';
 
 // Detailed first-person CAR cockpit — ONE shared model, used by the player's car
-// only while in first person inside a car (loaded/unloaded by js/player.js). It is
-// authored in car-local space matching assets/models/vehicles/car.js:
+// only while in first person inside a car (loaded/unloaded by js/actors/player.ts). It is
+// authored in car-local space matching assets/models/vehicles/car.ts:
 //   +Z forward, driver on -X, floor y~0.12, dash ~z0.85, stock wheel ~(-0.38,0.88,
 //   0.34), roof ~1.37. So it drops straight onto cur.g as a child and lines up.
 // Pure factory (no scene.add). Exposes userData.steerWheel (turns with steering, with

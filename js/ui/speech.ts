@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import {scene,camera} from '@/core/engine.js';
-import {state} from '@/core/state.js';
-import {rand,pick} from '@/core/constants.js';
-import {getTod} from '@/world/daynight.js';
-import {playerPos} from '@/actors/player.js';
-import {peds} from '@/world/pedestrians.js';
-import {makeSpeechBubble} from '../../assets/models/characters/speech-bubble.js';
+import {scene,camera} from '@/core/engine.ts';
+import {state} from '@/core/state.ts';
+import {rand,pick} from '@/core/constants.ts';
+import {getTod} from '@/world/daynight.ts';
+import {playerPos} from '@/actors/player.ts';
+import {peds} from '@/world/pedestrians.ts';
+import {makeSpeechBubble} from '../../assets/models/characters/speech-bubble.ts';
 
 // Balões de diálogo flutuantes no mundo: aparecem acima da cabeça de um NPC,
 // seguem ele, fazem fade in/out e somem depois de um tempo (dá pra ler tudo).

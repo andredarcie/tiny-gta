@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // WEED DELIVERY BACKPACK — a detailed military-canvas rucksack the player wears on
-// their back while running a delivery (js/weed-farm.js attaches/detaches it). Built
+// their back while running a delivery (js/activities/weed-farm.ts attaches/detaches it). Built
 // centered at the body's middle, with the back panel + shoulder straps on +z (the
 // side that hugs the player's back) and the bulk on -z, so it sits right when added
 // at a small -z offset on the player. Pure: returns a fresh Object3D, no scene.add.

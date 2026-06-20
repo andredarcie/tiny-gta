@@ -1,21 +1,21 @@
-import {animatePed} from '@/core/entities.js';
-import {Interior} from '@/world/interior.js';
-import {playerPos} from '@/actors/player.js';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {message} from '@/ui/hud.js';
-import {clubMusicOn,clubMusicOff} from '@/audio/club-music.js';
-import {openDanceGame,danceGameActive} from '@/places/dance-game.js';
-import {openMiniGameIntro,reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import {MiniGameId} from '@/activities/minigame.js';
+import {animatePed} from '@/core/entities.ts';
+import {Interior} from '@/world/interior.ts';
+import {playerPos} from '@/actors/player.ts';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {message} from '@/ui/hud.ts';
+import {clubMusicOn,clubMusicOff} from '@/audio/club-music.ts';
+import {openDanceGame,danceGameActive} from '@/places/dance-game.ts';
+import {openMiniGameIntro,reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {MiniGameId} from '@/activities/minigame.ts';
 import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
-  from '../../assets/models/city/nightclub.js';
+  from '../../assets/models/city/nightclub.ts';
 
-// Boate "THE FLAMINGO": estende a classe base de interiores (js/interior.js),
+// Boate "THE FLAMINGO": estende a classe base de interiores (js/world/interior.ts),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
-// Particularidades daqui: a MÚSICA PRÓPRIA da casa (js/club-music.js) ao
+// Particularidades daqui: a MÚSICA PRÓPRIA da casa (js/audio/club-music.ts) ao
 // entrar/sair, a animação da pista (globo, ladrilhos, dançarinos) e o MINI-GAME
-// de ritmo (js/dance-game.js) que abre ao pisar no meio da pista.
+// de ritmo (js/places/dance-game.ts) que abre ao pisar no meio da pista.
 const PAL=[0xff2e88,0x19e3ff,0xffd24a,0x9dff2e];
 
 // centro da pista de dança (ladrilhos do nightclub.js) e raio de ação

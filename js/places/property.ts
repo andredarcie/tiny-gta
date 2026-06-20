@@ -1,18 +1,18 @@
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {playerPos,idleCars} from '@/actors/player.js';
-import {makeCar,makeMotorcycle} from '@/core/entities.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {Interior} from '@/world/interior.js';
-import {arrowBob} from '../../assets/models/city/door-arrow.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {playerPos,idleCars} from '@/actors/player.ts';
+import {makeCar,makeMotorcycle} from '@/core/entities.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {Interior} from '@/world/interior.ts';
+import {arrowBob} from '../../assets/models/city/door-arrow.ts';
 import {RANCH_CX,RANCH_CZ,RANCH_DOOR,RANCH_SPAWN_OUT,RANCH_SALE,GARAGE_PAD,
   INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,FOOD,HOUSE_PRICE,
-  ranchFx,ranchInterior} from '../../assets/models/rural/ranch-house.js';
+  ranchFx,ranchInterior} from '../../assets/models/rural/ranch-house.ts';
 import type * as THREE from 'three';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world). Estende a classe base de
-// interiores (js/interior.js), que já cuida de porta/teleporte/limite do
+// interiores (js/world/interior.ts), que já cuida de porta/teleporte/limite do
 // mundo/câmera/saída de emergência. O que é só desta casa:
 //   - COMPRA: placa FOR SALE na frente; só depois de paga a porta abre;
 //   - GELADEIRA: comida que enche a vida (ação EAT lá dentro);
@@ -194,7 +194,7 @@ export function getHouseState(){
   return{owned:saved.owned,active:house.active,car:saved.car};
 }
 
-// ----- SAVE: posse da casa + carro da garagem (js/save.js) -----
+// ----- SAVE: posse da casa + carro da garagem (js/core/save.ts) -----
 // A posse e o carro guardado já viviam em localStorage; aqui espelhamos no save
 // do backend pra sobreviver à limpeza de dados / troca de dispositivo. O restore
 // só ACRESCENTA (nunca tira a casa de quem já tem) e cria o carro da garagem se

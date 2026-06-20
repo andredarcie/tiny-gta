@@ -1,20 +1,20 @@
 import * as THREE from 'three';
-import {state} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {economy} from '@/core/economy.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {groundHeight,ISLAND_CX,ISLAND_CZ} from '@/core/constants.js';
-import {byId} from '@/combat/weapon-catalog.js';
-import {pickupArsenalWeapon} from '@/combat/weapons.js';
-import {makeMoneyDrop} from '../../assets/models/missions/money-drop.js';
-import {MiniGame} from '@/activities/minigame.js';
+import {state} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {economy} from '@/core/economy.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {groundHeight,ISLAND_CX,ISLAND_CZ} from '@/core/constants.ts';
+import {byId} from '@/combat/weapon-catalog.ts';
+import {pickupArsenalWeapon} from '@/combat/weapons.ts';
+import {makeMoneyDrop} from '../../assets/models/missions/money-drop.ts';
+import {MiniGame} from '@/activities/minigame.ts';
 
 // HIDDEN ISLAND LOOT — a secret cache of heavy weapons and fat cash stashes salted
 // across the paradise island far to the west (ISLAND_CX/CZ). No map/radar blip: you
 // only find it by sailing/flying out there and exploring on foot. Bigger payouts
-// than the rural stashes (js/rural-loot.js) because reaching the island is the cost.
+// than the rural stashes (js/loot/rural-loot.ts) because reaching the island is the cost.
 // Same spin/bob/cull/respawn idea as rural-loot.js / weapon-pickups.js.
 
 const PICK_R=2.8;          // collection radius (on foot)

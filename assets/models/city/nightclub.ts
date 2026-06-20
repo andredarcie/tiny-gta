@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {rand,pick} from '@/core/constants.js';
-import {addPalm} from '../props/palm.js';
-import {makePed,shirtColors} from '../characters/pedestrian.js';
-import {makeDoorArrow} from './door-arrow.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {rand,pick} from '@/core/constants.ts';
+import {addPalm} from '../props/palm.ts';
+import {makePed,shirtColors} from '../characters/pedestrian.ts';
+import {makeDoorArrow} from './door-arrow.ts';
 
 // Boate "THE FLAMINGO", estilo mundo aberto: prédio na orla oeste (quarteirão
 // CLUB_I/CLUB_J, reservado pelo world.js) com letreiro neon e entrada coberta.
 // O interior é um cenário separado construído a ~600m do mapa, dentro de um
 // Group com visible=false — só é renderizado enquanto o jogador está lá
-// (js/club.js liga/desliga no teleporte da porta).
+// (js/places/club.ts liga/desliga no teleporte da porta).
 
 export const CLUB_I=0,CLUB_J=3; // quarteirão reservado (borda oeste, meio do mapa)
 
@@ -57,7 +57,7 @@ export function addNightclub(solids:{x0:number,x1:number,z0:number,z1:number,h:n
   ringTop.position.set(-154,6.85,-22);scene.add(ringTop);
   const ringMid=new THREE.Mesh(new THREE.BoxGeometry(16.3,.12,18.3),neonPinkM);
   ringMid.position.set(-154,4.4,-22);scene.add(ringMid);
-  // Objetos da PORTA num grupo 'facade' que js/interior.js esconde quando a
+  // Objetos da PORTA num grupo 'facade' que js/world/interior.ts esconde quando a
   // câmera entra na pegada do prédio (senão flutuam ao sair). O corpo (caixa)
   // some sozinho por culling. Ver clubFx.facade/footprint/facadeArrow.
   const facade=new THREE.Group();
@@ -81,7 +81,7 @@ export function addNightclub(solids:{x0:number,x1:number,z0:number,z1:number,h:n
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(9.5,2.4),
     new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
   sign.position.set(-162.18,5.7,-22);sign.rotation.y=-Math.PI/2;facade.add(sign);
-  // seta quicando na entrada (mesh próprio, no grupo; animada por js/interior.js)
+  // seta quicando na entrada (mesh próprio, no grupo; animada por js/world/interior.ts)
   clubFx.facadeArrow=makeDoorArrow();
   clubFx.facadeArrow.position.set(-163.4,1.7,-22);facade.add(clubFx.facadeArrow);
   scene.add(facade);
@@ -166,13 +166,13 @@ export function addNightclub(solids:{x0:number,x1:number,z0:number,z1:number,h:n
   exitDoor.position.set(-812.85,1.5,-22);clubInterior.add(exitDoor);
   const exitNeon=new THREE.Mesh(new THREE.BoxGeometry(.1,.3,1.6),neonPinkM);
   exitNeon.position.set(-812.8,3.3,-22);clubInterior.add(exitNeon);
-  // seta de saída quicando na frente da porta (animada pelo js/club.js,
+  // seta de saída quicando na frente da porta (animada pelo js/places/club.ts,
   // porque o mesh fundido das setas externas não alcança o interior)
   clubFx.exitArrow=makeDoorArrow();
   clubFx.exitArrow.position.set(-811.9,1.7,-22);
   clubInterior.add(clubFx.exitArrow);
 
-  // dançarinos: peds fundidos reaproveitados, animados pelo js/club.js
+  // dançarinos: peds fundidos reaproveitados, animados pelo js/places/club.ts
   const spots=[[-804,-23.5],[-801.8,-21],[-799.5,-24],[-803,-19.8],[-800.6,-26],[-797.8,-21.6]];
   for(const[dx,dz]of spots){
     const g=makePed(pick(shirtColors));

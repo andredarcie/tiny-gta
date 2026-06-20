@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import {state} from '@/core/state.js';
-import {camera,scene} from '@/core/engine.js';
-import {player,playerPos,cameraRig} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {groundHeight} from '@/core/constants.js';
-import {Interior} from '@/world/interior.js';
-import {solids} from '@/world/world.js';
-import {prison} from '@/places/prison.js';
-import {TUNNEL_HOLE} from '../../assets/models/city/prison.js';
+import {state} from '@/core/state.ts';
+import {camera,scene} from '@/core/engine.ts';
+import {player,playerPos,cameraRig} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {Interior} from '@/world/interior.ts';
+import {solids} from '@/world/world.ts';
+import {prison} from '@/places/prison.ts';
+import {TUNNEL_HOLE} from '../../assets/models/city/prison.ts';
 import {tunnelGroup,TUNNEL_CENTER,TUNNEL_START,TUNNEL_GATE,TUNNEL_BOUNDS,
-  FORT_BUTTON,FORT_EXIT,TUNNEL_SOLIDS,tunnelFx} from '../../assets/models/city/escape-tunnel.js';
-import {buildFlashlight} from '../../assets/models/props/flashlight.js';
+  FORT_BUTTON,FORT_EXIT,TUNNEL_SOLIDS,tunnelFx} from '../../assets/models/city/escape-tunnel.ts';
+import {buildFlashlight} from '../../assets/models/props/flashlight.ts';
 
 // ============================================================================
 // JAILBREAK escape route:

@@ -1,10 +1,10 @@
-import {state} from '@/core/state.js';
-import {camera,sea} from '@/core/engine.js';
-import {setSkyHidden} from '@/world/daynight.js';
-import {player,playerPos,cameraRig} from '@/actors/player.js';
-import {clamp} from '@/core/constants.js';
-import {message} from '@/ui/hud.js';
-import {arrowBob} from '../../assets/models/city/door-arrow.js';
+import {state} from '@/core/state.ts';
+import {camera,sea} from '@/core/engine.ts';
+import {setSkyHidden} from '@/world/daynight.ts';
+import {player,playerPos,cameraRig} from '@/actors/player.ts';
+import {clamp} from '@/core/constants.ts';
+import {message} from '@/ui/hud.ts';
+import {arrowBob} from '../../assets/models/city/door-arrow.ts';
 import type * as THREE from 'three';
 
 // ============================================================================
@@ -17,7 +17,7 @@ import type * as THREE from 'three';
 //    (sem o snap, o lerp da câmera atravessaria ~600m de mapa voando);
 //  - o cenário fica num THREE.Group visible=false, ligado só enquanto o
 //    jogador está lá;
-//  - a sala vive a ~600m do mapa: js/physics.js e js/player.js consultam
+//  - a sala vive a ~600m do mapa: js/core/physics.ts e js/actors/player.ts consultam
 //    state.interior pra desligar o limite do mundo, tratar o piso como chão
 //    seco e prender a câmera dentro de .bounds (ver os dois arquivos);
 //  - saída de emergência: se o jogador for teleportado pra cidade sem passar
@@ -40,7 +40,7 @@ import type * as THREE from 'three';
 //              nascer dentro da construção ao sair e esses detalhes precisam
 //              sumir junto com a fachada.
 //  enterMsg/enterColor  aviso padrão ao entrar (onEnter pode trocar)
-//  exterior  {x,z,r} zona da FACHADA onde gangue não pode existir (js/gangs.js)
+//  exterior  {x,z,r} zona da FACHADA onde gangue não pode existir (js/actors/gangs.ts)
 //  mapIcon   {id,label,color,icon} blip do radar para a porta externa
 //  spawnHeading  pra onde o jogador olha ao nascer dentro (padrão: +x)
 //  spawnOutHeading  pra onde olha ao sair pra rua (padrão: -x)
@@ -76,8 +76,8 @@ export interface InteriorConfig{
   spawnOutHeading?:number;
 }
 
-// Registro de todos os interiores instanciados. js/doors.js varre por porta
-// perto e js/main.js atualiza todos via updateInteriors.
+// Registro de todos os interiores instanciados. js/world/doors.ts varre por porta
+// perto e js/core/main.ts atualiza todos via updateInteriors.
 export const interiors:Interior[]=[];
 
 export class Interior{
@@ -135,7 +135,7 @@ export class Interior{
   enter():void{this.enterAt(this.intSpawn,this.spawnHeading);}
 
   // liga a sala e teleporta pra um ponto/heading quaisquer (morte/prisão usam
-  // isto pra acordar no hospital/presídio — ver js/hospital.js e js/prison.js)
+  // isto pra acordar no hospital/presídio — ver js/places/hospital.ts e js/places/prison.ts)
   enterAt(spawn:XZ,heading:number):void{
     // Se o jogador vinha de OUTRO interior (ex.: morreu/foi preso DENTRO da loja de
     // armas e é admitido no hospital/presídio), desliga o anterior PRIMEIRO — senão
@@ -163,7 +163,7 @@ export class Interior{
     this.onExit();
   }
 
-  // chamada pelo js/doors.js quando o jogador encosta numa porta
+  // chamada pelo js/world/doors.ts quando o jogador encosta numa porta
   doorInteract():boolean{
     const n=this.near();
     if(!n)return false;
@@ -202,7 +202,7 @@ export class Interior{
   updateFx(dt:number):void{}
 }
 
-// porta de algum interior perto agora (js/doors.js)
+// porta de algum interior perto agora (js/world/doors.ts)
 export function nearestDoor():Interior|null{
   for(const it of interiors)if(it.near())return it;
   return null;
@@ -219,7 +219,7 @@ function setExteriorWorldHidden(hidden:boolean):void{
   setSkyHidden(hidden);
 }
 
-// atualiza todos os interiores por frame (js/main.js)
+// atualiza todos os interiores por frame (js/core/main.ts)
 export function updateInteriors(dt:number):void{
   for(const it of interiors)it.update(dt);
 }

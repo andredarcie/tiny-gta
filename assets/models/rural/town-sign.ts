@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Placa de boas-vindas da vila: dois postes e uma tábua com texto pintado num
 // canvas (legível dos dois lados). build() é puro (na origem, tábua p/ ±z);

@@ -1,78 +1,78 @@
 import * as THREE from 'three';
-import {state,input,refs,keys} from '@/core/state.js';
-import {economy} from '@/core/economy.js'; // money ledger — imported here so the genesis tx seeds at boot
-import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.js';
-import {updateAudio} from '@/audio/audio.js';
-import {drawMinimap,updateHUD,hideBig,tickFps} from '@/ui/hud.js';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.js';
-import {groundHeight} from '@/core/constants.js';
-import {MiniGame} from '@/activities/minigame.js';
-import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.js';
-import {updatePeds,ejectDriver,addBloodPuddle} from '@/world/pedestrians.js';
-import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.js';
-import {updateRuralFolk} from '@/world/rural-folk.js'; // smart ambient rural NPCs (rednecks) in the peninsula
-import {updateRuralTraffic} from '@/world/rural-traffic.js'; // sparse country cars on the dirt road
-import {updateBeach} from '@/world/world.js';
-import {cops,heli,updateCops,updateHeli} from '@/actors/police.js';
-import {updatePoliceBoats} from '@/actors/police-boat.js'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
-import {updateArmy} from '@/actors/army.js';
-import {delivery,spawnDelivery,updatePickups} from '@/story/missions.js';
-import {updateTaxi} from '@/activities/taxi.js';
-import {updateRace} from '@/activities/race.js';
-import {updateBoatRace} from '@/activities/boat-race.js';
-import {updateOffroad} from '@/activities/offroad.js'; // 3ª corrida: circuito off-road na pradaria rural
-import {updateVigilante} from '@/activities/vigilante.js'; // side-mission: viatura caça criminosos
-import {updateParamedic} from '@/activities/paramedic.js'; // side-mission: ambulância salva feridos
-import {updateFirefighter} from '@/activities/firefighter.js';        // Open-world: caminhão de bombeiros apaga incêndios
-import {updateRampage} from '@/combat/rampage.js';                // Open-world: caveira dá arsenal + caça por tempo
-import {updateHiddenPackages} from '@/activities/hidden-packages.js'; // Open-world: 24 pacotes escondidos pela cidade
-import {updateStuntJumps} from '@/activities/stunt-jumps.js';         // Open-world: rampas de salto insano
-import {updateCarCrusher} from '@/activities/car-crusher.js';         // Open-world: prensa de sucata
-import {updateImportExport} from '@/activities/import-export.js';     // Open-world: garagem que compra/exporta carros
-import {updateBombShop} from '@/activities/bomb-shop.js';             // Open-world: o artificeiro arma o carro-bomba
-import {updateRcToyz} from '@/activities/rc-toyz.js';                 // Open-world: carrinho de controle destrói alvos
-import {updateWeaponPickups} from '@/combat/weapon-pickups.js';  // Open-world: as 12 armas escondidas pelo mapa
-import {updateRuralLoot} from '@/loot/rural-loot.js';  // armas + dinheiro escondidos em volta da cidade rural
-import {updateIslandLoot} from '@/loot/island-loot.js'; // secret heavy-weapon + cash cache out on the island
-import {updateBloodstains} from '@/loot/bloodstains.js';       // Multiplayer assíncrono: poças de morte (estilo Souls)
-import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.js';
-import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.js';
-import {blinkBar} from '@/core/entities.js';
-import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/core/input.js';
-import {setupPauseMenu} from '@/ui/pause-menu.js';
-import {applySettings} from '@/core/settings.js';
-import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.js';
-import {setupNative} from '@/core/native.js'; // Android (Capacitor) shell: back-button routing — no-op on web
+import {state,input,refs,keys} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts'; // money ledger — imported here so the genesis tx seeds at boot
+import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
+import {updateAudio} from '@/audio/audio.ts';
+import {drawMinimap,updateHUD,hideBig,tickFps} from '@/ui/hud.ts';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {MiniGame} from '@/activities/minigame.ts';
+import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
+import {updatePeds,ejectDriver,addBloodPuddle} from '@/world/pedestrians.ts';
+import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
+import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
+import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
+import {updateBeach} from '@/world/world.ts';
+import {cops,heli,updateCops,updateHeli} from '@/actors/police.ts';
+import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
+import {updateArmy} from '@/actors/army.ts';
+import {delivery,spawnDelivery,updatePickups} from '@/story/missions.ts';
+import {updateTaxi} from '@/activities/taxi.ts';
+import {updateRace} from '@/activities/race.ts';
+import {updateBoatRace} from '@/activities/boat-race.ts';
+import {updateOffroad} from '@/activities/offroad.ts'; // 3ª corrida: circuito off-road na pradaria rural
+import {updateVigilante} from '@/activities/vigilante.ts'; // side-mission: viatura caça criminosos
+import {updateParamedic} from '@/activities/paramedic.ts'; // side-mission: ambulância salva feridos
+import {updateFirefighter} from '@/activities/firefighter.ts';        // Open-world: caminhão de bombeiros apaga incêndios
+import {updateRampage} from '@/combat/rampage.ts';                // Open-world: caveira dá arsenal + caça por tempo
+import {updateHiddenPackages} from '@/activities/hidden-packages.ts'; // Open-world: 24 pacotes escondidos pela cidade
+import {updateStuntJumps} from '@/activities/stunt-jumps.ts';         // Open-world: rampas de salto insano
+import {updateCarCrusher} from '@/activities/car-crusher.ts';         // Open-world: prensa de sucata
+import {updateImportExport} from '@/activities/import-export.ts';     // Open-world: garagem que compra/exporta carros
+import {updateBombShop} from '@/activities/bomb-shop.ts';             // Open-world: o artificeiro arma o carro-bomba
+import {updateRcToyz} from '@/activities/rc-toyz.ts';                 // Open-world: carrinho de controle destrói alvos
+import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: as 12 armas escondidas pelo mapa
+import {updateRuralLoot} from '@/loot/rural-loot.ts';  // armas + dinheiro escondidos em volta da cidade rural
+import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
+import {updateBloodstains} from '@/loot/bloodstains.ts';       // Multiplayer assíncrono: poças de morte (estilo Souls)
+import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
+import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
+import {blinkBar} from '@/core/entities.ts';
+import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/core/input.ts';
+import {setupPauseMenu} from '@/ui/pause-menu.ts';
+import {applySettings} from '@/core/settings.ts';
+import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
+import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
-  switchWeapon,selectWeaponSlot,getWeaponHud} from '@/combat/weapons.js';
-import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.js';
-import {updateDayNight} from '@/world/daynight.js';
-import {updateInteriors,interiors} from '@/world/interior.js';
-import {updateJailBreak} from '@/activities/jail-break.js';
-import {updateSpeech,updateStreetChatter} from '@/ui/speech.js';
-import {updateOverkill,overkillNear,endOverkill,getOverkillState} from '@/combat/overkill.js';
-import {clubDanceState} from '@/places/club.js'; // instancia a boate em interiors[] + ação DANCE
-import {updateDanceGame} from '@/places/dance-game.js';
-import {gymTrainState} from '@/places/gym.js';
-import {updateGymGame} from '@/places/gym-game.js';
-import {updateWeedFarm} from '@/activities/weed-farm.js'; // Rural: cultivo de erva (atividade no mundo, a pé)
-import '@/places/general-store.js'; // Rural: instancia a General Store em interiors[] + ação BUY SEEDS
-import '@/activities/drug-bust.js'; // Busted carrying the delivery backpack → crooked-cop shakedown in the woods
-import {modShopState,modShopInteract,updateModShop,workshopBlip} from '@/places/mod-shop.js';
-import {hospitalAdmit} from '@/places/hospital.js';
-import {prisonAdmit} from '@/places/prison.js';
-import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from '@/places/gun-shop.js';
-import {scheduleFlush} from '@/ui/leaderboard.js';
-import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from '@/places/property.js';
-import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.js';
-import {updateDoors} from '@/world/doors.js';
-import {updateDoorArrows} from '../../assets/models/city/door-arrow.js';
-import {updateCityCulling} from '../../assets/models/city/building.js';
-import {updatePropCulling} from '../../assets/models/props/prop-merge.js';
-import {updateLotCulling} from '../../assets/models/city/abandoned-lot.js';
-import * as P from '@/core/profiler.js'; // profiler embutido (tecla ` ou ?prof na URL)
-import {warmupShaders} from '@/core/warmup.js'; // pré-compila shaders no boot (anti-hitch)
-import {validateRefs,auditRefs} from '@/core/refs.js'; // boot-time check of the late-binding ref contract
+  switchWeapon,selectWeaponSlot,getWeaponHud} from '@/combat/weapons.ts';
+import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
+import {updateDayNight} from '@/world/daynight.ts';
+import {updateInteriors,interiors} from '@/world/interior.ts';
+import {updateJailBreak} from '@/activities/jail-break.ts';
+import {updateSpeech,updateStreetChatter} from '@/ui/speech.ts';
+import {updateOverkill,overkillNear,endOverkill,getOverkillState} from '@/combat/overkill.ts';
+import {clubDanceState} from '@/places/club.ts'; // instancia a boate em interiors[] + ação DANCE
+import {updateDanceGame} from '@/places/dance-game.ts';
+import {gymTrainState} from '@/places/gym.ts';
+import {updateGymGame} from '@/places/gym-game.ts';
+import {updateWeedFarm} from '@/activities/weed-farm.ts'; // Rural: cultivo de erva (atividade no mundo, a pé)
+import '@/places/general-store.ts'; // Rural: instancia a General Store em interiors[] + ação BUY SEEDS
+import '@/activities/drug-bust.ts'; // Busted carrying the delivery backpack → crooked-cop shakedown in the woods
+import {modShopState,modShopInteract,updateModShop,workshopBlip} from '@/places/mod-shop.ts';
+import {hospitalAdmit} from '@/places/hospital.ts';
+import {prisonAdmit} from '@/places/prison.ts';
+import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from '@/places/gun-shop.ts';
+import {scheduleFlush} from '@/ui/leaderboard.ts';
+import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from '@/places/property.ts';
+import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.ts';
+import {updateDoors} from '@/world/doors.ts';
+import {updateDoorArrows} from '../../assets/models/city/door-arrow.ts';
+import {updateCityCulling} from '../../assets/models/city/building.ts';
+import {updatePropCulling} from '../../assets/models/props/prop-merge.ts';
+import {updateLotCulling} from '../../assets/models/city/abandoned-lot.ts';
+import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
+import {warmupShaders} from '@/core/warmup.ts'; // pré-compila shaders no boot (anti-hitch)
+import {validateRefs,auditRefs} from '@/core/refs.ts'; // boot-time check of the late-binding ref contract
 
 // Dev/test-only hooks attached to window (see DEBUG_HOOKS block below). Declared
 // here so the assignments type-check without `any`.
@@ -166,7 +166,7 @@ setupInput();
 setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)
 setupTouchControls();
 setupNative(); // hardware back button on Android; no-op in the browser
-setupWheel(); // roda de seleção de armas (overlay próprio; ver js/weapon-wheel.js)
+setupWheel(); // roda de seleção de armas (overlay próprio; ver js/combat/weapon-wheel.ts)
 // Apply saved graphics/FPS settings at boot (audio is re-applied after initAudio,
 // from startGameFromUserGesture); the audio setters no-op until the graph exists.
 applySettings();

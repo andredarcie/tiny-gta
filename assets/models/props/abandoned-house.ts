@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
-import {rand,pick} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
+import {rand,pick} from '@/core/constants.ts';
 
 // Derelict country house: a weathered shack with a CAVED-IN roof, boarded-up
 // windows, a door hanging off its hinges and planks strewn around the base — the

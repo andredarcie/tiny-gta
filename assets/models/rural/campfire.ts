@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Fogueira de acampamento: anel de pedras, lenha em fogueira (teepee + toras
 // caídas), labaredas e um tripé com panela "vivendo da natureza". As labaredas
-// ficam em userData.flames pra js/rick.js fazer tremular (e uma luz quente).
+// ficam em userData.flames pra js/story/rick.ts fazer tremular (e uma luz quente).
 
 const stoneM=matte({color:0x8d8f93,roughness:1});
 const logM=matte({color:0x5a3b22,roughness:1});
@@ -58,7 +58,7 @@ function build(): THREE.Group {
   }
   g.userData.flames=flames;
   // poça de luz quente no chão (truque dos postes: glow aditivo, sem luz real —
-  // js/rick.js pulsa a opacidade). Mantém o custo de render baixo.
+  // js/story/rick.ts pulsa a opacidade). Mantém o custo de render baixo.
   const glow=new THREE.Mesh(new THREE.CircleGeometry(2.1,20),
     new THREE.MeshBasicMaterial({color:0xff7a2e,transparent:true,opacity:.2,
       blending:THREE.AdditiveBlending,depthWrite:false}));

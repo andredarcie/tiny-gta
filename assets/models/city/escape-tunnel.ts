@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {groundHeight} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {groundHeight} from '@/core/constants.ts';
 
 // Hidden ESCAPE TUNNEL linking the prison cell-block hole to the abandoned fort in
 // the rural area. The tunnel room lives off-map (toggled by the Interior in
-// js/jail-break.js); a metal gate at its far end surfaces at the fort, and a floor
+// js/activities/jail-break.ts); a metal gate at its far end surfaces at the fort, and a floor
 // button at the fort drops back into the tunnel. All procedural, no image assets.
 
 const TZ=330, X0=-720, X1=-680, ZW=3;          // corridor: x span, half-width in z

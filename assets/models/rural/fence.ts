@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Wooden post-and-rail fence — the staple that turns open pasture into farmland.
 // build() returns a single straight SECTION (one post + two rails) on the origin

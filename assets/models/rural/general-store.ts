@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
-import {scene} from '@/core/engine.js';
-import {makePed} from '../characters/pedestrian.js';
-import {makeDoorArrow} from '../city/door-arrow.js';
-import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.js'; // night porch light
-import {STRAINS,FERTILIZER} from '@/activities/strains.js'; // seed-counter + plant-food display data
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
+import {scene} from '@/core/engine.ts';
+import {makePed} from '../characters/pedestrian.ts';
+import {makeDoorArrow} from '../city/door-arrow.ts';
+import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.ts'; // night porch light
+import {STRAINS,FERTILIZER} from '@/activities/strains.ts'; // seed-counter + plant-food display data
 
 // ============================================================================
 // GENERAL STORE — the small-town country shop on the main street of the rural
@@ -14,8 +14,8 @@ import {STRAINS,FERTILIZER} from '@/activities/strains.js'; // seed-counter + pl
 // WALK-IN INTERIOR a la gun-shop: a separate visible=false group ~600m off-map,
 // turned on only while the player is inside. Touch the porch door to enter; touch
 // the inner door to leave. Inside there is a SEED COUNTER where the player buys
-// crop seeds (js/general-store.js handles the buying); those seeds are then what
-// the weed farm needs to plant (js/weed-farm.js).
+// crop seeds (js/places/general-store.ts handles the buying); those seeds are then what
+// the weed farm needs to plant (js/activities/weed-farm.ts).
 //
 // build() stays pure (the standalone storefront on the origin, front facing +z)
 // so the model gallery still shows it. addGeneralStore(solids) places the baked
@@ -35,9 +35,9 @@ export const INT_CENTER={x:-800,z:-560};
 export const INT_DOOR={x:-806.8,z:-560};   // inner exit door (west wall)
 export const INT_SPAWN={x:-805.2,z:-560};  // spawn just inside, facing east (+x)
 export const INT_BOUNDS={x0:-806.7,x1:-793.3,z0:-564.7,z1:-555.3,y1:4.6};
-// The three strain displays along the sales counter (world coords). js/general-store.js
+// The three strain displays along the sales counter (world coords). js/places/general-store.ts
 // finds the nearest one and offers THAT strain for sale — pick which to buy by walking
-// the counter, like the gun-shop. One entry per strain in js/strains.js.
+// the counter, like the gun-shop. One entry per strain in js/activities/strains.ts.
 const _SEED_DZ=[-1.5,0,1.5];
 export const SEED_DISPLAYS=STRAINS.map((s,i)=>({id:s.id,x:-800+4.05,z:-560+(_SEED_DZ[i]||0)}));
 // plant food is bought at the corner feed-sacks (SW corner of the room)
@@ -426,7 +426,7 @@ function addSacks(x: number,z: number): void{
 
 // One seed display per strain on the counter: an open crate with a few packets in
 // the strain's colour + a heap of buds, plus a NAME / $PRICE tag facing the customer.
-// Returned so js/general-store.js can bob it; the gameplay there finds the nearest
+// Returned so js/places/general-store.ts can bob it; the gameplay there finds the nearest
 // display (SEED_DISPLAYS) and offers that strain for sale — pick by walking the counter.
 const cardGeo=new THREE.BoxGeometry(.02,.28,.15);  // a seed packet (thin in x → faces the customer)
 const headGeo=new THREE.BoxGeometry(.022,.085,.15); // its coloured header strip
@@ -550,7 +550,7 @@ function buildInterior(): void{
   addShelfUnit(cx-3,Z0+.35,0,6.4);
   addShelfUnit(cx+3,Z1-.35,Math.PI,6.4);
   addSacks(X0+1.2,Z1-1.3);
-  // the feed-sacks double as the PLANT FOOD counter (buy point — see js/general-store.js)
+  // the feed-sacks double as the PLANT FOOD counter (buy point — see js/places/general-store.ts)
   const fertTag=labelPanel(`${FERTILIZER.name}\n$${FERTILIZER.price}`,1.05,.6,{bg:'#1e2a16',fg:'#e6dcc0',sub:'#9caa82'});
   fertTag.position.set(FERT_DISPLAY.x+.55,1.25,FERT_DISPLAY.z);fertTag.rotation.y=Math.PI/2; // faces the room (east)
   generalStoreInterior.add(fertTag);

@@ -3,7 +3,7 @@
 import {isLand,ruralHalf,cityCoastCheb,BOAT_SPAWN_X,BOAT_SPAWN_Z,
   WATER,SWIM_BOUND,RURAL_X0,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,RURAL_TIP,TOWN_CX,
   ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR,islandHeight,groundHeight}
-  from '@/core/constants.js';
+  from '@/core/constants.ts';
 
 // --- mapa ASCII (vista de cima) -------------------------------------------
 const X0=-520,X1=770,Z0=-300,Z1=300;        // X0 estende a oeste pra mostrar a ilha

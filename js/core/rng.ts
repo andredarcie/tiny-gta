@@ -1,7 +1,7 @@
 // Deterministic, seedable PRNG (mulberry32). The world used to scatter buildings,
 // trees and beach props with Math.random(), so every page-load produced a slightly
 // different map. The world is now BAKED to a fixed file (world.json, see
-// js/world-gen.js + tools/bake-world.mjs) using this generator, so the layout is
+// js/world/world-gen.ts + tools/bake-world.mjs) using this generator, so the layout is
 // the same every time and can be hand-edited / opened by a future map editor.
 //
 // makeRng(seed) returns { random, rand, irand, pick } whose helpers mirror the

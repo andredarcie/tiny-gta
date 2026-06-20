@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Caixa d'água: marco visível da vila. Tanque cilíndrico com tampa cônica sobre
 // quatro pernas inclinadas travadas por cintas. build() é puro (na origem);

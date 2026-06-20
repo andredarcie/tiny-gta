@@ -1,10 +1,10 @@
-import {state,input,keys} from '@/core/state.js';
-import {camera} from '@/core/engine.js';
-import {player,cameraRig} from '@/actors/player.js';
-import {blip} from '@/audio/audio.js';
-import {GYM_TRAIN,gymFx} from '../../assets/models/city/gym.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import {MiniGameId} from '@/activities/minigame.js';
+import {state,input,keys} from '@/core/state.ts';
+import {camera} from '@/core/engine.ts';
+import {player,cameraRig} from '@/actors/player.ts';
+import {blip} from '@/audio/audio.ts';
+import {GYM_TRAIN,gymFx} from '../../assets/models/city/gym.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {MiniGameId} from '@/activities/minigame.ts';
 
 // ============================================================================
 // Mini-game do SUPINO ("BENCH PRESS - IRON RHYTHM"), jogado dentro da academia.
@@ -19,11 +19,11 @@ import {MiniGameId} from '@/activities/minigame.js';
 //   - dentro da faixa -> REP! (centro exato = PERFECT, bônus) + barra sobe
 //   - fora da faixa    -> MISS! (perde muito fôlego + tremida + falha o levante)
 // A barra de FÔLEGO (stamina) só drena com o tempo; reps recuperam, descansa
-// entre as séries. Fechar as DUAS séries = VENCEU (js/gym.js engrossa o braço,
+// entre as séries. Fechar as DUAS séries = VENCEU (js/places/gym.ts engrossa o braço,
 // 1x por dia). Fôlego zerar = PERDEU (nada acontece, pode tentar de novo).
 //
 // Mesma carcaça do house-tv.js: trava controles, enquadra a câmera de lado no
-// banco e desenha o HUD num <canvas> por cima. js/main.js dá o early-return
+// banco e desenha o HUD num <canvas> por cima. js/core/main.ts dá o early-return
 // via updateGymGame(dt) (congela o mundo enquanto o set rola). NÃO importa
 // gym.js (o prêmio entra pelo callback onWin) pra evitar import circular.
 // ============================================================================

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Farol da ilha: torre afunilada com faixas vermelhas/brancas, varanda (gallery),
 // sala da lanterna com vidro e um lâmpada quente que brilha (glow aditivo, sem

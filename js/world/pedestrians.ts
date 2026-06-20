@@ -1,15 +1,15 @@
 import * as THREE from 'three';
-import {N,CELL,HALF,nodeX,irand,rand,pick,clamp} from '@/core/constants.js';
-import {state} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {makePed,setOpacity,shirtColors} from '@/core/entities.js';
-import * as Entities from '@/core/entities.js';
-import {collideStatics,addWanted} from '@/core/physics.js';
-import {thud} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {playerPos,cur,getWasted} from '@/actors/player.js';
-import {spawnDrop} from '@/story/missions.js';
-import {makeBloodPuddle} from '../../assets/models/effects/blood-puddle.js';
+import {N,CELL,HALF,nodeX,irand,rand,pick,clamp} from '@/core/constants.ts';
+import {state} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {makePed,setOpacity,shirtColors} from '@/core/entities.ts';
+import * as Entities from '@/core/entities.ts';
+import {collideStatics,addWanted} from '@/core/physics.ts';
+import {thud} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {playerPos,cur,getWasted} from '@/actors/player.ts';
+import {spawnDrop} from '@/story/missions.ts';
+import {makeBloodPuddle} from '../../assets/models/effects/blood-puddle.ts';
 
 // A wandering city pedestrian.
 interface Ped{

@@ -9,7 +9,7 @@ import type * as THREE from 'three';
 
 export type Mode = 'foot' | 'car' | 'cut';
 
-/** The shared mutable gameplay state (js/state.js `state`). */
+/** The shared mutable gameplay state (js/core/state.ts `state`). */
 export interface GameState {
   started: boolean;
   paused: boolean;
@@ -36,7 +36,7 @@ export interface GameState {
   weaponHeld: boolean;
   ammo: number;
   maxAmmo: number;
-  // Weapon HUD mirror + last-shot bookkeeping — set at runtime by weapons.js/player.js,
+  // Weapon HUD mirror + last-shot bookkeeping — set at runtime by weapons.js/actors/player.ts,
   // absent on a fresh state, so optional (faithful to the original dynamic fields).
   weaponName?: string;
   weaponCategory?: string;
@@ -75,7 +75,7 @@ export interface GameState {
   mgDays: Record<string, number>;
 }
 
-/** Normalized input written by input.js / touch-controls.js (js/state.js `input`). */
+/** Normalized input written by input.js / touch-controls.js (js/core/state.ts `input`). */
 export interface InputState {
   moveX: number;
   moveY: number;
@@ -123,7 +123,7 @@ export interface EconomyDebug {
   last: { why: string; amt: number }[];
 }
 
-/** Progress blob persisted to / restored from the backend (js/save.js). */
+/** Progress blob persisted to / restored from the backend (js/core/save.ts). */
 export interface SaveBlob {
   v: number;
   money: number;
@@ -196,7 +196,7 @@ export interface PrizeStreak {
 
 // ---- late-binding refs -----------------------------------------------------
 //
-// The cross-module wiring object (js/state.js `refs`). Every member is OPTIONAL
+// The cross-module wiring object (js/core/state.ts `refs`). Every member is OPTIONAL
 // because it is wired late (after boot); consumers read with `?.`. The contract
 // catalog + a boot-time check live in js/refs.ts. Members are added here as the
 // producing module is migrated; precise return types are tightened alongside.

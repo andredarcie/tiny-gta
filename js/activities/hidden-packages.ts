@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {N,nodeX,groundHeight} from '@/core/constants.js';
-import {makeHiddenPackage} from '../../assets/models/props/hidden-package.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {N,nodeX,groundHeight} from '@/core/constants.ts';
+import {makeHiddenPackage} from '../../assets/models/props/hidden-package.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // coletável livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. Os pacotes NÃO aparecem no mapa/radar — o jogador descobre sozinho.
@@ -120,7 +120,7 @@ for(let idx=0;idx<positions.length;idx++){
 // Debug hook.
 refs.getHiddenPackagesState=()=>({found,total:TOTAL});
 
-// ----- SAVE: pacotes coletados (js/save.js) -----
+// ----- SAVE: pacotes coletados (js/core/save.ts) -----
 // Guarda os ÍNDICES coletados (as posições são determinísticas — semente fixa —
 // então o índice k é sempre o mesmo lugar). Restaurar só MARCA como coletado
 // (sem repagar dinheiro/bônus) e tira o pacote da cena.

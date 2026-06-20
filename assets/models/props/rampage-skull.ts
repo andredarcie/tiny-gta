@@ -23,7 +23,7 @@ export function makeRampageSkull(): THREE.Group{
   const disc=new THREE.Mesh(new THREE.CircleGeometry(.6,24),
     new THREE.MeshBasicMaterial({color:0xff2e2e,transparent:true,opacity:.16,depthWrite:false}));
   disc.rotation.x=-Math.PI/2;disc.position.y=.03;g.add(disc);
-  g.userData.halo=ring; // o loop do rampage pulsa o halo (ver js/rampage.js)
+  g.userData.halo=ring; // o loop do rampage pulsa o halo (ver js/combat/rampage.ts)
 
   // ---- a caveira em si: flutua e gira (o pivô é o grupo `skull`) ------------
   const skull=new THREE.Group();

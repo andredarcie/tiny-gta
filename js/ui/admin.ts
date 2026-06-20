@@ -8,8 +8,8 @@
 // It lists every player (name / ranking money / ledger balance) and, on click,
 // the recent transactions of that player (amount, reason, time) — for the owner to
 // see and manage what is happening in the economy.
-import { state } from '@/core/state.js';
-import { API, getNickname, getPlayerId, getSessionToken } from '@/ui/leaderboard.js';
+import { state } from '@/core/state.ts';
+import { API, getNickname, getPlayerId, getSessionToken } from '@/ui/leaderboard.ts';
 
 // ---- shapes from the /api/admin endpoint -----------------------------------
 interface AdminPlayer { pid: string; name: string; money: number; bal: number; }

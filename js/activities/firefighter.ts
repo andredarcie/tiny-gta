@@ -1,19 +1,19 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos,cur,idleCars} from '@/actors/player.js';
-import {makeCar} from '@/core/entities.js';
-import {buyWeapon} from '@/combat/weapons.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,thud,setFireSiren,setHose} from '@/audio/audio.js';
-import {N,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {makeBlazeModel} from '../../assets/models/effects/blaze.js';
-import {makeFireTruck} from '../../assets/models/vehicles/fire-truck.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import type {ZoneAction} from '@/core/types.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos,cur,idleCars} from '@/actors/player.ts';
+import {makeCar} from '@/core/entities.ts';
+import {buyWeapon} from '@/combat/weapons.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,thud,setFireSiren,setHose} from '@/audio/audio.ts';
+import {N,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeBlazeModel} from '../../assets/models/effects/blaze.ts';
+import {makeFireTruck} from '../../assets/models/vehicles/fire-truck.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import type {ZoneAction} from '@/core/types.ts';
 
 // ============================================================================
 // MINIGAME FIREFIGHTER (fiel ao open-world, repaginado pra dar gosto de combate)

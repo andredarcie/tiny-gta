@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
-import {rand,groundHeight} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 
 // A little cluster of toadstools (red dome cap on a pale stem) tucked among the
 // tree roots — small splashes of colour that make the forest floor feel alive.

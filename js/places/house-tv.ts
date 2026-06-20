@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {state,input,keys} from '@/core/state.js';
-import {camera} from '@/core/engine.js';
-import {player,playerPos,cameraRig} from '@/actors/player.js';
-import {TV,ranchInterior} from '../../assets/models/rural/ranch-house.js';
+import {state,input,keys} from '@/core/state.ts';
+import {camera} from '@/core/engine.ts';
+import {player,playerPos,cameraRig} from '@/actors/player.ts';
+import {TV,ranchInterior} from '../../assets/models/rural/ranch-house.ts';
 
 const URL='https://andredarcie.github.io/andre-os/';
 const TV_ORIGIN=(()=>{try{return new window.URL(URL).origin;}catch(_){return '';}})();

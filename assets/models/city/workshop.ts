@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
 
 // Oficina de customização "MOD GARAGE" (estilo pintura / tuning do open-world).
 // Diferente dos outros prédios especiais, NÃO tem interior off-map: é um galpão
 // de FRENTE ABERTA num quarteirão reservado, e o jogador entra DE CARRO pela
 // abertura até a plataforma (WORKSHOP_PAD). Perto dela, parado, abre o menu de
-// custom (js/mod-shop.js). Os mods são aplicados no próprio carro do jogador.
+// custom (js/places/mod-shop.ts). Os mods são aplicados no próprio carro do jogador.
 
 export const WORKSHOP_I=5,WORKSHOP_J=2;            // quarteirão reservado (centro-sul)
 const CX=44*WORKSHOP_I-154,CZ=44*WORKSHOP_J-154;   // centro do quarteirão (66,-66)

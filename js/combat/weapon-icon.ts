@@ -1,5 +1,5 @@
-// 2D (canvas) glyph for each weapon — SHARED by the HUD panel (js/hud.js) and the
-// selection wheel (js/weapon-wheel.js). It paints the weapon glyph CENTERED on the
+// 2D (canvas) glyph for each weapon — SHARED by the HUD panel (js/ui/hud.ts) and the
+// selection wheel (js/combat/weapon-wheel.ts). It paints the weapon glyph CENTERED on the
 // context's current origin, filling roughly ±28px; the caller does the
 // translate/scale and clears the canvas. Neon house style: cyan→pink body sheen,
 // gold accents, dark ink outline. Each weapon has a distinct, detailed silhouette.

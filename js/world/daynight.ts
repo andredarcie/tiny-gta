@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import {clamp,RURAL_X0} from '@/core/constants.js';
-import {scene,renderer,hemi,dlight,sunDir,clouds} from '@/core/engine.js';
-import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.js';
-import {state,refs} from '@/core/state.js';
-import {beamMat} from '@/core/entities.js';
-import {makeSkyDome} from '../../assets/models/daynight/sky-dome.js';
-import {makeSunSprite} from '../../assets/models/daynight/sun.js';
-import {makeMoonSprite} from '../../assets/models/daynight/moon.js';
-import {makeHorizonGlow} from '../../assets/models/daynight/horizon-glow.js';
-import {makeStarField} from '../../assets/models/daynight/star-field.js';
+import {clamp,RURAL_X0} from '@/core/constants.ts';
+import {scene,renderer,hemi,dlight,sunDir,clouds} from '@/core/engine.ts';
+import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
+import {state,refs} from '@/core/state.ts';
+import {beamMat} from '@/core/entities.ts';
+import {makeSkyDome} from '../../assets/models/daynight/sky-dome.ts';
+import {makeSunSprite} from '../../assets/models/daynight/sun.ts';
+import {makeMoonSprite} from '../../assets/models/daynight/moon.ts';
+import {makeHorizonGlow} from '../../assets/models/daynight/horizon-glow.ts';
+import {makeStarField} from '../../assets/models/daynight/star-field.ts';
 
 // tod (time of day) in [0,1): 0=midnight, .25=sunrise, .5=noon, .75=sunset.
 // Full day length in seconds; the cycle advances on its own each frame.
@@ -22,14 +22,14 @@ const urlTod=parseFloat(new URLSearchParams(location.search).get('tod') as strin
 let tod=isNaN(urlTod)?.55:((urlTod%1)+1)%1;
 export const getTod=()=>tod;
 export const setTod=(v:number)=>{tod=((v%1)+1)%1;};
-// Resume the in-game clock from a save (js/minigame.js getDailySave). Without this the
+// Resume the in-game clock from a save (js/activities/minigame.ts getDailySave). Without this the
 // clock snapped back to afternoon on every reload, so a short session never crossed an
 // in-game midnight — `dayCount` stayed frozen and the mini-games' "1x/dia" lock could
 // never clear across reloads. A ?tod=… debug pin still wins (don't clobber it).
 const todPinned=!isNaN(urlTod);
 export const restoreTod=(v:number)=>{ if(!todPinned&&Number.isFinite(v))setTod(v); };
 // Day counter: bumps every time the clock wraps past midnight. Used by the gym
-// (js/gym.js) to allow training only once per day.
+// (js/places/gym.ts) to allow training only once per day.
 let dayCount=0;
 export const getDay=()=>dayCount;
 // Restaura o contador de dias do save (NUNCA regride). Sem isto o "dia" voltaria a

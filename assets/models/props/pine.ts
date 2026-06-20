@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
-import {rand,groundHeight} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 
 // Two foliage tones so a stand of pines doesn't read as one flat green wall —
 // build() picks one per tree. Only 2 leaf materials are shared across the whole

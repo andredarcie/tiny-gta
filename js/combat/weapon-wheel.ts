@@ -10,13 +10,13 @@
 //
 // A roda desenha num <canvas> próprio em tela cheia, redesenhado a cada frame só
 // enquanto aberta (custo nulo fora disso). Reaproveita o glifo de cada arma do
-// js/weapon-icon.js (o mesmo do painel do HUD).
+// js/combat/weapon-icon.ts (o mesmo do painel do HUD).
 
-import {state} from '@/core/state.js';
-import {blip} from '@/audio/audio.js';
-import {getInventory,equipWeaponById} from '@/combat/weapons.js';
-import type {InventoryItem} from '@/combat/weapons.js';
-import {paintWeaponGlyph} from '@/combat/weapon-icon.js';
+import {state} from '@/core/state.ts';
+import {blip} from '@/audio/audio.ts';
+import {getInventory,equipWeaponById} from '@/combat/weapons.ts';
+import type {InventoryItem} from '@/combat/weapons.ts';
+import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
 
 const $=(id: string)=>document.getElementById(id);
 let root: HTMLElement|null=null,canvas: HTMLCanvasElement|null=null,ctx: CanvasRenderingContext2D|null=null;

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand} from '@/core/constants.js';
+import {rand} from '@/core/constants.ts';
 
 export function makeClouds(count=10): THREE.Sprite[]{
   const clouds: THREE.Sprite[]=[];

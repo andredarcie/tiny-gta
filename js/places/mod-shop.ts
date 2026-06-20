@@ -1,22 +1,22 @@
-import {state,input,keys,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {camera} from '@/core/engine.js';
-import {playerPos,resetCarDamage} from '@/actors/player.js';
-import {blip} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {WORKSHOP_PAD,workshopFx} from '../../assets/models/city/workshop.js';
+import {state,input,keys,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {camera} from '@/core/engine.ts';
+import {playerPos,resetCarDamage} from '@/actors/player.ts';
+import {blip} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {WORKSHOP_PAD,workshopFx} from '../../assets/models/city/workshop.ts';
 import {applyPaint,setRims,setSpoiler,setHood,setNeon,repairCar} from
-  '../../assets/models/vehicles/car-customs.js';
+  '../../assets/models/vehicles/car-customs.ts';
 import type * as THREE from 'three';
 
 // Oficina de custom "MOD GARAGE": menu DOM aberto ao parar o carro na plataforma
-// do galpão (assets/models/city/workshop.js). Estilo open-world/tuning: categorias
+// do galpão (assets/models/city/workshop.ts). Estilo open-world/tuning: categorias
 // de mods, cada opção aplicada AO VIVO no carro só como PRÉVIA (não cobra). As
 // escolhas novas entram num CARRINHO com o total; só FINALIZE & BUY (em dois
 // toques, p/ confirmar) cobra de verdade e instala. O que já está pago aparece
 // como OWNED e nunca é cobrado de novo. Sair sem finalizar descarta as prévias.
 // O carro gira numa "turntable" e o mundo congela enquanto o menu está aberto
-// (js/main.js dá o early-return via updateModShop).
+// (js/core/main.ts dá o early-return via updateModShop).
 
 const $=(id:string):HTMLElement|null=>document.getElementById(id);
 const PAD_RANGE=4.6;

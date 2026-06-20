@@ -1,4 +1,4 @@
-import {state,input,refs} from '@/core/state.js';
+import {state,input,refs} from '@/core/state.ts';
 
 export let AC:AudioContext|null=null,audioEngine:{o:OscillatorNode;g:GainNode}|null=null,
   siren:{lfo:OscillatorNode;g:GainNode;rate:number}|null=null,
@@ -107,7 +107,7 @@ export function initAudio(){
 }
 
 // Liga/desliga (com fade suave) a sirene do caminhão de bombeiros — chamada no
-// começo/fim do plantão pelo js/firefighter.js.
+// começo/fim do plantão pelo js/activities/firefighter.ts.
 export function setFireSiren(on:boolean){
   if(!AC||!fireSirenG)return;
   fireSirenG.gain.setTargetAtTime(on?.045:0,AC.currentTime,.15);
@@ -158,7 +158,7 @@ export function thud(v:number){
 // Splash de água: jato de ruído filtrado caindo de agudo pra médio (a água
 // "espirra" e logo abafa) com um soco grave por baixo na entrada na água. vol
 // controla a força; big engrossa pro mergulho/entrada (mais grave e demorado).
-// Usado pelo nado (js/player.js): braçadas, batida de perna e entrada na água.
+// Usado pelo nado (js/actors/player.ts): braçadas, batida de perna e entrada na água.
 export function splash(vol=1,big=false){
   if(!AC)return;
   const t0=AC.currentTime;
@@ -234,7 +234,7 @@ export function gunshot(vol=1){
 }
 
 // Sirene de largada da corrida: três "whoops" subindo, estilo buzina de
-// largada de prova. Tocada na contagem regressiva (ver js/race.js).
+// largada de prova. Tocada na contagem regressiva (ver js/activities/race.ts).
 export function raceSiren(){
   if(!AC)return;
   const t0=AC.currentTime;

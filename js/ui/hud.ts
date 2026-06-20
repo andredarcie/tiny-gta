@@ -1,12 +1,12 @@
 import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
   RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,TOWN_CX,ruralRoadPath,
-  cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from '@/core/constants.js';
-import {state,input,refs} from '@/core/state.js';
-import {isPark} from '@/world/world.js';
-import {getTod} from '@/world/daynight.js';
-import {paintWeaponGlyph} from '@/combat/weapon-icon.js';
-import {MiniGame} from '@/activities/minigame.js';
-import {inGangTerritory} from '@/actors/gangs.js';
+  cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from '@/core/constants.ts';
+import {state,input,refs} from '@/core/state.ts';
+import {isPark} from '@/world/world.ts';
+import {getTod} from '@/world/daynight.ts';
+import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
+import {MiniGame} from '@/activities/minigame.ts';
+import {inGangTerritory} from '@/actors/gangs.ts';
 
 // The interact prompt descriptor computed for the E button (HUD label + prompt +
 // whether it is actionable). Some sources (zone actions) also carry a `run`
@@ -451,7 +451,7 @@ export function drawMinimap(): void {
   const raceOn=rOn||bOn;
   // sessão de mini game (não-corrida) em curso: o radar fica só com os alvos dela —
   // sem POIs, entregas, história ou outros mini games (mapa "limpo"). Ver
-  // state.activeMiniGame / js/minigame.js.
+  // state.activeMiniGame / js/activities/minigame.ts.
   const mgActive=!!state.activeMiniGame&&!raceOn;
 
   mm.clearRect(0,0,170,170);

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Pilha de lenha cortada do acampamento: toras empilhadas em pirâmide, casca
 // escura e faces de corte claras voltadas pra fora.

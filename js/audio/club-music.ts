@@ -1,15 +1,15 @@
-import {AC,master} from '@/audio/audio.js';
+import {AC,master} from '@/audio/audio.ts';
 
 // ============================================================================
 // MÚSICA PRÓPRIA DA BOATE "THE FLAMINGO" — trilha house/electro original,
 // sintetizada na hora (sem assets), tocada enquanto o jogador está dentro do
-// clube (ver js/club.js liga/desliga no teleporte da porta).
+// clube (ver js/places/club.ts liga/desliga no teleporte da porta).
 //
 // É um loop de 8 compassos (16s a 120 BPM) com kick four-on-the-floor, clap nos
 // tempos 2 e 4, hats, baixo house de contratempo e um arpejo de lead numa
 // progressão em lá menor (Am-F-C-G...). TUDO é agendado ANTES no relógio do
 // AudioContext, ancorado num t0 fixo — então o mini-game da dança
-// (js/dance-game.js) lê clubMusicInfo() e encaixa as setas EXATAMENTE na grade
+// (js/places/dance-game.ts) lê clubMusicInfo() e encaixa as setas EXATAMENTE na grade
 // de batidas desta música, sem depender de frames (à prova de travadas).
 // ============================================================================
 

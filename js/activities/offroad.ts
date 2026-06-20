@@ -1,19 +1,19 @@
 import * as THREE from 'three';
-import {groundHeight,rubberSpeed,separateRacers,pick,diminishPrize,smoothPace} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {makeCar,spinWheels,seatDriver,shirtColors} from '@/core/entities.js';
-import {cur,playerPos,cameraRig} from '@/actors/player.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {makeOffroadGate} from '../../assets/models/missions/offroad-gate.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,raceSiren} from '@/audio/audio.js';
-import {radioOff} from '@/ui/radio.js';
-import {raceMusicOn,raceMusicOff} from '@/audio/race-music.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import type {Racer,PrizeStreak,Blip} from '@/core/types.js';
+import {groundHeight,rubberSpeed,separateRacers,pick,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {makeCar,spinWheels,seatDriver,shirtColors} from '@/core/entities.ts';
+import {cur,playerPos,cameraRig} from '@/actors/player.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeOffroadGate} from '../../assets/models/missions/offroad-gate.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,raceSiren} from '@/audio/audio.ts';
+import {radioOff} from '@/ui/radio.ts';
+import {raceMusicOn,raceMusicOff} from '@/audio/race-music.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 
 // checkpoint (x,z) na ordem do circuito
 interface RoutePoint{x: number; z: number;}

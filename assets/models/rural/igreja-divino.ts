@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Igreja do Divino Espírito Santo — réplica low-poly da matriz de Divinolândia/SP.
 // Ver reference/divinolandia-praca/. Esta versão: torre ESBELTÍSSIMA e dominante com

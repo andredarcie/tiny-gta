@@ -1,25 +1,25 @@
 // ---------------------------------------------------------------------------
 // Drug bust — the crooked-cop shakedown.
 //
-// Getting busted (js/player.js getBusted) normally books the player into the
+// Getting busted (js/actors/player.ts getBusted) normally books the player into the
 // county jail. But if they're caught wearing the weed DELIVERY BACKPACK, jail is
 // the wrong outcome: a bent cop hauls them out to the middle of the rural woods,
 // runs a full story-style cut-scene (cinema bars, scripted camera, typed
-// dialogue — see js/story.js playCutscene), and lets them walk for a bribe. The
+// dialogue — see js/story/story.ts playCutscene), and lets them walk for a bribe. The
 // stash is seized either way. No booking happens, so weapons are NOT confiscated.
 //
 // Wired in via refs (refs.isCarryingDrugs / refs.startDrugBust) so player.js
 // stays decoupled from the weed-farm + cut-scene machinery.
 // ---------------------------------------------------------------------------
 import type * as THREE from 'three';
-import {scene} from '@/core/engine.js';
-import {state,refs} from '@/core/state.js';
-import {player} from '@/actors/player.js';
-import {playCutscene} from '@/story/story.js';
-import {makePed} from '@/core/entities.js';
-import {economy} from '@/core/economy.js';
-import {message} from '@/ui/hud.js';
-import {groundHeight,RURAL_X0} from '@/core/constants.js';
+import {scene} from '@/core/engine.ts';
+import {state,refs} from '@/core/state.ts';
+import {player} from '@/actors/player.ts';
+import {playCutscene} from '@/story/story.ts';
+import {makePed} from '@/core/entities.ts';
+import {economy} from '@/core/economy.ts';
+import {message} from '@/ui/hud.ts';
+import {groundHeight,RURAL_X0} from '@/core/constants.ts';
 
 // A forest clearing deep in the western countryside — off the road, clear of the
 // mountain (x~509), the village (x=650) and the ploughed fields (x>332).
@@ -65,7 +65,7 @@ function buildLines(bribe: number){
 }
 
 // Start the shakedown. Called from getBusted's branch once the player is on foot,
-// the cops are cleared and wanted is zeroed (see js/player.js).
+// the cops are cleared and wanted is zeroed (see js/actors/player.ts).
 export function startDrugBust(){
   const ws=refs.getWeedFarmState?.();
   const val=Math.round((ws&&ws.pack&&ws.pack.val)||0);

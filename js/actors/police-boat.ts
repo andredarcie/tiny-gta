@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import {clamp,wrapA,rand,irand,SWIM_BOUND,isLand} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {makeBoat,makePed,attachHandGun,blinkBar,disposeGeometries} from '@/core/entities.js';
-import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.js';
-import {thud,gunshot} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {playerPos,cur,inWater,getWasted} from '@/actors/player.js';
+import {clamp,wrapA,rand,irand,SWIM_BOUND,isLand} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {makeBoat,makePed,attachHandGun,blinkBar,disposeGeometries} from '@/core/entities.ts';
+import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
+import {thud,gunshot} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {playerPos,cur,inWater,getWasted} from '@/actors/player.ts';
 
 // Marine pursuit: flee the police INTO the water (swimming or aboard a boat) while
 // still WANTED and a police speedboat puts out from open sea and hunts you down.

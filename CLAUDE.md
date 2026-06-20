@@ -23,10 +23,10 @@ The codebase is **TypeScript in strict mode**. Static validation is `npm run typ
 
 **TypeScript conventions (post-migration):**
 - **Folder layout.** `js/` is grouped by domain: `core/` (loop, state, engine, input, physics, save, economy, types, refs, rng, util), `world/` (map, daynight, traffic, peds, rural ambient), `actors/` (player + NPCs/authorities), `combat/` (weapons + heat modes), `activities/` (missions/minigames/jobs), `places/` (interiors/shops/property), `story/`, `ui/` (HUD/menus/overlays/input surfaces), `audio/`, `loot/`. (`assets/models/` stays grouped by its own domains.)
-- **Imports use the `@/` alias → `js/`** (e.g. `import {state} from '@/core/state.js'`), configured in `tsconfig.json` (`paths`), `vite.config.ts` and `vitest.config.ts`. Prefer `@/...` for cross-module imports; relative imports are fine within the same folder and for `assets/models/**`. Specifiers keep the `.js` extension even though files are `.ts` (bundler resolution maps `.js`→`.ts`) — **never rewrite a specifier to `.ts`**.
+- **Imports use the `@/` alias → `js/`** (e.g. `import {state} from '@/core/state.ts'`), configured in `tsconfig.json` (`paths`), `vite.config.ts` and `vitest.config.ts`. Prefer `@/...` for cross-module imports; relative imports are fine within the same folder and for `assets/models/**`. Specifiers use the **`.ts`** extension (tsconfig `allowImportingTsExtensions`; the build is Vite/esbuild and `tsc` runs `--noEmit`), e.g. `import {state} from '@/core/state.ts'`. External bare modules (`three`, `three/addons/…js`) and `.json` imports keep their own suffix.
 - **`import.meta.glob` patterns** (model-viewer/warmup) must stay **relative** (aliases don't work in glob) and match **`*.ts`** (the models are `.ts`).
 - Shared cross-module types live in `js/core/types.ts` (`GameState`/`InputState`/`Refs`/`Vehicle`/`ModelDescriptor`/ledger/save); `state` is a closed `GameState`, `refs` has an index signature. `tsconfig.json` is strict with `allowJs:false`. Node tools (`npm run bake`, `npm run island-check`) run via `tsx`, not `node`.
-- The file paths named in the **Architecture** section below predate this reorg — each module now lives under its domain folder (e.g. `js/main.js` → `js/core/main.ts`, `js/player.js` → `js/actors/player.ts`).
+- The file paths named in the **Architecture** section below predate this reorg — each module now lives under its domain folder (e.g. `js/core/main.ts` → `js/core/main.ts`, `js/actors/player.ts` → `js/actors/player.ts`).
 
 ## Deployment
 
@@ -40,7 +40,7 @@ The codebase is **TypeScript in strict mode**. Static validation is `npm run typ
 
 **⚠️ TO SHIP ANYTHING TO PLAYERS, IT MUST REACH `main`.** The itch.io deploy is **pipeline-driven** — it fires *only* on a push to `main` (GitHub Actions). A branch that is committed and pushed but never promoted into `main` ships nothing.
 
-**📋 BEFORE EVERY PUSH TO `main`: add an entry to `updates.json`.** The in-game pause menu has an **UPDATES** panel — a player-facing changelog driven by the root `updates.json` file (see `js/pause-menu.js`). It is a list of `{id, date, title, description}` objects ordered **newest-first**. Whenever you ship player-visible changes to `main`, **prepend one new entry** at the top of the array describing what changed in **plain, non-technical language** (the reader is a player, not a developer), dated with the day you ship (`YYYY-MM-DD`), and give it a unique `id`. A new top entry automatically lights up the "NEW" badge on the menu button until the player opens the panel. Skip this only for pure backend/infra/docs changes a player would never notice.
+**📋 BEFORE EVERY PUSH TO `main`: add an entry to `updates.json`.** The in-game pause menu has an **UPDATES** panel — a player-facing changelog driven by the root `updates.json` file (see `js/ui/pause-menu.ts`). It is a list of `{id, date, title, description}` objects ordered **newest-first**. Whenever you ship player-visible changes to `main`, **prepend one new entry** at the top of the array describing what changed in **plain, non-technical language** (the reader is a player, not a developer), dated with the day you ship (`YYYY-MM-DD`), and give it a unique `id`. A new top entry automatically lights up the "NEW" badge on the menu button until the player opens the panel. Skip this only for pure backend/infra/docs changes a player would never notice.
 
 There are **two separately-deployed pieces**:
 - **Frontend** (the game) → a push to `main` triggers the GitHub Actions **pipeline** (`.github/workflows/deploy-tiny-gta-itch.yml`) which publishes to **itch.io**. This is the *only* way the game deploys — there is no manual itch upload and no branch ever deploys directly.
@@ -52,26 +52,26 @@ There are **two separately-deployed pieces**:
 
 ## Architecture
 
-**Entry & loop.** `index.html` loads `js/main.js` as a module. `main.js` runs the single `requestAnimationFrame` loop (`frame` → `step(dt)`), dispatching each frame by `state.mode` (`'foot'` | `'car'` | `'cut'`) and calling every system's `update*(dt)`. `dt` is clamped to 0.05s.
+**Entry & loop.** `index.html` loads `js/core/main.ts` as a module. `main.ts` runs the single `requestAnimationFrame` loop (`frame` → `step(dt)`), dispatching each frame by `state.mode` (`'foot'` | `'car'` | `'cut'`) and calling every system's `update*(dt)`. `dt` is clamped to 0.05s.
 
-**State.** `js/state.js` is the shared mutable core:
+**State.** `js/core/state.ts` is the shared mutable core:
 - `state` — all gameplay flags/values (mode, money, wanted, health, weapon, mobile, etc.).
-- `input` — normalized input (`moveX/moveY/lookX/lookY`, `run/brake/shootHeld`, …) written by both `input.js` (keyboard/mouse) and `touch-controls.js` (touch). Gameplay reads only this, never raw keys.
-- `refs` — **late-binding cross-module references**, populated by `main.js` after all modules load. This is the deliberate mechanism to call across modules without creating circular imports. When two systems need each other, expose a function/value through `refs` rather than adding a direct import.
+- `input` — normalized input (`moveX/moveY/lookX/lookY`, `run/brake/shootHeld`, …) written by both `input.ts` (keyboard/mouse) and `touch-controls.ts` (touch). Gameplay reads only this, never raw keys.
+- `refs` — **late-binding cross-module references**, populated by `main.ts` after all modules load. This is the deliberate mechanism to call across modules without creating circular imports. When two systems need each other, expose a function/value through `refs` rather than adding a direct import.
 
-**Engine.** `js/engine.js` owns the renderer, scene, camera, lights, fog, and mobile pixel-ratio/shadow limits. `js/constants.js` holds the world-grid math (`N`,`CELL`,`ROAD`,`HALF`…) and `groundHeight(x,z)` — terrain collision interpolates the *same* triangles the visual mesh uses, so physics matches what's drawn.
+**Engine.** `js/core/engine.ts` owns the renderer, scene, camera, lights, fog, and mobile pixel-ratio/shadow limits. `js/core/constants.ts` holds the world-grid math (`N`,`CELL`,`ROAD`,`HALF`…) and `groundHeight(x,z)` — terrain collision interpolates the *same* triangles the visual mesh uses, so physics matches what's drawn.
 
 **Models vs. systems — strict separation (see `assets/models/README.md`).**
 - `assets/models/**` — pure 3D geometry factories, **one model per file**. Each file **default-exports a descriptor** `{category, label, build(opts), variants?}` where `build()` is pure (returns a fresh `Object3D`, no `scene.add`). The model viewer auto-discovers these via `import.meta.glob`, so a new model following the pattern shows up in the gallery with no viewer edits. Back-compat factory names (`makeCar`, `makePed`, `addPalm`…) remain as thin wrappers. These files are the only place that defines meshes/materials; do not create grouped packs. See `assets/models/README.md`.
 - `js/**` — gameplay systems (`player`, `traffic`, `police`, `gangs`, `weapons`, `missions`, `taxi`, `story`, `pedestrians`, `daynight`, `hud`, …) that *orchestrate* models. They must not define geometry/materials.
-- Many model modules expose `add*()` that push into per-material buckets, with a `finalize*()` called once in `world.js` to merge geometry (`mergeGeometries`) — the whole city renders in ~18 draw calls instead of ~900. Keep this batching intact when editing world/building code.
+- Many model modules expose `add*()` that push into per-material buckets, with a `finalize*()` called once in `world.ts` to merge geometry (`mergeGeometries`) — the whole city renders in ~18 draw calls instead of ~900. Keep this batching intact when editing world/building code.
 
 **Debug hooks** on `window`: `render_game_to_text()` (JSON snapshot of game state), `advanceTime(ms)` (steps the loop deterministically), and `__test` (test scaffolding used by the browser harness — `enterCar`/`exitCar`/`interact`/`placeVehicle`/`setKey`/`clearKeys`/`raceTarget`). The game never uses `__test`; it only exists so tests can set up scenarios on the live instance.
 
 ## Testing (browser end-to-end)
 
 > **🚫 DO NOT RUN BROWSER/GAME TESTS YOURSELF. THE USER TESTS. 🚫**
-> This is an absolute, non-negotiable rule. **Claude must NEVER launch Playwright, Chromium, a headless browser, `npm test`, `npx playwright`, or any other in-browser/runtime test of the game.** Do not write throwaway `.spec.js` files to "just check" something, and do not take in-game screenshots to verify your own work. The user is the only one who runs the game and verifies it visually.
+> This is an absolute, non-negotiable rule. **Claude must NEVER launch Playwright, Chromium, a headless browser, `npm test`, `npx playwright`, or any other in-browser/runtime test of the game.** Do not write throwaway `.spec.ts` files to "just check" something, and do not take in-game screenshots to verify your own work. The user is the only one who runs the game and verifies it visually.
 > Your validation stops at static checks: `node --check <file>` on the files you touched and `npm run build`. After that, describe what you changed and hand it to the user to test. If you believe something needs runtime/visual verification, **say so and ask the user to test it** — never do it yourself.
 > (The harness below still exists for the user's own use / CI; the rest of this section documents it for that purpose only. It is **not** an invitation for Claude to run it.)
 
@@ -79,13 +79,13 @@ Gameplay is tested by driving the **real game in a real Chromium** (real Three.j
 
 ```bash
 npx playwright install chromium   # one-time: download the browser
-npm test                          # runs test/*.spec.js HEADED (a window opens; you watch it play)
+npm test                          # runs test/*.spec.ts HEADED (a window opens; you watch it play)
 HEADLESS=1 npm test               # no window (CI / agents on a machine with no display)
-npm test -- test/race.spec.js     # run one spec
+npm test -- test/race.spec.ts     # run one spec
 ```
 
-- **Config:** `playwright.config.js` auto-starts `npm run dev` and points tests at it. Headed by default (set `HEADLESS=1` to hide the window). Real-time *driving* tests (races, chases) should run **headed** — headless Chromium throttles `requestAnimationFrame`, starving the control loop (a race autopilot wanders and loses); `HEADLESS=1` is best for boot/state assertions, not live driving.
-- **Driver:** `test/support/game.js` exports a Playwright `test`/`expect` where every spec gets a booted `game` (a `GameDriver`). Write specs as `test/*.spec.js` and `import { test, expect } from './support/game.js'`. Key driver methods:
+- **Config:** `playwright.config.ts` auto-starts `npm run dev` and points tests at it. Headed by default (set `HEADLESS=1` to hide the window). Real-time *driving* tests (races, chases) should run **headed** — headless Chromium throttles `requestAnimationFrame`, starving the control loop (a race autopilot wanders and loses); `HEADLESS=1` is best for boot/state assertions, not live driving.
+- **Driver:** `test/support/game.ts` exports a Playwright `test`/`expect` where every spec gets a booted `game` (a `GameDriver`). Write specs as `test/*.spec.ts` and `import { test, expect } from './support/game.ts'`. Key driver methods:
   - `boot(nick)` — title → nickname → play (auto-run by the fixture).
   - `snapshot()` — parsed `render_game_to_text()` (mode, money, vehicle, per-minigame state, …).
   - `enterCar()` / `placeVehicle(x,z,faceX,faceZ)` — get in a car / set up at an activity's start.
@@ -93,11 +93,11 @@ npm test -- test/race.spec.js     # run one spec
   - `driveRace(stateKey)` — hold throttle + steer toward the live checkpoint to the finish; returns `{finished, place, cpReached, moneyGain, lostByRivals}`.
   - `down/up/tap` (real keyboard), `waitForState(pred)`, `inPage(fn)`.
 - **Why a `window.__test` hook (and not `import()` in the page):** Playwright's `page.evaluate` runs `import('/js/*.js')` as a *separate* module instance from the running game, so it can't touch the live singletons. Only `window`-attached hooks (`render_game_to_text`, `advanceTime`, `__test`) reach the real instance — that is why setup goes through `__test`.
-- **Ready example:** `test/race.spec.js` — the AI enters the car, presses E, and drives the off-road circuit to the finish (open terrain → reliable autopilot). Use it as the template for new gameplay tests.
+- **Ready example:** `test/race.spec.ts` — the AI enters the car, presses E, and drives the off-road circuit to the finish (open terrain → reliable autopilot). Use it as the template for new gameplay tests.
 
 ## Conventions & gotchas
 
 - **No manual cache-busting.** Vite handles asset hashing. The old `?v=BUILD` import-map convention is gone — do not reintroduce import maps or version query strings. Adding a new module just means a normal `import`; nothing in `index.html` needs editing. (`three/addons/` resolves via three's package `exports`.) The `BUILD NN` badge on the title screen is now cosmetic.
-- **Camera yaw sign is settled** (`js/player.js` `updateCamera`): `cameraRig.yaw -= input.lookX*dt` with `input.lookX = v.x*YAW_SPEED`. Yaw increases to the left in this engine. Do not flip these signs based on a single phone test — history shows repeated wrong "still inverted" reports caused by stale mobile cache; hard-refresh/cache-bust before judging.
+- **Camera yaw sign is settled** (`js/actors/player.ts` `updateCamera`): `cameraRig.yaw -= input.lookX*dt` with `input.lookX = v.x*YAW_SPEED`. Yaw increases to the left in this engine. Do not flip these signs based on a single phone test — history shows repeated wrong "still inverted" reports caused by stale mobile cache; hard-refresh/cache-bust before judging.
 - **Code comments must always be in English**, as is player-facing game text. (Many existing modules still carry Portuguese comments from earlier work — write new/edited comments in English, and translate Portuguese ones you touch.)
 - `progress.md` is an append-only running log of past changes and standing user instructions — read it for context on prior decisions, but it is not architecture documentation.

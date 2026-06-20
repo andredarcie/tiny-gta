@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // Blaze: incêndio encorpado de prédio/veículo — bem mais que a poça do molotov
 // (effects/fire.js). Base carbonizada + brasas brilhando + um anel de línguas de
 // chama de alturas variadas + núcleo quente claro no meio. flames[] é tremido
-// pelo js/firefighter.js (escala/opacidade/balanço). build() é PURO (devolve um
+// pelo js/activities/firefighter.ts (escala/opacidade/balanço). build() é PURO (devolve um
 // Object3D novo, sem scene.add), seguindo o padrão de UM modelo por arquivo.
 
 function makeBlaze(): THREE.Group{

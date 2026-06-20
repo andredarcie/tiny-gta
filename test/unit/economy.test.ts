@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { economy } from '@/core/economy.js';
-import { state } from '@/core/state.js';
+import { economy } from '@/core/economy.ts';
+import { state } from '@/core/state.ts';
 
 // The economy is a singleton that mutates `state.money`. These tests assert
 // BALANCE DELTAS (not absolute values) so they don't depend on run order, and

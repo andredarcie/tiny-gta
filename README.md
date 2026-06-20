@@ -15,7 +15,7 @@ npm run preview  # serve the production build
 
 - `js/**` — gameplay **systems** (player, traffic, police, gangs, weapons, missions, the mini-games, HUD, …). They orchestrate models; they don't define geometry.
 - `assets/models/**` — pure 3D geometry **factories**, one model per file, each default-exporting a `{category, label, build(opts)}` descriptor (see `assets/models/README.md`).
-- `js/main.js` — the single `requestAnimationFrame` loop; `js/state.js` — the shared mutable `state`/`input`/`refs`.
+- `js/core/main.ts` — the single `requestAnimationFrame` loop; `js/core/state.ts` — the shared mutable `state`/`input`/`refs`.
 - `backend/**` — serverless API for the global leaderboards.
 
 See `CLAUDE.md` for the full architecture notes and conventions.
@@ -36,7 +36,7 @@ npm test -- test/race.spec.js     # run a single spec
 Specs live in `test/*.spec.js` and use the driver fixture from `test/support/game.js`:
 
 ```js
-import { test, expect } from './support/game.js';
+import { test, expect } from './support/game.ts';
 
 test('AI wins the off-road race', async ({ game }) => {
   await game.enterCar();                                   // get in the pink car

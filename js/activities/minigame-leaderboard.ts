@@ -5,8 +5,8 @@
 //      no loop principal (main.js) que só renderiza enquanto setado.
 //   2) ENVIO: cada sessão concluída reporta {won,score} ao backend, que acumula e
 //      recalcula um rating justo (ver backend/api/minigame.js + lib/scores.js).
-import {state, refs} from '@/core/state.js';
-import {API, getNickname, getSessionToken, signSession} from '@/ui/leaderboard.js';
+import {state, refs} from '@/core/state.ts';
+import {API, getNickname, getSessionToken, signSession} from '@/ui/leaderboard.ts';
 
 // Uma linha do top 5 retornado pelo backend.
 interface MgEntry{

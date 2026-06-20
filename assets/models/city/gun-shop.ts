@@ -1,18 +1,18 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {rand} from '@/core/constants.js';
-import {makePed} from '../characters/pedestrian.js';
-import {makeDoorArrow} from './door-arrow.js';
-import {ARSENAL} from '@/combat/weapon-catalog.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {rand} from '@/core/constants.ts';
+import {makePed} from '../characters/pedestrian.ts';
+import {makeDoorArrow} from './door-arrow.ts';
+import {ARSENAL} from '@/combat/weapon-catalog.ts';
 
 // Loja de armas "AMMO DEPOT": prédio num quarteirão reservado pelo world.js
 // (mesmo molde da academia/boate/hospital/presídio) e um interior separado a
 // ~600m do mapa, num Group visible=false ligado só enquanto o jogador está lá.
 // Dentro há 3 BALCÕES com TODAS as armas do jogo menos o punho (as 12 do
 // arsenal), cada uma girando sobre o balcão com uma ETIQUETA do nome em cima.
-// O jogador chega perto e compra (ver js/gun-shop.js). A lista de armas e os
-// preços vêm do catálogo (js/weapon-catalog.js), então a vitrine se monta
+// O jogador chega perto e compra (ver js/places/gun-shop.ts). A lista de armas e os
+// preços vêm do catálogo (js/combat/weapon-catalog.ts), então a vitrine se monta
 // sozinha conforme o arsenal cresce.
 
 export const GUNSHOP_I=1,GUNSHOP_J=5; // quarteirão reservado (oeste/centro-sul)
@@ -37,7 +37,7 @@ export const RANGE_SPAWN={x:-721.5,z:-420.2};
 export const RANGE_EXIT={x:-724.3,z:-420.2};
 export const RANGE_ROOM={...RANGE_BOUNDS,door:RANGE_ENTRY};
 
-// Onde cada arma fica no balcão (preenchido no addGunShop). js/gun-shop.js usa
+// Onde cada arma fica no balcão (preenchido no addGunShop). js/places/gun-shop.ts usa
 // isto pra detectar proximidade e cobrar a compra.
 export const GUN_SHOP_ITEMS:any[]=[]; // {id,name,price,x,z}
 export const GUN_RANGE_ITEMS:any[]=[]; // {id,name,x,z,pivot}
@@ -538,7 +538,7 @@ export function addGunShop(solids:{x0:number,x1:number,z0:number,z1:number,h:num
     GUN_SHOP_ITEMS.push({id:w.id,name:w.name,price:w.price,x,z});
   });
 
-  // vendedor junto à parede dos fundos (animação idle no js/gun-shop.js)
+  // vendedor junto à parede dos fundos (animação idle no js/places/gun-shop.ts)
   const keeper=makePed(0x394b63,0x20242c);
   keeper.position.set(-802,0,-390.45);keeper.rotation.y=0;
   gunShopInterior.add(keeper);

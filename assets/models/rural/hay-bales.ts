@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
-import {rand,RURAL_GAP} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
+import {rand,RURAL_GAP} from '@/core/constants.ts';
 
 const hayM=matte({color:0xd9b25e,roughness:1});
 const hayG=new THREE.CylinderGeometry(.55,.55,.9,9);

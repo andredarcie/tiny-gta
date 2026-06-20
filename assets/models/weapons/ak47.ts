@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeWeaponMeshes} from './weapon-merge.js';
+import {mergeWeaponMeshes} from './weapon-merge.ts';
 
 // AK-47: receiver de aço, furniture de madeira (forend + coronha), pente
 // banana curvo característico, tubo de gás acima do cano e cano com bloco de

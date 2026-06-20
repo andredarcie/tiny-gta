@@ -1,21 +1,21 @@
 import * as THREE from 'three';
-import {state} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {economy} from '@/core/economy.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {groundHeight} from '@/core/constants.js';
-import {byId} from '@/combat/weapon-catalog.js';
-import {pickupArsenalWeapon} from '@/combat/weapons.js';
-import {makeMoneyDrop} from '../../assets/models/missions/money-drop.js';
-import {MiniGame} from '@/activities/minigame.js';
+import {state} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {economy} from '@/core/economy.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {byId} from '@/combat/weapon-catalog.ts';
+import {pickupArsenalWeapon} from '@/combat/weapons.ts';
+import {makeMoneyDrop} from '../../assets/models/missions/money-drop.ts';
+import {MiniGame} from '@/activities/minigame.ts';
 
 // HIDDEN RURAL LOOT — weapon caches and cash stashes tucked AROUND the rural city
 // (Pine Hollow) and along the peninsula approach: behind trees, by the derelict
 // houses, on the village outskirts. No map/radar blip (discoveries, open-world
 // style). Touch on foot to collect; each respawns after a cooldown so the area
-// stays worth re-exploring. Same spin/bob/cull idea as js/weapon-pickups.js.
+// stays worth re-exploring. Same spin/bob/cull idea as js/combat/weapon-pickups.ts.
 
 const PICK_R=2.8;          // collection radius (on foot)
 const RESPAWN_CD=60;       // seconds before a collected stash reappears

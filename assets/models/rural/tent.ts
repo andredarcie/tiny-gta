@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Barraca de acampamento estilo "A": duas águas de lona verde, fundo fechado,
 // abas da entrada abertas, vara de cumeeira, estacas e lençol de chão.

@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 
 // Peças e materiais de CUSTOMIZAÇÃO aplicados ao carro do jogador pela oficina
-// (js/mod-shop.js). Tudo aqui é PURO: recebe o Group do carro (buildCar de
+// (js/places/mod-shop.ts). Tudo aqui é PURO: recebe o Group do carro (buildCar de
 // car.js) e troca material / adiciona-remove peças no próprio grupo do carro,
 // guardando a seleção atual em carG.userData.mods. Geometria nasce aqui (modelo),
-// a lógica de preço/menu fica no js/mod-shop.js.
+// a lógica de preço/menu fica no js/places/mod-shop.ts.
 //
 // Convenção do carro (car.js): nariz em +z, traseira em -z, capô y~.86 z~+1.5,
 // porta-malas y~.85 z~-1.8. Peças paintáveis: corpo = userData.dentable[0],

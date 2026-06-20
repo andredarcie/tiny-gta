@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
 
 // Materiais no modulo (compartilhados pelas 3 torres) para a fusao de props
 const woodM=matte({color:0xc9885a,roughness:.9});

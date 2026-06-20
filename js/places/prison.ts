@@ -1,13 +1,13 @@
 import type * as THREE from 'three';
-import {state} from '@/core/state.js';
-import {playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {animatePed} from '@/core/entities.js';
-import {blip} from '@/audio/audio.js';
-import {say} from '@/ui/speech.js';
-import {Interior} from '@/world/interior.js';
+import {state} from '@/core/state.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {animatePed} from '@/core/entities.ts';
+import {blip} from '@/audio/audio.ts';
+import {say} from '@/ui/speech.ts';
+import {Interior} from '@/world/interior.ts';
 import {PRISON_DOOR,PRISON_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
-  PRISON_RELEASE,prisonFx,prisonInterior} from '../../assets/models/city/prison.js';
+  PRISON_RELEASE,prisonFx,prisonInterior} from '../../assets/models/city/prison.ts';
 
 // Presidio / County Jail. The player is taken here after BUSTED, just like
 // WASTED wakes the player inside the hospital.

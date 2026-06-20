@@ -1,14 +1,14 @@
-import {rand,wrapA,groundHeight,SWIM_BOUND} from '@/core/constants.js';
-import {makeRedneck} from '../../assets/models/characters/redneck.js';
-import * as Entities from '@/core/entities.js';
-import {collideStatics} from '@/core/physics.js';
-import {state} from '@/core/state.js';
-import {playerPos,cur} from '@/actors/player.js';
-import {Npc} from '@/actors/npc.js';
+import {rand,wrapA,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {makeRedneck} from '../../assets/models/characters/redneck.ts';
+import * as Entities from '@/core/entities.ts';
+import {collideStatics} from '@/core/physics.ts';
+import {state} from '@/core/state.ts';
+import {playerPos,cur} from '@/actors/player.ts';
+import {Npc} from '@/actors/npc.ts';
 import type * as THREE from 'three';
 
 // Ambient rural NPCs ("rednecks") living across the eastern peninsula. Each one now
-// EXTENDS the shared Npc base (js/npc.js), so it inherits the COMMON combat
+// EXTENDS the shared Npc base (js/actors/npc.ts), so it inherits the COMMON combat
 // behaviour for free: it takes bullets / punches / explosions / fire, dies in a
 // ragdoll tumble with a blood pool and a little dropped cash (+1 wanted star for
 // gunning down a civilian) — exactly like a city pedestrian. (Before, they were in
@@ -135,7 +135,7 @@ export function updateRuralFolk(dt:number){
   const activeCur=cur;
   const carDanger=state.mode==='car'&&activeCur&&Math.abs(activeCur.speed)>6;
   const onFoot=state.mode==='foot';
-  // a recent gunshot (broadcast by js/weapons.js) panics anyone nearby
+  // a recent gunshot (broadcast by js/combat/weapons.ts) panics anyone nearby
   const shotRecent=state.time-(state.shotT??-99)<0.6;
   for(const f of folk){
     // DEAD: play the inherited ragdoll tumble, then revive at home. Runs even when

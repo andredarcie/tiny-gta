@@ -5,9 +5,9 @@
 // "steer toward the next checkpoint" autopilot can drive it reliably. The same
 // GameDriver also drives the street and boat races (street has buildings between
 // checkpoints, so an autopilot there needs road-following — out of scope here).
-import { test, expect } from './support/game.js';
+import { test, expect } from './support/game.ts';
 
-// Fixed off-road circuit from js/offroad.js (start gate + the 8 ordered
+// Fixed off-road circuit from js/activities/offroad.ts (start gate + the 8 ordered
 // checkpoints; the last one, back by the gate, is the finish line).
 const OFFROAD_START = { x: 196, z: 4 };
 const OFFROAD_CPS = [

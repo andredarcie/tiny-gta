@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Handheld FLASHLIGHT the player auto-equips inside the dark escape tunnel
-// (js/jail-break.js positions it at the hand and aims it where you look, and
+// (js/activities/jail-break.ts positions it at the hand and aims it where you look, and
 // toggles the beam on only while you're in the tunnel). The whole thing points
 // down the group's local -Z so a single Object3D.lookAt() aims body + beam.
 

@@ -7,10 +7,10 @@
 // (one delegated set, in setupPauseMenu). It must NOT import input.js (which imports
 // this) — resume and fullscreen go through late-bound refs (refs.togglePause /
 // refs.toggleFullscreen) to keep the dependency one-directional.
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {API,getNickname,logout,flush} from '@/ui/leaderboard.js';
-import {settings,setSetting,resetSettings} from '@/core/settings.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {API,getNickname,logout,flush} from '@/ui/leaderboard.ts';
+import {settings,setSetting,resetSettings} from '@/core/settings.ts';
 import UPDATES from '../../updates.json';
 
 // A changelog entry shape (root updates.json, newest-first).

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {state} from '@/core/state.js';
-import type {ModelDescriptor} from '@/core/types.js';
+import {state} from '@/core/state.ts';
+import type {ModelDescriptor} from '@/core/types.ts';
 
 // Galeria de objetos do jogo: um modal com renderer/cena próprios (separados do
 // jogo) que instancia cada modelo pela sua fábrica e o exibe centralizado e

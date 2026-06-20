@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Prensa industrial de sucata (CAR CRUSHER) — estilo "esmagador de carros" do
 // open-world. Modelo PURO: monta a estrutura e devolve o grupo. A placa/pistão pesado

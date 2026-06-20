@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Coreto (bandstand) octogonal da praça — como o da Praça da Matriz de Divinolândia
 // (ver reference/divinolandia-praca/praca_natal_01.jpg): plataforma elevada com

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {buildToonPlayer} from './pedestrian.js';
-import {scene} from '@/core/engine.js';
+import {matte} from '../matte.ts';
+import {buildToonPlayer} from './pedestrian.ts';
+import {scene} from '@/core/engine.ts';
 
 // Rural NPC ("redneck"): the SAME smooth skinned doll as the player / street peds
 // (buildToonPlayer — the current visual standard), only varying the clothes —
