@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand} from '@/core/constants.js';
+import {rand} from '@/core/constants.ts';
 
 // DEATH POOL ("bloodstain") do multiplayer assíncrono — estilo Demon's/Dark Souls.
 // É a poça que um jogador MORTO deixa no mundo, visível pra todos os outros online.
@@ -8,7 +8,7 @@ import {rand} from '@/core/constants.js';
 // chamar atenção e um ANEL pulsante — a leitura é "tem alguém/algo aqui pra pegar".
 // Fiel ao estilo do projeto: sem asset binário, só primitivas + materiais.
 //
-// updateBloodstains (js/bloodstains.js) gira o grupo, pulsa o anel/facho e gerencia
+// updateBloodstains (js/loot/bloodstains.ts) gira o grupo, pulsa o anel/facho e gerencia
 // o rótulo flutuante com o nome da vítima + o dinheiro. Pega o anel/facho por
 // userData.ring / userData.beam (clonados por instância, então podem animar opacidade
 // independente e ser dados como dispose ao coletar a poça).

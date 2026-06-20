@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import {state} from '@/core/state.js';
-export {beamMat,makeCar} from '../../assets/models/vehicles/car.js';
-export {makeKombi} from '../../assets/models/vehicles/kombi.js';
-export {makeFiatUno} from '../../assets/models/vehicles/fiat-uno.js';
-export {makeMotorcycle} from '../../assets/models/vehicles/motorcycle.js';
-export {makeBoat} from '../../assets/models/vehicles/boat.js';
-import {makePed,makePlayerPed,shirtColors} from '../../assets/models/characters/pedestrian.js';
+import {state} from '@/core/state.ts';
+export {beamMat,makeCar} from '../../assets/models/vehicles/car.ts';
+export {makeKombi} from '../../assets/models/vehicles/kombi.ts';
+export {makeFiatUno} from '../../assets/models/vehicles/fiat-uno.ts';
+export {makeMotorcycle} from '../../assets/models/vehicles/motorcycle.ts';
+export {makeBoat} from '../../assets/models/vehicles/boat.ts';
+import {makePed,makePlayerPed,shirtColors} from '../../assets/models/characters/pedestrian.ts';
 export {makePed,makePlayerPed,shirtColors};
-export {makePlane} from '../../assets/models/aircraft/plane.js';
-import {makePistolModel} from '../../assets/models/weapons/pistol.js';
-import {makeUziModel} from '../../assets/models/weapons/uzi.js';
-import {makeShotgunModel} from '../../assets/models/weapons/shotgun.js';
-import {makeAk47Model} from '../../assets/models/weapons/ak47.js';
+export {makePlane} from '../../assets/models/aircraft/plane.ts';
+import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
+import {makeUziModel} from '../../assets/models/weapons/uzi.ts';
+import {makeShotgunModel} from '../../assets/models/weapons/shotgun.ts';
+import {makeAk47Model} from '../../assets/models/weapons/ak47.ts';
 
 // ---- Empunhadura PADRÃO de arma (jogador, gangues e polícia) ----
 // Não existe mais um "gang gun" próprio: NPCs seguram os MESMOS modelos do

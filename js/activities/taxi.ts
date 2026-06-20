@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import {N,nodeX,rand,irand,pick,ROAD,clamp} from '@/core/constants.js';
-import {state,refs,saveBest} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.js';
-import {idleCars,cur,playerPos} from '@/actors/player.js';
-import {parks} from '@/world/world.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import type {Blip} from '@/core/types.js';
+import {N,nodeX,rand,irand,pick,ROAD,clamp} from '@/core/constants.ts';
+import {state,refs,saveBest} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.ts';
+import {idleCars,cur,playerPos} from '@/actors/player.ts';
+import {parks} from '@/world/world.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import type {Blip} from '@/core/types.ts';
 
 // corrida atual: o passageiro (ped) + origem/destino + pagamento e prazo
 interface Fare{

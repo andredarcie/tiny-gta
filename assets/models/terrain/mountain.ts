@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand,groundHeight,MOUNT_X,MOUNT_H,MOUNT_S,MOUNT_SEG} from '@/core/constants.js';
+import {rand,groundHeight,MOUNT_X,MOUNT_H,MOUNT_S,MOUNT_SEG} from '@/core/constants.ts';
 
 export function makeMountain(size: number,segments: number): THREE.Mesh{
   const geo=new THREE.PlaneGeometry(size,size,segments,segments);

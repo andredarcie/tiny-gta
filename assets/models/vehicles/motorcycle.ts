@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {scene} from '@/core/engine.js';
-import {beamMat} from './car.js'; // mesma luz de farol do carro (daynight liga à noite)
+import {scene} from '@/core/engine.ts';
+import {beamMat} from './car.ts'; // mesma luz de farol do carro (daynight liga à noite)
 
 // Moto estilo Open-world: cruiser/street compacta, ~2.1m de comprimento, rodas Ø.68,
 // banco a ~.80 de altura (o piloto fica visível por cima, diferente do carro).

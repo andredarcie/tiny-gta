@@ -1,4 +1,4 @@
-import type { Racer, PrizeStreak } from '@/core/types.js';
+import type { Racer, PrizeStreak } from '@/core/types.ts';
 
 export const N=8, CELL=44, ROAD=14, BLOCK=30, SIDE=4, HALF=N*CELL/2;
 export const GROUND=N*CELL+ROAD;
@@ -41,7 +41,7 @@ export function ruralRoadPath(): [number, number][] {
   return pts;
 }
 // Mountain relief — a SINGLE smooth analytic function shared by the physics
-// (groundHeight) and the visual mesh (assets/models/terrain/mountain.js), exactly
+// (groundHeight) and the visual mesh (assets/models/terrain/mountain.ts), exactly
 // like the island. There is NO stored height grid and NO per-node randomness: the
 // old low-poly grid randomised every node, so the slope was a field of irregular
 // facets and walking/driving across it POPPED from one triangle to the next (that
@@ -79,7 +79,7 @@ export function ruralHillH(x: number, z: number): number {
 // Uma ilha isolada bem a oeste, em mar aberto além do anel da prova de lanchas
 // (costa a leste ~x=-331, longe da reta oeste da prova em ~-273). Como a montanha,
 // é fonte ÚNICA de verdade: o MESMO islandHeight monta o visual
-// (assets/models/terrain/island-paradise.js) E a física (groundHeight), e
+// (assets/models/terrain/island-paradise.ts) E a física (groundHeight), e
 // islandCoastR define a linha d'água tanto pro visual quanto pro isLand — então
 // nunca se "nada na areia" nem se "anda no mar" na ilha.
 export const ISLAND_CX=-408, ISLAND_CZ=-44; // centro (coords de mundo)
@@ -121,7 +121,7 @@ export function groundHeight(x: number, z: number): number {
 // ===== Ilha: costa irregular unificada (fonte ÚNICA de verdade) ============
 // Hoje o mundo parece "dois blocos" (cidade quadrada + península retangular).
 // Estas funções traçam UMA costa irregular e contínua, usada tanto pelo visual
-// (assets/models/terrain/island.js) quanto pelo gameplay (inWater em player.js).
+// (assets/models/terrain/island.ts) quanto pelo gameplay (inWater em player.js).
 // Se as duas não usarem a MESMA função, o jogador "nada na areia" (ou anda no mar).
 //
 // Princípio ADITIVO: a costa só acrescenta terra PRA FORA do conteúdo atual

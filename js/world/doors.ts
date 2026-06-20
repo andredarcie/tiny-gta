@@ -1,16 +1,16 @@
-import {state} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {camera,scene} from '@/core/engine.js';
-import {player,playerPos,cameraRig} from '@/actors/player.js';
-import {nearestDoor} from '@/world/interior.js';
-import {buildingDoors} from '../../assets/models/city/building.js';
-import {makeDoorArrow,arrowBob} from '../../assets/models/city/door-arrow.js';
-import {makeMoneyDrop} from '../../assets/models/missions/money-drop.js';
-import {makePistolModel} from '../../assets/models/weapons/pistol.js';
-import {grantStarterWeapon} from '@/combat/weapons.js';
-import {irand} from '@/core/constants.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
+import {state} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {camera,scene} from '@/core/engine.ts';
+import {player,playerPos,cameraRig} from '@/actors/player.ts';
+import {nearestDoor} from '@/world/interior.ts';
+import {buildingDoors} from '../../assets/models/city/building.ts';
+import {makeDoorArrow,arrowBob} from '../../assets/models/city/door-arrow.ts';
+import {makeMoneyDrop} from '../../assets/models/missions/money-drop.ts';
+import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
+import {grantStarterWeapon} from '@/combat/weapons.ts';
+import {irand} from '@/core/constants.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
 
 // Portas estilo mundo aberto: sem botão — encostou na porta, atravessou.
 // Boate: porta da rua entra, porta de dentro sai. Prédio com porta: a porta

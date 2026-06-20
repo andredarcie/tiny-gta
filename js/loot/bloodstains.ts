@@ -17,17 +17,17 @@
 // Tudo é "best-effort": offline / backend fora do ar simplesmente não mostra poças e
 // não quebra o jogo (o jogador continua perdendo/ganhando dinheiro normalmente).
 import * as THREE from 'three';
-import {state, refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {groundHeight} from '@/core/constants.js';
-import {MiniGame} from '@/activities/minigame.js';
-import {makeDeathPool} from '../../assets/models/effects/death-pool.js';
-import {makeSpeechBubble} from '../../assets/models/characters/speech-bubble.js';
-import {API, getNickname, getPlayerId, getSessionToken, signSession} from '@/ui/leaderboard.js';
+import {state, refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {MiniGame} from '@/activities/minigame.ts';
+import {makeDeathPool} from '../../assets/models/effects/death-pool.ts';
+import {makeSpeechBubble} from '../../assets/models/characters/speech-bubble.ts';
+import {API, getNickname, getPlayerId, getSessionToken, signSession} from '@/ui/leaderboard.ts';
 
 const CLAIM_R = 3.6;            // raio de coleta (a pé ou de carro), igual aos coletáveis
 const REFRESH_SEC = 25;         // intervalo entre buscas da lista (segundos de jogo)

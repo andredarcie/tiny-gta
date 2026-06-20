@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Abandoned military base: a square compound ringed by weathered concrete walls
 // with a coping band, a wide GATE you can drive in through on the front (-z), and

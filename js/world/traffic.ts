@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import {N,CELL,nodeX,pick,rand,irand,wrapA,clamp} from '@/core/constants.js';
-import {state,carNames,carColors} from '@/core/state.js';
-import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.js';
-import {collideStatics,addWanted} from '@/core/physics.js';
-import {thud} from '@/audio/audio.js';
-import {playerPos,cur,player,getWasted} from '@/actors/player.js';
+import {N,CELL,nodeX,pick,rand,irand,wrapA,clamp} from '@/core/constants.ts';
+import {state,carNames,carColors} from '@/core/state.ts';
+import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
+import {collideStatics,addWanted} from '@/core/physics.ts';
+import {thud} from '@/audio/audio.ts';
+import {playerPos,cur,player,getWasted} from '@/actors/player.ts';
 
 // A grid node coordinate pair [i,j].
 type Node=[number,number];

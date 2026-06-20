@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {state,refs,carNames} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos,cur,idleCars} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {N,nodeX,pick,irand,clamp,groundHeight} from '@/core/constants.js';
-import {makeExportGarage} from '../../assets/models/props/export-garage.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
+import {state,refs,carNames} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos,cur,idleCars} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {N,nodeX,pick,irand,clamp,groundHeight} from '@/core/constants.ts';
+import {makeExportGarage} from '../../assets/models/props/export-garage.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. A ação EXPORT já fica indisponível durante uma sessão (trava nas

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeWeaponMeshes} from './weapon-merge.js';
+import {mergeWeaponMeshes} from './weapon-merge.ts';
 
 // M16: fuzil preto de polímero com a alça de transporte (carry handle) e mira
 // triangular dianteira icônicas, handguard triangular, pente reto e coronha

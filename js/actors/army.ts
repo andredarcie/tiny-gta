@@ -1,18 +1,18 @@
 import * as THREE from 'three';
-import {N,clamp,rand,wrapA,nodeX,irand,groundHeight} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {makePed,animatePed,spinWheels,dentCar,attachHandGun,poseAiming,disposeGeometries} from '@/core/entities.js';
-import {makeArmyTruck} from '../../assets/models/vehicles/army-truck.js';
-import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.js';
-import {thud,gunshot} from '@/audio/audio.js';
-import {collideStatics} from '@/core/physics.js';
-import {playerPos,cur,getWasted} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
+import {N,clamp,rand,wrapA,nodeX,irand,groundHeight} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {makePed,animatePed,spinWheels,dentCar,attachHandGun,poseAiming,disposeGeometries} from '@/core/entities.ts';
+import {makeArmyTruck} from '../../assets/models/vehicles/army-truck.ts';
+import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
+import {thud,gunshot} from '@/audio/audio.ts';
+import {collideStatics} from '@/core/physics.ts';
+import {playerPos,cur,getWasted} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
 
 // ============================================================================
 // ARMY — the MAX-STAR (★6) response. When the player hits 6 stars, ONE green
-// camo truck (assets/models/vehicles/army-truck.js) rolls in with 4 SOLDIERS
+// camo truck (assets/models/vehicles/army-truck.ts) rolls in with 4 SOLDIERS
 // standing in the bed, machine guns in hand. The truck CHASES the player; when
 // the player STOPS (on foot, or in a near-stopped car) and the truck gets close,
 // the 4 soldiers DISMOUNT and open fire. If the player flees they re-board and
@@ -20,7 +20,7 @@ import {message} from '@/ui/hud.js';
 // refs.armyTargets / refs.blastArmy); if the whole squad falls, the truck pulls
 // back and a fresh wave arrives a few seconds later.
 //
-// Modeled on js/police.js (same cruiser + foot-squad AI), but with a BIGGER
+// Modeled on js/actors/police.ts (same cruiser + foot-squad AI), but with a BIGGER
 // squad, machine guns (high rate of fire) and the army's own vehicle. It leaves
 // once the wanted level drops below 6 (refs cleared on WASTED/BUSTED, like cops).
 // ============================================================================

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 // Character dolls. The player and every NPC are the SAME smooth skinned doll
 // (buildToonPlayer): one continuous surface deformed by a small bone skeleton, so

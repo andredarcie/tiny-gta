@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import {N,clamp,rand,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
+import {N,clamp,rand,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
-  attachHandGun,poseAiming,disposeGeometries} from '@/core/entities.js';
-import {makeHeli} from '../../assets/models/police/helicopter.js';
-import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.js';
-import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.js';
-import {thud,gunshot} from '@/audio/audio.js';
-import {collideStatics,addWanted} from '@/core/physics.js';
-import {message} from '@/ui/hud.js';
-import {playerPos,cur,getBusted,getWasted} from '@/actors/player.js';
+  attachHandGun,poseAiming,disposeGeometries} from '@/core/entities.ts';
+import {makeHeli} from '../../assets/models/police/helicopter.ts';
+import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.ts';
+import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
+import {thud,gunshot} from '@/audio/audio.ts';
+import {collideStatics,addWanted} from '@/core/physics.ts';
+import {message} from '@/ui/hud.ts';
+import {playerPos,cur,getBusted,getWasted} from '@/actors/player.ts';
 
 // IA da polícia estilo Open-world: a viatura persegue; perto de um alvo parado/a pé
 // ela ENCOSTA e desce uma dupla de policiais que corre até a distância de
@@ -235,7 +235,7 @@ const _mid=new THREE.Vector3();
 
 export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
-  // 6 stars (the MAX): the police WITHDRAW — the ARMY takes over (js/army.js).
+  // 6 stars (the MAX): the police WITHDRAW — the ARMY takes over (js/actors/army.ts).
   // No cruisers and no arrest up there: only the military truck.
   if(want>=6){
     while(cops.length)removeCop(cops.pop()!);

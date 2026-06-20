@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
-import {rand,groundHeight} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 
 // Ground fern: a rosette of arching fronds (thin tapered blades leaning outward
 // from a centre). One shared double-sided material keeps the merge bucket tiny.

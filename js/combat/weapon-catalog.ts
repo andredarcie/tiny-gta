@@ -1,5 +1,5 @@
 // Catálogo das armas do open-world. Cada entrada é uma instância de uma subclasse
-// de Weapon (ver js/weapon-types.js) com seus stats e o factory do modelo 3D.
+// de Weapon (ver js/combat/weapon-types.ts) com seus stats e o factory do modelo 3D.
 // Ordem = ordem do ciclo (roda do mouse / botão); `slot` = tecla numérica.
 //
 // open-world tem 13 armas. Já existiam Pistol e o lança-foguetes (Rocket Launcher,
@@ -7,20 +7,20 @@
 // assets/models/weapons/).
 
 import {MeleeWeapon,FirearmWeapon,RocketWeapon,FlamethrowerWeapon,ThrownWeapon,DetonatorWeapon}
-  from '@/combat/weapon-types.js';
-import type {Weapon} from '@/combat/weapon-types.js';
-import {makePistolModel} from '../../assets/models/weapons/pistol.js';
-import {makeRocketLauncherModel} from '../../assets/models/weapons/rocket-launcher.js';
-import {makeBaseballBatModel} from '../../assets/models/weapons/baseball-bat.js';
-import {makeUziModel} from '../../assets/models/weapons/uzi.js';
-import {makeShotgunModel} from '../../assets/models/weapons/shotgun.js';
-import {makeAk47Model} from '../../assets/models/weapons/ak47.js';
-import {makeM16Model} from '../../assets/models/weapons/m16.js';
-import {makeSniperRifleModel} from '../../assets/models/weapons/sniper-rifle.js';
-import {makeFlamethrowerModel} from '../../assets/models/weapons/flamethrower.js';
-import {makeMolotovModel} from '../../assets/models/weapons/molotov.js';
-import {makeGrenadeModel} from '../../assets/models/weapons/grenade.js';
-import {makeDetonatorModel} from '../../assets/models/weapons/detonator.js';
+  from '@/combat/weapon-types.ts';
+import type {Weapon} from '@/combat/weapon-types.ts';
+import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
+import {makeRocketLauncherModel} from '../../assets/models/weapons/rocket-launcher.ts';
+import {makeBaseballBatModel} from '../../assets/models/weapons/baseball-bat.ts';
+import {makeUziModel} from '../../assets/models/weapons/uzi.ts';
+import {makeShotgunModel} from '../../assets/models/weapons/shotgun.ts';
+import {makeAk47Model} from '../../assets/models/weapons/ak47.ts';
+import {makeM16Model} from '../../assets/models/weapons/m16.ts';
+import {makeSniperRifleModel} from '../../assets/models/weapons/sniper-rifle.ts';
+import {makeFlamethrowerModel} from '../../assets/models/weapons/flamethrower.ts';
+import {makeMolotovModel} from '../../assets/models/weapons/molotov.ts';
+import {makeGrenadeModel} from '../../assets/models/weapons/grenade.ts';
+import {makeDetonatorModel} from '../../assets/models/weapons/detonator.ts';
 
 // Melee --------------------------------------------------------------------
 export const FIST=new MeleeWeapon({

@@ -1,23 +1,23 @@
 import * as THREE from 'three';
-import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {makeBoat,makePed,shirtColors,disposeGeometries} from '@/core/entities.js';
-import {cur,playerPos,cameraRig} from '@/actors/player.js';
-import {makeBuoy} from '../../assets/models/missions/buoy.js';
-import {makeSeaMine} from '../../assets/models/missions/sea-mine.js';
-import {makeExplosionModel} from '../../assets/models/effects/explosion.js';
-import {makeBoatRaceGate} from '../../assets/models/missions/boat-race-gate.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {makeWakePuff} from '../../assets/models/effects/boat-wake.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,raceSiren} from '@/audio/audio.js';
-import {radioOff} from '@/ui/radio.js';
-import {raceMusicOn,raceMusicOff} from '@/audio/race-music.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import type {Racer,PrizeStreak,Blip} from '@/core/types.js';
+import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {makeBoat,makePed,shirtColors,disposeGeometries} from '@/core/entities.ts';
+import {cur,playerPos,cameraRig} from '@/actors/player.ts';
+import {makeBuoy} from '../../assets/models/missions/buoy.ts';
+import {makeSeaMine} from '../../assets/models/missions/sea-mine.ts';
+import {makeExplosionModel} from '../../assets/models/effects/explosion.ts';
+import {makeBoatRaceGate} from '../../assets/models/missions/boat-race-gate.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,raceSiren} from '@/audio/audio.ts';
+import {radioOff} from '@/ui/radio.ts';
+import {raceMusicOn,raceMusicOff} from '@/audio/race-music.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 
 // boia (x,z) na ordem do percurso (a última é a chegada)
 interface RoutePoint{x: number; z: number;}

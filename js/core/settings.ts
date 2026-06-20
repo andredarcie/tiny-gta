@@ -2,10 +2,10 @@
 // to the live engine / audio graph. Kept dependency-light: it imports ONLY the leaf
 // setters from engine / audio / radio (none of which import this back), so it never
 // forms an import cycle with the systems it configures. The pause menu
-// (js/pause-menu.js) renders the UI from a schema and writes back via setSetting().
-import {setShadowsEnabled,setBrightness} from '@/core/engine.js';
-import {setMasterVolume} from '@/audio/audio.js';
-import {setMusicVolume} from '@/ui/radio.js';
+// (js/ui/pause-menu.ts) renders the UI from a schema and writes back via setSetting().
+import {setShadowsEnabled,setBrightness} from '@/core/engine.ts';
+import {setMasterVolume} from '@/audio/audio.ts';
+import {setMusicVolume} from '@/ui/radio.ts';
 
 const KEY='tinygta_settings';
 

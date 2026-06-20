@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {overkillMusicOn,overkillMusicOff} from '@/audio/overkill-music.js';
-import {makeOverkillTotem} from '../../assets/models/props/overkill-totem.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {overkillMusicOn,overkillMusicOff} from '@/audio/overkill-music.ts';
+import {makeOverkillTotem} from '../../assets/models/props/overkill-totem.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // modo livre (não trava o mundo: o overkill é justamente correr a cidade inteira
 // sendo caçado). Registra a identidade no enum/registro de mini games; o totem

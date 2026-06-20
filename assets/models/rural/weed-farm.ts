@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
-import {scene} from '@/core/engine.js'; // halo sprites are added individually (bakeProp skips sprites)
-// Shared night-faded lamp materials (driven by js/daynight.js): the ground-glow
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
+import {scene} from '@/core/engine.ts'; // halo sprites are added individually (bakeProp skips sprites)
+// Shared night-faded lamp materials (driven by js/world/daynight.ts): the ground-glow
 // pool + bulb tint + halo sprite that street lamps use. Reusing them lights the
 // grow yard at night for free — no real lights, no daynight edits.
-import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.js';
+import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.ts';
 
 // ============================================================================
 // WEED FARM — a HIDDEN, walled grow-op compound on the deserted south-east shore
 // of the rural peninsula. Pure 3D set-dressing (the playable loop lives in
-// js/weed-farm.js): a tall concrete perimeter wall with a gated opening encloses
+// js/activities/weed-farm.ts): a tall concrete perimeter wall with a gated opening encloses
 // a dirt yard holding a poly-tunnel greenhouse (pink grow lamps), a grow shack
 // with a corrugated roof + extractor vent, a galvanized WATER STANDPIPE (the tap
 // you fill a can at), a SALE TABLE with a hanging scale + cash box + crate, and a
@@ -21,7 +21,7 @@ import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.js';
 // chunks and pushes the WALL + shack + greenhouse collision boxes into `solids`.
 // The yard, beds, tap and sale table stay walkable; only the gate opening lets
 // the player in. The exact local slot / crate / tap positions are exported so
-// js/weed-farm.js drops its plants and water in the same spots.
+// js/activities/weed-farm.ts drops its plants and water in the same spots.
 // ============================================================================
 
 export const PLOT_W=22, PLOT_D=16;        // inner yard size (x, z)
@@ -31,7 +31,7 @@ export const GATE_HALF=1.9;               // half-width of the gate opening (nor
 
 // World placement: an open, deserted pocket of the south-east shore — clear of
 // the ploughed fields (x<=440), the ranch (550,-80), the mountain (x~509) and
-// the village (x~650). Flat ground; js/world.js also keeps pines off it.
+// the village (x~650). Flat ground; js/world/world.ts also keeps pines off it.
 export const WEED_CX=620, WEED_CZ=-90;
 // Approach point just outside the gate (north). Kept for reference.
 export const WEED_GATE={x:WEED_CX, z:WEED_CZ+HALF_D+1.5};
@@ -446,7 +446,7 @@ function makeSign(): THREE.Group {
 }
 
 // drying rack: two posts + hang bars under a little corrugated lean-to. The HARVEST
-// hangs here to cure (the hanging buds are added live by js/weed-farm.js).
+// hangs here to cure (the hanging buds are added live by js/activities/weed-farm.ts).
 function makeDryingRack(): THREE.Group {
   const g=new THREE.Group();
   const W=3.0,H=2.0;
@@ -466,7 +466,7 @@ function makeDryingRack(): THREE.Group {
 // ---- grow-yard night lighting -------------------------------------------------
 // Two flood poles flank the planter beds, a festoon string runs between them, and
 // warm ground-glow pools wash the soil — all using the shared lamp materials that
-// js/daynight.js fades in after dark, so the plantation reads clearly at night.
+// js/world/daynight.ts fades in after dark, so the plantation reads clearly at night.
 const FLOOD_POS=[{x:-9.5,z:1,yaw:0},{x:9.5,z:1,yaw:Math.PI}];
 const FLOOD_ARM=1.0, FLOOD_H=3.6;
 
@@ -556,7 +556,7 @@ function build(): THREE.Group {
   const sacks=makeSackStack();sacks.position.set(-9,0,-2);g.add(sacks);
   const barrel=makeBarrel();barrel.position.set(9.3,0,-3.5);g.add(barrel);
 
-  // drying rack at the back (harvest hangs here to cure — see js/weed-farm.js)
+  // drying rack at the back (harvest hangs here to cure — see js/activities/weed-farm.ts)
   const rack=makeDryingRack();rack.position.set(WEED_RACK.x,0,WEED_RACK.z);g.add(rack);
 
   // night lighting over the beds (flood poles + festoon + ground glow)

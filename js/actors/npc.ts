@@ -1,9 +1,9 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {groundHeight,rand,irand} from '@/core/constants.js';
-import {addWanted} from '@/core/physics.js';
-import {spawnDrop} from '@/story/missions.js';
-import {setOpacity} from '@/core/entities.js';
+import {state,refs} from '@/core/state.ts';
+import {groundHeight,rand,irand} from '@/core/constants.ts';
+import {addWanted} from '@/core/physics.ts';
+import {spawnDrop} from '@/story/missions.ts';
+import {setOpacity} from '@/core/entities.ts';
 
 // ============================================================================
 // BASE de TODOS os NPCs do jogo. Centraliza os COMPORTAMENTOS COMUNS — levar
@@ -12,13 +12,13 @@ import {setOpacity} from '@/core/entities.js';
 // por exemplo) já nasça com tudo isso só ESTENDENDO esta classe, sem precisar
 // reimplementar dano/morte em cada sistema.
 //
-// O segredo é o REGISTRO global `npcs`: o sistema de armas (js/weapons.js) varre
+// O segredo é o REGISTRO global `npcs`: o sistema de armas (js/combat/weapons.ts) varre
 // esse array UMA vez e acerta QUALQUER instância de Npc, em vez de enumerar cada
 // tipo na mão (era por isso que os roceiros nasciam "à prova de bala" — não
 // estavam em nenhuma das listas que o combate olhava).
 //
 // Cada tipo concreto (pedestre, gangue, roceiro, ...) estende Npc e roda sua
-// PRÓPRIA IA no update; o dano/morte é herdado daqui. Ver js/rural-folk.js.
+// PRÓPRIA IA no update; o dano/morte é herdado daqui. Ver js/world/rural-folk.ts.
 // ============================================================================
 
 // Options accepted by the Npc constructor (all optional).

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 // Fusão de props estáticos (palmeira, pinheiro, poste, guarda-sol, cadeira,
 // posto de salva-vidas, pedras, feno): cada módulo monta o prop do jeito antigo

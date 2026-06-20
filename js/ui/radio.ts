@@ -1,5 +1,5 @@
-import {AC,master} from '@/audio/audio.js';
-import {state,refs} from '@/core/state.js';
+import {AC,master} from '@/audio/audio.ts';
+import {state,refs} from '@/core/state.ts';
 
 interface Station { name: string; tag: string; col: string; id: string | null; }
 // A scheduled audio node tracked so radioOff can stop it; `end` lets pruneNodes

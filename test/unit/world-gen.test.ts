@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { generateWorldSpec } from '@/world/world-gen.js';
+import { generateWorldSpec } from '@/world/world-gen.ts';
 
 describe('generateWorldSpec (baked world generator)', () => {
   it('is fully deterministic for a given seed', () => {

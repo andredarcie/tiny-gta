@@ -1,12 +1,12 @@
 // Cannabis strains for the grow-op. The three "species"/types the real market is
 // built on — INDICA, SATIVA and HYBRID — each with its own price and grow-op
-// mechanics. Bought at the rural General Store (js/general-store.js, pick which one
-// like the gun-shop counter) and planted at the weed farm (js/weed-farm.js).
+// mechanics. Bought at the rural General Store (js/places/general-store.ts, pick which one
+// like the gun-shop counter) and planted at the weed farm (js/activities/weed-farm.ts).
 //
 // PURE DATA, no imports — so the shop MODEL can read it for the counter display and
 // gameplay can read it for the mechanics, with no circular deps.
 //
-// Per-strain multipliers (1.0 = the farm's baseline tuning in js/weed-farm.js):
+// Per-strain multipliers (1.0 = the farm's baseline tuning in js/activities/weed-farm.ts):
 //   grow     growth time to ripe   (indica quicker, sativa slower)
 //   drain    hydration used / sec  (sativa drinks more)
 //   hardy    seconds bone-dry before it dies (indica tougher, sativa fragile)

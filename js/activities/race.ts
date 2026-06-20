@@ -1,21 +1,21 @@
 import * as THREE from 'three';
-import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.js';
-import {state,refs,carColors} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {makeCar,spinWheels,seatDriver,shirtColors} from '@/core/entities.js';
-import {cur,playerPos,cameraRig} from '@/actors/player.js';
-import {gangs} from '@/actors/gangs.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {makeRaceGate} from '../../assets/models/missions/race-gate.js';
-import {makeRaceFinish} from '../../assets/models/missions/race-finish.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,raceSiren} from '@/audio/audio.js';
-import {radioOff} from '@/ui/radio.js';
-import {raceMusicOn,raceMusicOff} from '@/audio/race-music.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import type {Racer,PrizeStreak,Blip} from '@/core/types.js';
+import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {state,refs,carColors} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {makeCar,spinWheels,seatDriver,shirtColors} from '@/core/entities.ts';
+import {cur,playerPos,cameraRig} from '@/actors/player.ts';
+import {gangs} from '@/actors/gangs.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeRaceGate} from '../../assets/models/missions/race-gate.ts';
+import {makeRaceFinish} from '../../assets/models/missions/race-finish.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,raceSiren} from '@/audio/audio.ts';
+import {radioOff} from '@/ui/radio.ts';
+import {raceMusicOn,raceMusicOff} from '@/audio/race-music.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 
 // percurso/waypoint: ponto (x,z) na ordem; o waypoint de rua marca se é checkpoint
 interface RoutePoint{x: number; z: number;}

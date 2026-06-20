@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {rand} from '@/core/constants.js';
+import {rand} from '@/core/constants.ts';
 
 const bloodMat=new THREE.MeshBasicMaterial({
   color:0x5f0018,transparent:true,opacity:.78,depthWrite:false

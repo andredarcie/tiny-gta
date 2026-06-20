@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
 
 // City-square centerpiece: a small two-tier stone fountain with still water discs.
 // Muted warm stone + a desaturated water blue (no cartoon cyan), to match the
 // realistic palette of the rest of the world. build() is pure (fountain at the
 // origin, basin resting on the ground); addFountain positions it, bakes it into
 // the shared prop chunks and returns the collision AABB. Used to furnish the city
-// pracinhas (js/world.js).
+// pracinhas (js/world/world.ts).
 const stoneM=matte({color:0xb9b2a4,roughness:1});
 const stoneDarkM=matte({color:0x968f82,roughness:1});
 const waterM=matte({color:0x5f86a0,roughness:1});

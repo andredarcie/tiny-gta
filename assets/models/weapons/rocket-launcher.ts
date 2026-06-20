@@ -3,7 +3,7 @@ import * as THREE from 'three';
 // Lança-foguetes (Rocket Launcher): tubo verde-oliva com boca e culatra
 // escuras, empunhadura e mira. A versão pickup ganha o anel de brilho no chão
 // (laranja: perigo) — fica escondida na zona rural e dispara o rampage de
-// destruição (js/weapons.js).
+// destruição (js/combat/weapons.ts).
 
 const tubeMat=new THREE.MeshStandardMaterial({color:0x4a5a2a,roughness:.55,metalness:.45});
 const darkMat=new THREE.MeshStandardMaterial({color:0x14161a,roughness:.4,metalness:.8});

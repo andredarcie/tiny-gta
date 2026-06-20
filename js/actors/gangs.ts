@@ -1,18 +1,18 @@
 import * as THREE from 'three';
-import {rand,irand,clamp,nodeX} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {makePed,setOpacity,attachHandGun,poseAiming} from '@/core/entities.js';
-import * as Entities from '@/core/entities.js';
-import {collideStatics,addWanted} from '@/core/physics.js';
-import {blip,thud,gunshot} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {playerPos,getWasted} from '@/actors/player.js';
-import {addBloodPuddle} from '@/world/pedestrians.js';
-import {spawnDrop} from '@/story/missions.js';
-import {interiors} from '@/world/interior.js';
-import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.js';
-import {MiniGameId} from '@/activities/minigame.js';
+import {rand,irand,clamp,nodeX} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {makePed,setOpacity,attachHandGun,poseAiming} from '@/core/entities.ts';
+import * as Entities from '@/core/entities.ts';
+import {collideStatics,addWanted} from '@/core/physics.ts';
+import {blip,thud,gunshot} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {playerPos,getWasted} from '@/actors/player.ts';
+import {addBloodPuddle} from '@/world/pedestrians.ts';
+import {spawnDrop} from '@/story/missions.ts';
+import {interiors} from '@/world/interior.ts';
+import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
+import {MiniGameId} from '@/activities/minigame.ts';
 
 // A gang faction with a circular territory.
 interface Gang{
@@ -102,7 +102,7 @@ const _gdir=new THREE.Vector3();
 const GANG_CULL2=130*130;
 
 // Durante a corrida de rua as gangues somem (ficam invisíveis e congeladas) e
-// voltam quando a prova termina — ver js/race.js. Não destrói ninguém: só pausa.
+// voltam quando a prova termina — ver js/activities/race.ts. Não destrói ninguém: só pausa.
 // Além das corridas, QUALQUER sessão de mini game exclusiva (vigilante, bombeiro,
 // paramédico, RC, táxi...) também pausa as gangues — não faz sentido a gangue
 // atirar no bombeiro/policial nem fuzilar o jogador parado pilotando o RC. A
@@ -144,7 +144,7 @@ function spawnMember(gang:Gang){
   gangPeds.push(m);
   gang.remaining--; // consumiu um do efetivo da gangue
 }
-// Spawn inicial: chamado por js/main.js DEPOIS dos prédios especiais entrarem
+// Spawn inicial: chamado por js/core/main.ts DEPOIS dos prédios especiais entrarem
 // em interiors[], pra que a zona de fachada já valha (senão membros nasceriam
 // colados na academia, que fica dentro do território dos VIPERS).
 export function spawnInitialGangs(){

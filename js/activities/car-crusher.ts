@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos,cur,idleCars} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,thud} from '@/audio/audio.js';
-import {N,nodeX,clamp,groundHeight} from '@/core/constants.js';
-import {makeCarCrusher} from '../../assets/models/props/car-crusher.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos,cur,idleCars} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,thud} from '@/audio/audio.ts';
+import {N,nodeX,clamp,groundHeight} from '@/core/constants.ts';
+import {makeCarCrusher} from '../../assets/models/props/car-crusher.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. A ação CRUSH já fica indisponível durante uma sessão (ver a trava

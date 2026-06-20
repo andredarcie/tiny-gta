@@ -3,9 +3,9 @@
 // As armas são DECLARATIVAS: guardam metadados (nome, slot, cadência, munição,
 // modelo 3D, offset na mão, recuo) e implementam só `onFire(api)`. Toda a parte
 // "suja" (raio de mira, spawn de bala/míssil/projétil, dano, efeitos, som) mora
-// no js/weapons.js e é injetada via objeto `api` — assim as classes não importam
-// o sistema de jogo e não criam ciclo de import. Ver js/weapon-catalog.js para
-// as instâncias e js/weapons.js para o `api`.
+// no js/combat/weapons.ts e é injetada via objeto `api` — assim as classes não importam
+// o sistema de jogo e não criam ciclo de import. Ver js/combat/weapon-catalog.ts para
+// as instâncias e js/combat/weapons.ts para o `api`.
 
 import type * as THREE from 'three';
 
@@ -108,7 +108,7 @@ export class Weapon{
     this.aimed=def.aimed??(this.category!=='melee'&&this.category!=='special'); // mostra mira/crosshair
     this.infiniteAmmo=!!def.infiniteAmmo;
     this.maxAmmo=def.maxAmmo||0;
-    this.price=def.price||0;                // preço na loja de armas (js/gun-shop.js)
+    this.price=def.price||0;                // preço na loja de armas (js/places/gun-shop.ts)
     this.recoil=def.recoil||{kick:.09,shake:.08,crosshair:1};
     Object.assign(this,def.extra||{});      // stats próprios da subclasse (range, damage, pellets…)
     this.ammo=this.infiniteAmmo?Infinity:this.maxAmmo;

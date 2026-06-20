@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import {N,nodeX,rand,irand,pick,clamp,ROAD,groundHeight,SWIM_BOUND,HALF} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {makeCar,seatDriver,spinWheels,shirtColors,dentCar} from '@/core/entities.js';
-import {idleCars,cur,playerPos,resetCarDamage} from '@/actors/player.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip,thud} from '@/audio/audio.js';
-import {collideStatics} from '@/core/physics.js';
-import {PRISON_I,PRISON_J} from '../../assets/models/city/prison.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
+import {N,nodeX,rand,irand,pick,clamp,ROAD,groundHeight,SWIM_BOUND,HALF} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {makeCar,seatDriver,spinWheels,shirtColors,dentCar} from '@/core/entities.ts';
+import {idleCars,cur,playerPos,resetCarDamage} from '@/actors/player.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip,thud} from '@/audio/audio.ts';
+import {collideStatics} from '@/core/physics.ts';
+import {PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 
 // Vigilante estilo open-world clássico: uma viatura de polícia fica estacionada na
 // esquina ao lado do presídio. Entrou nela, começa a patrulha: a cada nível

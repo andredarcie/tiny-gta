@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
 
 // Banco de praça simples (ripas de madeira + pés de ferro). build() puro (banco na
 // origem, assento virado para +z); addParkBench posiciona, gira, faz bake e devolve
-// a colisão. Usado para mobiliar a Praça da Matriz (js/world.js).
+// a colisão. Usado para mobiliar a Praça da Matriz (js/world/world.ts).
 const woodM=matte({color:0x8a5a32,roughness:.9});
 const legM=matte({color:0x44444c,roughness:.7});
 

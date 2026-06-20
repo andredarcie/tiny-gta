@@ -1,20 +1,20 @@
-import {state,refs} from '@/core/state.js';
-import {player,playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {animatePed} from '@/core/entities.js';
-import {blip} from '@/audio/audio.js';
-import {getDay} from '@/world/daynight.js';
-import {Interior} from '@/world/interior.js';
-import {openGymGame,gymGameActive} from '@/places/gym-game.js';
-import {openMiniGameIntro} from '@/activities/minigame-leaderboard.js';
-import {MiniGameId} from '@/activities/minigame.js';
+import {state,refs} from '@/core/state.ts';
+import {player,playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {animatePed} from '@/core/entities.ts';
+import {blip} from '@/audio/audio.ts';
+import {getDay} from '@/world/daynight.ts';
+import {Interior} from '@/world/interior.ts';
+import {openGymGame,gymGameActive} from '@/places/gym-game.ts';
+import {openMiniGameIntro} from '@/activities/minigame-leaderboard.ts';
+import {MiniGameId} from '@/activities/minigame.ts';
 import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
-  gymFx,gymInterior} from '../../assets/models/city/gym.js';
+  gymFx,gymInterior} from '../../assets/models/city/gym.ts';
 
-// Academia "IRON TEMPLE": estende a classe base de interiores (js/interior.js),
+// Academia "IRON TEMPLE": estende a classe base de interiores (js/world/interior.ts),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
 // Particularidades daqui: encostar no supino abre o MINI-GAME do supino
-// (js/gym-game.js). VENCER o set engrossa o braço — uma vez por dia de jogo,
+// (js/places/gym-game.ts). VENCER o set engrossa o braço — uma vez por dia de jogo,
 // até um teto pra não vazar o carro. PERDER não dá nada (pode tentar de novo).
 
 const ARM_MAX=1.5;        // engrossamento máximo do braço (x/z)
@@ -97,7 +97,7 @@ function applyArmScale(){
   l.rightArm.scale.x=l.rightArm.scale.z=s;
 }
 
-// ----- SAVE: músculo persistente (js/save.js) -----
+// ----- SAVE: músculo persistente (js/core/save.ts) -----
 // Guarda o engrossamento do braço e o dia do último treino (limita 1/dia). No
 // restore aplicamos de imediato; o update() do interior também reaplica todo
 // frame, então o boneco já nasce no tamanho salvo.

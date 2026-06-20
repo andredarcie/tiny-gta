@@ -1,20 +1,20 @@
-import {state} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {animatePed} from '@/core/entities.js';
-import {blip} from '@/audio/audio.js';
-import {camera} from '@/core/engine.js';
-import {Interior} from '@/world/interior.js';
+import {state} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {animatePed} from '@/core/entities.ts';
+import {blip} from '@/audio/audio.ts';
+import {camera} from '@/core/engine.ts';
+import {Interior} from '@/world/interior.ts';
 import {buyWeapon,ownsWeapon,weaponAmmoInfo,refillAmmo,beginTrainingWeapon,
-  clearTrainingWeapon,getTrainingWeaponId,isTrainingWeaponActive} from '@/combat/weapons.js';
+  clearTrainingWeapon,getTrainingWeaponId,isTrainingWeaponActive} from '@/combat/weapons.ts';
 import {GUNSHOP_DOOR,GUNSHOP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
   SHOP_CENTER,RANGE_CENTER,SHOP_BOUNDS,RANGE_BOUNDS,RANGE_ENTRY,RANGE_RETURN,
   RANGE_SPAWN,RANGE_EXIT,GUN_SHOP_ITEMS,GUN_RANGE_ITEMS,GUN_RANGE_TARGETS,
-  gunShopFx,gunShopInterior,gunRangeInterior} from '../../assets/models/city/gun-shop.js';
+  gunShopFx,gunShopInterior,gunRangeInterior} from '../../assets/models/city/gun-shop.ts';
 
 // Loja de armas "AMMO DEPOT": estende a classe base de interiores
-// (js/interior.js), que já cuida de porta/teleporte/limite do mundo/câmera/
+// (js/world/interior.ts), que já cuida de porta/teleporte/limite do mundo/câmera/
 // saída de emergência. Particularidade daqui: chegar perto de uma arma no
 // balcão e COMPRAR por um preço (catálogo). As armas giram na vitrine e a
 // etiqueta do nome fica sempre virada pra câmera.

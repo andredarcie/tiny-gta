@@ -24,7 +24,7 @@
 // paths (refs.playerPos() etc. every frame) and must keep native property-access
 // speed. All checking happens once, at boot — never per frame.
 // ============================================================================
-import { refs } from '@/core/state.js';
+import { refs } from '@/core/state.ts';
 
 // Developer build? (mirrors main.ts DEBUG_HOOKS.) Controls whether a broken wire
 // also paints an on-screen banner / runs the audit, vs logging to the console only.

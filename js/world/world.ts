@@ -1,72 +1,72 @@
 import * as THREE from 'three';
 import {N,CELL,ROAD,BLOCK,SIDE,HALF,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
   RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,
-  TOWN_CX,ruralRoadPath,groundHeight,ruralHillH} from '@/core/constants.js';
-import {scene,renderer} from '@/core/engine.js';
+  TOWN_CX,ruralRoadPath,groundHeight,ruralHillH} from '@/core/constants.ts';
+import {scene,renderer} from '@/core/engine.ts';
 // Fixed, baked world layout. Every procedurally-placed object (city lots, park
 // vegetation, beach props, the whole forest, mountain rocks) is read from this
 // file instead of being re-rolled at boot, so the map is identical every load and
 // can be hand-edited / opened by a future map editor. Regenerate from the seed
-// with `npm run bake` (js/world-gen.js). Terrain heightfields and the hand-authored
+// with `npm run bake` (js/world/world-gen.ts). Terrain heightfields and the hand-authored
 // landmarks (named buildings, village, fences, fort) still come from the code below.
 import worldData from '../../world.json';
-import {makeRng} from '@/core/rng.js';
-import {addPalm} from '../../assets/models/props/palm.js';
-import {addUmbrella} from '../../assets/models/props/umbrella.js';
-import {addChair} from '../../assets/models/props/chair.js';
-import {addLifeguard} from '../../assets/models/props/lifeguard.js';
-import {addFarmHouse} from '../../assets/models/props/farm-house.js';
-import {addAbandonedHouse} from '../../assets/models/props/abandoned-house.js';
-import {addPine} from '../../assets/models/props/pine.js';
-import {addTree} from '../../assets/models/props/tree.js';
-import {addParkBench} from '../../assets/models/props/park-bench.js';
-import {addFountain} from '../../assets/models/props/fountain.js';
-import {addBush} from '../../assets/models/props/bush.js';
-import {addFern} from '../../assets/models/props/fern.js';
-import {addMushroom} from '../../assets/models/props/mushroom.js';
-import {addFallenLog} from '../../assets/models/props/fallen-log.js';
-import {addStreetLamp,lampGlowMat,lampHaloMat,lampBulbMat} from '../../assets/models/props/street-lamp.js';
-import {addBuilding,finalizeBuildings,buildingMats} from '../../assets/models/city/building.js';
-import {finalizeDoorArrows} from '../../assets/models/city/door-arrow.js';
-import {addAbandonedLot,finalizeAbandonedLots} from '../../assets/models/city/abandoned-lot.js';
-import {finalizeProps} from '../../assets/models/props/prop-merge.js';
-import {addNightclub,CLUB_I,CLUB_J} from '../../assets/models/city/nightclub.js';
-import {addGym,GYM_I,GYM_J} from '../../assets/models/city/gym.js';
-import {addHospital,HOSP_I,HOSP_J} from '../../assets/models/city/hospital.js';
-import {addPrison,PRISON_I,PRISON_J} from '../../assets/models/city/prison.js';
-import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../../assets/models/city/gun-shop.js';
-import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../../assets/models/city/workshop.js';
-import {addBarnWithSilo} from '../../assets/models/rural/barn-with-silo.js';
-import {addAbandonedFort} from '../../assets/models/rural/abandoned-fort.js';
-import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../../assets/models/rural/ranch-house.js';
-import {addWeedFarm,WEED_CX,WEED_CZ} from '../../assets/models/rural/weed-farm.js';
-import {addHayBales} from '../../assets/models/rural/hay-bales.js';
-import {addSummitFlag} from '../../assets/models/rural/summit-flag.js';
-import {addIgrejaDivino} from '../../assets/models/rural/igreja-divino.js';
-import {addCoreto} from '../../assets/models/rural/coreto.js';
-import {addGeneralStore} from '../../assets/models/rural/general-store.js';
-import {addWaterTower} from '../../assets/models/rural/water-tower.js';
-import {addWindmill} from '../../assets/models/rural/windmill.js';
-import {addTownSign} from '../../assets/models/rural/town-sign.js';
-import {addFenceRun} from '../../assets/models/rural/fence.js';
-import {addWell} from '../../assets/models/rural/well.js';
-import {addMarketStall} from '../../assets/models/rural/market-stall.js';
-import {makeTexturedPlane} from '../../assets/models/terrain/textured-plane.js';
-import {buildIsland,updateCoastFoam} from '../../assets/models/terrain/island.js';
-import {buildIslandParadise,updateIslandFoam} from '../../assets/models/terrain/island-paradise.js';
-import {addBeachRock} from '../../assets/models/terrain/beach-rock.js';
-import {makeMountain} from '../../assets/models/terrain/mountain.js';
-import {addMountainRock} from '../../assets/models/terrain/mountain-rock.js';
+import {makeRng} from '@/core/rng.ts';
+import {addPalm} from '../../assets/models/props/palm.ts';
+import {addUmbrella} from '../../assets/models/props/umbrella.ts';
+import {addChair} from '../../assets/models/props/chair.ts';
+import {addLifeguard} from '../../assets/models/props/lifeguard.ts';
+import {addFarmHouse} from '../../assets/models/props/farm-house.ts';
+import {addAbandonedHouse} from '../../assets/models/props/abandoned-house.ts';
+import {addPine} from '../../assets/models/props/pine.ts';
+import {addTree} from '../../assets/models/props/tree.ts';
+import {addParkBench} from '../../assets/models/props/park-bench.ts';
+import {addFountain} from '../../assets/models/props/fountain.ts';
+import {addBush} from '../../assets/models/props/bush.ts';
+import {addFern} from '../../assets/models/props/fern.ts';
+import {addMushroom} from '../../assets/models/props/mushroom.ts';
+import {addFallenLog} from '../../assets/models/props/fallen-log.ts';
+import {addStreetLamp,lampGlowMat,lampHaloMat,lampBulbMat} from '../../assets/models/props/street-lamp.ts';
+import {addBuilding,finalizeBuildings,buildingMats} from '../../assets/models/city/building.ts';
+import {finalizeDoorArrows} from '../../assets/models/city/door-arrow.ts';
+import {addAbandonedLot,finalizeAbandonedLots} from '../../assets/models/city/abandoned-lot.ts';
+import {finalizeProps} from '../../assets/models/props/prop-merge.ts';
+import {addNightclub,CLUB_I,CLUB_J} from '../../assets/models/city/nightclub.ts';
+import {addGym,GYM_I,GYM_J} from '../../assets/models/city/gym.ts';
+import {addHospital,HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
+import {addPrison,PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
+import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../../assets/models/city/gun-shop.ts';
+import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../../assets/models/city/workshop.ts';
+import {addBarnWithSilo} from '../../assets/models/rural/barn-with-silo.ts';
+import {addAbandonedFort} from '../../assets/models/rural/abandoned-fort.ts';
+import {addRanchHouse,RANCH_CX,RANCH_CZ,GARAGE_PAD} from '../../assets/models/rural/ranch-house.ts';
+import {addWeedFarm,WEED_CX,WEED_CZ} from '../../assets/models/rural/weed-farm.ts';
+import {addHayBales} from '../../assets/models/rural/hay-bales.ts';
+import {addSummitFlag} from '../../assets/models/rural/summit-flag.ts';
+import {addIgrejaDivino} from '../../assets/models/rural/igreja-divino.ts';
+import {addCoreto} from '../../assets/models/rural/coreto.ts';
+import {addGeneralStore} from '../../assets/models/rural/general-store.ts';
+import {addWaterTower} from '../../assets/models/rural/water-tower.ts';
+import {addWindmill} from '../../assets/models/rural/windmill.ts';
+import {addTownSign} from '../../assets/models/rural/town-sign.ts';
+import {addFenceRun} from '../../assets/models/rural/fence.ts';
+import {addWell} from '../../assets/models/rural/well.ts';
+import {addMarketStall} from '../../assets/models/rural/market-stall.ts';
+import {makeTexturedPlane} from '../../assets/models/terrain/textured-plane.ts';
+import {buildIsland,updateCoastFoam} from '../../assets/models/terrain/island.ts';
+import {buildIslandParadise,updateIslandFoam} from '../../assets/models/terrain/island-paradise.ts';
+import {addBeachRock} from '../../assets/models/terrain/beach-rock.ts';
+import {makeMountain} from '../../assets/models/terrain/mountain.ts';
+import {addMountainRock} from '../../assets/models/terrain/mountain-rock.ts';
 
 // Static collision boxes (AABBs in world space) pushed by the model add*() calls.
 type Solid={x0:number;x1:number;z0:number;z1:number;h:number};
 export const solids:Solid[]=[];
-// Park blocks are baked into world.json (js/world-gen.js picks the 6 of them).
+// Park blocks are baked into world.json (js/world/world-gen.ts picks the 6 of them).
 export const parks=new Set(worldData.parks);
 export const isPark=(i:number,j:number):boolean=>parks.has(i+'_'+j);
 
 // City lots — which blocks get a building vs an abandoned lot, their 1×1/2×2 split
-// and window orientation — are baked into world.json (js/world-gen.js). The ground
+// and window orientation — are baked into world.json (js/world/world-gen.ts). The ground
 // texture below paints the abandoned lots, so the data must be ready before it.
 const cityLots=worldData.cityLots;
 
@@ -197,18 +197,18 @@ finalizeDoorArrows();    // todas as setinhas de porta num único mesh
 // Ilha de verdade: a areia, o raso turquesa e a espuma seguem UMA costa irregular
 // contínua (cidade + península), no lugar da antiga praia quadrada / anéis
 // quadrados / bordas retangulares. Mesmo contorno do gameplay (isLand). A espuma
-// pulsa via updateBeach. Ver assets/models/terrain/island.js.
+// pulsa via updateBeach. Ver assets/models/terrain/island.ts.
 const coastFoam=buildIsland();
 
 // Ilha paradisíaca a oeste, em mar aberto: alcançável de barco e explorável a pé.
 // Mesmo islandHeight/islandCoastR de constants.js que o gameplay usa (groundHeight/
 // isLand). Props (palmeiras/pedras/arbustos) são assados e fundidos no finalizeProps
 // abaixo; terreno/raso/espuma/farol/cabana/píer vão direto pra cena. Ver
-// assets/models/terrain/island-paradise.js.
+// assets/models/terrain/island-paradise.ts.
 const islandFoam=buildIslandParadise(solids);
 
 // Beach props (palms, umbrellas, chairs, half-buried rock clusters) are baked into
-// world.json — see js/world-gen.js (rejection-sampled around the coast).
+// world.json — see js/world/world-gen.ts (rejection-sampled around the coast).
 for(const p of worldData.beachPalms)addPalm(p.x,p.z);
 for(const p of worldData.beachUmbrellas)addUmbrella(p.x,p.z);
 for(const p of worldData.beachChairs)addChair(p.x,p.z);
@@ -333,7 +333,7 @@ addBarnWithSilo(solids);
 // casa de campo comprável (safehouse): fachada + garagem aqui, interior a ~600m
 addRanchHouse(solids);
 
-// clandestine weed grow-op tucked into the south shore (mini-game: js/weed-farm.js)
+// clandestine weed grow-op tucked into the south shore (mini-game: js/activities/weed-farm.ts)
 addWeedFarm(solids);
 
 // Dense living forest across the rural peninsula and the lower mountain slopes.
@@ -348,7 +348,7 @@ addWeedFarm(solids);
 {
   // The whole rural forest (clustered trees, the pines lining the dirt road, the
   // undergrowth and the mushroom/log decay detail) is baked into world.json — see
-  // js/world-gen.js for the clustering/exclusion rules. Every prop merges into the
+  // js/world/world-gen.ts for the clustering/exclusion rules. Every prop merges into the
   // batched chunk meshes at finalizeProps, so a thick wood is nearly free.
   const f=worldData.forest;
   for(const o of f.trees)plantSmall(o.t,o.x,o.z);    // 'pine' | 'tree'
@@ -388,7 +388,7 @@ addHayBales();
 {
   const m=makeMountain(MOUNT_S,MOUNT_SEG);
   m.position.set(MOUNT_X,.02,0);scene.add(m);
-  // Rocks scattered on the slopes are baked into world.json (js/world-gen.js).
+  // Rocks scattered on the slopes are baked into world.json (js/world/world-gen.ts).
   for(const r of worldData.mountainRocks)addMountainRock(r.x,r.z,r.s);
   // mirante no pico: mastro com bandeira (e a vista da cidade)
   addSummitFlag(MOUNT_X,MOUNT_H,0);

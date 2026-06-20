@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Moinho de vento de fazenda: torre treliçada afunilada, roda de pás múltiplas
 // (virada p/ +z) e leme (cauda) atrás. Estático (assa nos props). build() é puro;

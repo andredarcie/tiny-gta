@@ -1,26 +1,26 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {playerPos,player,idleCars,cameraRig,cur,getBusted} from '@/actors/player.js';
-import {economy} from '@/core/economy.js';
-import {addWanted} from '@/core/physics.js';
-import {groundHeight,TOWN_CX,RURAL_GAP} from '@/core/constants.js';
-import {blip} from '@/audio/audio.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {makePed,animatePed,makeMotorcycle} from '@/core/entities.js';
-import {say} from '@/ui/speech.js';
+import {state,refs} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos,player,idleCars,cameraRig,cur,getBusted} from '@/actors/player.ts';
+import {economy} from '@/core/economy.ts';
+import {addWanted} from '@/core/physics.ts';
+import {groundHeight,TOWN_CX,RURAL_GAP} from '@/core/constants.ts';
+import {blip} from '@/audio/audio.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {makePed,animatePed,makeMotorcycle} from '@/core/entities.ts';
+import {say} from '@/ui/speech.ts';
 import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HALF,
-  makeWeedPlant,makeBud,makeBucket,makeWaterDrop} from '../../assets/models/rural/weed-farm.js';
-import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.js';
-import {MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
-import {STRAINS,STRAIN_BY_ID,FERTILIZER,CURE_TIME,CURE_BONUS} from '@/activities/strains.js';
-import {getDay} from '@/world/daynight.js';
+  makeWeedPlant,makeBud,makeBucket,makeWaterDrop} from '../../assets/models/rural/weed-farm.ts';
+import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.ts';
+import {MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {STRAINS,STRAIN_BY_ID,FERTILIZER,CURE_TIME,CURE_BONUS} from '@/activities/strains.ts';
+import {getDay} from '@/world/daynight.ts';
 
 // ============================================================================
 // GREEN ACRES — the HIDDEN weed-farm activity, played entirely in the 3D world on
 // foot inside the walled compound (the compound is in
-// assets/models/rural/weed-farm.js). No map blip, no HUD, no floating markers:
+// assets/models/rural/weed-farm.ts). No map blip, no HUD, no floating markers:
 // the FARM ITSELF tells you everything. The loop:
 //
 //   1. PLANT  — stand on an empty planter bed, press E → a 3D seedling pops in.
@@ -241,7 +241,7 @@ function detachBucket(): void{
 // ---------- plant lifecycle ----------
 function plantSeed(slot: Slot): void{
   if(slot.plant)return;
-  // seeds are bought at the rural General Store (js/general-store.js); no seed, no planting
+  // seeds are bought at the rural General Store (js/places/general-store.ts); no seed, no planting
   const sid=plantStrain();
   if(!sid){
     message('NO SEEDS - BUY THEM AT THE GENERAL STORE','var(--pink)');
@@ -436,7 +436,7 @@ function deliverTo(b: Buyer): void{
   if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
     // STING: the buyer was an undercover cop. Caught red-handed wearing the pack,
     // you're nabbed ON THE SPOT — getBusted sees the backpack and runs the crooked-
-    // cop shakedown story cut-scene (js/drug-bust.js), wherever the deal happened
+    // cop shakedown story cut-scene (js/activities/drug-bust.ts), wherever the deal happened
     // (country / beach / island), since no patrol could ever corner you out here.
     heat=Math.max(0,heat-50);
     message('SETUP! - THE BUYER WAS AN UNDERCOVER COP!','var(--pink)');
@@ -649,12 +649,12 @@ refs.getWeedFarmState=()=>{
     buyers:buyers.filter(b=>!b.served).length};
 };
 
-// Busted while carrying the backpack: the crooked-cop shakedown (js/drug-bust.js)
+// Busted while carrying the backpack: the crooked-cop shakedown (js/activities/drug-bust.ts)
 // seizes the stash — clears the run and pulls the pack off the player's back.
 refs.seizeDrugBackpack=()=>{const had=pack.active;if(had)endRunCleanup();return had;};
 
 // Persisted grow-op economy: the farm upgrade level + bought seeds/plant-food survive
-// a reload (crops/runs stay session-only). Save bridge in js/save.js.
+// a reload (crops/runs stay session-only). Save bridge in js/core/save.ts.
 refs.getFarmSave=()=>({up:upLevel,seeds:{...state.seeds},fert:state.fertilizer|0});
 refs.restoreFarm=(d: unknown)=>{
   if(!d||typeof d!=='object')return;

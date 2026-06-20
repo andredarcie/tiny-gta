@@ -1,4 +1,4 @@
-import {AC,master} from '@/audio/audio.js';
+import {AC,master} from '@/audio/audio.ts';
 
 // Trilha EXCLUSIVA da corrida de rua (Web Audio puro, sem asset). Independente
 // do rádio do carro: liga só no GO e desliga no fim/abandono. Synthwave veloz

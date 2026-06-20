@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from './prop-merge.js';
-import {rand,groundHeight} from '@/core/constants.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from './prop-merge.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 
 // Low shrub / undergrowth clump: a couple of squashed low-poly leaf blobs that
 // thicken the forest floor so the wood reads as dense thicket rather than bare

@@ -1,8 +1,8 @@
-import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from '@/core/constants.js';
-import {solids} from '@/world/world.js';
-import {state} from '@/core/state.js';
-import {blip} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
+import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from '@/core/constants.ts';
+import {solids} from '@/world/world.ts';
+import {state} from '@/core/state.ts';
+import {blip} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
 
 // bound: NPCs param no calção da praia (BOUND); jogador pode nadar até SWIM_BOUND
 export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOUND){
@@ -39,7 +39,7 @@ export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOU
 export function addWanted(n:number,why?:string,crime='pursuit'){
   const before=Math.floor(state.wanted);
   // cap 6 = MAX star (was 5, so the HUD's 6th star never lit). Reaching 6 stars
-  // summons the army (see js/army.js).
+  // summons the army (see js/actors/army.ts).
   state.wanted=clamp(state.wanted+n,0,6);state.lastCrime=state.time;
   if(state.wanted>=6)state.sixStarT=state.time; // reached/still at max: (re)arm the 6-star hold
   if(Math.floor(state.wanted)>before){

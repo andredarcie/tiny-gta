@@ -1,16 +1,16 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {N,nodeX,irand,groundHeight} from '@/core/constants.js';
-import {grantWeapon,snapshotArsenal,restoreArsenal} from '@/combat/weapons.js';
-import {makeRampageSkull} from '../../assets/models/props/rampage-skull.js';
-import {inGangTerritory} from '@/actors/gangs.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {N,nodeX,irand,groundHeight} from '@/core/constants.ts';
+import {grantWeapon,snapshotArsenal,restoreArsenal} from '@/combat/weapons.ts';
+import {makeRampageSkull} from '../../assets/models/props/rampage-skull.ts';
+import {inGangTerritory} from '@/actors/gangs.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 
 // ============================================================================
 // MINIGAME FRENZY (clássico do open-world)

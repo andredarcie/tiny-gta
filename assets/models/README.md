@@ -52,7 +52,7 @@ export default {
 - `build(opts)` must be **pure** — it returns a new object and must not call
   `scene.add` or mutate shared state. Callers that want it in the world do
   `scene.add(Model.build(...))` explicitly.
-- The model viewer (`js/model-viewer.js`) discovers every file via
+- The model viewer (`js/ui/model-viewer.ts`) discovers every file via
   `import.meta.glob` and reads this descriptor, so **a new model following this
   pattern appears in the gallery automatically** — no viewer edits needed.
 - `build` may return a plain dict of parts (e.g. `{ring, beacon}`); the viewer

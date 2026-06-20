@@ -1,8 +1,8 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {buildToonPlayer} from './pedestrian.js';
+import {matte} from '../matte.ts';
+import {buildToonPlayer} from './pedestrian.ts';
 
-// Rick, the forest hippie hermit (secret mission — see js/rick.js). Reuses the
+// Rick, the forest hippie hermit (secret mission — see js/story/rick.ts). Reuses the
 // rigged skinned doll (buildToonPlayer: has userData.limbs and userData.mouth, so
 // the cut-scene camera animates his arms/mouth like other story NPCs) and glues a
 // shaggy hippie look on top: long mane, big beard and a headband, all in greens to

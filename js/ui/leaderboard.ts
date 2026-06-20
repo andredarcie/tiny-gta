@@ -6,9 +6,9 @@
 //
 // O ranking reflete o DINHEIRO ATUAL do jogador (não mais o pico): é mais justo —
 // quem gastou cai, quem acumula sobe. O backend grava o valor recebido (sem GT).
-import { refs } from '@/core/state.js';
-import { hmacSha256Hex } from '@/core/sign.js';
-import type { SaveBlob } from '@/core/types.js';
+import { refs } from '@/core/state.ts';
+import { hmacSha256Hex } from '@/core/sign.ts';
+import type { SaveBlob } from '@/core/types.ts';
 export const API = 'https://tiny-gta-backend.vercel.app';
 const NICK_KEY = 'tinygta_nick';
 const PID_KEY = 'tinygta_pid';
@@ -121,7 +121,7 @@ function backupNow(): void {
 }
 refs.backupSave = backupNow;
 
-// Abre a sessão e devolve o SAVE desse (id, nick) — o chamador (js/save.js via
+// Abre a sessão e devolve o SAVE desse (id, nick) — o chamador (js/core/save.ts via
 // input.js) restaura dinheiro + itens.
 export async function startSession(): Promise<SaveLike | null> {
   token = null; lastSig = '';
@@ -236,7 +236,7 @@ const moneyCompact = new Intl.NumberFormat('en-US', { notation: 'compact', maxim
 const fmtMoney = (n: unknown): string => '$' + moneyCompact.format(Math.max(0, Math.floor(Number(n) || 0)));
 
 // Atualiza o top 5 na tela inicial (#lb-list) + o total de jogadores no ranking
-// (#lb-total). O menu de pausa tem seu próprio ranking paginado (js/pause-menu.js),
+// (#lb-total). O menu de pausa tem seu próprio ranking paginado (js/ui/pause-menu.ts),
 // que busca a lista completa sob demanda, então não passa mais por aqui.
 export async function refreshTopPlayers(): Promise<void> {
   const targets = ['lb-list']

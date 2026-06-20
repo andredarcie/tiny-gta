@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeWeaponMeshes} from './weapon-merge.js';
+import {mergeWeaponMeshes} from './weapon-merge.ts';
 
 // Espingarda pump-action: cano longo com tubo-magazine por baixo, bomba
 // (forend) deslizante de madeira, receiver de aço e coronha de madeira.

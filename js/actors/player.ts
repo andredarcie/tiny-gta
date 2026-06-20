@@ -1,22 +1,22 @@
 import * as THREE from 'three';
 import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
-  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z} from '@/core/constants.js';
-import {state,input,carNames,carColors,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene,camera} from '@/core/engine.js';
-import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.js';
-import * as Entities from '@/core/entities.js';
-import {makeWakePuff} from '../../assets/models/effects/boat-wake.js';
-import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.js';
-import {makeRcController} from '../../assets/models/props/rc-controller.js';
-import {buildCarInteriorFp} from '../../assets/models/vehicles/car-interior-fp.js';
-import {makeTractor} from '../../assets/models/vehicles/tractor.js';
-import {SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.js';
-import {thud,blip,splash} from '@/audio/audio.js';
-import {radioOn,radioOff,radioEnter} from '@/ui/radio.js';
-import {collideStatics,addWanted} from '@/core/physics.js';
-import {message,bigText,hideBig,hudCar} from '@/ui/hud.js';
-import type {Vehicle} from '@/core/types.js';
+  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z} from '@/core/constants.ts';
+import {state,input,carNames,carColors,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene,camera} from '@/core/engine.ts';
+import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
+import * as Entities from '@/core/entities.ts';
+import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
+import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
+import {makeRcController} from '../../assets/models/props/rc-controller.ts';
+import {buildCarInteriorFp} from '../../assets/models/vehicles/car-interior-fp.ts';
+import {makeTractor} from '../../assets/models/vehicles/tractor.ts';
+import {SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
+import {thud,blip,splash} from '@/audio/audio.ts';
+import {radioOn,radioOff,radioEnter} from '@/ui/radio.ts';
+import {collideStatics,addWanted} from '@/core/physics.ts';
+import {message,bigText,hideBig,hudCar} from '@/ui/hud.ts';
+import type {Vehicle} from '@/core/types.ts';
 
 // The player ped wrapper: the on-foot/swimming avatar plus its swim physics state.
 interface Player{
@@ -508,7 +508,7 @@ export function getBusted(){
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // Busted while carrying the weed delivery backpack: a crooked cop drives you
     // out to the woods and shakes you down for a bribe instead of booking you
-    // (see js/drug-bust.js). The seized stash + the bribe are the price — no
+    // (see js/activities/drug-bust.ts). The seized stash + the bribe are the price — no
     // booking happens, so no jail penalty and no weapon confiscation here.
     if(refs.isCarryingDrugs?.()){refs.startDrugBust();return;}
     economy.penalty(.85,'busted');
@@ -543,7 +543,7 @@ function wastedCut(){
 // Morte a pé: o corpo tomba de costas (rosto pra cima) com poça de sangue,
 // como os NPCs; o letreiro WASTED só aparece depois do corpo no chão
 let dying:{t:number;puddle:boolean}|null=null;
-// Onde o jogador morreu (x,z): o multiplayer assíncrono (js/bloodstains.js) deixa
+// Onde o jogador morreu (x,z): o multiplayer assíncrono (js/loot/bloodstains.ts) deixa
 // aqui a "poça" com o dinheiro perdido na morte pra outro jogador online pegar.
 let deathSpotX=0,deathSpotZ=0;
 export function getWasted(){
@@ -848,7 +848,7 @@ function updateWake(dt:number){
 
 // Lancha: o oposto do carro — voa sobre a água e ENCALHA na areia/terra.
 // Quica de leve parada, levanta a proa ao planar e inclina pra dentro da curva.
-const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.js)
+const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.ts)
 function updateBoat(dt:number){
   const c=cur!,p=c.g.position;
   const onWater=inWater(p);

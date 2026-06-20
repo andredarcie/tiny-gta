@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeWeaponMeshes} from './weapon-merge.js';
+import {mergeWeaponMeshes} from './weapon-merge.ts';
 
 // Uzi (SMG compacta): corpo retangular curto, cano fininho na frente, pente
 // reto descendo do meio (também serve de pega), coronha de arame dobrável e

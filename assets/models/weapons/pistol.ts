@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {mergeWeaponMeshes} from './weapon-merge.js';
+import {mergeWeaponMeshes} from './weapon-merge.ts';
 
 // Pistola PADRÃO do open-world: uma semi-automática cinza estilo Colt M1911 — o
 // traço que a distingue de uma Glock é o CÃO EXTERNO (spur hammer) na traseira,

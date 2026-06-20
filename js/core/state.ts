@@ -1,6 +1,6 @@
-import type { GameState, InputState, BestScore, Refs } from '@/core/types.js';
+import type { GameState, InputState, BestScore, Refs } from '@/core/types.ts';
 
-// Saldo inicial de uma run nova — FONTE ÚNICA (js/save.js importa daqui pra medir
+// Saldo inicial de uma run nova — FONTE ÚNICA (js/core/save.ts importa daqui pra medir
 // o que o jogador ganhou antes do restore async chegar). Mudou aqui, muda lá.
 export const INITIAL_MONEY=250;
 
@@ -12,28 +12,28 @@ export const state: GameState = {
   hasGun:false,weaponHeld:false,ammo:0,maxAmmo:0,
   crosshairKick:0,crosshairTarget:false,
   mobile:false,orientationBlocked:false,controlsLocked:false,
-  swimming:false,swimAir:1, // nadando agora? / fôlego restante (1→0); ver js/player.js updateSwim
+  swimming:false,swimAir:1, // nadando agora? / fôlego restante (1→0); ver js/actors/player.ts updateSwim
   seeds:{}, // per-strain seed counts {indica,hybrid,sativa} — bought at the rural General Store
   seedSel:'', // strain id selected to plant next (set when you buy seeds at the store)
   fertilizer:0, // plant-food charges — bought at the General Store, fed to growing crops
-  interior:null, // ambiente interno ativo (instância de Interior) ou null — ver js/interior.js
+  interior:null, // ambiente interno ativo (instância de Interior) ou null — ver js/world/interior.ts
   armScale:1,armTarget:1,gymDay:-1, // academia: tamanho do braço, alvo e dia do último treino
   viewerOpen:false, // galeria de objetos (tecla I) aberta
   tvActive:false,   // iframe da TV da safehouse aberto
-  gymActive:false,  // mini-game do supino aberto (ver js/gym-game.js)
-  danceActive:false, // mini-game da dança aberto (ver js/dance-game.js)
-  modShopActive:false, // menu da oficina de custom aberto (ver js/mod-shop.js)
+  gymActive:false,  // mini-game do supino aberto (ver js/places/gym-game.ts)
+  danceActive:false, // mini-game da dança aberto (ver js/places/dance-game.ts)
+  modShopActive:false, // menu da oficina de custom aberto (ver js/places/mod-shop.ts)
   mapOpen:false, // mapa completo (tecla M) aberto — congela o mundo enquanto visível
   adminOpen:false, // dashboard de admin (tecla Y, só p/ o dono 'REI') aberto — congela o mundo
-  firstPerson:false, // first-person camera (key C) — see js/player.js updateCamera
-  wheelOpen:false, // roda de seleção de armas (js/weapon-wheel.js) aberta — câmera lenta
+  firstPerson:false, // first-person camera (key C) — see js/actors/player.ts updateCamera
+  wheelOpen:false, // roda de seleção de armas (js/combat/weapon-wheel.ts) aberta — câmera lenta
   activeMiniGame:null, // id (MiniGameId) do mini game em curso, ou null — trava "um por vez"
-                       // (ver js/minigame.js); enquanto setado o mapa fica sem outros
+                       // (ver js/activities/minigame.ts); enquanto setado o mapa fica sem outros
                        // POIs/atividades e não dá pra entrar noutro mini game
   mgIntro:null,        // id do mini game cujo briefing/ranking está aberto (congela o
-                       // mundo até o jogador "passar"); ver js/minigame-leaderboard.js
+                       // mundo até o jogador "passar"); ver js/activities/minigame-leaderboard.ts
   onRoof:null, // registro da porta do prédio em cujo telhado o jogador está
-  mgDays:{} // {minigameId: último dia in-game concluído} — regra "1x por dia" (ver js/minigame.js)
+  mgDays:{} // {minigameId: último dia in-game concluído} — regra "1x por dia" (ver js/activities/minigame.ts)
 };
 
 export const input: InputState = {
@@ -64,7 +64,7 @@ export const carColors=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x5b5f6b,0x7a4f9e,0x3aa06b,0x
 // boot-time check that turns a broken wire into a loud error live in js/refs.ts.
 //
 // REGISTRIES GENÉRICOS (arrays preenchidos pelos próprios módulos de minigame, p/
-// não duplicar bloco a bloco em hud.js/input.js a cada novo minigame):
+// não duplicar bloco a bloco em hud.js/core/input.ts a cada novo minigame):
 //   refs.miniBlips      []  funções ()=>blip[]    — blips no radar e no mapa (M)
 //                            blip={x,z,icon,color,label?,current?,reveal?}
 //                            reveal!==false → POI fixo (aparece perto); reveal===false → alvo ativo (sempre na borda)

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Stone well — a small landmark for the village square: round stone curb, two
 // posts holding a little gabled shingle roof, a winding crank and a bucket on a

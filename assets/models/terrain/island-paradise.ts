@@ -1,15 +1,15 @@
 import * as THREE from 'three';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 import {ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR,islandHeight,
-  clamp} from '@/core/constants.js';
-import {makeRng} from '@/core/rng.js';
+  clamp} from '@/core/constants.ts';
+import {makeRng} from '@/core/rng.ts';
 // Seeded so the paradise island's palms/rocks/props land in the same spot every
 // load (the rest of the world is baked to world.json; this island is still built
 // procedurally, just deterministically now — externalizing it is a follow-up).
 const {random,rand,irand,pick}=makeRng(0x15a4d);
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
-import {addLighthouse} from '../props/lighthouse.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
+import {addLighthouse} from '../props/lighthouse.ts';
 
 // ====== ILHA PARADISÍACA (a oeste, alcançável de barco) =====================
 // Tudo aqui segue a MESMA islandHeight/islandCoastR de constants.js que o gameplay

@@ -6,7 +6,7 @@
 // NOTE: __test.placeVehicle(x,z,fx,fz) faces the car toward the POINT (fx,fz)
 // (heading = atan2(fx-x, fz-z)), and snaps the chase cam to that heading — so pass
 // a far-away point in the direction you want to look.
-import {test, expect} from './support/game.js';
+import {test, expect} from './support/game.ts';
 
 test('rural town east of the mountain renders, is solid and reachable', async ({game, page}) => {
   const errors: string[] = [];

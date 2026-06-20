@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {renderer,scene,camera,dlight,sunDir} from '@/core/engine.js';
-import {interiors} from '@/world/interior.js';
+import {renderer,scene,camera,dlight,sunDir} from '@/core/engine.ts';
+import {interiors} from '@/world/interior.ts';
 
 // Pré-aquecimento de GPU no boot (tela de título), pra matar as "grandes quedas
 // de FPS do nada". Dois problemas distintos, dois remédios:

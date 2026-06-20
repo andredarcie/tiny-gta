@@ -1,17 +1,17 @@
 import * as THREE from 'three';
-import {N,nodeX,rand,irand,pick,clamp} from '@/core/constants.js';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {makePed,shirtColors} from '@/core/entities.js';
-import {idleCars,cur,playerPos} from '@/actors/player.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {makeAmbulance} from '../../assets/models/vehicles/ambulance.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {HOSP_I,HOSP_J} from '../../assets/models/city/hospital.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.js';
+import {N,nodeX,rand,irand,pick,clamp} from '@/core/constants.ts';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {makePed,shirtColors} from '@/core/entities.ts';
+import {idleCars,cur,playerPos} from '@/actors/player.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeAmbulance} from '../../assets/models/vehicles/ambulance.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 
 // Side-mission de paramédico estilo open-world (Vigilante/Paramedic): uma ambulância
 // fica estacionada na esquina do hospital. Entrou nela, começa o plantão: feridos

@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {scene} from '@/core/engine.js';
-import {playerPos} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {groundHeight} from '@/core/constants.js';
-import {byId} from '@/combat/weapon-catalog.js';
-import {pickupArsenalWeapon} from '@/combat/weapons.js';
-import {MiniGame} from '@/activities/minigame.js';
+import {state,refs} from '@/core/state.ts';
+import {scene} from '@/core/engine.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {byId} from '@/combat/weapon-catalog.ts';
+import {pickupArsenalWeapon} from '@/combat/weapons.ts';
+import {MiniGame} from '@/activities/minigame.ts';
 
 // HIDDEN WEAPONS — the 12 possible weapons (the whole ARSENAL, i.e. everything
 // but the fist) hidden in out-of-the-way corners of the map for the player to

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 // Lancha estilo mundo aberto: speedboat de cockpit aberto, casco em V com proa
 // pontuda, para-brisa envolvente, console/timão central, bancos, capô do motor e

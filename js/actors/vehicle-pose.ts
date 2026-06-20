@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 
 // Rider seating for the free vehicles whose pilot rides fully exposed (bike,
-// boat, plane), used by js/player.js completeEnter. Pulled out of player.js so the
+// boat, plane), used by js/actors/player.ts completeEnter. Pulled out of player.js so the
 // offsets + limb pose for each vehicle live together in one place, retunable when
 // the player body changes.
 //

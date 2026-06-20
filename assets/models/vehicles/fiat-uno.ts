@@ -1,7 +1,7 @@
-import carModel from './car.js';
+import carModel from './car.ts';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 // Fiat Uno (Mk1 / Brazilian "Mille Fire") — the tall, square little hatchback Giugiaro
 // drew with a Kamm tail. Modelled to the real Mk1: ~3689 x 1556 x 1410 mm on a 2362 mm

@@ -11,7 +11,7 @@
 // route it through performBack() (same precedence as the Escape key): close the
 // open overlay, else toggle pause, and only leave the app from the title screen.
 import { App } from '@capacitor/app';
-import { performBack } from '@/core/input.js';
+import { performBack } from '@/core/input.ts';
 
 function isNative(){
   return !!((window as any).Capacitor && (window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform());

@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '@/core/engine.js';
-import {rand,irand,pick,clamp} from '@/core/constants.js';
-import {addDoorArrow} from './door-arrow.js';
+import {scene} from '@/core/engine.ts';
+import {rand,irand,pick,clamp} from '@/core/constants.ts';
+import {addDoorArrow} from './door-arrow.ts';
 
 // Portas funcionais: encostar nelas leva o jogador ao telhado do prédio
-// (js/doors.js cuida do gatilho e do teleporte; js/player.js da queda)
+// (js/world/doors.ts cuida do gatilho e do teleporte; js/actors/player.ts da queda)
 export const buildingDoors:any[]=[];
 
 // Paleta Miami, porém puxada pro realista: estuque desbotado pelo sol em vez de
@@ -270,14 +270,14 @@ export function addBuilding(cx:number,cz:number,w:number,d:number,solids:{x0:num
       // bloco superior (quando existe) é sólido pra quem anda no telhado
       top:topH>h?{x0:cx-w*.31,x1:cx+w*.31,z0:cz-d*.31,z1:cz+d*.31}:null,
       // espólio do telhado: uns têm dinheiro, outros arma, outros nada
-      // (visual e coleta em js/doors.js, só pra quem está neste telhado)
+      // (visual e coleta em js/world/doors.ts, só pra quem está neste telhado)
       loot:Math.random()<.35?'money':Math.random()<.4?'gun':null,
       lootX:cx+(nx?-nx:1)*(w/2-1.6),lootZ:cz+(nz?-nz:1)*(d/2-1.6),
     };
     buildingDoors.push(door);
     addDoorArrow(cx+dx+nx*.85,1.55,cz+dz+nz*.85); // seta rente ao chão, na porta
     // alçapão de metal no telhado marcando o ponto de descida (a seta de lá
-    // é dinâmica: js/doors.js só a mostra quando o jogador está neste telhado)
+    // é dinâmica: js/world/doors.ts só a mostra quando o jogador está neste telhado)
     pushBox(buckets.door,1.8,.05,1.8,door.topX,h+.41,door.topZ);  // moldura escura
     pushBox(buckets.equip,1.4,.07,1.4,door.topX,h+.45,door.topZ); // folha de metal
     pushBox(buckets.door,.5,.07,.13,door.topX,h+.5,door.topZ+.4); // alça

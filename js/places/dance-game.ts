@@ -1,17 +1,17 @@
-import {state,input,keys} from '@/core/state.js';
-import {camera} from '@/core/engine.js';
-import {player,cameraRig} from '@/actors/player.js';
-import {blip} from '@/audio/audio.js';
-import {animatePed} from '@/core/entities.js';
-import {clubFx} from '../../assets/models/city/nightclub.js';
-import {clubMusicOn,clubMusicInfo,BAR,BEAT,STEP} from '@/audio/club-music.js';
+import {state,input,keys} from '@/core/state.ts';
+import {camera} from '@/core/engine.ts';
+import {player,cameraRig} from '@/actors/player.ts';
+import {blip} from '@/audio/audio.ts';
+import {animatePed} from '@/core/entities.ts';
+import {clubFx} from '../../assets/models/city/nightclub.ts';
+import {clubMusicOn,clubMusicInfo,BAR,BEAT,STEP} from '@/audio/club-music.ts';
 
 // ============================================================================
 // Mini-game de RITMO da boate ("DANCE FEVER"), estilo Guitar Hero/DDR de dança.
 //
 // O boneco vai pro MEIO da pista e DANÇA de verdade: setas descem em 4 pistas
 // (←↓↑→) até a linha de acerto. O jogador aperta a seta certa NO TEMPO da
-// música própria da boate (js/club-music.js) — PC usa as setas do teclado,
+// música própria da boate (js/audio/club-music.ts) — PC usa as setas do teclado,
 // celular usa 4 botões grandes embaixo. Cada acerto vira uma pose de dança.
 //
 // Julgamento por timing: PERFECT / GREAT / GOOD / MISS, com combo, multiplicador
@@ -19,7 +19,7 @@ import {clubMusicOn,clubMusicInfo,BAR,BEAT,STEP} from '@/audio/club-music.js';
 // o HYPE zerar = vaiado pra fora. Recorde local pra fisgar ("viciante").
 //
 // Mesma carcaça do gym-game.js: trava controles, enquadra a câmera na pista e
-// desenha o HUD num <canvas> por cima. js/main.js dá o early-return via
+// desenha o HUD num <canvas> por cima. js/core/main.ts dá o early-return via
 // updateDanceGame(dt) (congela o mundo). As setas vêm da grade de batidas da
 // música (clubMusicInfo), então áudio e visual ficam travados juntos.
 // ============================================================================
@@ -60,7 +60,7 @@ let laneFlash=[0,0,0,0],beatStep=-1;
 let prevControlsLocked=false,prevFov=62;
 let prevPos={x:0,y:0,z:0},prevRot={x:0,y:0,z:0};
 
-// info entregue ao callback onFinish (ver js/club.js onDanceFinish)
+// info entregue ao callback onFinish (ver js/places/club.ts onDanceFinish)
 interface DanceInfo{won:boolean;grade:string;score:number;maxCombo:number;reward:number;accuracy:number;newBest:boolean;}
 
 const overlay=$('dance-game');

@@ -3,7 +3,7 @@
 //
 // This module is PURE: it imports only constants.js (plain math, no Three.js, no
 // DOM) and the seeded RNG, so it runs in Node. tools/bake-world.mjs runs it once
-// and writes the result to /world.json. The game (js/world.js) then reads ONLY
+// and writes the result to /world.json. The game (js/world/world.ts) then reads ONLY
 // world.json and builds the meshes — it never re-rolls anything, so the map is
 // identical every load and a future editor can open world.json and move objects.
 //
@@ -19,8 +19,8 @@
 // constants; the generator only needs them to know which blocks/spots to avoid.
 // ---------------------------------------------------------------------------
 import {N,ROAD,BLOCK,SIDE,GROUND,BEACH,RURAL_X0,RURAL_X1,RURAL_HALF,RURAL_GAP,
-  MOUNT_X,MOUNT_R,TOWN_CX,nodeX,groundHeight,ruralRoadPath} from '@/core/constants.js';
-import {makeRng} from '@/core/rng.js';
+  MOUNT_X,MOUNT_R,TOWN_CX,nodeX,groundHeight,ruralRoadPath} from '@/core/constants.ts';
+import {makeRng} from '@/core/rng.ts';
 
 // Reserved city blocks (mirror CLUB/GYM/HOSP/PRISON/GUNSHOP/WORKSHOP _I/_J).
 const RESERVED:[number,number][]=[[0,3],[7,1],[6,6],[2,2],[1,5],[5,2]];

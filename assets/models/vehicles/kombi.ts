@@ -1,7 +1,7 @@
-import carModel from './car.js';
+import carModel from './car.ts';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 // VW Kombi (Type 2 "bay window" / "pão de forma") — the classic Brazilian white van,
 // modelled to the real T2: 4505 x 1720 x 1940 mm on a 2400 mm wheelbase (scaled here

@@ -1,7 +1,7 @@
-import {state,refs} from '@/core/state.js';
-import {getDay,setDay,getTod,restoreTod} from '@/world/daynight.js';
-import {openMiniGameIntro} from '@/activities/minigame-leaderboard.js';
-import type {Blip} from '@/core/types.js';
+import {state,refs} from '@/core/state.ts';
+import {getDay,setDay,getTod,restoreTod} from '@/world/daynight.ts';
+import {openMiniGameIntro} from '@/activities/minigame-leaderboard.ts';
+import type {Blip} from '@/core/types.ts';
 
 // ============================================================================
 // BASE DE MINI GAME — o que é comum a TODOS os mini games do mundo aberto.

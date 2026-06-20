@@ -1,5 +1,5 @@
-import { state, saveBest, refs, INITIAL_MONEY } from '@/core/state.js';
-import type { LedgerTx, LedgerSnapshot, EconomyDebug } from '@/core/types.js';
+import { state, saveBest, refs, INITIAL_MONEY } from '@/core/state.ts';
+import type { LedgerTx, LedgerSnapshot, EconomyDebug } from '@/core/types.ts';
 
 // ============================================================================
 // ECONOMY — money modeled as an idempotent TRANSACTION LEDGER.

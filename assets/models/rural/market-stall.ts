@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {bakeProp} from '../props/prop-merge.js';
+import {matte} from '../matte.ts';
+import {bakeProp} from '../props/prop-merge.ts';
 
 // Farmers' market stall — a wooden counter under a striped canvas awning with a
 // few produce crates, to give the village square some life. build() is pure

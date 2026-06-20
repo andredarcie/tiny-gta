@@ -1,15 +1,15 @@
-import {N,nodeX,irand,rand} from '@/core/constants.js';
-import {state,saveBest} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {blip} from '@/audio/audio.js';
-import {message} from '@/ui/hud.js';
-import {playerPos,cur} from '@/actors/player.js';
-import {makeMoneyDrop} from '../../assets/models/missions/money-drop.js';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.js';
-import {inGangTerritory} from '@/actors/gangs.js';
+import {N,nodeX,irand,rand} from '@/core/constants.ts';
+import {state,saveBest} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {blip} from '@/audio/audio.ts';
+import {message} from '@/ui/hud.ts';
+import {playerPos,cur} from '@/actors/player.ts';
+import {makeMoneyDrop} from '../../assets/models/missions/money-drop.ts';
+import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {inGangTerritory} from '@/actors/gangs.ts';
 import type * as THREE from 'three';
-import type {Vehicle} from '@/core/types.js';
+import type {Vehicle} from '@/core/types.ts';
 
 // A money pickup floating in the world (collected by walking over it).
 interface Drop {

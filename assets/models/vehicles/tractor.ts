@@ -1,12 +1,12 @@
 import * as THREE from 'three';
-import {scene} from '@/core/engine.js';
+import {scene} from '@/core/engine.ts';
 
 // Classic farm TRACTOR — a slow, chunky utility vehicle for the rural area. Detailed:
 // a long tapering engine hood with a radiator grille and headlights, a vertical
 // exhaust stack, big ribbed rear wheels under flared fenders, small STEERED front
 // wheels on an axle, an open elevated seat with a raked steering wheel, a roll bar
 // (ROPS) and a rear hitch. +Z is forward; the wheels sit on the ground (y≈0).
-// Drivable: js/player.js spawns it (spawnTractor) with the `tractor` flag and exposes
+// Drivable: js/actors/player.ts spawns it (spawnTractor) with the `tractor` flag and exposes
 // userData.wheels / userData.front (for spinWheels) and userData.steer.
 
 const GREEN  =new THREE.MeshStandardMaterial({color:0x2f7d32,roughness:.5,metalness:.3});

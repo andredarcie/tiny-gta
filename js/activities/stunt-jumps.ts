@@ -1,13 +1,13 @@
 import * as THREE from 'three';
-import {state,refs} from '@/core/state.js';
-import {economy} from '@/core/economy.js';
-import {scene} from '@/core/engine.js';
-import {cur} from '@/actors/player.js';
-import {message,bigText,hideBig} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {clamp,groundHeight} from '@/core/constants.js';
-import {makeStuntRamp} from '../../assets/models/props/stunt-ramp.js';
-import {MiniGame,MiniGameId} from '@/activities/minigame.js';
+import {state,refs} from '@/core/state.ts';
+import {economy} from '@/core/economy.ts';
+import {scene} from '@/core/engine.ts';
+import {cur} from '@/actors/player.ts';
+import {message,bigText,hideBig} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {clamp,groundHeight} from '@/core/constants.ts';
+import {makeStuntRamp} from '../../assets/models/props/stunt-ramp.ts';
+import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. As rampas NÃO aparecem no mapa/radar — o jogador descobre sozinho.
@@ -75,7 +75,7 @@ refs.getStuntJumpsState=()=>({
   airborne,
 });
 
-// ----- SAVE: rampas já completadas (js/save.js) -----
+// ----- SAVE: rampas já completadas (js/core/save.ts) -----
 // Guarda os ÍNDICES das rampas concluídas (os locais são fixos). Restaurar só
 // marca `done` (impede repagar o bônus de primeira vez); o salto em si continua
 // rendendo o pagamento normal por velocidade.

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
+import {matte} from '../matte.ts';
 
 // Tora caída pra sentar em volta da fogueira: cilindro deitado com casca escura
 // e as faces de corte em madeira clara.

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 
 // Coquetel molotov: garrafa de vidro com gasolina dentro, gargalo e um trapo
 // em chamas na boca. Pequeno; fica em pé (eixo Y). Serve de modelo empunhado,
-// de pickup e também de projétil arremessado (js/weapons.js).
+// de pickup e também de projétil arremessado (js/combat/weapons.ts).
 
 const glassMat=new THREE.MeshStandardMaterial({color:0x4a6a55,roughness:.1,metalness:.2,
   transparent:true,opacity:.55});

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import {makeSea} from '../../assets/models/environment/sea.js';
-import {makeClouds} from '../../assets/models/environment/clouds.js';
+import {makeSea} from '../../assets/models/environment/sea.ts';
+import {makeClouds} from '../../assets/models/environment/clouds.ts';
 
 export const canvas=document.getElementById('game') as HTMLCanvasElement;
 export const renderer=new THREE.WebGLRenderer({canvas,antialias:true,
@@ -35,7 +35,7 @@ export function setRenderScale(s:number){
 }
 export const getRenderScale=()=>renderScale;
 
-// --- Player-facing graphics toggles (driven by js/settings.js / the pause menu) ---
+// --- Player-facing graphics toggles (driven by js/core/settings.ts / the pause menu) ---
 // Shadows: the shadow map is throttled (autoUpdate=false; main.js flags needsUpdate
 // every ~12 frames). Flipping `enabled` off stops the shadow pass entirely; flipping
 // it back on, plus a one-shot needsUpdate, repaints the depth map on the next frame.
@@ -64,7 +64,7 @@ scene.fog=new THREE.Fog(0xcfe2ee,120,430);
 export const camera=new THREE.PerspectiveCamera(62,initialSize.w/initialSize.h,.1,2000);
 camera.position.set(0,60,120);
 // The camera is part of the scene graph so objects parented to it render — used by
-// the first-person weapon viewmodel (js/weapons.js), which hangs the held gun off
+// the first-person weapon viewmodel (js/combat/weapons.ts), which hangs the held gun off
 // the camera. A camera with no children just traverses as an empty node otherwise.
 scene.add(camera);
 
@@ -97,7 +97,7 @@ scene.add(dlight);scene.add(dlight.target);
 
 // O mar é um disco GIGANTE (raio 1400) centrado na origem — ele se estende por
 // baixo da região dos ambientes internos (que vivem ~600m fora do mapa).
-// Fica exportado porque js/interior.js esconde as camadas externas enquanto
+// Fica exportado porque js/world/interior.ts esconde as camadas externas enquanto
 // qualquer interior está ativo.
 export const sea=makeSea();scene.add(sea);
 

@@ -1,14 +1,14 @@
 import * as THREE from 'three';
-import {matte} from '../matte.js';
-import {scene} from '@/core/engine.js';
-import {rand,pick} from '@/core/constants.js';
-import {makePed,shirtColors} from '../characters/pedestrian.js';
-import {makeDoorArrow} from './door-arrow.js';
+import {matte} from '../matte.ts';
+import {scene} from '@/core/engine.ts';
+import {rand,pick} from '@/core/constants.ts';
+import {makePed,shirtColors} from '../characters/pedestrian.ts';
+import {makeDoorArrow} from './door-arrow.ts';
 
 // Academia "IRON TEMPLE", no mesmo molde da boate (nightclub.js): prédio num
 // quarteirão reservado pelo world.js, com letreiro e entrada coberta. O interior
 // é um cenário separado a ~600m do mapa, dentro de um Group com visible=false,
-// renderizado só enquanto o jogador está lá (js/gym.js liga/desliga no teleporte).
+// renderizado só enquanto o jogador está lá (js/places/gym.ts liga/desliga no teleporte).
 
 export const GYM_I=7,GYM_J=1; // quarteirão reservado (nordeste da cidade)
 
@@ -63,7 +63,7 @@ export function addGym(solids:{x0:number,x1:number,z0:number,z1:number,h:number}
 
   // ----- exterior: galpão cinza com faixa laranja, marquise e letreiro -----
   // O corpo (caixa) some sozinho por culling quando a câmera entra; os objetos
-  // da PORTA vão num grupo 'facade' que js/interior.js esconde junto (senão
+  // da PORTA vão num grupo 'facade' que js/world/interior.ts esconde junto (senão
   // ficariam flutuando ao sair). Ver gymFx.facade/footprint/facadeArrow.
   const wallM=matte({color:0x2c3038,roughness:.96});
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),wallM);
@@ -99,7 +99,7 @@ export function addGym(solids:{x0:number,x1:number,z0:number,z1:number,h:number}
     new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
   gymFx.sign.position.set(cx-8.12,6,cz);gymFx.sign.rotation.y=-Math.PI/2;facade.add(gymFx.sign);
   // seta estilo mundo aberto quicando rente ao chão na entrada (mesh próprio, no
-  // grupo, pra sumir junto; animada por js/interior.js)
+  // grupo, pra sumir junto; animada por js/world/interior.ts)
   gymFx.facadeArrow=makeDoorArrow();
   gymFx.facadeArrow.position.set(cx-9.3,1.7,cz);facade.add(gymFx.facadeArrow);
   scene.add(facade);
@@ -175,13 +175,13 @@ export function addGym(solids:{x0:number,x1:number,z0:number,z1:number,h:number}
   exitDoor.position.set(-812.85,1.5,-200);gymInterior.add(exitDoor);
   const exitNeon=new THREE.Mesh(new THREE.BoxGeometry(.1,.3,1.6),accentM);
   exitNeon.position.set(-812.8,3.3,-200);gymInterior.add(exitNeon);
-  // seta de saída quicando na frente da porta (animada pelo js/gym.js, porque o
+  // seta de saída quicando na frente da porta (animada pelo js/places/gym.ts, porque o
   // mesh fundido das setas externas não alcança o interior)
   gymFx.exitArrow=makeDoorArrow();
   gymFx.exitArrow.position.set(-811.9,1.7,-200);
   gymInterior.add(gymFx.exitArrow);
 
-  // dois "marombas" treinando: peds reaproveitados, animados pelo js/gym.js
+  // dois "marombas" treinando: peds reaproveitados, animados pelo js/places/gym.ts
   const spots=[[-804,-196.5,1],[-796.5,-203.5,-1]];
   for(const[dx,dz,dir]of spots){
     const g=makePed(pick(shirtColors));

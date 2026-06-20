@@ -1,16 +1,16 @@
-import {state} from '@/core/state.js';
-import {playerPos} from '@/actors/player.js';
-import {message} from '@/ui/hud.js';
-import {blip} from '@/audio/audio.js';
-import {animatePed} from '@/core/entities.js';
-import {say} from '@/ui/speech.js';
-import {Interior} from '@/world/interior.js';
+import {state} from '@/core/state.ts';
+import {playerPos} from '@/actors/player.ts';
+import {message} from '@/ui/hud.ts';
+import {blip} from '@/audio/audio.ts';
+import {animatePed} from '@/core/entities.ts';
+import {say} from '@/ui/speech.ts';
+import {Interior} from '@/world/interior.ts';
 import {HOSP_DOOR,HOSP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,HOSP_HEAL,HOSP_BED,
-  hospFx,hospInterior} from '../../assets/models/city/hospital.js';
+  hospFx,hospInterior} from '../../assets/models/city/hospital.ts';
 
-// Hospital "SANTA CASA": estende a classe base de interiores (js/interior.js).
+// Hospital "SANTA CASA": estende a classe base de interiores (js/world/interior.ts).
 // Particularidades: é pra onde o jogador acorda quando morre (admit(), chamada
-// via refs por js/player.js) e tem um kit de cura no centro que restaura a vida
+// via refs por js/actors/player.ts) e tem um kit de cura no centro que restaura a vida
 // de quem entra ferido. A saída é a porta oeste (o jogador acorda no fundo).
 
 const HEAL_RANGE=1.9;
@@ -74,6 +74,6 @@ export const hospital=new HospitalInterior({
   mapIcon:{id:'hospital',label:'HOSPITAL',icon:'hospital',color:'#44e6b1'},
 });
 
-// Acordar no hospital depois de morrer (js/player.js chama via refs.hospitalAdmit):
+// Acordar no hospital depois de morrer (js/actors/player.ts chama via refs.hospitalAdmit):
 // diferente da entrada pela porta, nasce NO MEIO da sala, olhando pra saída (oeste).
 export function hospitalAdmit(){hospital.enterAt(HOSP_BED,-Math.PI/2);}

@@ -1,13 +1,13 @@
-import { state, refs } from '@/core/state.js';
-import type { SaveBlob, LedgerSnapshot } from '@/core/types.js';
+import { state, refs } from '@/core/state.ts';
+import type { SaveBlob, LedgerSnapshot } from '@/core/types.ts';
 
 // SAVE DE PROGRESSO — ponte entre o estado vivo do jogo e o blob que vai/vem do
-// backend (js/leaderboard.js). Mantém este módulo "burro": ele só monta/aplica o
+// backend (js/ui/leaderboard.ts). Mantém este módulo "burro": ele só monta/aplica o
 // blob lendo getters/setters que cada sistema registra em `refs` (mesmo padrão
 // de refs.miniBlips/zoneActions), sem importar weapons/gym/property/... direto —
 // assim não cria ciclos e novos slots entram só registrando o seu par em refs.
 //
-// O DINHEIRO agora é um LEDGER de transações (ver js/economy.js): o saldo é a soma
+// O DINHEIRO agora é um LEDGER de transações (ver js/core/economy.ts): o saldo é a soma
 // das transações. O save carrega o snapshot do ledger (`blob.ledger`) e o restore
 // é IDEMPOTENTE — re-aplicar o mesmo snapshot não dobra nem perde dinheiro (dedupe
 // por id). `blob.money` continua presente como ESPELHO derivado (HUD/ranking/legado
