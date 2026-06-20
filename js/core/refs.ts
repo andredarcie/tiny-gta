@@ -68,7 +68,7 @@ export const KNOWN = new Set<string>([
   'serializeLedger','importLedger','takeUnsyncedTxs','ackSyncedTxs','debugLedger',
   'collectSave','applySave','backupSave',
   // hud.ts / input.ts
-  'message','togglePause','toggleFullscreen',
+  'message','togglePause','toggleFullscreen','toggleAim',
   // minigame.ts
   'mgPlayedToday','mgMarkPlayed','getDailySave','restoreDaily',
   // per-system state getters / save slots / blips / interactions

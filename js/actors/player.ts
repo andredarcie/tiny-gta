@@ -1092,7 +1092,7 @@ export function updateFoot(dt:number){
     const analog=Math.min(1,Math.hypot(f,side));
     walkAmount=analog;
     const mv=_footMv.set(0,0,0).addScaledVector(camF,f).addScaledVector(camR,side).normalize();
-    const spd=(input.run?9:5.2)*analog;
+    const spd=(state.aiming?3.6:(input.run?9:5.2))*analog; // aiming: slow strafe-walk, no sprint
     player.g.position.addScaledVector(mv,spd*dt);
     player.heading=Math.atan2(mv.x,mv.z);
     player.bob+=dt*spd*1.8;
@@ -1135,9 +1135,12 @@ export function updateFoot(dt:number){
       }
     }
   }
-  // armado de pistola ou no rampage do lança-foguetes: vira junto com a câmera
+  // Face the camera only while aiming, firing, first-person or rampaging — so a
+  // carried gun lets the player walk normally and face where they move (GTA-style);
+  // active fire snaps to the camera so the shot goes where you look.
   const armed=refs.isWeaponHeld?.()||false;
-  if(armed){
+  const faceCam=armed&&(state.aiming||input.shootHeld||fpEligible()||!!refs.getRampageState?.()?.active);
+  if(faceCam){
     player.heading=cameraRig.yaw;
     player.g.rotation.y=cameraRig.yaw;
   }else player.g.rotation.y=player.heading;
@@ -1172,10 +1175,11 @@ export function toggleFirstPerson(){
 // Mouse-look (pointer lock) routed through here so the delta updates the RIGHT
 // pitch — the wide FP pitch when first-person is live, the orbit pitch otherwise.
 export function applyMouseLook(dx:number,dy:number){
-  cameraRig.yaw-=dx*cameraRig.sensitivity;
-  const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity;
+  const aimK=state.aiming?.6:1; // ADS lowers mouse sensitivity for precision
+  cameraRig.yaw-=dx*cameraRig.sensitivity*aimK;
+  const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity*aimK;
   if(fpEligible())cameraRig.fpPitch=clamp(cameraRig.fpPitch+dp,-1.3,1.3);
-  else cameraRig.pitch=clamp(cameraRig.pitch+dp,.18,.82);
+  else cameraRig.pitch=clamp(cameraRig.pitch+dp,state.aiming?-.85:.18,state.aiming?.95:.82);
   cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
 }
 
@@ -1197,16 +1201,17 @@ export function updateCamera(dt:number){
   }else{
     tgt=player.g.position;heading=player.heading;
     // nadando, a câmera baixa e chega mais perto, rente à água
-    if(state.swimming){dist=5.6;baseH=1.0;}else{dist=6.2;baseH=1.25;}
+    if(state.swimming){dist=5.6;baseH=1.0;}else{dist=6.2;baseH=1.25;} // aim mode uses its own camera (updateCameraAim)
   }
   if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked){
     // Positive lookX means "turn right". In this engine yaw increases to the LEFT
     // (forward = (sin yaw, cos yaw); keyboard A is moveX=+1; mouse-right does yaw-=),
     // so turning right requires subtracting, same as the pointer-lock mouse path.
-    cameraRig.yaw-=input.lookX*dt;
+    const aimK=state.aiming?.6:1; // aiming lowers look speed for finer control
+    cameraRig.yaw-=input.lookX*dt*aimK;
     // FP uses a separate, wider look pitch so toggling never clamps the orbit pitch.
-    if(fp)cameraRig.fpPitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
-    else cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt;
+    if(fp)cameraRig.fpPitch+=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
+    else cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
     cameraRig.touchLookIdle=0;
   }else cameraRig.touchLookIdle+=dt;
   // Auto-follow atrás do alvo: assim que o jogador para de mexer a câmera por um
@@ -1225,12 +1230,13 @@ export function updateCamera(dt:number){
   const footStrafe=state.mode==='foot'&&Math.abs(input.moveX)>.2;
   const autoFollow=fp
     ?(state.mode==='car'&&idle)
-    :(idle&&!footStrafe);
+    :(idle&&!footStrafe&&!state.aiming);
   if(autoFollow){
     const diff=THREE.MathUtils.euclideanModulo(heading-cameraRig.yaw+Math.PI,Math.PI*2)-Math.PI;
     cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:1.5));
   }
   if(fp)return updateCameraFP(dt,tgt);
+  if(state.aiming)return updateCameraAim(dt,tgt);
   cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
   const forward=_camFwd.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
   const right=_camRight.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
@@ -1258,6 +1264,28 @@ export function updateCamera(dt:number){
     state.shake=Math.max(0,state.shake-dt*1.6);
   }
   camera.lookAt(focus.x+forward.x*2.4,focus.y,focus.z+forward.z*2.4);
+}
+
+// Over-the-shoulder AIM camera (GTA-style). The LOOK direction (yaw + a free pitch)
+// is the source of truth and the camera sits behind it; the bullet (aimRay, while
+// aiming) follows this same direction, so shots land on the centre reticle AND
+// vertical aim (up/down) works — the orbit cam's fixed-height look can't tilt up.
+function updateCameraAim(dt:number,tgt:THREE.Vector3){
+  cameraRig.pitch=clamp(cameraRig.pitch,-.85,.95); // free look pitch (down..up)
+  const yaw=cameraRig.yaw,p=cameraRig.pitch,cp=Math.cos(p);
+  const dir=_camFwd.set(Math.sin(yaw)*cp,-Math.sin(p),Math.cos(yaw)*cp).normalize();
+  const right=_camRight.set(Math.cos(yaw),0,-Math.sin(yaw));
+  // Tight over-the-shoulder: eye at shoulder height, offset to the side; camera pulled
+  // CLOSE in behind along the aim so the player's shoulder frames the bottom corner
+  // (GTA ADS), instead of a far third-person zoom.
+  const eye=_camFocus.set(tgt.x,tgt.y+1.5,tgt.z).addScaledVector(right,-.7);  // left shoulder (player sits LEFT of the reticle)
+  const want=_camWant.copy(eye).addScaledVector(dir,-2.4);                    // close behind = over-the-shoulder
+  const gy=groundHeight(want.x,want.z)+.45;if(want.y<gy)want.y=gy;           // never dip below ground
+  if(state.interior){const B=state.interior.bounds;want.x=clamp(want.x,B.x0,B.x1);want.y=Math.min(want.y,B.y1);want.z=clamp(want.z,B.z0,B.z1);}
+  camera.position.lerp(want,1-Math.exp(-12*dt));                             // snappy follow
+  camera.fov+=(52-camera.fov)*Math.min(1,8*dt);camera.updateProjectionMatrix();
+  if(state.shake>0){camera.position.x+=rand(-1,1)*state.shake;camera.position.y+=rand(-1,1)*state.shake*.5;state.shake=Math.max(0,state.shake-dt*1.6);}
+  camera.lookAt(eye.x+dir.x*4,eye.y+dir.y*4,eye.z+dir.z*4);
 }
 
 // Detailed first-person CAR cockpit: a single shared model that exists in the scene

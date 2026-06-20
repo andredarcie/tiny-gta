@@ -364,6 +364,7 @@ window.render_game_to_text=()=>{
     paused:state.paused,
     mode:state.mode,
     firstPerson:!!state.firstPerson, // câmera em primeira pessoa (tecla C) ligada
+    aiming:!!state.aiming, // GTA-style aim mode active (RMB / mobile AIM)
     activeMiniGame:state.activeMiniGame, // mini game em curso (trava "um por vez")
     interior:state.interior?.constructor?.name||null,
     money:state.money,

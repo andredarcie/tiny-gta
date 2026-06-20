@@ -199,6 +199,9 @@ function renderUpdates(): void {
 
 // ---- settings (graphics + audio) -------------------------------------------
 const SCHEMA: { group: string; items: SettingItem[] }[]=[
+  {group:'GAMEPLAY',items:[
+    {key:'aimAssist',type:'toggle',label:'Aim assist'},
+  ]},
   {group:'AUDIO',items:[
     {key:'master',type:'range',label:'Master volume',min:0,max:100,step:1,suffix:'%'},
     {key:'music', type:'range',label:'Music volume', min:0,max:100,step:1,suffix:'%'},

@@ -68,6 +68,7 @@ export interface GameState {
   mapOpen: boolean;
   adminOpen: boolean;
   firstPerson: boolean;
+  aiming: boolean; // GTA-style aim mode (RMB toggle / mobile AIM): closer cam + reticle + tight spread
   wheelOpen: boolean;
   activeMiniGame: string | null;
   mgIntro: string | null;
@@ -239,6 +240,7 @@ export interface Refs {
 
   // HUD message bus
   message?: (t: string, col?: string) => void;
+  toggleAim?: () => void;
 
   // Open to extension: members are declared above as modules migrate. Until a
   // module is migrated, its refs are reached only from untyped .js callers.

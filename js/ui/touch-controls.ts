@@ -120,6 +120,9 @@ export function updateTouchControls(): void {
   const driving=state.started&&state.mode==='car'&&!state.dlgActive&&!state.paused&&!tv;
   const radioAllowed=driving&&!refs.getOverkillState?.()?.active;
   $('btn-shoot')?.classList.toggle('show',armed);
+  const canAimNow=onFoot&&state.hasGun&&!state.swimming; // AIM only with a gun out
+  $('btn-aim')?.classList.toggle('show',canAimNow);
+  $('btn-aim')?.classList.toggle('on',state.aiming);
   $('btn-wpn')?.classList.toggle('show',onFoot&&state.hasGun&&!state.swimming); // troca de arma (só com arsenal; nadando guarda)
   $('btn-brake')?.classList.toggle('show',driving);
   $('btn-radio')?.classList.toggle('show',radioAllowed);
@@ -165,6 +168,7 @@ export function setupTouchControls(): void {
     input.shootHeld=true;
     performShoot();
   },()=>{input.shootHeld=false;});
+  bindButton($('btn-aim'),()=>refs.toggleAim?.()); // AIM toggles aim mode (closer cam + reticle + precision)
   // WPN abre a roda de seleção; a própria roda (overlay) trata o toque no setor.
   bindButton($('btn-wpn'),()=>{state.wheelOpen?closeWheel(false):openWheel();});
   bindButton($('btn-brake'),()=>{

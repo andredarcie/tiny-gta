@@ -810,7 +810,7 @@ export function updateHUD(dt: number): void {
       hudSpeedo.style.display='flex';
     }else hudSpeedo.style.display='none';
   }
-  const aiming=state.started&&refs.isWeaponHeld?.()&&!state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.wheelOpen;
+  const aiming=state.started&&refs.isWeaponHeld?.()&&(state.aiming||state.firstPerson)&&!state.paused&&!state.dlgActive&&!state.orientationBlocked&&!state.wheelOpen;
   hudCrosshair.classList.toggle('show',!!aiming);
   hudCrosshair.classList.toggle('target',!!aiming&&state.crosshairTarget);
   hudCrosshair.classList.toggle('shoot',state.crosshairKick>.01);

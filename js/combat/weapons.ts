@@ -7,6 +7,7 @@ import {isPark} from '@/world/world.ts';
 import {blip,thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
+import {settings} from '@/core/settings.ts';
 import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.ts';
 import {peds,addBloodPuddle} from '@/world/pedestrians.ts';
 import {traffic,spawnTraffic} from '@/world/traffic.ts';
@@ -246,6 +247,14 @@ export function isWeaponHeld(){
 export function canAttack(){
   return state.mode==='foot'&&!state.swimming&&!!curWeapon;
 }
+
+// GTA-style aim mode. Aiming only makes sense with a gun (an `aimed` weapon) on foot;
+// toggleAim flips it, and updateWeapons cancels it the instant that stops being true
+// (got in a car, switched to fists, hit the water, started a rampage). Wired to the PC
+// right-mouse button (js/core/input.ts) and the mobile AIM button (js/ui/touch-controls.ts).
+export function canAim(){ return state.mode==='foot'&&!state.swimming&&!state.controlsLocked&&!rampage.active&&!!curWeapon&&curWeapon.aimed; }
+export function toggleAim(){ if(state.aiming){state.aiming=false;return;} if(canAim())state.aiming=true; }
+refs.toggleAim=toggleAim;
 
 export function canPickWeapon(){
   if(state.hasGun||state.mode!=='foot')return false;
@@ -493,6 +502,16 @@ function aimRay(range=48): Ray{
     _aimPoint.normalize();
     return _ray; // origin=_muzzle (barrel tip), dir=_aimPoint (camera forward)
   }
+  if(state.aiming){
+    // Aiming (3rd-person ADS): shoot where the centre reticle points, in full 3D,
+    // converging at `range` — the bullet leaves the muzzle toward camera+camDir*range
+    // so vertical aim (up/down) works and shots land on the crosshair.
+    _aimPoint.copy(camera.position).addScaledVector(_camDir,range).sub(muzzle);
+    if(_aimPoint.lengthSq()<.0001)_aimPoint.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+    _aimPoint.normalize();
+    muzzle.addScaledVector(_aimPoint,.42);
+    return _ray;
+  }
   _flatDir.set(_camDir.x,0,_camDir.z);
   if(_flatDir.lengthSq()<.0001)_flatDir.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
   _flatDir.normalize();
@@ -524,20 +543,50 @@ function posePlayerWithGun(){
   if(!limbs?.rightArm)return;
   poseAiming(player.g,gunKick); // base aiming pose (shared with NPCs/police)
   applyGripPose(curWeapon.hold?.grip,limbs); // weapon-specific arm posture (player only)
+  // Over-the-shoulder AIM frames the camera to one side, so the gun must sit in the hand
+  // on the RETICLE side of the screen. The rig's right arm renders on the far side there,
+  // so mirror the whole upper body (swap arms + negate their lateral rotation) — PLAYER
+  // ONLY; NPCs/police keep the un-mirrored aim above, and hip-fire / first person keep the
+  // normal pose (orbit cam frames the right hand fine / the body is hidden in FP).
+  const mir=state.aiming&&!state.firstPerson;
+  if(mir)mirrorUpperBody(limbs);
+  // Vertical aim tilt: follow the camera pitch so the gun points up/down at the reticle.
+  // cameraRig.pitch from updateCameraAim (<0 up, >0 down); the firing arm rests at -PI/2
+  // (level forward), more-negative = up, so adding pitch tilts both arms to match. The x
+  // axis is mirror-invariant, so this is the same in either handedness.
+  const aimP=mir?cameraRig.pitch:0;
+  if(aimP){limbs.rightArm.rotation.x+=aimP;if(limbs.leftArm)limbs.leftArm.rotation.x+=aimP;}
   const h: Hold=curWeapon.hold||{};
-  // Seat the weapon IN the firing hand: read the (now-posed) forearm bone and place
-  // the holder at the hand, so the gun sits in the grip at any scale instead of
-  // floating at a fixed body point. Refresh the bone world matrices for the pose
-  // set above; the hand is ~0.28 down the forearm bone's local axis.
+  // Seat the weapon IN the firing hand (the LEFT hand when mirrored): read the posed
+  // forearm bone and place the holder at the hand, mirroring the hand-local offsets
+  // (x position, and the y/z rotation) across the body's centre plane when mirrored.
   player.g.updateWorldMatrix(true,true);
-  const fore=limbs.rightForearm||limbs.rightArm;
+  const fore=mir?(limbs.leftForearm||limbs.leftArm):(limbs.rightForearm||limbs.rightArm);
   _hand.set(0,-.28,0).applyMatrix4(fore.matrixWorld);
   player.g.worldToLocal(_hand);
+  const sx=mir?-1:1; // mirror the hand-local offsets across X
   heldHolder.position.set(
-    _hand.x+(h.x||0),
+    _hand.x+sx*(h.x||0),
     _hand.y+(h.y||0),
     _hand.z+(h.z||0)-gunKick*.75);
-  heldHolder.rotation.set(-.03-gunKick*.9+(h.rx||0),(h.ry||0),-.03+(h.rz||0));
+  heldHolder.rotation.set(-.03-gunKick*.9+(h.rx||0)+aimP,sx*(h.ry||0),sx*(-.03+(h.rz||0)));
+}
+
+// Mirror the player's upper-body pose across the sagittal plane: swap the left/right arm
+// + forearm bones and negate the lateral (y,z) components of each rotation (x stays). The
+// rest skeleton is symmetric (arms at ±X), so this turns the right-handed aim pose into
+// its correct left-handed twin without any geometry change.
+function mirrorUpperBody(l: any){
+  const ra=l.rightArm,la=l.leftArm,rf=l.rightForearm,lf=l.leftForearm;
+  if(!ra||!la)return;
+  const rx=ra.rotation.x,ry=ra.rotation.y,rz=ra.rotation.z;
+  ra.rotation.set(la.rotation.x,-la.rotation.y,-la.rotation.z);
+  la.rotation.set(rx,-ry,-rz);
+  if(rf&&lf){
+    const fx=rf.rotation.x,fy=rf.rotation.y,fz=rf.rotation.z;
+    rf.rotation.set(lf.rotation.x,-lf.rotation.y,-lf.rotation.z);
+    lf.rotation.set(fx,-fy,-fz);
+  }
 }
 
 // Player-only realistic posture per weapon, layered ON TOP of poseAiming (which
@@ -547,14 +596,25 @@ function posePlayerWithGun(){
 function applyGripPose(grip: string|undefined,l: any){
   if(!grip||!l.leftArm)return;
   if(grip==='pistol'){
-    // two-handed clasp: the support hand comes up to meet the firing hand
-    l.leftArm.rotation.set(-1.46,.16,.12);
-    if(l.leftForearm)l.leftForearm.rotation.x=-.32;
+    // Modern two-handed (isosceles) stance: firing arm forward toward the target with a
+    // SOFT elbow bend (not locked), support hand wraps in over the firing hand near the
+    // centreline. rightArm.x is left to poseAiming so the recoil kick still plays.
+    l.rightArm.rotation.z=-.06;                       // tuck the firing elbow slightly inward
+    if(l.rightForearm)l.rightForearm.rotation.x=-.17; // soft bend — arm not fully locked
+    // Support arm must SWING ACROSS the chest to reach the firing hand, not just point
+    // forward. With the arm tilted forward (x≈-PI/2), it's the Z rotation that yaws it
+    // toward the centreline (+z swings it across to the firing hand), so it needs a BIG z;
+    // a small z (the old .14) just left the support hand pointing forward into thin air.
+    l.leftArm.rotation.set(-1.52,.04,.56);
+    if(l.leftForearm)l.leftForearm.rotation.x=-.34;   // gentle bend so the hand meets the grip
   }else if(grip==='smg'||grip==='rifle'){
-    // support hand forward on the foregrip, both elbows tucked in
-    l.leftArm.rotation.set(-1.30,.12,.16);
-    if(l.leftForearm)l.leftForearm.rotation.x=-.55;
-    l.rightArm.rotation.z=-.05;
+    // Both hands on the weapon: firing hand at the grip (soft elbow), support hand forward
+    // on the foregrip. The support arm swings across (big z) but reaches further forward
+    // than the pistol clasp (the foregrip sits ahead of the trigger), so less elbow bend.
+    l.rightArm.rotation.z=-.06;
+    if(l.rightForearm)l.rightForearm.rotation.x=-.15; // soft bend on the firing arm
+    l.leftArm.rotation.set(-1.48,.04,.42);            // support hand forward on the foregrip, angled in
+    if(l.leftForearm)l.leftForearm.rotation.x=-.28;   // mostly extended to reach the foregrip
   }else if(grip==='shoulder'){
     // launcher braced on the shoulder: firing elbow up at the rear grip, support
     // hand under the tube
@@ -976,7 +1036,7 @@ function addImpact(pos: THREE.Vector3,hit: WeaponHit|{kind: string}|null){
 function makeBullet(origin: THREE.Vector3,dir: THREE.Vector3,{speed=86,range=52,damage=1}: BulletOpts={}){
   const g=makeBulletModel();
   g.position.copy(origin);
-  g.rotation.y=Math.atan2(dir.x,dir.z);
+  g.quaternion.setFromUnitVectors(_fwd,dir); // orient in full 3D (was yaw-only → tilted on up/down shots)
   g.position.addScaledVector(dir,.55);
   scene.add(g);
   bullets.push({
@@ -1003,7 +1063,7 @@ function spawnMissile(){
   const{origin,dir}=aimRay(70);
   const g=makeMissileModel();
   g.position.copy(origin);
-  g.rotation.y=Math.atan2(dir.x,dir.z);
+  g.quaternion.setFromUnitVectors(_fwd,dir); // full 3D orientation (yaw + pitch)
   scene.add(g);
   missiles.push({g,dir:dir.clone(),dist:0,range:75});
 }
@@ -1042,7 +1102,11 @@ const _fwd=new THREE.Vector3(0,0,1);
 // Uma bala hitscan com espalhamento horizontal opcional (shotgun/automáticas).
 function fireOneBullet({range=52,speed=86,damage=1,spread=0}: {range?: number;speed?: number;damage?: number;spread?: number}={}){
   const{origin,dir}=aimRay(range);
-  if(spread>0){dir.applyAxisAngle(_up,(Math.random()*2-1)*spread);dir.normalize();}
+  // Hip-fire (running and gunning without aiming) is far less accurate than ADS;
+  // aiming — or first-person — keeps the weapon's base spread.
+  const precise=state.aiming||state.firstPerson;
+  const s=spread*(precise?1:3);
+  if(s>0){dir.applyAxisAngle(_up,(Math.random()*2-1)*s);dir.normalize();}
   makeBullet(origin,dir,{speed,range,damage});
   addTracer(origin,origin.clone().addScaledVector(dir,3.2));
 }
@@ -1199,22 +1263,27 @@ const ASSIST_RATE=9;     // how briskly the yaw eases onto a centred target
 
 // Scratch for the aim-assist scan, reused every frame so the per-frame scan allocates
 // nothing (matches the engine's no-per-frame-allocation pass).
-const _assist: {best: number|null;bestD2: number}={best:null,bestD2:0};
+const _assist: {best: number|null;bestErr: number}={best:null,bestErr:0};
 function considerAssist(g: THREE.Object3D,px: number,pz: number,yaw: number){
   const dx=g.position.x-px,dz=g.position.z-pz;
   const d2=dx*dx+dz*dz;
-  if(d2>_assist.bestD2||d2<.36)return;            // too far, or basically on top of us
-  let err=Math.atan2(dx,dz)-yaw;                  // forward is (sin yaw, cos yaw)
+  if(d2>ASSIST_RANGE*ASSIST_RANGE||d2<.36)return; // out of range, or basically on top of us
+  let err=Math.atan2(dx,dz)-yaw;                  // bearing from the aim origin to the target
   err=Math.atan2(Math.sin(err),Math.cos(err));    // wrap to [-π,π]
-  if(Math.abs(err)>ASSIST_CONE)return;            // outside the cone: leave the aim alone
-  _assist.bestD2=d2;_assist.best=err;
+  // Pick the target nearest the CENTRE of the aim (smallest angular error), NOT the
+  // nearest by distance — otherwise a closer off-angle NPC would steal the assist and
+  // pull you off the one under the reticle. bestErr starts at the cone half-angle, so
+  // this also enforces the cone.
+  const a=Math.abs(err);
+  if(a>=_assist.bestErr)return;
+  _assist.bestErr=a;_assist.best=err;
 }
 
 // Nearest in-range, in-cone person/enemy target; returns the signed yaw error to it
 // (how far to rotate to face it), or null when there is nothing worth helping with.
 // Cars are deliberately excluded so the aim doesn't stick to parked traffic.
 function aimAssistError(px: number,pz: number,yaw: number): number|null{
-  _assist.best=null;_assist.bestD2=ASSIST_RANGE*ASSIST_RANGE;
+  _assist.best=null;_assist.bestErr=ASSIST_CONE;
   for(const p of peds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
   for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
   for(const o of copOfficers)if(!o.dead)considerAssist(o.g,px,pz,yaw);
@@ -1229,13 +1298,23 @@ function aimAssistError(px: number,pz: number,yaw: number): number|null{
 // scales with how centred the target already is (align²), so it locks on smoothly
 // without yanking the view around when you point elsewhere.
 function updateAimAssist(dt: number){
-  if(!state.mobile||!isWeaponHeld()||rampage.active)return;
+  // Light aim assist: gently eases the yaw toward the nearest centred target. Runs for
+  // touch (always — aiming on a phone is imprecise) AND for the aim mode on PC (a lighter
+  // nudge). The align² weighting keeps it subtle: it only really helps when the target is
+  // already near the centre, never yanking the view toward off-angle foes.
+  if(!settings.aimAssist)return;                  // player turned aim assist off in the menu
+  if(!(state.mobile||state.aiming)||!isWeaponHeld()||rampage.active)return;
   if(state.paused||state.dlgActive||state.orientationBlocked||state.controlsLocked||state.wheelOpen)return;
-  const pp=playerPos();
-  const err=aimAssistError(pp.x,pp.z,cameraRig.yaw);
+  // Measure from the CAMERA, not the player: the over-the-shoulder aim camera is offset
+  // to the side, so the reticle (camera centre) points from the camera — not the body.
+  // Measuring from the body tugged toward the body→target bearing, pulling you OFF a
+  // target the reticle was already on. From the camera, err≈0 when the reticle is on the
+  // target, so there's no tug once you're aimed dead-on.
+  const err=aimAssistError(camera.position.x,camera.position.z,cameraRig.yaw);
   if(err===null)return;
   const align=1-Math.abs(err)/ASSIST_CONE;        // 0 at the cone edge, 1 dead-centre
-  cameraRig.yaw+=err*(1-Math.exp(-ASSIST_RATE*align*align*dt));
+  const rate=state.mobile?ASSIST_RATE:3.5;        // mobile: full touch assist; PC aim: light nudge
+  cameraRig.yaw+=err*(1-Math.exp(-rate*align*align*dt));
 }
 
 export function updateWeapons(dt: number){
@@ -1246,15 +1325,25 @@ export function updateWeapons(dt: number){
   heldRocket.visible=rampaging;
   // arma na mão: aparece sempre que está a pé e tem modelo (o punho não tem).
   const showHeld=state.mode==='foot'&&!rampaging&&!swimming&&!!curWeapon.makeModel;
-  heldHolder.visible=showHeld;
   // first person: reparent the held weapon to the camera BEFORE posing, so the body
   // pose below writes into the correct space (and the body keeps it when not in FP).
   syncViewModel();
   // pose de mira pras armas de pontaria; melee tem animação própria de golpe.
+  // cancel aim mode the instant it stops being valid (in a car / water / fists / rampage)
+  if(state.aiming&&!canAim())state.aiming=false;
+  // raise the gun (aim pose) only while actually aiming/firing/first-person; otherwise
+  // the player "walks normally" until they aim (GTA-style).
+  const aimingNow=state.aiming||input.shootHeld||state.firstPerson;
+  // A FIREARM is holstered while walking normally — it appears on the body ONLY when the
+  // player is actually aiming, firing or in first person. Melee weapons (not aimed) stay in
+  // hand (you visibly carry a bat/knife); rampage uses its own rocket model (heldRocket).
+  // When a holstered firearm is hidden no body pose runs, so animatePed (called every frame
+  // in updateFoot) keeps the arms in the normal walk cycle.
+  heldHolder.visible=showHeld&&(curWeapon.aimed?aimingNow:true);
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
   if(!swimming&&!meleeAnimating){
-    if(rampaging||(showHeld&&curWeapon.aimed))posePlayerWithGun();
-    else if(showHeld)carryPose();
+    if(rampaging||(showHeld&&curWeapon.aimed&&aimingNow))posePlayerWithGun();
+    else if(showHeld&&!curWeapon.aimed)carryPose();
   }
   // first person: override the holder with its Counter-Strike-style viewmodel pose.
   applyViewModel();

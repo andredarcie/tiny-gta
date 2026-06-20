@@ -290,6 +290,7 @@ export function setupInput(): void {
     if(!state.started||state.dlgActive)return;
     if(document.pointerLockElement!==canvas){lockPointer();return;}
     if(e.button===1){e.preventDefault();openWheel();return;}
+    if(e.button===2){e.preventDefault();refs.toggleAim?.();return;} // right mouse toggles aim mode
     if(e.button!==0||state.wheelOpen)return; // roda aberta: clique não atira
     input.shootHeld=true;
     performShoot();
@@ -298,6 +299,7 @@ export function setupInput(): void {
     if(e.button===0)input.shootHeld=false;
     else if(e.button===1&&state.wheelOpen)closeWheel(true); // solta a roda = equipa
   });
+  canvas?.addEventListener('contextmenu',e=>e.preventDefault()); // right mouse is "aim", not the browser menu
   // Roda do mouse: com a roda aberta gira a seleção; a pé (fechada) troca de arma.
   canvas?.addEventListener('wheel',(e: WheelEvent)=>{
     if(!state.started||state.mode!=='foot')return;

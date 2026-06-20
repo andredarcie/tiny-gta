@@ -17,6 +17,7 @@ interface Settings {
   shadows: boolean;
   brightness: number;
   fps: boolean;
+  aimAssist: boolean;
 }
 
 // Single source of truth for defaults. They are picked to REPRODUCE the game's
@@ -30,6 +31,7 @@ export const DEFAULTS: Settings={
   shadows:true,   // directional-light shadows
   brightness:100, // 50..150 % -> toneMappingExposure (100 = the original 1.25)
   fps:true,       // show the FPS readout (top-left)
+  aimAssist:true, // gentle aim assist while aiming/on touch (read live by weapons.ts)
 };
 
 export const settings: Settings={...DEFAULTS};

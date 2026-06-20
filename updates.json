@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-20-aim-mode",
+    "date": "2026-06-20",
+    "title": "New over-the-shoulder aim mode",
+    "description": "Gunfights on foot got a big upgrade. Press the right mouse button — or tap the new AIM button on phones — to enter aim mode: the camera pulls in close over your shoulder, a crosshair appears, and your shots now land exactly where you point, including up and down. While aiming, your character grips the gun in a realistic two-handed stance; the rest of the time the gun stays holstered and you walk normally, drawing it only when you aim or fire. A gentle aim assist helps you line up targets — and if you'd rather aim entirely by hand, you can switch it off in Settings → Gameplay."
+  },
+  {
     "id": "2026-06-19-countryfolk-react",
     "date": "2026-06-19",
     "title": "Country folk react like everyone else now",
