@@ -15,10 +15,11 @@ npm run build      # production build → dist/
 npm run preview    # serve the production build
 npm run typecheck  # tsc --noEmit (strict) — the de-facto static check on the files you touched
 npm run lint       # ESLint (flat config in eslint.config.ts)
+npm run test:unit  # UNIT tests (Vitest, Node) — pure logic: math, RNG, world-gen, money ledger
 npm test           # browser end-to-end tests (Playwright) — see "Testing" below
 ```
 
-The codebase is **TypeScript in strict mode**. Static validation is `npm run typecheck` (`tsc --noEmit`) + `npm run lint` (ESLint), plus a `npm run build`. For *gameplay* changes there is also a browser test harness (`npm test`) that drives the real game — see the Testing section. Do not stand up new ad-hoc Playwright scripts; use the shared harness in `test/`.
+The codebase is **TypeScript in strict mode**. Static validation is `npm run typecheck` (`tsc --noEmit`) + `npm run lint` (ESLint), plus a `npm run build`. There are **two** test layers: a **Vitest unit suite** (`npm run test:unit`, `test/unit/**/*.test.ts`, runs in Node on pure/deterministic logic — safe to run yourself), and the **Playwright browser harness** (`npm test`) that drives the real game for *gameplay* changes (see the Testing section — that one is user-run). Do not stand up new ad-hoc test scripts; add unit tests under `test/unit/` and gameplay specs via the shared harness in `test/`.
 
 **TypeScript conventions (post-migration):** import specifiers keep the `.js` extension even though every source file is `.ts` — TS `moduleResolution: "bundler"` + Vite resolve `.js`→`.ts`, so **never rewrite an import specifier to `.ts`** (e.g. `import {state} from './state.js'` is correct from a `.ts` file). Shared cross-module types live in `js/types.ts` (`GameState`/`InputState`/`Refs`/`Vehicle`/`ModelDescriptor`/ledger/save); `state` is a closed `GameState`, `refs` has an index signature. `tsconfig.json` is strict with `allowJs:false`. Node tools (`npm run bake`, `npm run island-check`) run via `tsx`, not `node`.
 
