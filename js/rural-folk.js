@@ -4,17 +4,36 @@ import * as Entities from './entities.js';
 import {collideStatics} from './physics.js';
 import {state} from './state.js';
 import {playerPos,cur} from './player.js';
+import {Npc} from './npc.js';
 
-// Ambient rural NPCs ("rednecks") living across the eastern peninsula. Unlike the
-// old version (they just stood and swayed), each one now runs a small behaviour
-// state machine so the countryside feels inhabited:
+// Ambient rural NPCs ("rednecks") living across the eastern peninsula. Each one now
+// EXTENDS the shared Npc base (js/npc.js), so it inherits the COMMON combat
+// behaviour for free: it takes bullets / punches / explosions / fire, dies in a
+// ragdoll tumble with a blood pool and a little dropped cash (+1 wanted star for
+// gunning down a civilian) — exactly like a city pedestrian. (Before, they were in
+// none of the combat's NPC lists, so they were literally bullet-proof — the bug
+// the base class fixes.) The state machine below is just the AMBIENT behaviour:
 //   idle  — stand, breathe, glance around (and look at / wave to a passer-by)
 //   walk  — stroll to a random spot within their home patch and back
 //   work  — farm folk hoe their field (a stooped chopping action)
 //   wave  — greet the player when they wander close on foot
-//   flee  — scramble away from a car barrelling past at speed
-// They still carry no combat AI — they are flavour, not threats. LOD: far folk are
-// hidden AND skipped (same idea as pedestrians.js / traffic.js).
+//   flee  — scramble away from a car / a nearby gunshot
+// Death itself is handled by the base; a fallen folk then revives back at its home
+// patch so the countryside stays inhabited. LOD: far live folk are hidden + skipped.
+
+class RuralFolk extends Npc{
+  constructor(g,role){
+    // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
+    super(g,{kind:'rural',hp:1,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot'});
+    this.role=role;
+    this.home={x:g.position.x,z:g.position.z};
+    this.wander=role==='farm'?14:11;
+    this.state='idle';this.stateT=rand(1,4);
+    this.face=g.rotation.y;this.lookT=rand(1,4);
+    this.phase=rand(0,6);this.bob=rand(0,6);this.tx=0;this.tz=0;
+  }
+}
+
 const folk=[];
 const CULL2=150*150;
 
@@ -35,10 +54,7 @@ for(const[x,z,role]of spots){
   g.position.set(px,groundHeight(px,pz),pz);
   collideStatics(g.position,.4,SWIM_BOUND);   // never start stuck; SWIM_BOUND keeps the peninsula reachable
   g.rotation.y=rand(-Math.PI,Math.PI);
-  const f={g,role,home:{x:g.position.x,z:g.position.z},wander:role==='farm'?14:11,
-    state:'idle',stateT:rand(1,4),face:g.rotation.y,lookT:rand(1,4),
-    phase:rand(0,6),bob:rand(0,6),tx:0,tz:0};
-  folk.push(f);
+  folk.push(new RuralFolk(g,role));
 }
 
 // ---- action poses (called instead of animatePed for the custom actions) -------
@@ -88,6 +104,17 @@ function startWork(f){f.state='work';f.stateT=rand(3,6);f.phase=0;f.face=rand(-M
 function startWave(f){f.state='wave';f.stateT=rand(2,3.2);f.phase=0;}
 function startFlee(f){f.state='flee';f.stateT=rand(1.4,2.4);}
 
+// A fallen folk comes back at its home patch (keeps the countryside populated).
+function reviveFolk(f){
+  f.dead=false;f.grounded=false;f.deadT=0;f.bloodDropped=false;f.hp=f.maxHp;
+  f.punchHits=0;f.lastPunchT=-99;
+  const px=f.home.x+rand(-1.5,1.5),pz=f.home.z+rand(-1.5,1.5);
+  f.g.position.set(px,groundHeight(px,pz),pz);
+  f.g.rotation.set(0,rand(-Math.PI,Math.PI),0);
+  Entities.setOpacity?.(f.g,1);
+  startIdle(f);f.face=f.g.rotation.y;
+}
+
 const SHOT_R=34;   // a gunshot scatters rural folk within this radius
 
 export function updateRuralFolk(dt){
@@ -98,6 +125,10 @@ export function updateRuralFolk(dt){
   // a recent gunshot (broadcast by js/weapons.js) panics anyone nearby
   const shotRecent=state.time-(state.shotT??-99)<0.6;
   for(const f of folk){
+    // DEAD: play the inherited ragdoll tumble, then revive at home. Runs even when
+    // far so a body the player walked away from finishes its fall (like pedestrians).
+    if(f.dead){f.g.visible=true;if(f.updateRagdoll(dt))reviveFolk(f);continue;}
+
     const dx=f.g.position.x-pp.x,dz=f.g.position.z-pp.z;
     if(dx*dx+dz*dz>CULL2){f.g.visible=false;continue;}
     f.g.visible=true;

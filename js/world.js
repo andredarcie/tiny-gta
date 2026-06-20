@@ -16,6 +16,7 @@ import {addUmbrella} from '../assets/models/props/umbrella.js';
 import {addChair} from '../assets/models/props/chair.js';
 import {addLifeguard} from '../assets/models/props/lifeguard.js';
 import {addFarmHouse} from '../assets/models/props/farm-house.js';
+import {addAbandonedHouse} from '../assets/models/props/abandoned-house.js';
 import {addPine} from '../assets/models/props/pine.js';
 import {addTree} from '../assets/models/props/tree.js';
 import {addParkBench} from '../assets/models/props/park-bench.js';
@@ -438,7 +439,7 @@ for(const[px,pz]of[[574,70],[580,108],[636,112],[630,66]])addPine(px,pz);
 // houses reclaimed by the woods, south-west of Pine Hollow (off the mountain and
 // the dirt road). The dense tree cover sells the "abandoned" feel. -----
 for(const[hx,hz,hr]of[[440,-50,.25],[462,-64,-.35],[430,-38,.15],[566,-66,-.45],[598,-58,.3]])
-  solids.push(addFarmHouse(hx,hz,hr));
+  solids.push(addAbandonedHouse(hx,hz,hr));
 // broadleaf trees crowding the derelict houses
 for(const[tx,tz]of[[428,-46],[444,-62],[452,-36],[470,-54],[480,-70],[492,-44],
   [556,-58],[574,-72],[588,-50],[604,-66],[538,-74],[516,-56]])addTree(tx,tz);

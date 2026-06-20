@@ -13,6 +13,7 @@ import {traffic,spawnTraffic} from './traffic.js';
 import {cops,officers as copOfficers,killOfficer} from './police.js';
 import {spawnDrop} from './missions.js';
 import {gangPeds,killGangPed} from './gangs.js';
+import {npcs} from './npc.js'; // unified NPC registry (rural folk + any future type)
 import {dentCar,poseAiming,disposeGeometries} from './entities.js';
 import {makePistolModel} from '../assets/models/weapons/pistol.js';
 import {makeRocketLauncherModel,makeMissileModel} from '../assets/models/weapons/rocket-launcher.js';
@@ -680,18 +681,20 @@ function resolveMeleeImpact(a){
   thud(a.kind==='bat'?8:6);
   // FISTS are non-lethal: stagger + shove the person and only down them after
   // enough punches. The BAT (lethal) and firearms keep their one/two-shot kill.
-  const punch=a.lethal===false&&(hit.kind==='ped'||hit.kind==='gang'||hit.kind==='officer');
+  const punch=a.lethal===false&&(hit.kind==='ped'||hit.kind==='gang'||hit.kind==='officer'||hit.kind==='npc');
   if(punch){
     const tp=hit.target.g.position;
     tp.x+=dir.x*PUNCH_SHOVE;tp.z+=dir.z*PUNCH_SHOVE; // knock back along the swing
     if(hit.kind==='ped'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_PED))killPed(hit.target,dir);}
     else if(hit.kind==='gang'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_TOUGH))killGangPed(hit.target,dir);}
+    else if(hit.kind==='npc'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_PED))hit.target.kill(dir);}
     else if(tallyPunch(hit.target,PUNCH_TO_DOWN_TOUGH))killOfficer(hit.target);
     return;
   }
   if(hit.kind==='ped')killPed(hit.target,dir);
   else if(hit.kind==='gang')killGangPed(hit.target,dir);
   else if(hit.kind==='officer')killOfficer(hit.target);
+  else if(hit.kind==='npc')hit.target.takeDamage(dir);
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
@@ -795,6 +798,11 @@ function findWeaponHit(origin,dir,range=48){
     const d=rayHitXZ(origin,dir,o.g.position,1.05,range);
     if(d!==null&&d<best.d)best={kind:'officer',d,target:o};
   }
+  for(const n of npcs){ // qualquer NPC do registro unificado (roceiros, futuros tipos)
+    if(n.dead)continue;
+    const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
+    if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
+  }
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
       const d=rayHitXZ(origin,dir,c.g.position,2.1,range);
@@ -857,6 +865,10 @@ function blastDamage(pos,opts){
   }
   for(const o of copOfficers){ // a onda de choque também derruba a dupla
     if(!o.dead&&o.g.position.distanceTo(pos)<5)killOfficer(o);
+  }
+  for(const n of npcs){ // registro unificado: roceiros etc. também voam na explosão
+    if(!n.dead&&n.g.position.distanceTo(pos)<5)
+      n.takeDamage(new THREE.Vector3().subVectors(n.g.position,pos).setY(0).normalize());
   }
   refs.blastArmy?.(pos); // army soldiers (★6) caught in the blast
   for(const arr of[traffic,idleCars,cops]){
@@ -942,6 +954,7 @@ function handleBulletHit(hit,pos,dir,damage=1){
   if(hit.kind==='ped')killPed(hit.target,dir);
   else if(hit.kind==='gang')killGangPed(hit.target,dir);
   else if(hit.kind==='officer')killOfficer(hit.target);
+  else if(hit.kind==='npc')hit.target.takeDamage(dir);
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
@@ -1022,6 +1035,9 @@ function flameAttack(range){
   }
   for(const o of copOfficers){
     if(!o.dead&&rayHitXZ(origin,dir,o.g.position,1.4,range)!==null)killOfficer(o);
+  }
+  for(const n of npcs){ // registro unificado: o lança-chamas também pega roceiros etc.
+    if(!n.dead&&rayHitXZ(origin,dir,n.g.position,1.4,range)!==null)n.takeDamage(dir);
   }
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
@@ -1166,6 +1182,7 @@ function aimAssistError(px,pz,yaw){
   for(const p of peds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
   for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,yaw);
   for(const o of copOfficers)if(!o.dead)considerAssist(o.g,px,pz,yaw);
+  for(const n of npcs)if(!n.dead)considerAssist(n.g,px,pz,yaw);
   for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,yaw);
   for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,yaw);
   return _assist.best;
@@ -1373,6 +1390,8 @@ export function updateWeapons(dt){
       const near=p=>Math.hypot(p.g.position.x-c.x,p.g.position.z-c.z)<fp.radius;
       for(const p of peds)if(p.state!=='dead'&&p.state!=='fly'&&near(p))killPed(p,_up);
       for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly'&&near(p))killGangPed(p,_up);
+      for(const n of npcs)if(!n.dead&&near(n))n.takeDamage(_up); // registro unificado
+
       for(const arr of[traffic,idleCars,cops])for(const car of arr){
         if(car===cur||car.plane||!near(car))continue;
         const ud=car.g.userData;ud.bulletHits=(ud.bulletHits||0)+1;

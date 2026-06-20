@@ -113,7 +113,7 @@ function spawnTractor(x,z,heading){
   return t;
 }
 spawnTractor(398,40,Math.PI/2);
-spawnTractor(596,10,Math.PI/2);  // a second one parked by the rural village (Pine Hollow)
+spawnTractor(630,-12,0);  // a second one parked by the rural village (Pine Hollow), clear of the town sign
 
 export function playerPos(){return state.mode==='car'?cur.g.position:player.g.position;}
 
