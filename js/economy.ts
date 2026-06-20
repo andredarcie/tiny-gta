@@ -229,7 +229,12 @@ class Economy{
     this.ledger=[]; this.seen=new Set(); this.sum=0;
     this.checkpoint=ckpt;
     this.ckptSeq=Math.floor(Number(saved.seq)||0);
-    this.seen.add('genesis');          // base already accounts for the starting balance
+    // Do NOT pre-seed `seen` with 'genesis'. The genesis tx lives in EXACTLY ONE
+    // place: the checkpoint (mature snapshot, folded by compaction) OR `txs` (young
+    // snapshot, still in the window) — never both. Pre-skipping it dropped the
+    // starting balance whenever it was still in `txs` (young-ledger restore lost
+    // $250). Applying `txs` as-is restores it correctly; `carry` already excludes
+    // genesis, so the fresh-instance seed can never double-count.
     this.pending=[];                   // rebuilt from carry below (server dedupes resends)
     for(const t of txs){               // saved recent txs become base (not re-sent)
       const tx=this._sanitize(t);

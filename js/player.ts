@@ -94,9 +94,9 @@ export const idleCars:Vehicle[]=[playerCar];
 // Montar/descer é direto (sem porta), o piloto fica visível por cima inclinando
 // nas curvas. A pose/offset de quem monta vive em vehicle-pose.js (poseRider),
 // junto com a da lancha e do avião. Ver o flag bike em completeEnter/updateCar.
-function spawnBike(color:number,name:string,x:number,z:number,heading:number,..._ignored:number[]):Vehicle{
+function spawnBike(color:number,name:string,x:number,y:number,z:number,heading:number):Vehicle{
   const b:Vehicle={g:makeMotorcycle(color),heading,speed:0,name,police:false,bike:true};
-  b.g.position.set(x,0,z);b.g.rotation.y=heading;
+  b.g.position.set(x,y,z);b.g.rotation.y=heading;
   idleCars.push(b);
   return b;
 }

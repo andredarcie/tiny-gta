@@ -50,15 +50,11 @@ describe('economy ledger', () => {
     expect(total).toBe(state.money); // serialize itself is correct (ckpt + Σtxs == balance)
   });
 
-  // KNOWN BUG surfaced by this test — importLedger() assumes the 'genesis' tx is
-  // always folded into the snapshot's `ckpt`, but serialize() keeps genesis in
-  // `txs` while the ledger is young (<= SAVE_TXS entries). importLedger pre-seeds
-  // `seen` with 'genesis' and then SKIPS the genesis tx in `txs`, dropping the
-  // starting $250 — so re-importing a young snapshot loses money (hits a player who
-  // saves+reloads early). Marked `it.fails` so the suite stays green AND guards the
-  // bug: flip back to `it()` once economy.importLedger is fixed (it.fails will then
-  // fail, reminding us). See memory: economy-importledger-genesis-bug.
-  it.fails('importLedger is idempotent + balance-preserving (KNOWN BUG: young ledger drops genesis)', () => {
+  // Regression test for the genesis-loss bug: importLedger() must be idempotent and
+  // balance-preserving even for a YOUNG ledger where serialize() keeps the genesis
+  // tx in `txs` (not yet folded into `ckpt`). Previously importLedger pre-seeded
+  // `seen` with 'genesis' and skipped it, dropping the starting $250 on restore.
+  it('importLedger is idempotent + balance-preserving (incl. a young ledger with genesis in txs)', () => {
     const snap = economy.serialize();
     const balance = state.money;
     economy.importLedger(snap);

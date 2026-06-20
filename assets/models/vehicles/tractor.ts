@@ -60,7 +60,7 @@ export function buildTractor(): THREE.Group{
   // ----- engine hood (tapers up toward the dash) + grille + headlights -----
   g.add(box(GREEN,.72,.6,1.5, 0,.94,1.02));            // hood block
   g.add(box(GREEN,.62,.16,1.5, 0,1.27,1.02));          // hood top ridge
-  g.add(box(GREEN_D,.74,.1,1.48, 0,.66,1.02,0));       // lower hood trim (orig passed `false` here as rx; false===0 for rotation — behavior unchanged. Likely meant cast=false; flagged for review.)
+  g.add(box(GREEN_D,.74,.1,1.48, 0,.66,1.02,0,0,0,false));   // lower hood trim (no shadow)
   g.add(box(GRILLEM,.62,.52,.08, 0,.86,1.79));         // radiator grille
   for(let i=0;i<5;i++)g.add(box(METAL,.52,.025,.02, 0,.7+i*.1,1.84,0,0,0,false)); // slats
   g.add(cyl(HEADM,.085,.085,.07,12, -.36,1.04,1.76,Math.PI/2,0,0,false)); // headlights
@@ -88,8 +88,8 @@ export function buildTractor(): THREE.Group{
   g.add(box(SEATM,.42,.1,.42, 0,1.06,-.56));           // seat base (cushion)
   g.add(box(SEATM,.42,.42,.1, 0,1.27,-.76,-.18));      // seat back
   g.add(box(SEATM,.46,.06,.12, -0,1.04,-.36));         // seat front lip
-  g.add(box(METAL,.36,.04,.46, -.4,.5,.46,0));         // left footplate (orig `false` as rx; false===0 — unchanged)
-  g.add(box(METAL,.36,.04,.46,  .4,.5,.46,0));         // right footplate (orig `false` as rx; false===0 — unchanged)
+  g.add(box(METAL,.36,.04,.46, -.4,.5,.46,0,0,0,false));     // left footplate (no shadow)
+  g.add(box(METAL,.36,.04,.46,  .4,.5,.46,0,0,0,false));     // right footplate (no shadow)
 
   // ----- rear fenders over the big wheels -----
   g.add(fender(.86,.4,-.72,.74,-.72));
@@ -111,7 +111,7 @@ export function buildTractor(): THREE.Group{
     w.position.set(sx*.72,.72,-.72);w.rotation.order='YXZ';
     g.add(w);g.userData.wheels.push(w);
   }
-  g.add(box(DARK,1.2,.12,.14, 0,.43,1.24,0));          // front axle beam (orig `false` as rx; false===0 — unchanged)
+  g.add(box(DARK,1.2,.12,.14, 0,.43,1.24,0,0,0,false));      // front axle beam (no shadow)
   for(const sx of[-1,1]){                              // front (small, steered)
     const w=makeWheel(.43,.24);
     w.position.set(sx*.56,.43,1.24);w.rotation.order='YXZ';
