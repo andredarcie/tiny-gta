@@ -26,10 +26,15 @@ export default tseslint.config(
       // genuine-bug rules: errors
       'no-empty': ['error', { allowEmptyCatch: true }], // the codebase uses `catch(e){}` widely
       'no-constant-condition': ['error', { checkLoops: false }], // `for(;;)` rejection-sampling is intentional
+      // `a && a.m()` guarded calls and `cond ? f() : g()` dispatch are an idiom used all over
+      // the game; allow them so the rule still flags genuinely dead bare expressions (`x;`, `a===b;`).
+      '@typescript-eslint/no-unused-expressions': ['error', { allowShortCircuit: true, allowTernary: true, allowTaggedTemplates: true }],
       // stylistic / migration noise: warnings (do not fail the lint)
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-explicit-any': 'off',       // a few pragmatic `any` remain at dynamic boundaries
       '@typescript-eslint/no-non-null-assertion': 'off', // `!` is used instead of adding runtime guards
+      'prefer-const': 'warn',          // migration noise: `let` never reassigned; harmless, not a bug
+      'no-useless-assignment': 'warn', // false-positives on do-while/loop-first initializers; harmless dead stores
       'eqeqeq': ['warn', 'smart'],
     },
   },

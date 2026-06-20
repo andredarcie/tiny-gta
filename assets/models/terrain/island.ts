@@ -73,7 +73,7 @@ function ruralShape(extra=0): THREE.Shape{
   let first=true;
   for(let x=x0;x<=x1;x+=step){            // borda norte: z = +ruralHalf
     const z=ruralHalf(x)+extra*(ruralHalf(x)>0?1:0);
-    first?(sh.moveTo(x,z),first=false):sh.lineTo(x,z);
+    if(first){sh.moveTo(x,z);first=false;}else sh.lineTo(x,z);
   }
   for(let x=x1;x>=x0;x-=step)             // volta pela borda sul: z = -ruralHalf
     sh.lineTo(x,-(ruralHalf(x)+extra*(ruralHalf(x)>0?1:0)));
@@ -111,10 +111,10 @@ function cityAnnulus(inExtra: number,outExtra: number): THREE.ShapeGeometry{
 function ruralBand(inExtra: number,outExtra: number): THREE.ShapeGeometry{
   const sh=new THREE.Shape(),hole=new THREE.Path();
   const x0=RURAL_X0-8,x1=RURAL_TIP,step=5;let f=true;
-  for(let x=x0;x<=x1;x+=step){const z=ruralHalf(x)+outExtra;f?(sh.moveTo(x,z),f=false):sh.lineTo(x,z);}
+  for(let x=x0;x<=x1;x+=step){const z=ruralHalf(x)+outExtra;if(f){sh.moveTo(x,z);f=false;}else sh.lineTo(x,z);}
   for(let x=x1;x>=x0;x-=step)sh.lineTo(x,-(ruralHalf(x)+outExtra));
   sh.closePath();f=true;
-  for(let x=x0;x<=x1;x+=step){const z=ruralHalf(x)+inExtra;f?(hole.moveTo(x,z),f=false):hole.lineTo(x,z);}
+  for(let x=x0;x<=x1;x+=step){const z=ruralHalf(x)+inExtra;if(f){hole.moveTo(x,z);f=false;}else hole.lineTo(x,z);}
   for(let x=x1;x>=x0;x-=step)hole.lineTo(x,-(ruralHalf(x)+inExtra));
   hole.closePath();sh.holes.push(hole);
   return new THREE.ShapeGeometry(sh);

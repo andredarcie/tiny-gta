@@ -73,7 +73,7 @@ export class GameDriver {
         },
         pred.toString(), { timeout });
     } catch (e) {
-      throw new Error(`waitForState timed out${message ? `: ${message}` : ''}`);
+      throw new Error(`waitForState timed out${message ? `: ${message}` : ''}`, { cause: e });
     }
   }
 
