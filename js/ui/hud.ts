@@ -7,6 +7,7 @@ import {getTod} from '@/world/daynight.ts';
 import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {inGangTerritory} from '@/actors/gangs.ts';
+import {regionAt,mapRegionLabels} from '@/world/regions.ts';
 
 // The interact prompt descriptor computed for the E button (HUD label + prompt +
 // whether it is actionable). Some sources (zone actions) also carry a `run`
@@ -45,6 +46,11 @@ let shownMoney=250,msgT=0;
 // escrevemos quando muda de fato (a maioria dos frames não muda nada).
 let _money='',_clock='',_health=-1,_wanted=-1,_wname='',_prompt='',_promptShown: boolean | null=null;
 let _breath=-1,_breathShown: boolean | null=null;
+// Letreiro de localização (estilo open-world): anuncia o nome do bairro/região ao
+// entrar numa nova e some depois de alguns segundos. _region guarda a última
+// região mostrada pra disparar a troca só quando o jogador cruza pra outra.
+const hudLocation=$('location');
+let _region: string | null=null,_regionT=0;
 
 // Medidor de FPS: conta frames reais e só toca no DOM 2x por segundo —
 // atualizar texto todo frame custaria mais que aquilo que o medidor mede
@@ -729,6 +735,30 @@ export function drawFullMap(): void {
       push(b,'flag','#1ec8ff',bOn?(b.current?'NEXT BUOY':null):'BOAT RACE',bOn&&!b.current);
   }
 
+  // Nomes das regiões (bairros + localidades): roxo temático, fonte nítida (opaca,
+  // contorno escuro forte, coords inteiras pra não borrar). Desenhados AGORA, já
+  // com os marks montados, pra desviar dos ícones: se um nome cai em cima de um
+  // ícone de minigame/atividade, sobe acima dele até descolar — nunca dois textos
+  // empilhados. A ilha já tem rótulo próprio (silhueta), então fica de fora.
+  const iconPts=marks.filter(m=>!m.faded).map(m=>{const[ix,iy]=P(m.x,m.z);return{x:ix,y:iy};});
+  fm.textAlign='center';fm.textBaseline='middle';
+  for(const r of mapRegionLabels){
+    const txt=r.name.toUpperCase();
+    fm.font=`800 ${r.kind==='city'?12:14}px "IBM Plex Mono",monospace`;
+    const hw=fm.measureText(txt).width/2+10;       // meia-largura do texto + folga
+    const[bx,by]=P(r.cx,r.cz);
+    let lx=Math.round(bx),ly=Math.round(by);
+    // desvia na vertical (mantém o nome centrado no bairro): sobe acima do ícone
+    // mais alto que conflita; até 3 passos, caso suba pra cima de outro.
+    for(let pass=0;pass<3;pass++){
+      let top=Infinity;
+      for(const p of iconPts)if(Math.abs(p.x-lx)<hw&&Math.abs(p.y-ly)<18)top=Math.min(top,p.y);
+      if(top===Infinity)break;
+      ly=Math.round(top-22);
+    }
+    fm.lineWidth=4;fm.strokeStyle='rgba(13,4,24,.96)';fm.strokeText(txt,lx,ly); // contorno nítido
+    fm.fillStyle='#c98bff';fm.fillText(txt,lx,ly);                              // roxo temático
+  }
   for(const m of marks){
     const[px,py]=P(m.x,m.z);
     if(m.faded){ // trilha dos próximos checkpoints/boias: anel apagado, sem rótulo
@@ -786,6 +816,20 @@ export function updateHUD(dt: number): void {
       if(pct!==_breath){hudBreathFill.style.width=pct+'%';_breath=pct;}
       hudBreath.classList.toggle('low',state.swimAir<.25);
     }
+  }
+  // Letreiro de localização: nome da região atual (bairro / área rural / ilha).
+  // Em interior não há posição de mundo válida — esconde e zera pra reanunciar ao
+  // sair. Quando o jogador cruza pra uma região nova, mostra; sai de cena após uns
+  // segundos (geografia, não um alerta permanente).
+  if(hudLocation){
+    const pp=!state.interior?refs.playerPos?.():null;
+    const reg=pp?regionAt(pp.x,pp.z):null;
+    if(reg!==_region){
+      _region=reg;
+      if(reg){hudLocation.textContent=reg;hudLocation.classList.add('show');_regionT=5;}
+      else{hudLocation.classList.remove('show');_regionT=0;}
+    }
+    if(_regionT>0){_regionT-=dt;if(_regionT<=0)hudLocation.classList.remove('show');}
   }
   // Painel da arma: ícone (punho p/ melee, pistola p/ o resto), nome e munição
   // (∞ para punho/lança-chamas/detonador). Lê a arma atual via refs.

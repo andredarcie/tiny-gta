@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-22-district-names",
+    "date": "2026-06-22",
+    "title": "Every part of the map now has a name",
+    "description": "The whole world is mapped out by name now. The city is split into named neighborhoods — Downtown, Eastside, Westside, Harborview, Sunset Bluffs and more — and the countryside has its own named areas, from Meadowbrook and Drycreek Farms to Mount Vesper, Whispering Pines and the village of Pine Hollow. Open the full map (M) to see every name written across it in sharp purple lettering, and a little banner by the radar announces each area as you cross into it. The eastern countryside also runs a touch smoother."
+  },
+  {
     "id": "2026-06-22-menu-map-minigames",
     "date": "2026-06-22",
     "title": "Cleaner pause menu, a map shortcut and a Mini-Games guide",

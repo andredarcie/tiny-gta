@@ -108,6 +108,16 @@ body.no-grain #grain{display:none}
   box-shadow:0 0 0 2px rgba(0,0,0,.92),4px 5px 0 rgba(0,0,0,.36),0 0 12px rgba(239,161,216,.28)
 }
 #minimap{display:block;border-radius:50%}
+/* letreiro de localização (nome do bairro/região), ancorado ACIMA do radar —
+   por ser filho do #mapwrap acompanha o radar no desktop e no celular */
+#location{position:absolute;left:2px;bottom:calc(100% + 9px);max-width:240px;
+  padding:5px 13px 5px 10px;border-left:3px solid var(--gold);border-radius:2px;
+  background:linear-gradient(90deg,rgba(8,5,10,.9),rgba(8,5,10,.34) 70%,rgba(8,5,10,0));
+  font-family:'Bowlby One SC',sans-serif;font-size:14px;letter-spacing:.5px;
+  color:var(--cream);text-shadow:2px 2px 0 #000;line-height:1.05;white-space:nowrap;
+  pointer-events:none;opacity:0;transform:translateY(8px);
+  transition:opacity .45s ease,transform .45s ease}
+#location.show{opacity:1;transform:translateY(0)}
 #prompt{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
   padding:8px 18px;font-size:14px;letter-spacing:2px;color:var(--cream);display:none}
 #prompt b{color:var(--gold)}
@@ -804,6 +814,7 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #mapwrap{left:max(14px,env(safe-area-inset-left));bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(112px,18vw,138px) + 8px);
     padding:3px;border-width:2px}
   #minimap{width:clamp(108px,18vw,136px);height:clamp(108px,18vw,136px)}
+  #location{font-size:11px;max-width:58vw;padding:4px 10px 4px 8px;bottom:calc(100% + 7px)}
   #taxihud{left:max(8px,env(safe-area-inset-left));top:50%;bottom:auto;width:96px;padding:5px 6px}
   .taxi-label{font-size:8px}.taxi-main{margin-top:4px;gap:4px}
   .taxi-main span{font-size:10px}.taxi-main b{font-size:11px}
