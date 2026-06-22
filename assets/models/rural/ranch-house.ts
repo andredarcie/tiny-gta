@@ -4,6 +4,7 @@ import {scene} from '@/core/engine.ts';
 import {RURAL_GAP} from '@/core/constants.ts';
 import {makeDoorArrow} from '../city/door-arrow.ts';
 import {registerRuralStatic} from '@/world/rural-cull.ts';
+import {mergeStatic} from '../props/prop-merge.ts';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world), no mesmo molde dos demais
 // interiores (boate/academia/hospital/presídio): fachada no mapa + ambiente
@@ -667,6 +668,13 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   scene.add(ranchExterior);
   registerRuralStatic(ranchExterior,cx,cz);
   ranchFx.facadeArrow.matrixAutoUpdate=true;
+  // Funde os ~185 meshes soltos do rancho em um punhado de draw calls (era a maior
+  // geometria estática não-fundida do campo). A fachada continua um grupo próprio
+  // (Interior.updateFacade liga/desliga ao sair), a placa FOR SALE também (property.ts
+  // alterna .visible) e a seta animada da porta fica intacta. VISUAL-NEUTRO.
+  mergeStatic(facade,new Set([ranchFx.facadeArrow as THREE.Object3D]));
+  if(ranchFx.saleSign)mergeStatic(ranchFx.saleSign);
+  mergeStatic(ranchExterior,new Set<THREE.Object3D>([facade,ranchFx.saleSign as THREE.Object3D]));
 
   // colisões: corpo da casa + três paredes da garagem (frente aberta)
   solids.push(

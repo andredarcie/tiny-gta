@@ -70,6 +70,65 @@ export function finalizeProps(): void{
   chunks.clear();
 }
 
+// Assinatura visual COMPLETA do material + flags de sombra: dois meshes só se fundem
+// se renderizam pixel-a-pixel igual (mesmo material, mesma sombra, mesma ordem).
+function matSig(m:THREE.Material,cast:boolean,receive:boolean,order:number):string{
+  const a=m as unknown as {color?:THREE.Color;opacity?:number;flatShading?:boolean;
+    emissive?:THREE.Color;emissiveIntensity?:number;toneMapped?:boolean;alphaTest?:number;
+    fog?:boolean;map?:{uuid:string};emissiveMap?:{uuid:string}};
+  return m.type+'|'+(a.color?a.color.getHexString():'-')+'|'+(m.transparent?1:0)+'|'+
+    (a.opacity??1)+'|'+m.side+'|'+(a.flatShading?1:0)+'|'+(m.vertexColors?1:0)+'|'+
+    (a.emissive?a.emissive.getHexString():'-')+'|'+(a.emissiveIntensity??1)+'|'+
+    (m.depthWrite?1:0)+'|'+(a.fog?1:0)+'|'+(a.toneMapped?1:0)+'|'+(a.alphaTest??0)+'|'+
+    (a.map?a.map.uuid:'-')+'|'+(a.emissiveMap?a.emissiveMap.uuid:'-')+'|'+
+    (cast?1:0)+'|'+(receive?1:0)+'|'+order;
+}
+
+// Funde IN-PLACE os meshes ESTÁTICOS (matrixAutoUpdate=false) da sub-árvore de `group`
+// em poucos meshes por assinatura de material+sombra (geometria assada em world space;
+// o group deve estar na identidade). Marcos autorais grandes — que NÃO podem entrar nos
+// chunks fundidos por terem fachada que liga/desliga ou interior — viram centenas de
+// draw calls soltos; isto colapsa pra um punhado, mantendo o group como unidade
+// (cull/toggle seguem valendo). Meshes animados (matrixAutoUpdate=true, ex.: seta da
+// porta) e sub-árvores em `preserve` (ex.: a placa FOR SALE que liga/desliga) ficam
+// intactos. VISUAL-NEUTRO: só funde quem tem assinatura idêntica.
+export function mergeStatic(group:THREE.Object3D,preserve:Set<THREE.Object3D>=new Set()):void{
+  group.updateMatrixWorld(true);
+  const statics:THREE.Mesh[]=[],keep:THREE.Object3D[]=[];
+  const collect=(o:THREE.Object3D):void=>{
+    for(const c of o.children){
+      if(preserve.has(c)){keep.push(c);continue;}
+      const m=c as THREE.Mesh;
+      if(m.isMesh){
+        if(c.matrixAutoUpdate===false&&c.children.length===0)statics.push(m);
+        else keep.push(c); // animado, ou mesh com filhos: mantém
+      }else collect(c); // Group intermediário: achata (puxa os meshes estáticos pra cima)
+    }
+  };
+  collect(group);
+  if(statics.length<2)return; // nada a ganhar
+  const buckets=new Map<string,{geos:THREE.BufferGeometry[];mat:THREE.Material;cast:boolean;receive:boolean;order:number}>();
+  for(const m of statics){
+    const mat=m.material as THREE.Material;
+    const sig=matSig(mat,!!m.castShadow,!!m.receiveShadow,m.renderOrder);
+    let b=buckets.get(sig);
+    if(!b){b={geos:[],mat,cast:!!m.castShadow,receive:!!m.receiveShadow,order:m.renderOrder};buckets.set(sig,b);}
+    b.geos.push(m.geometry.clone().applyMatrix4(m.matrixWorld));
+  }
+  group.clear(); // solta todos os filhos; readiciona os preservados + os fundidos
+  for(const k of keep)group.add(k); // mesma matriz local; group na identidade -> world inalterado
+  for(const[,b]of buckets){
+    let geos=b.geos;
+    if(geos.some(g=>g.index)&&geos.some(g=>!g.index))geos=geos.map(g=>g.index?g.toNonIndexed():g);
+    const merged=mergeGeometries(geos);
+    if(!merged){for(const g of b.geos){const mm=new THREE.Mesh(g,b.mat);mm.castShadow=b.cast;mm.receiveShadow=b.receive;mm.renderOrder=b.order;mm.matrixAutoUpdate=false;mm.updateMatrix();group.add(mm);}continue;}
+    const mesh=new THREE.Mesh(merged,b.mat);
+    mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;mesh.renderOrder=b.order;
+    mesh.matrixAutoUpdate=false;mesh.updateMatrix();
+    group.add(mesh);
+  }
+}
+
 // Esconde os chunks de props longe do jogador. Corte CURTO de propósito: objeto
 // pequeno não deve aparecer de longe (LOD por tamanho — ver comentário no topo).
 export function updatePropCulling(px: number,pz: number): void{
