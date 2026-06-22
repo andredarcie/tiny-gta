@@ -71,6 +71,7 @@ import {updateDoorArrows} from '../../assets/models/city/door-arrow.ts';
 import {updateCityCulling} from '../../assets/models/city/building.ts';
 import {updatePropCulling} from '../../assets/models/props/prop-merge.ts';
 import {updateLotCulling} from '../../assets/models/city/abandoned-lot.ts';
+import {updateRuralCulling} from '@/world/rural-cull.ts'; // grandes marcos rurais (rancho/celeiro): corte por névoa
 import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
 import {warmupShaders} from '@/core/warmup.ts'; // pré-compila shaders no boot (anti-hitch)
 import {validateRefs,auditRefs} from '@/core/refs.ts'; // boot-time check of the late-binding ref contract
@@ -293,6 +294,7 @@ function step(dt: number){
   updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
   updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
+  updateRuralCulling(pp.x,pp.z); // rancho + celeiro: ~130 draw calls cortados além da névoa
   // Veículos parados (avião/barco/trator/bombeiro/ambulância/carro do jogador):
   // não desenha os que estão ALÉM da névoa — lá já são invisíveis, então é
   // visual-neutro. O corte acompanha a névoa (que abre na altitude). O carro

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {scene} from '@/core/engine.ts';
 import {RURAL_GAP} from '@/core/constants.ts';
+import {registerRuralStatic} from '@/world/rural-cull.ts';
 
 // build() puro: celeiro + silo num grupo na origem (coords relativas ao centro
 // do celeiro). addBarnWithSilo posiciona no mundo e registra a colisao.
@@ -29,6 +30,8 @@ export default {category:'Rural',label:'Barn with silo',build};
 
 export function addBarnWithSilo(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[]): void {
   const g=build();g.position.set(250+RURAL_GAP,0,-34);scene.add(g);
+  // estático: congela a matriz e corta além da névoa (ver js/world/rural-cull.ts)
+  registerRuralStatic(g,250+RURAL_GAP,-34);
   solids.push({x0:246.2+RURAL_GAP,x1:253.8+RURAL_GAP,z0:-36.8,z1:-31.2,h:5.5});
   solids.push({x0:255.4+RURAL_GAP,x1:258.6+RURAL_GAP,z0:-33.6,z1:-30.4,h:7.5});
 }

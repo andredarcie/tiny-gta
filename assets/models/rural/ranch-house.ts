@@ -3,6 +3,7 @@ import {matte} from '../matte.ts';
 import {scene} from '@/core/engine.ts';
 import {RURAL_GAP} from '@/core/constants.ts';
 import {makeDoorArrow} from '../city/door-arrow.ts';
+import {registerRuralStatic} from '@/world/rural-cull.ts';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world), no mesmo molde dos demais
 // interiores (boate/academia/hospital/presídio): fachada no mapa + ambiente
@@ -475,16 +476,21 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   // duas águas, alpendre, chaminé, venezianas e quinas brancas) =====
   const W=12,H=4.6,D=10;               // largura(x), pé-direito, profundidade(z)
   const fz=cz-D/2;                     // face da frente (norte, z menor)
+  // Todo o EXTERIOR (corpo, telhado, fachada, garagem, placa) entra neste grupo:
+  // assim o rancho — autoral, não fundido nos chunks de props — vira UM objeto que
+  // congelamos e cortamos além da névoa (ver js/world/rural-cull.ts). O grupo fica na
+  // origem (identidade), então as posições em coords de mundo abaixo não mudam.
+  const ranchExterior=new THREE.Group();
   // alicerce de pedra um pouco mais largo
   const base=new THREE.Mesh(new THREE.BoxGeometry(W+.5,.7,D+.5),concreteM);
-  base.position.set(cx,.35,cz);base.receiveShadow=true;scene.add(base);
+  base.position.set(cx,.35,cz);base.receiveShadow=true;ranchExterior.add(base);
   // corpo de tábuas
   const body=new THREE.Mesh(new THREE.BoxGeometry(W,H,D),wallM);
-  body.position.set(cx,.7+H/2,cz);body.castShadow=true;body.receiveShadow=true;scene.add(body);
+  body.position.set(cx,.7+H/2,cz);body.castShadow=true;body.receiveShadow=true;ranchExterior.add(body);
   // Tudo que é detalhe preso na casa entra neste grupo. Interior.updateFacade()
   // esconde o grupo quando a câmera fica dentro da pegada da casa ao sair,
   // evitando porta/janelas/alpendre/telhado flutuando sobre a casa invisível.
-  const facade=new THREE.Group();scene.add(facade);
+  const facade=new THREE.Group();ranchExterior.add(facade);
   ranchFx.facade=facade;
   ranchFx.footprint={x0:cx-W/2-.4,x1:cx+W/2+.4,z0:cz-D/2-.4,z1:cz+D/2+.4};
   const eaveY=.7+H;                    // altura do beiral (topo da parede)
@@ -624,35 +630,43 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   const ledger=new THREE.Mesh(new THREE.BoxGeometry(8.6,.22,.16),trimM);
   ledger.position.set(cx,.7+2.72,fz-.12);facade.add(ledger);
   const walk=new THREE.Mesh(new THREE.PlaneGeometry(2.4,3.2),concreteM);
-  walk.rotation.x=-Math.PI/2;walk.position.set(cx,.035,fz-3.55);walk.receiveShadow=true;scene.add(walk);
+  walk.rotation.x=-Math.PI/2;walk.position.set(cx,.035,fz-3.55);walk.receiveShadow=true;ranchExterior.add(walk);
 
   // garagem ao lado oeste (open front pro norte), centrada em (cx-11, cz)
   const gx=GARAGE_PAD.x,gz=GARAGE_PAD.z;
   const gWall=matte({color:0xe7d9bb,roughness:.95});
   // três paredes (fundo + duas laterais), frente aberta pro carro entrar
   const back=new THREE.Mesh(new THREE.BoxGeometry(6,3.4,.3),gWall);
-  back.position.set(gx,1.7,gz+3.5);back.castShadow=true;scene.add(back);
+  back.position.set(gx,1.7,gz+3.5);back.castShadow=true;ranchExterior.add(back);
   for(const sx of[-3,3]){
     const sw=new THREE.Mesh(new THREE.BoxGeometry(.3,3.4,7),gWall);
-    sw.position.set(gx+sx,1.7,gz);sw.castShadow=true;scene.add(sw);
+    sw.position.set(gx+sx,1.7,gz);sw.castShadow=true;ranchExterior.add(sw);
   }
   // verga/lintel no topo da abertura + telhado da garagem
   const lintel=new THREE.Mesh(new THREE.BoxGeometry(6.6,.6,.6),trimM);
-  lintel.position.set(gx,3.1,gz-3.5);scene.add(lintel);
+  lintel.position.set(gx,3.1,gz-3.5);ranchExterior.add(lintel);
   const gRoof=new THREE.Mesh(new THREE.BoxGeometry(7,.3,7.8),roofM);
-  gRoof.position.set(gx,3.55,gz);gRoof.castShadow=true;scene.add(gRoof);
+  gRoof.position.set(gx,3.55,gz);gRoof.castShadow=true;ranchExterior.add(gRoof);
   // piso de concreto da garagem (marca a vaga)
   const slab=new THREE.Mesh(new THREE.PlaneGeometry(5.4,7),concreteM);
-  slab.rotation.x=-Math.PI/2;slab.position.set(gx,.03,gz);slab.receiveShadow=true;scene.add(slab);
+  slab.rotation.x=-Math.PI/2;slab.position.set(gx,.03,gz);slab.receiveShadow=true;ranchExterior.add(slab);
 
   // placa FOR SALE no quintal, bem onde o gatilho de compra fica (RANCH_SALE).
-  // Depois da compra ela some por completo (js/places/property.ts).
+  // Depois da compra ela some por completo (js/places/property.ts apenas alterna
+  // .visible — nunca remove da cena —, então pode entrar no grupo do exterior).
   ranchFx.saleSign=makeSign(false);
-  ranchFx.saleSign.position.set(RANCH_SALE.x,0,RANCH_SALE.z);scene.add(ranchFx.saleSign);
+  ranchFx.saleSign.position.set(RANCH_SALE.x,0,RANCH_SALE.z);ranchExterior.add(ranchFx.saleSign);
   ranchFx.soldSign=null;
   // seta quicando na porta (só visível quando comprada — js/places/property.ts)
   ranchFx.facadeArrow=makeDoorArrow();
   ranchFx.facadeArrow.position.set(cx,1.7,cz-6);ranchFx.facadeArrow.visible=false;facade.add(ranchFx.facadeArrow);
+
+  // Exterior montado: entra na cena como UM objeto, com a matriz congelada e
+  // registrado pro corte por névoa. A setinha da porta (property.ts anima o .y
+  // quando a casa é comprada) volta a recompor a matriz por frame.
+  scene.add(ranchExterior);
+  registerRuralStatic(ranchExterior,cx,cz);
+  ranchFx.facadeArrow.matrixAutoUpdate=true;
 
   // colisões: corpo da casa + três paredes da garagem (frente aberta)
   solids.push(
