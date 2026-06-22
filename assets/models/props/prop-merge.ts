@@ -129,6 +129,44 @@ export function mergeStatic(group:THREE.Object3D,preserve:Set<THREE.Object3D>=ne
   }
 }
 
+// Funde os meshes-folha DIRETOS de `group` por assinatura de material+sombra, no
+// referencial LOCAL do próprio group (geometria assada com group^-1 * meshWorld), e
+// devolve os fundidos como filhos do group. Diferente de mergeStatic (que assa em
+// WORLD e congela): aqui o group CONTINUA se movendo (é um veículo / uma roda que
+// gira), então a geometria fica no frame do group e acompanha a animação. Sub-grupos
+// animados em `preserve` (rodas, volante) ficam intactos. Use em cada sub-conjunto
+// RÍGIDO: o corpo do veículo, e DENTRO de cada roda (os ~20 meshes de uma roda giram
+// juntos). Colapsa o tração de ~117 draws p/ ~30, sem mudar um pixel.
+export function mergeRigid(group:THREE.Object3D,preserve:Set<THREE.Object3D>=new Set()):void{
+  group.updateMatrixWorld(true);
+  const inv=group.matrixWorld.clone().invert();
+  const leaves:THREE.Mesh[]=[];
+  for(const c of group.children){
+    if(preserve.has(c))continue;
+    const m=c as THREE.Mesh;
+    if(m.isMesh&&c.children.length===0)leaves.push(m); // só funde meshes-folha rígidos
+  }
+  if(leaves.length<2)return;
+  const buckets=new Map<string,{geos:THREE.BufferGeometry[];mat:THREE.Material;cast:boolean;receive:boolean;order:number}>();
+  for(const m of leaves){
+    const mat=m.material as THREE.Material;
+    const sig=matSig(mat,!!m.castShadow,!!m.receiveShadow,m.renderOrder);
+    let b=buckets.get(sig);
+    if(!b){b={geos:[],mat,cast:!!m.castShadow,receive:!!m.receiveShadow,order:m.renderOrder};buckets.set(sig,b);}
+    b.geos.push(m.geometry.clone().applyMatrix4(inv.clone().multiply(m.matrixWorld)));
+  }
+  for(const m of leaves)group.remove(m);
+  for(const[,b]of buckets){
+    let geos=b.geos;
+    if(geos.some(g=>g.index)&&geos.some(g=>!g.index))geos=geos.map(g=>g.index?g.toNonIndexed():g);
+    const merged=mergeGeometries(geos);
+    if(!merged){for(const g of b.geos){const mm=new THREE.Mesh(g,b.mat);mm.castShadow=b.cast;mm.receiveShadow=b.receive;mm.renderOrder=b.order;group.add(mm);}continue;}
+    const mesh=new THREE.Mesh(merged,b.mat);
+    mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;mesh.renderOrder=b.order;
+    group.add(mesh);
+  }
+}
+
 // Esconde os chunks de props longe do jogador. Corte CURTO de propósito: objeto
 // pequeno não deve aparecer de longe (LOD por tamanho — ver comentário no topo).
 export function updatePropCulling(px: number,pz: number): void{
