@@ -20,6 +20,7 @@ import {makePed} from '@/core/entities.ts';
 import {economy} from '@/core/economy.ts';
 import {message} from '@/ui/hud.ts';
 import {groundHeight,RURAL_X0} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 
 // A forest clearing deep in the western countryside — off the road, clear of the
 // mountain (x~509), the village (x=650) and the ploughed fields (x>332).
@@ -38,7 +39,7 @@ export function isCarryingDrugs(){
 // The shakedown fee: scales with the haul, with a floor, capped at what the
 // player can actually pay (a broke player just loses the stash).
 function bribeFor(val: number){
-  const want=Math.max(300,Math.round((val||0)*.8));
+  const want=Math.max(REWARDS.drugBust.bribeMin,Math.round((val||0)*REWARDS.drugBust.bribeStashFraction));
   return Math.min(want,Math.max(0,Math.floor(state.money)));
 }
 

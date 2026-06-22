@@ -6,6 +6,7 @@ import {playerPos,cur,idleCars} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {N,nodeX,clamp,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeBombGarage} from '../../assets/models/props/bomb-garage.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import type {ZoneAction} from '@/core/types.ts';
@@ -25,7 +26,7 @@ new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Demo Garage',exclusive:false});
 // galpão clandestino na ORLA OESTE (fora da rua), longe dos outros mini games.
 // Antes ficava no meio do cruzamento (88,-88).
 const PAD={x:-198,z:60};
-const PRICE=100;                     // preço pra armar o carro
+const PRICE=REWARDS.bombShop.armPrice;                     // preço pra armar o carro
 const PAD_RANGE=5;                   // raio pra armar (com o carro parado)
 const ARM_SPEED=3;                   // velocidade máx do carro pra poder armar
 const DETONATE_RANGE=14;             // distância máx (a pé) pro botão de detonar

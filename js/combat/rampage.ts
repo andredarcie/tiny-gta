@@ -6,6 +6,7 @@ import {playerPos} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {N,nodeX,irand,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {grantWeapon,snapshotArsenal,restoreArsenal} from '@/combat/weapons.ts';
 import {makeRampageSkull} from '../../assets/models/props/rampage-skull.ts';
 import {inGangTerritory} from '@/actors/gangs.ts';
@@ -26,8 +27,8 @@ import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 
 const PICKUP_COUNT=6;   // quantas caveiras espalhar
 const RANGE=3;          // distância de contato pra pegar (m)
-const DURATION=30;      // segundos por rampage
-const COOLDOWN=90;      // segundos até a caveira usada reaparecer
+const DURATION=REWARDS.rampage.durationSec;      // segundos por rampage
+const COOLDOWN=REWARDS.rampage.cooldownSec;      // segundos até a caveira usada reaparecer
 const BASE_GOAL=12;     // meta base de kills
 
 interface Pad{x:number;z:number;g:THREE.Object3D;alive:boolean;cooldown:number;}
@@ -114,7 +115,7 @@ function finishRampage(success: boolean,silent=false){
     // Harder levels (bigger goal) pay more, but the payout is CAPPED at a race
     // win ($700, the game's ceiling): a repeatable melee frenzy must never out-pay
     // a race, and the per-level growth no longer climbs without bound.
-    const reward=Math.min(700,250+30*goal);
+    const reward=Math.min(REWARDS.rampage.rewardCap,REWARDS.rampage.rewardBase+REWARDS.rampage.rewardPerGoalKill*goal);
     economy.earn(reward,'rampage');
     bigText('FRENZY COMPLETE','var(--gold)');
     setTimeout(hideBig,1300);

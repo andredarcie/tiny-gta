@@ -8,6 +8,7 @@ import {buyWeapon} from '@/combat/weapons.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud,setFireSiren,setHose} from '@/audio/audio.ts';
 import {N,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
 import {makeBlazeModel} from '../../assets/models/effects/blaze.ts';
 import {makeFireTruck} from '../../assets/models/vehicles/fire-truck.ts';
@@ -39,16 +40,16 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',FF_BUILD);
 const ORANGE=0xff7a1e;
 // open-world: o tempo de cada incêndio é proporcional à DISTÂNCIA (correr pela
 // cidade) + uma base pra apagar, e ACUMULA no relógio (sobra vai pro próximo).
-const TIME_PER_M=.12;      // segundos concedidos por metro até o fogo
-const FIRE_BASE=8;         // base por incêndio (apagar depois de chegar)
-const TIME_MIN=12,TIME_MAX=30; // piso/teto do tempo concedido por incêndio
-const START_BUFFER=6;      // folga extra só no 1º incêndio (dar partida)
-const LOW_TIME=8;          // abaixo disso o HUD pisca vermelho e bipa
+const TIME_PER_M=REWARDS.firefighter.timePerMeterSec;      // segundos concedidos por metro até o fogo
+const FIRE_BASE=REWARDS.firefighter.fireBaseSec;         // base por incêndio (apagar depois de chegar)
+const TIME_MIN=REWARDS.firefighter.timeMinSec,TIME_MAX=REWARDS.firefighter.timeMaxSec; // piso/teto do tempo concedido por incêndio
+const START_BUFFER=REWARDS.firefighter.startBufferSec;      // folga extra só no 1º incêndio (dar partida)
+const LOW_TIME=REWARDS.firefighter.lowTimeSec;          // abaixo disso o HUD pisca vermelho e bipa
 const FLAME_AT=10;         // incêndios apagados que liberam o LANÇA-CHAMAS (open-world)
 const SPRAY_RANGE=11;      // alcance do canhão d'água (m): chegou perto, já borrifa
 const DOUSE_RATE=0.7;      // "vida" do fogo apagada por segundo de jato
 const REGEN_RATE=0.6;      // "vida" recuperada por segundo quando ninguém borrifa
-const WRECK_RESPAWN=20;    // caminhão destruído: volta à esquina depois disso (s)
+const WRECK_RESPAWN=REWARDS.firefighter.wreckRespawnSec;    // caminhão destruído: volta à esquina depois disso (s)
 
 // caminhão estacionado na interseção x=nodeX(3)=-44, z=nodeX(6)=88 (asfalto livre,
 // FORA do território dos SKULLS — regra: mini-game nunca nasce em zona de gangue)
@@ -285,8 +286,8 @@ function endDuty(text='FIRE BRIGADE OVER',col='var(--cyan)'){
 function extinguishFire(){
   // bônus por rapidez: apagar rápido paga mais (some por volta de ~12s no fogo)
   const elapsed=state.time-fire!.startT;
-  const speedBonus=Math.max(0,Math.round(90-elapsed*7));
-  const reward=60*level+speedBonus;
+  const speedBonus=Math.max(0,Math.round(REWARDS.firefighter.speedBonusMax-elapsed*REWARDS.firefighter.speedBonusDecayPerSec));
+  const reward=Math.min(REWARDS.firefighter.maxReward,REWARDS.firefighter.perLevel*level+speedBonus);
   economy.earn(reward,'firefighter');
   fires++;
   // baita baforada de vapor onde o fogo estava + baque + jingle de vitória

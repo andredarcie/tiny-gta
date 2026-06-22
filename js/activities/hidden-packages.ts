@@ -6,6 +6,7 @@ import {playerPos} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {N,nodeX,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeHiddenPackage} from '../../assets/models/props/hidden-package.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
@@ -17,9 +18,9 @@ new MiniGame({id:MiniGameId.HIDDEN_PACKAGES,name:'Hidden Stashes',exclusive:fals
 // Coleta a pé ou de carro; pequenos prêmios por pacote, bônus a cada 10, e um
 // grande bônus ao achar todos.
 const TOTAL=24;
-const PER_PACKAGE=50;     // dinheiro por pacote
-const BONUS_EACH=500;     // bônus a cada 10 coletados
-const BONUS_ALL=5000;     // bônus ao achar todos
+const PER_PACKAGE=REWARDS.hiddenPackages.perPackage;  // dinheiro por pacote
+const BONUS_EACH=REWARDS.hiddenPackages.bonusPer10;   // bônus a cada 10 coletados
+const BONUS_ALL=REWARDS.hiddenPackages.bonusAll;      // bônus ao achar todos
 const PICK_R=3.2;         // raio de coleta (a pé ou de carro)
 const STORE_KEY='tinygta_packages';
 

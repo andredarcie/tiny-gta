@@ -293,6 +293,22 @@ body.no-grain #grain{display:none}
   background:rgba(255,210,74,.12);border:1px solid rgba(255,210,74,.3);border-radius:6px;padding:2px 7px}
 .pause-up-title{font:800 14px 'IBM Plex Mono',monospace;color:var(--cyan);text-shadow:0 0 10px rgba(25,227,255,.35)}
 .pause-up-desc{margin:0;font:600 12.5px 'IBM Plex Mono',monospace;line-height:1.5;color:rgba(255,233,201,.9)}
+/* Mini-games reference: responsive cards listing every mini-game's config (money/cost/timers).
+   auto-fill grid → one column on a narrow phone, two+ on a wider PC shell, no media query. */
+.pause-mg-scroll{max-height:60vh;padding:4px}
+.pause-mg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start}
+.pause-mg-card{border:1px solid rgba(25,227,255,.22);border-radius:10px;background:rgba(25,227,255,.05);
+  padding:11px 12px 9px;display:flex;flex-direction:column;gap:2px}
+.pause-mg-name{font:800 14px 'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--cyan);
+  text-shadow:0 0 10px rgba(25,227,255,.3)}
+.pause-mg-blurb{margin:0 0 6px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.4;color:rgba(255,233,201,.72)}
+.pause-mg-row{padding:5px 0;border-top:1px solid rgba(255,255,255,.06)}
+.pause-mg-row:first-of-type{border-top:none}
+.pause-mg-kv{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.pause-mg-field{font:700 11.5px 'IBM Plex Mono',monospace;color:rgba(255,233,201,.95)}
+.pause-mg-val{font:800 12px 'IBM Plex Mono',monospace;color:var(--gold);text-align:right;
+  font-variant-numeric:tabular-nums;word-break:break-word}
+.pause-mg-desc{margin-top:1px;font:500 10.5px 'IBM Plex Mono',monospace;line-height:1.35;color:rgba(255,233,201,.55)}
 #house-tv{position:fixed;inset:0;z-index:64;display:none;align-items:center;justify-content:center;
   padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(48px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));
   background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.12),rgba(2,0,8,.72) 78%);

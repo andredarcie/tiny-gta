@@ -6,6 +6,7 @@ import {playerPos,cur,idleCars,cameraRig} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
 import {N,nodeX,HALF,CELL,ROAD,SIDE,irand,pick,clamp,wrapA,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeCar,spinWheels} from '@/core/entities.ts';
 import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
 import {makeRcRager} from '../../assets/models/vehicles/rc-rager.ts';
@@ -34,16 +35,16 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',RC_BUILD);
 
 const GREEN=0x5eff8a;
 const GOLD_COLOR=0xffd23a;
-const ROUND_TIME=70;   // short starting clock — you earn more time by wrecking cars
-const TIME_CAP=99;     // clock ceiling (keeps it 2-digit and the round bounded)
-const TIME_PER_KILL=1.8; // seconds added per normal wreck
+const ROUND_TIME=REWARDS.rcToyz.roundTimeSec;   // short starting clock — you earn more time by wrecking cars
+const TIME_CAP=REWARDS.rcToyz.timeCapSec;     // clock ceiling (keeps it 2-digit and the round bounded)
+const TIME_PER_KILL=REWARDS.rcToyz.timePerKillSec; // seconds added per normal wreck
 const POOL=5;          // gang cars roaming at once (refilled as they are destroyed)
 const HIT_RANGE=2.2;   // RC→car distance that auto-detonates on contact (RC is tiny)
 const BLAST=5;         // base blast radius (matches weapons.blastDamage) — a cluster chains
 const MEGA_BONUS=4;    // extra blast radius while a MEGA crate is active
-const PER_KILL=100;    // base cash per wrecked car (scaled by the combo multiplier)
-const GOLD_MULT=3;     // gold car pays triple
-const GOLD_TIME=5;     // gold car also gives a big time bonus
+const PER_KILL=REWARDS.rcToyz.perKill;          // base cash per wrecked car (scaled by the combo multiplier)
+const GOLD_MULT=REWARDS.rcToyz.goldCarMultiplier; // gold car pays triple
+const GOLD_TIME=REWARDS.rcToyz.goldTimeSec;     // gold car also gives a big time bonus
 const GOLD_CHANCE=.12; // chance a fresh spawn is the rare golden bonus car (max 1 alive)
 const MOVE_CHANCE=.55; // chance a normal target cruises the streets instead of parking
 const SPAWN_MIN=18, SPAWN_MAX=72; // target spawn distance from the player/pad
@@ -51,8 +52,8 @@ const SPAWN_MIN=18, SPAWN_MAX=72; // target spawn distance from the player/pad
 // Combo: wrecks within COMBO_WINDOW of each other chain. The cash multiplier steps
 // up the longer the chain runs (capped at ×3 to keep payouts near the original
 // per-kill and under the backend's plausibility cap); callouts fire per chain length.
-const COMBO_WINDOW=3.5;
-function comboMult(c: number){ return c>=7?3:c>=4?2:1; }
+const COMBO_WINDOW=REWARDS.rcToyz.comboWindowSec;
+function comboMult(c: number){ for(const t of REWARDS.rcToyz.comboTiers)if(c>=t.minCombo)return t.mult; return 1; }
 interface Callout{c:number;txt:string;col:string;}
 const CALLOUTS: Callout[]=[
   {c:12,txt:'UNSTOPPABLE!',col:'#ff3bd0'},
@@ -66,14 +67,14 @@ function callout(c: number): Callout|null{ for(const m of CALLOUTS)if(c>=m.c)ret
 // Cruising-target speeds (m/s). Fleeing/gold cars sprint but stay under the RC's
 // top speed (~32) so the chase is winnable with effort.
 const CRUISE_SLOW=7, CRUISE_FAST=15;
-const PANIC_R=16, PANIC_TIME=2.2; // RC proximity that makes a car scatter, and for how long
+const PANIC_R=16, PANIC_TIME=REWARDS.rcToyz.panicTimeSec; // RC proximity that makes a car scatter, and for how long
 
 // Power-up crates: one hue per type. They hover over road intersections; drive the
 // RC through one to grab it. Staggered respawn keeps a few on the map at all times.
-const CRATE_POOL=3, CRATE_RANGE=2.6, CRATE_RESPAWN=5;
-const CRATE_TIME=8;                 // seconds a TIME crate adds
-const NITRO_TIME=6, NITRO_MUL=1.7;  // duration + top-speed/accel multiplier of NITRO
-const MEGA_TIME=8;                  // duration of MEGA BLAST
+const CRATE_POOL=3, CRATE_RANGE=2.6, CRATE_RESPAWN=REWARDS.rcToyz.crateRespawnSec;
+const CRATE_TIME=REWARDS.rcToyz.crateTimeSec;                 // seconds a TIME crate adds
+const NITRO_TIME=REWARDS.rcToyz.nitroTimeSec, NITRO_MUL=1.7;  // duration + top-speed/accel multiplier of NITRO
+const MEGA_TIME=REWARDS.rcToyz.megaTimeSec;                  // duration of MEGA BLAST
 interface CrateType{id:string;color:number;label:string;}
 const CRATE_TYPES: CrateType[]=[
   {id:'nitro',color:0x19e3ff,label:'NITRO!'},
@@ -419,7 +420,7 @@ function killTarget(t: Target){
   combo++;comboT=COMBO_WINDOW;bestCombo=Math.max(bestCombo,combo);
   // gold is its own flat bonus (not multiplied by the combo) so a single kill can
   // never spike past the backend's per-second cap; it still advances the chain.
-  const cash=t.gold?PER_KILL*GOLD_MULT:PER_KILL*comboMult(combo);
+  const cash=Math.min(REWARDS.rcToyz.maxCashPerKill,t.gold?PER_KILL*GOLD_MULT:PER_KILL*comboMult(combo));
   economy.earn(cash,'rc-toyz');
   timeLeft=Math.min(TIME_CAP,timeLeft+(t.gold?GOLD_TIME:TIME_PER_KILL)); // time-attack reward
   timeFlash=.7;

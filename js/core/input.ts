@@ -433,6 +433,8 @@ export function setupInput(): void {
   // late-bound refs, so it never has to import this module (which imports it).
   refs.togglePause=performPauseToggle;
   refs.toggleFullscreen=performFullscreenToggle;
+  refs.openFullMap=openFullMap; // pause menu → INFO → MAP opens the full-map overlay
+
   // Mapa completo: X fecha; tocar/clicar no radar abre (acesso no celular, sem tecla M)
   document.getElementById('fm-close')?.addEventListener('click',(e: MouseEvent)=>{e.stopPropagation();closeFullMap();});
   document.getElementById('mapwrap')?.addEventListener('pointerdown',(e: PointerEvent)=>{

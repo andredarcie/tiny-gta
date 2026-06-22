@@ -3,6 +3,7 @@ import {state,input,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {N,ROAD,BLOCK,SIDE,rand,irand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {isPark} from '@/world/world.ts';
 import {blip,thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
@@ -171,7 +172,7 @@ export const getWeaponHud=()=>({
 // Reward kept BELOW a race win ($700, the game's payout ceiling): wrecking 3
 // cars with one-shot rockets is quick and low-skill, and the frenzy is repeatable
 // once the launcher respawns — so it must not out-pay winning a race.
-const RAMPAGE_GOAL=3,RAMPAGE_TIME=80,RAMPAGE_REWARD=600;
+const RAMPAGE_GOAL=3,RAMPAGE_TIME=REWARDS.rocketRampage.timeSec,RAMPAGE_REWARD=REWARDS.rocketRampage.reward;
 const rampage={active:false,end:0,kills:0};
 // mini game (sessão): igual à chacina das caveiras (js/combat/rampage.ts), trava o mundo
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.

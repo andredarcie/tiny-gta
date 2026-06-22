@@ -5,6 +5,7 @@ import {blip} from '@/audio/audio.ts';
 import {animatePed} from '@/core/entities.ts';
 import {clubFx} from '../../assets/models/city/nightclub.ts';
 import {clubMusicOn,clubMusicInfo,BAR,BEAT,STEP} from '@/audio/club-music.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 
 // ============================================================================
 // Mini-game de RITMO da boate ("DANCE FEVER"), estilo Guitar Hero/DDR de dança.
@@ -276,7 +277,7 @@ function gradeFor(){
   return a>=.95?'S':a>=.85?'A':a>=.7?'B':a>=.5?'C':a>=.3?'D':'F';
 }
 function payout(){
-  reward=({S:500,A:350,B:200,C:100,D:50,F:0} as Record<string,number>)[grade]||0;
+  reward=REWARDS.dance.gradePayouts[grade]||0;
   if(score>best){best=score;newBest=true;
     try{localStorage.setItem('tinygta_dance',JSON.stringify({best}));}catch(e){}}
 }

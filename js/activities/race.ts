@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs,carColors} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -265,7 +266,7 @@ function startRace(){
   clearTimeout(hideTimer!);hideTimer=null; // cancel any stale hide from a previous session
   if(!route.length)prepareRace(); // garante percurso (já vem pré-montado)
   buildCpMarkers();
-  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;paceRef=0;
+  playerCp=0;raceT=0;cdT=REWARDS.race.countdownSec;lastCdShown=-1;paceRef=0;
   startMk.ring.visible=startMk.beacon.visible=false; // some a largada durante a prova
   gate.visible=false;                                // tira o pórtico depois de largar
   // teleporta o carro do jogador pra linha, virado pro primeiro checkpoint
@@ -317,11 +318,11 @@ function loseRace(){
 function completeRace(){
   const place=1+finishedNpcs;
   const total=racers.length+1;
-  const prize=[700,350,150,0][place-1]??0;
+  const prize=REWARDS.race.placePrizes[place-1]??0;
   // bônus de tempo: corrida rápida paga mais (some por volta de ~2min)
-  const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
+  const bonus=place===1?Math.max(0,Math.round(REWARDS.race.fastWinBonusMax-raceT*REWARDS.race.fastWinBonusDecayPerSec)):0;
   // anti-farm: refazer a corrida em loop paga cada vez menos (recupera com o tempo)
-  const paid=diminishPrize(prizeState,prize+bonus,state.time);
+  const paid=diminishPrize(prizeState,prize+bonus,state.time,REWARDS.race.repeatWinDecay,REWARDS.race.repeatWinRecoverSec);
   economy.earn(paid,'race');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
   reportMiniGameResult(game.id,{won:place===1,score:paid});

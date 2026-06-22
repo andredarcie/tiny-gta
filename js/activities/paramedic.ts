@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {N,nodeX,rand,irand,pick,clamp} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -123,7 +124,7 @@ function clearHospMk(){
 function startLevel(announce=true){
   needed=Math.min(PATIENT_CAP,level);
   onboard=0;
-  timeMax=45+level*12;timeLeft=timeMax;
+  timeMax=REWARDS.paramedic.levelTimeBaseSec+level*REWARDS.paramedic.levelTimePerLevelSec;timeLeft=timeMax;
   clearHospMk();
   spawnPatients();
   if(announce){
@@ -173,7 +174,7 @@ function loadPatient(p: Patient){
 }
 
 function deliver(){
-  const reward=30*onboard+40*level;
+  const reward=Math.min(REWARDS.paramedic.maxReward,REWARDS.paramedic.perPatient*onboard+REWARDS.paramedic.perLevel*level);
   economy.earn(reward,'paramedic');
   runRescues+=onboard;
   clearHospMk();
@@ -232,7 +233,7 @@ export function updateParamedic(dt: number){
   // ambulância destruída: reaparece no ponto do hospital depois de um tempo
   if(!amb.g.parent&&cur!==amb){
     wreckT+=dt;
-    if(wreckT>20){
+    if(wreckT>REWARDS.paramedic.wreckRespawnSec){
       wreckT=0;resetAmbulance();
       scene.add(amb.g);
       if(!idleCars.includes(amb))idleCars.push(amb);

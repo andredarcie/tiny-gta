@@ -6,6 +6,7 @@ import {cur} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {clamp,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeStuntRamp} from '../../assets/models/props/stunt-ramp.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
@@ -24,12 +25,12 @@ new MiniGame({id:MiniGameId.STUNT_JUMPS,name:'Daredevil Jumps',exclusive:false})
 // reaplicamos todo frame, o arco aparece. O controle do carro NÃO é travado.
 
 const TOTAL=5;
-const JUMP_DUR=0.9;     // duração do arco (s)
+const JUMP_DUR=REWARDS.stuntJump.jumpDurSec;     // duração do arco (s)
 const TAKEOFF_DIST=4;   // distância (m) para disparar a decolagem
 const MIN_SPEED=14;     // velocidade mínima para decolar
-const LAND_COOLDOWN=0.6;// trava curta após aterrissar (não redispara na mesma rampa)
+const LAND_COOLDOWN=REWARDS.stuntJump.landCooldownSec;// trava curta após aterrissar (não redispara na mesma rampa)
 const ALIGN_TOL=0.55;   // produto escalar mínimo (~57°): carro indo ao longo da rampa
-const REPEAT_PAY_CD=30; // segundos entre pagamentos repetidos NA MESMA rampa (anti-farm)
+const REPEAT_PAY_CD=REWARDS.stuntJump.repeatPayCooldownSec; // segundos entre pagamentos repetidos NA MESMA rampa (anti-farm)
 
 // uma rampa colocada no mundo: posição, heading, modelo 3D e estado de pagamento
 interface Ramp{x:number;z:number;heading:number;g:THREE.Object3D;done:boolean;paidAt:number;}
@@ -128,11 +129,11 @@ export function updateStuntJumps(dt: number): void{
       // valor pela velocidade do salto, com teto: capado pra um stunt NUNCA pagar
       // mais que vencer uma corrida ($700). O destaque é o bônus de inédito (+400);
       // a repetição (v puro a cada 30s) fica baixa de propósito (anti-farm).
-      const v=Math.min(300,Math.max(0,Math.round(jumpSpeed*8)));
+      const v=Math.min(REWARDS.stuntJump.maxValue,Math.max(0,Math.round(jumpSpeed*REWARDS.stuntJump.speedMultiplier)));
       if(jumpRamp&&!jumpRamp.done){
         // primeira vez nesta rampa: bônus de descoberta
         jumpRamp.done=true;jumpRamp.paidAt=state.time;
-        const bonus=400;
+        const bonus=REWARDS.stuntJump.firstTimeBonus;
         economy.earn(v+bonus,'stunt-jump');
         bigText('DAREDEVIL JUMP! +$'+(v+bonus),'var(--gold)');
         message('DAREDEVIL JUMP  +$'+(v+bonus),'var(--gold)');

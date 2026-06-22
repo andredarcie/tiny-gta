@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -439,7 +440,7 @@ function startRace(){
   buildCpMarkers();
   buildMines(); // bombas aquáticas no meio do percurso
   cur!.mineHopV=cur!.mineHopY=0; // zera estado de "pulo" de mina
-  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;paceRef=0;
+  playerCp=0;raceT=0;cdT=REWARDS.boatRace.countdownSec;lastCdShown=-1;paceRef=0;
   startMk.ring.visible=startMk.beacon.visible=false; // some a largada durante a prova
   gate.visible=false;                                // tira o pórtico depois de largar
   // teleporta a lancha do jogador pra linha, virada pra 1ª boia
@@ -491,11 +492,11 @@ function loseRace(){
 function completeRace(){
   const place=1+finishedNpcs;
   const total=racers.length+1;
-  const prize=[700,350,150,0][place-1]??0;
+  const prize=REWARDS.boatRace.placePrizes[place-1]??0;
   // bônus de tempo: corrida rápida paga mais
-  const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
+  const bonus=place===1?Math.max(0,Math.round(REWARDS.boatRace.fastWinBonusMax-raceT*REWARDS.boatRace.fastWinBonusDecayPerSec)):0;
   // anti-farm: refazer a prova em loop paga cada vez menos (recupera com o tempo)
-  const paid=diminishPrize(prizeState,prize+bonus,state.time);
+  const paid=diminishPrize(prizeState,prize+bonus,state.time,REWARDS.boatRace.repeatWinDecay,REWARDS.boatRace.repeatWinRecoverSec);
   economy.earn(paid,'boat-race');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
   reportMiniGameResult(game.id,{won:place===1,score:paid});

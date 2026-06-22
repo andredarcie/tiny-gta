@@ -8,6 +8,7 @@ import {blip} from '@/audio/audio.ts';
 import {overkillMusicOn,overkillMusicOff} from '@/audio/overkill-music.ts';
 import {makeOverkillTotem} from '../../assets/models/props/overkill-totem.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 
 // modo livre (não trava o mundo: o overkill é justamente correr a cidade inteira
 // sendo caçado). Registra a identidade no enum/registro de mini games; o totem
@@ -35,7 +36,9 @@ new MiniGame({id:MiniGameId.OVERKILL,name:'Overkill',exclusive:false});
 // ============================================================================
 
 export const TOTEM={x:20,z:9}; // calçada norte do quarteirão do spawn (bem visível)
-const RANGE=3, MAX_MULT=8, CLIMB=0.5, DECAY=1.2, K=2, MAX_RATE=75;
+const RANGE=3;
+const MAX_MULT=REWARDS.overkill.maxMultiplier, CLIMB=REWARDS.overkill.climbPerSec, DECAY=REWARDS.overkill.decayPerSec;
+const K=REWARDS.overkill.rateFactor, MAX_RATE=REWARDS.overkill.maxPerSecond;
 
 const hudEl=document.getElementById('overkill');
 let totem: THREE.Object3D|null=null;

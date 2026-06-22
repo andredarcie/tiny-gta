@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {N,nodeX,rand,irand,pick,clamp,ROAD,groundHeight,SWIM_BOUND,HALF} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -26,11 +27,11 @@ const VIG_BUILD=' ◆ STREET JUSTICE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',VIG_BUILD);
 
 const RED=0xff3b56;
-const DUTY_TIME=75;      // initial patrol time (seconds)
-const BUST_BONUS=20;     // seconds added per capture
+const DUTY_TIME=REWARDS.vigilante.dutyTimeSec;      // initial patrol time (seconds)
+const BUST_BONUS=REWARDS.vigilante.bustBonusSec;     // seconds added per capture
 const HIT_RANGE=4.6;     // distance from cruiser to suspect to register a ram
 const HIT_SPEED=4;       // minimum cruiser speed for a ram to count
-const HIT_COOLDOWN=.6;   // minimum interval between rams
+const HIT_COOLDOWN=REWARDS.vigilante.ramCooldownSec;   // minimum interval between rams
 const JUKE_RANGE=6;      // player nearby: the suspect re-picks a destination to juke
 
 // viatura estacionada na interseção ao lado do presídio (centro de cruzamento =
@@ -180,7 +181,7 @@ function endDuty(text='STREET JUSTICE OFF DUTY',col='var(--cyan)'){
 }
 
 function bustCriminal(){
-  const reward=50*level;
+  const reward=Math.min(REWARDS.vigilante.maxReward,REWARDS.vigilante.perBust*level);
   economy.earn(reward,'vigilante');
   busts++;
   message(`CRIMINAL BUSTED +$${reward}`,'var(--gold)');
@@ -277,7 +278,7 @@ export function updateVigilante(dt: number){
   // viatura destruída: reaparece no presídio depois de um tempo
   if(!cruiser.g.parent&&cur!==cruiser){
     wreckT+=dt;
-    if(wreckT>20){
+    if(wreckT>REWARDS.vigilante.wreckRespawnSec){
       wreckT=0;resetCruiser();
       scene.add(cruiser.g);
       if(!idleCars.includes(cruiser))idleCars.push(cruiser);

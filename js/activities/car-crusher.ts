@@ -6,6 +6,7 @@ import {playerPos,cur,idleCars} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
 import {N,nodeX,clamp,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeCarCrusher} from '../../assets/models/props/car-crusher.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
@@ -188,8 +189,8 @@ function startCrush(){
   // guarda o estado original do carro pra interpolar o achatamento
   _car0.y=car.g.position.y;
   _car0.scaleY=car.g.scale.y;
-  // sucata: 80 + até 220 aleatório
-  reward=80+Math.floor(Math.random()*221);
+  // sucata: aleatório uniforme em [minScrap, maxScrap]
+  reward=REWARDS.carCrusher.minScrap+Math.floor(Math.random()*(REWARDS.carCrusher.maxScrap-REWARDS.carCrusher.minScrap+1));
   press.position.y=PRESS_UP;
   message('SCRAP CRUSHER - SCRAPPING...','var(--cyan)');
   blip([330,247,196],.1,'sawtooth',.18);

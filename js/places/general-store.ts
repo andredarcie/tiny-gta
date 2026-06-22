@@ -7,6 +7,7 @@ import {blip} from '@/audio/audio.ts';
 import {Interior} from '@/world/interior.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import type {Strain} from '@/activities/strains.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {generalStoreInterior,genStoreFx,GENSTORE_DOOR,GENSTORE_SPAWN_OUT,
   INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,SEED_DISPLAYS,FERT_DISPLAY}
   from '../../assets/models/rural/general-store.ts';
@@ -63,8 +64,9 @@ function nearStrain():Strain|null{
 }
 
 function buySeeds(s:Strain){
-  if(!economy.spend(s.price,'seeds')){
-    message(`NOT ENOUGH MONEY - NEED $${s.price}`,'var(--pink)');return;
+  const price=REWARDS.weedFarm.seedPrices[s.id];
+  if(!economy.spend(price,'seeds')){
+    message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)');return;
   }
   state.seeds[s.id]=(state.seeds[s.id]|0)+s.pack;
   state.seedSel=s.id; // this strain is now the one the farm plants
@@ -79,8 +81,9 @@ const nearFert=()=>{
   return Math.hypot(p.x-FERT_DISPLAY.x,p.z-FERT_DISPLAY.z)<2.0;
 };
 function buyFert(){
-  if(!economy.spend(FERTILIZER.price,'seeds')){
-    message(`NOT ENOUGH MONEY - NEED $${FERTILIZER.price}`,'var(--pink)');return;
+  const price=REWARDS.weedFarm.fertilizerPrice;
+  if(!economy.spend(price,'seeds')){
+    message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)');return;
   }
   state.fertilizer=(state.fertilizer|0)+FERTILIZER.pack;
   message(`BOUGHT ${FERTILIZER.pack} PLANT FOOD - ${state.fertilizer} IN THE BAG`,'var(--gold)');
@@ -95,18 +98,20 @@ function buyFert(){
   const s=nearStrain();
   if(s){
     const have=state.seeds[s.id]|0;
-    if(state.money<s.price)
-      return{label:'SEEDS',prompt:`NEED $${s.price} FOR ${s.name} SEEDS`,enabled:true,
-        run:()=>message(`NOT ENOUGH MONEY - NEED $${s.price}`,'var(--pink)')};
-    return{label:'SEEDS',prompt:`BUY ${s.pack} ${s.name} $${s.price} · ${s.blurb} (HAVE ${have})`,
+    const price=REWARDS.weedFarm.seedPrices[s.id];
+    if(state.money<price)
+      return{label:'SEEDS',prompt:`NEED $${price} FOR ${s.name} SEEDS`,enabled:true,
+        run:()=>message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)')};
+    return{label:'SEEDS',prompt:`BUY ${s.pack} ${s.name} $${price} · ${s.blurb} (HAVE ${have})`,
       enabled:true,run:()=>buySeeds(s)};
   }
   if(nearFert()){
     const have=state.fertilizer|0;
-    if(state.money<FERTILIZER.price)
-      return{label:'FOOD',prompt:`NEED $${FERTILIZER.price} FOR PLANT FOOD`,enabled:true,
-        run:()=>message(`NOT ENOUGH MONEY - NEED $${FERTILIZER.price}`,'var(--pink)')};
-    return{label:'FOOD',prompt:`BUY ${FERTILIZER.pack} PLANT FOOD $${FERTILIZER.price} · ${FERTILIZER.blurb} (HAVE ${have})`,
+    const price=REWARDS.weedFarm.fertilizerPrice;
+    if(state.money<price)
+      return{label:'FOOD',prompt:`NEED $${price} FOR PLANT FOOD`,enabled:true,
+        run:()=>message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)')};
+    return{label:'FOOD',prompt:`BUY ${FERTILIZER.pack} PLANT FOOD $${price} · ${FERTILIZER.blurb} (HAVE ${have})`,
       enabled:true,run:buyFert};
   }
   return null;

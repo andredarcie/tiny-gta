@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {N,nodeX,rand,irand,pick,ROAD,clamp} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs,saveBest} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -208,10 +209,10 @@ function boardFare(){
   // pay little. Small flat floor ($6) keeps the shortest fares worthwhile but
   // far below the old guaranteed ~$28, killing the chain-short-fares exploit.
   // Tip stays distance-scaled and is paid out via the time-decaying currentTip().
-  fare!.pay=Math.round(6+dist*.42); // longer rides pay much more
-  fare!.tip=Math.round(8+dist*.18);
+  fare!.pay=Math.round(REWARDS.taxi.baseFare+dist*REWARDS.taxi.farePerMeter); // longer rides pay much more
+  fare!.tip=Math.round(REWARDS.taxi.baseTip+dist*REWARDS.taxi.tipPerMeter);
   fare!.rideStart=state.time;
-  fare!.deadline=state.time+clamp(24+dist/10,38,120);
+  fare!.deadline=state.time+clamp(REWARDS.taxi.deadlineBaseSec+dist/REWARDS.taxi.deadlinePerMeterDiv,REWARDS.taxi.deadlineMinSec,REWARDS.taxi.deadlineMaxSec);
   setMarker(dx,dz);
   phase='ride';
   message(`TAKE THE FARE TO THE MARKER - TIP $${fare!.tip}`,'var(--gold)');
@@ -263,7 +264,7 @@ function failRide(){
 
 function completeRide(){
   const tip=currentTip();
-  const paid=fare!.pay+tip;
+  const paid=Math.min(REWARDS.taxi.maxFare,fare!.pay+tip);
   clearMarker();
   dropPassenger();
   economy.earn(paid,'taxi');
@@ -291,7 +292,7 @@ export function updateTaxi(dt: number){
   // táxi destruído: reaparece no ponto da praça depois de um tempo
   if(!taxi.g.parent&&cur!==taxi){
     wreckT+=dt;
-    if(wreckT>20){
+    if(wreckT>REWARDS.taxi.wreckRespawnSec){
       wreckT=0;resetTaxiCar();
       scene.add(taxi.g);
       if(!idleCars.includes(taxi))idleCars.push(taxi);

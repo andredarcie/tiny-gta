@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-22-menu-map-minigames",
+    "date": "2026-06-22",
+    "title": "Cleaner pause menu, a map shortcut and a Mini-Games guide",
+    "description": "The pause menu is tidier: RESUME, INFO, SETTINGS and QUIT. INFO now gathers the Leaderboard, your Transactions and the Updates, plus two new things — a MAP shortcut that opens the full map, and a MINI-GAMES guide that lists every activity in the game with exactly how much it pays, what it costs and its timers, so you always know what's worth your time. Fullscreen moved into Settings. We also tuned some payouts: the scrap crusher and car exports pay more, dance nights tip better, and the boat race pays a little extra for braving the mines. And a weed-farm fix: a delivery run will always have buyers around to sell to — you can no longer get stuck holding a stash with nobody to deal it to."
+  },
+  {
     "id": "2026-06-20-intro-and-look",
     "date": "2026-06-20",
     "title": "New intro screen and a grittier, more cinematic look",

@@ -1,17 +1,20 @@
 // In-game PAUSE MENU — a proper game menu (P / Esc on desktop, the II button on
-// touch). Views: main menu, the global leaderboard (paginated), the player's money
-// transactions (paginated), graphics/audio settings, plus fullscreen / switch
-// account / quit-to-title.
+// touch). Top level: RESUME, INFO, SETTINGS, QUIT. INFO groups the read-only panels
+// (leaderboard, transactions, updates, the full MAP, and a MINI GAMES reference that
+// lists every mini-game's payouts/costs/timers straight from minigame-rewards.json).
+// SETTINGS holds graphics/audio plus the fullscreen toggle.
 //
 // Self-contained: it owns every node under #pauseov and wires its own listeners
 // (one delegated set, in setupPauseMenu). It must NOT import input.js (which imports
-// this) — resume and fullscreen go through late-bound refs (refs.togglePause /
-// refs.toggleFullscreen) to keep the dependency one-directional.
+// this) — resume / fullscreen / the full map go through late-bound refs
+// (refs.togglePause / refs.toggleFullscreen / refs.openFullMap) to keep the
+// dependency one-directional.
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
-import {API,getNickname,logout,flush} from '@/ui/leaderboard.ts';
+import {API,getNickname,flush} from '@/ui/leaderboard.ts';
 import {settings,setSetting,resetSettings} from '@/core/settings.ts';
 import UPDATES from '../../updates.json';
+import MINIGAME_REWARDS from '../../minigame-rewards.json';
 
 // A changelog entry shape (root updates.json, newest-first).
 interface Update { id: string; date: string; title: string; description: string; }
@@ -66,8 +69,28 @@ const whyLabel=(w: string): string=>WHY_LABELS[w]||(w?String(w).replace(/[-_]/g,
 const bodyEl=(): HTMLElement=>$('pause-body')!;
 const setTitle=(t: string): void=>{const e=$('pause-title');if(e)e.textContent=t;};
 
-// 'main' | 'leaderboard' | 'transactions' | 'settings' | 'updates'
+// View hierarchy. INFO and SETTINGS hang off the main menu; the read-only panels
+// (leaderboard / transactions / updates / minigames) hang off INFO. MAP is NOT a
+// view — it leaves the pause menu and opens the existing full-map overlay.
+// 'main' | 'info' | 'leaderboard' | 'transactions' | 'updates' | 'minigames' | 'settings'
 let view='main';
+// Parent of each sub-view, so BACK / hardware-back walks up exactly one level.
+const PARENT: Record<string, string>={
+  info:'main', settings:'main',
+  leaderboard:'info', transactions:'info', updates:'info', minigames:'info',
+};
+function goBack(): void { openView(PARENT[view]||'main'); }
+function openView(v: string): void {
+  switch(v){
+    case'info': goInfo(); break;
+    case'leaderboard': openLeaderboard(); break;
+    case'transactions': openTransactions(); break;
+    case'updates': openUpdates(); break;
+    case'minigames': openMiniGames(); break;
+    case'settings': openSettings(); break;
+    default: goMain();
+  }
+}
 
 // ---- shared chrome ---------------------------------------------------------
 const backBtn=(): string=>`<button class="pause-btn pause-back" data-act="back">&#8592; BACK</button>`;
@@ -87,14 +110,25 @@ function goMain(): void {
   bodyEl().innerHTML=
     `<div class="pause-menu">`+
       `<button class="pause-btn pause-btn-go" data-act="resume">RESUME</button>`+
+      `<button class="pause-btn" data-act="info">INFO${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
+      `<button class="pause-btn" data-act="settings">SETTINGS</button>`+
+      `<button class="pause-btn pause-btn-danger" data-act="quit">QUIT TO TITLE</button>`+
+    `</div>`;
+}
+
+// ---- INFO submenu — the read-only panels (board / wallet / changelog / map / minigames)
+function goInfo(): void {
+  view='info';
+  setTitle('INFO');
+  bodyEl().innerHTML=
+    `<div class="pause-menu">`+
       `<button class="pause-btn" data-act="leaderboard">LEADERBOARD</button>`+
       `<button class="pause-btn" data-act="transactions">TRANSACTIONS</button>`+
       `<button class="pause-btn" data-act="updates">UPDATES${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
-      `<button class="pause-btn" data-act="settings">SETTINGS</button>`+
-      `<button class="pause-btn" data-act="fullscreen">FULLSCREEN</button>`+
-      `<button class="pause-btn" data-act="account">SWITCH ACCOUNT</button>`+
-      `<button class="pause-btn pause-btn-danger" data-act="quit">QUIT TO TITLE</button>`+
-    `</div>`;
+      `<button class="pause-btn" data-act="map">MAP</button>`+
+      `<button class="pause-btn" data-act="minigames">MINI GAMES</button>`+
+    `</div>`+
+    backBtn();
 }
 
 // ---- leaderboard (global ranking, paginated) -------------------------------
@@ -197,6 +231,66 @@ function renderUpdates(): void {
     backBtn();
 }
 
+// ---- mini games (read-only reference of every mini-game's money / cost / timers) --
+// Mirrors /minigame-rewards.json verbatim — the very {field,value,description} triples
+// the game tunes from — so the player always has the full payout/cost/timing reference.
+interface MgTunable { field: string; value: unknown; description: string }
+const MG_DATA=MINIGAME_REWARDS as unknown as Record<string, MgTunable[]>;
+// Friendly name + one-line blurb per mini-game (the JSON keys are terse).
+const MG_META: Record<string, { name: string; blurb: string }>={
+  race:          {name:'Street Race',     blurb:'Place in the street circuit for the purse.'},
+  boatRace:      {name:'Boat Race',       blurb:'Race the buoys at sea — dodge the mines.'},
+  offroad:       {name:'Off-Road',        blurb:'Dirt-track circuit out on open terrain.'},
+  taxi:          {name:'Cab Hustle',      blurb:'Pick up fares; speed earns a bigger tip.'},
+  carCrusher:    {name:'Scrap Crusher',   blurb:'Crush a car for scrap (once per in-game day).'},
+  vigilante:     {name:'Street Justice',  blurb:'Ram & bust suspects; pay scales with patrol level.'},
+  paramedic:     {name:'Ambulance Rush',  blurb:'Rush patients to the hospital before time runs out.'},
+  firefighter:   {name:'Fire Brigade',    blurb:'Put out fires fast for a quick-extinguish bonus.'},
+  stuntJump:     {name:'Daredevil Jumps', blurb:'Clear ramps for speed cash + first-time bonuses.'},
+  hiddenPackages:{name:'Hidden Stashes',  blurb:'Find packages hidden across the map (one-time).'},
+  importExport:  {name:'Dock Exports',    blurb:'Deliver a wanted car to the docks (once per day).'},
+  rcToyz:        {name:'RC Smash',         blurb:'Wreck cars with the RC for combo multipliers.'},
+  weedFarm:      {name:'Green Acres',      blurb:'Grow, cure and deal weed to buyers across the map.'},
+  rampage:       {name:'Frenzy',           blurb:'Melee kill-spree against the clock.'},
+  rocketRampage: {name:'Rocket Frenzy',    blurb:'Blow up the goal cars with the rocket launcher.'},
+  overkill:      {name:'Overkill',         blurb:'Go loud city-wide — a streak multiplier on kill income.'},
+  dance:         {name:'Dance Fever',      blurb:'Hit the beats; the crowd tips by your grade.'},
+  bombShop:      {name:'Demo Garage',      blurb:'Arm a car bomb (a cost, not income).'},
+  drugBust:      {name:'Drug Bust',        blurb:'The crooked-cop shakedown if a weed deal goes wrong.'},
+};
+// Render any tunable value (number / array / map / array-of-maps) as compact text.
+function fmtMgVal(v: unknown): string {
+  if(Array.isArray(v))return '['+v.map(fmtMgVal).join(', ')+']';
+  if(v&&typeof v==='object')
+    return Object.entries(v as Record<string, unknown>).map(([k,val])=>`${k}: ${fmtMgVal(val)}`).join(', ');
+  return String(v);
+}
+function openMiniGames(): void {
+  view='minigames';
+  setTitle('MINI GAMES');
+  renderMiniGames();
+}
+function renderMiniGames(): void {
+  const cards=Object.keys(MG_DATA).map(key=>{
+    const meta=MG_META[key]||{name:key,blurb:''};
+    const rows=MG_DATA[key].map(t=>
+      `<div class="pause-mg-row">`+
+        `<div class="pause-mg-kv"><span class="pause-mg-field">${escapeHtml(t.field)}</span>`+
+        `<b class="pause-mg-val">${escapeHtml(fmtMgVal(t.value))}</b></div>`+
+        `<div class="pause-mg-desc">${escapeHtml(t.description)}</div>`+
+      `</div>`
+    ).join('');
+    return `<div class="pause-mg-card">`+
+      `<div class="pause-mg-name">${escapeHtml(meta.name)}</div>`+
+      (meta.blurb?`<p class="pause-mg-blurb">${escapeHtml(meta.blurb)}</p>`:'')+
+      rows+
+    `</div>`;
+  }).join('');
+  bodyEl().innerHTML=
+    `<div class="pause-scroll pause-mg-scroll"><div class="pause-mg-grid">${cards}</div></div>`+
+    backBtn();
+}
+
 // ---- settings (graphics + audio) -------------------------------------------
 const SCHEMA: { group: string; items: SettingItem[] }[]=[
   {group:'GAMEPLAY',items:[
@@ -239,8 +333,14 @@ function renderSettings(): void {
     `<div class="pause-set-group"><div class="pause-set-title">${g.group}</div>`+
     g.items.map(settingRow).join('')+`</div>`
   ).join('');
+  // Fullscreen is an action (not a persisted setting), so it gets its own DISPLAY row.
+  const display=
+    `<div class="pause-set-group"><div class="pause-set-title">DISPLAY</div>`+
+      `<div class="pause-row"><span>Fullscreen</span>`+
+      `<button class="pause-mini" data-act="fullscreen">TOGGLE</button></div>`+
+    `</div>`;
   bodyEl().innerHTML=
-    `<div class="pause-scroll pause-settings">${groups}</div>`+
+    `<div class="pause-scroll pause-settings">${display}${groups}</div>`+
     `<div class="pause-bar"><button class="pause-mini" data-act="reset">RESET DEFAULTS</button></div>`+
     backBtn();
 }
@@ -266,18 +366,21 @@ function onBodyClick(e: MouseEvent): void {
   e.stopPropagation();
   switch(el.dataset.act){
     case'resume': refs.togglePause?.(); break;       // input.js owns the pause state
+    case'info': goInfo(); break;
     case'leaderboard': openLeaderboard(); break;
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
+    case'minigames': openMiniGames(); break;
+    case'map':                                        // leave the pause, open the full-map overlay
+      refs.togglePause?.();                           // resume first (clears state.paused + closes this menu)
+      refs.openFullMap?.();                           // then open the existing fullscreen map
+      break;
     case'settings': openSettings(); break;
     case'fullscreen': refs.toggleFullscreen?.(); break;
-    case'account':
-      if(confirm('Switch account? Your progress is saved first, then you return to the title screen.'))logout();
-      break;
     case'quit':
       if(confirm('Quit to the title screen? Your progress is saved.')){try{flush();}catch(_){}location.reload();}
       break;
-    case'back': goMain(); break;
+    case'back': goBack(); break;
     case'page': changePage(parseInt(el.dataset.dir!,10)||0); break;
     case'reset': resetSettings(); renderSettings(); break;
   }
@@ -313,6 +416,6 @@ export function closePauseMenu(): void {
 // Mobile/hardware back: from a sub-panel, return to the main menu (handled=true);
 // at the main menu, report not-handled so the caller unpauses instead.
 export function pauseBack(): boolean {
-  if(view!=='main'){goMain();return true;}
+  if(view!=='main'){goBack();return true;}
   return false;
 }

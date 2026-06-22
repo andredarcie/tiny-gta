@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {groundHeight,rubberSpeed,separateRacers,pick,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -196,7 +197,7 @@ function startRace(){
   if(!game.begin())return; // outra sessão de mini game rolando: não larga
   clearTimeout(hideTimer!);hideTimer=null; // cancel any stale hide from a previous session
   buildCpMarkers();
-  playerCp=0;raceT=0;cdT=3;lastCdShown=-1;paceRef=0;
+  playerCp=0;raceT=0;cdT=REWARDS.offroad.countdownSec;lastCdShown=-1;paceRef=0;
   startMk.ring.visible=startMk.beacon.visible=false; // some o marcador de largada na prova
   // teleporta o carro do jogador pra linha, virado pro 1º checkpoint
   const h0=Math.atan2(route[0].x-start.x,route[0].z-start.z);
@@ -244,11 +245,11 @@ function loseRace(){
 function completeRace(){
   const place=1+finishedNpcs;
   const total=racers.length+1;
-  const prize=[700,350,150,0][place-1]??0;
+  const prize=REWARDS.offroad.placePrizes[place-1]??0;
   // bônus de tempo: volta rápida paga mais (some por volta de ~2min)
-  const bonus=place===1?Math.max(0,Math.round(220-raceT*1.4)):0;
+  const bonus=place===1?Math.max(0,Math.round(REWARDS.offroad.fastWinBonusMax-raceT*REWARDS.offroad.fastWinBonusDecayPerSec)):0;
   // anti-farm: refazer a prova em loop paga cada vez menos (recupera com o tempo)
-  const paid=diminishPrize(prizeState,prize+bonus,state.time);
+  const paid=diminishPrize(prizeState,prize+bonus,state.time,REWARDS.offroad.repeatWinDecay,REWARDS.offroad.repeatWinRecoverSec);
   economy.earn(paid,'offroad');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
   reportMiniGameResult(game.id,{won:place===1,score:paid});

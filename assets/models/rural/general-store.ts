@@ -6,6 +6,7 @@ import {makePed} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from '../city/door-arrow.ts';
 import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.ts'; // night porch light
 import {STRAINS,FERTILIZER} from '@/activities/strains.ts'; // seed-counter + plant-food display data
+import {REWARDS} from '@/core/minigame-rewards.ts'; // seed/plant-food PRICES (central money config)
 
 // ============================================================================
 // GENERAL STORE — the small-town country shop on the main street of the rural
@@ -450,7 +451,7 @@ function makeSeedDisplay(s: typeof STRAINS[number]): THREE.Group{
     const b=new THREE.Mesh(new THREE.IcosahedronGeometry(.05,0),headM);
     b.position.set(.05+Math.random()*.18,.34+Math.random()*.04,-.18+Math.random()*.36);g.add(b);
   }
-  const tag=labelPanel(`${s.name}\n$${s.price}`,.95,.52,{bg:'#241a0e',fg:'#f0e2c0',sub:'#cdab63'});
+  const tag=labelPanel(`${s.name}\n$${REWARDS.weedFarm.seedPrices[s.id]}`,.95,.52,{bg:'#241a0e',fg:'#f0e2c0',sub:'#cdab63'});
   tag.position.set(0,.78,0);tag.rotation.y=-Math.PI/2;g.add(tag);
   return g;
 }
@@ -551,7 +552,7 @@ function buildInterior(): void{
   addShelfUnit(cx+3,Z1-.35,Math.PI,6.4);
   addSacks(X0+1.2,Z1-1.3);
   // the feed-sacks double as the PLANT FOOD counter (buy point — see js/places/general-store.ts)
-  const fertTag=labelPanel(`${FERTILIZER.name}\n$${FERTILIZER.price}`,1.05,.6,{bg:'#1e2a16',fg:'#e6dcc0',sub:'#9caa82'});
+  const fertTag=labelPanel(`${FERTILIZER.name}\n$${REWARDS.weedFarm.fertilizerPrice}`,1.05,.6,{bg:'#1e2a16',fg:'#e6dcc0',sub:'#9caa82'});
   fertTag.position.set(FERT_DISPLAY.x+.55,1.25,FERT_DISPLAY.z);fertTag.rotation.y=Math.PI/2; // faces the room (east)
   generalStoreInterior.add(fertTag);
 

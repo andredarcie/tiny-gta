@@ -6,6 +6,7 @@ import {playerPos,cur,idleCars} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {N,nodeX,pick,irand,clamp,groundHeight} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeExportGarage} from '../../assets/models/props/export-garage.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
@@ -89,9 +90,9 @@ function startExport(){
     return;
   }
   // pagamento base + bonus de demanda se for o carro procurado
-  let total=150+irand(0,250);
+  let total=REWARDS.importExport.baseMin+irand(0,REWARDS.importExport.baseRandomSpan);
   const match=car.name===wanted;
-  if(match)total+=400;
+  if(match)total+=REWARDS.importExport.matchBonus;
 
   job={car,total,match,phase:'exiting',t:0};
   // manda o jogador desembarcar (animacao de porta). Quando terminar, o player.js

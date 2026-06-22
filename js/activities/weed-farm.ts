@@ -5,6 +5,7 @@ import {playerPos,player,idleCars,cameraRig,cur,getBusted} from '@/actors/player
 import {economy} from '@/core/economy.ts';
 import {addWanted} from '@/core/physics.ts';
 import {groundHeight,TOWN_CX,RURAL_GAP} from '@/core/constants.ts';
+import {REWARDS} from '@/core/minigame-rewards.ts';
 import {blip} from '@/audio/audio.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {makePed,animatePed,makeMotorcycle} from '@/core/entities.ts';
@@ -14,7 +15,7 @@ import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HA
 import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
 import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
-import {STRAINS,STRAIN_BY_ID,FERTILIZER,CURE_TIME,CURE_BONUS} from '@/activities/strains.ts';
+import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import {getDay} from '@/world/daynight.ts';
 
 // ============================================================================
@@ -50,12 +51,12 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',WEED_BUILD);
 // ---------- tuning ----------
 const RANGE=2.8;          // interaction radius to a bed / tap / sale table
 const BUCKET_DROP_DIST=18;// wander this far from the plot and a carried bucket is left behind
-const GROW_TIME=36;       // seconds of HYDRATED growth from seedling to ripe
-const HYD_DRAIN=4;        // hydration lost per second (a bucket lasts ~25 s)
-const DRY_DEATH=16;       // seconds bone-dry before the plant wilts and dies
+const GROW_TIME=REWARDS.weedFarm.growTimeSec;       // seconds of HYDRATED growth from seedling to ripe
+const HYD_DRAIN=REWARDS.weedFarm.hydrationDrainPerSec;        // hydration lost per second (a bucket lasts ~25 s)
+const DRY_DEATH=REWARDS.weedFarm.dryDeathSec;       // seconds bone-dry before the plant wilts and dies
 const SEED_F=0.18;        // growth fraction where the seedling becomes a plant
-const POUR_TIME=1.1;      // length of the pour-the-bucket animation (s)
-const PRICE=10;           // base cash per bud at the sale table
+const POUR_TIME=REWARDS.weedFarm.pourTimeSec;      // length of the pour-the-bucket animation (s)
+const PRICE=REWARDS.weedFarm.pricePerBud;  // base cash per bud at the sale table
 const PILE_CAP=27;        // max bud nuggets shown piled in the crate
 // quality (care matters): recovers while well-watered, bleeds while parched
 const QUALITY_START=78, QUALITY_RECOVER=3, QUALITY_DROP=9, HYD_HEALTHY=30;
@@ -86,16 +87,16 @@ const box={x:WEED_CX+WEED_BOX.x,z:WEED_CZ+WEED_BOX.z};
 const tap={x:WEED_CX+WEED_TAP.x,z:WEED_CZ+WEED_TAP.z};
 const rackPos={x:WEED_CX+WEED_RACK.x,z:WEED_CZ+WEED_RACK.z};
 const shackPos={x:WEED_CX-7.5,z:WEED_CZ-4};   // grow-shack front doubles as the upgrade bench
-// the drying rack: 'empty' → hang a harvest → 'drying' (cures over CURE_TIME) → 'cured'
+// the drying rack: 'empty' → hang a harvest → 'drying' (cures over weedFarm.cureTimeSec) → 'cured'
 const rack: {state:'empty'|'drying'|'cured';buds:number;val:number;t:number;fx:THREE.Object3D[]}={state:'empty',buds:0,val:0,t:0,fx:[]};
 
 let waterCharges=0;       // pours left in the carried bucket (filled at the tap)
 // ---------- farm upgrades (bought at the grow shack; persisted via the save) ----------
 // Tiers of watering gear cut the tap-trip tedium; the top tier waters the beds for you.
 const UPGRADES=[
-  {name:'BIGGER CAN',     price:60,  desc:'WATER 3 PLANTS PER FILL'},
-  {name:'GARDEN HOSE',    price:140, desc:'WATER 8 PLANTS PER FILL'},
-  {name:'DRIP SPRINKLERS',price:300, desc:'THE BEDS WATER THEMSELVES'},
+  {name:'BIGGER CAN',     price:REWARDS.weedFarm.upgradePrices[0],  desc:'WATER 3 PLANTS PER FILL'},
+  {name:'GARDEN HOSE',    price:REWARDS.weedFarm.upgradePrices[1], desc:'WATER 8 PLANTS PER FILL'},
+  {name:'DRIP SPRINKLERS',price:REWARDS.weedFarm.upgradePrices[2], desc:'THE BEDS WATER THEMSELVES'},
 ];
 const WATER_CAP=[1,3,8,8];   // bucket capacity by upgrade level
 let upLevel=0;               // 0 = bare bucket … 3 = sprinklers installed
@@ -118,17 +119,20 @@ let delivering=false;
 const DELIV_RANGE=2.6;
 // buyers: a few rural roadside spots + a couple of city road junctions (spawned only
 // during a run). All sit on open road/clearing ground — clear of buildings/fences.
-const DELIV_POINTS=[
+// `gated` marks a buyer that needs a boat/plane to reach: it is EXCLUDED from the
+// "out of buyers → respawn a fresh batch" check so a player who can't cross water is
+// never left holding a stash with no reachable buyer (see deliverTo).
+const DELIV_POINTS: {x:number;z:number;city:boolean;gated?:boolean}[]=[
   {x:TOWN_CX,        z:12,  city:false}, // Pine Hollow village square (north of the flag)
   {x:320+RURAL_GAP,  z:5,   city:false}, // open countryside, roadside (x=450)
   {x:236+RURAL_GAP,  z:-6,  city:false}, // farmhouse row, out on the dirt road (x=366)
   {x:49,             z:5,   city:true },  // city: by a central road junction
   {x:-49,            z:5,   city:true },  // city: by a road junction
   {x:30,             z:200, city:false}, // city BEACH: a buyer down on the sand by the water
-  {x:-380,           z:-44, city:true },  // far ISLAND: needs a boat/plane to reach (premium rate)
+  {x:-380,           z:-44, city:true, gated:true },  // far ISLAND: needs a boat/plane to reach (premium rate)
 ];
 // a live delivery buyer placed in the world during a run
-interface Buyer{x:number;z:number;city:boolean;ped:THREE.Object3D;served:boolean;want:number;t:number;}
+interface Buyer{x:number;z:number;city:boolean;gated:boolean;ped:THREE.Object3D;served:boolean;want:number;t:number;}
 let buyers: Buyer[]=[];   // live {x,z,city,ped,served,want,t}
 // HEAT — the push-your-luck risk. Each deal raises it (city more), it cools over time.
 // Above WARM, deals can be a STING (undercover cop → no pay + a wanted spike); linger
@@ -220,9 +224,10 @@ function plantStrain(): string{
   const s=STRAINS.find(st=>seedCount(st.id)>0);
   return s?s.id:'';
 }
-// the street price swings each in-game day (a stable per-day factor ~0.8..1.45), so
-// WHEN you run the deliveries matters; city buyers add a premium on top.
-const marketFactor=()=>{const r=Math.abs(Math.sin((getDay()+1)*12.9898))%1;return 0.8+r*0.65;};
+// the street price swings each in-game day (a stable per-day factor in
+// [marketFactorMin, marketFactorMin+marketFactorSpan], tuned in minigame-rewards.json),
+// so WHEN you run the deliveries matters; city buyers add a premium on top.
+const marketFactor=()=>{const r=Math.abs(Math.sin((getDay()+1)*12.9898))%1;return REWARDS.weedFarm.marketFactorMin+r*REWARDS.weedFarm.marketFactorSpan;};
 
 // ---------- bucket carried in hand ----------
 function attachBucket(): void{
@@ -324,7 +329,7 @@ function harvest(slot: Slot): void{
   const fed=pl.fed?FERTILIZER.yieldMul:1;
   const buds=Math.max(YIELD_MIN,Math.round((YIELD_MIN+(YIELD_MAX-YIELD_MIN)*(q/100))*st.yieldMul*fed));
   carried+=buds;
-  carriedVal+=buds*Math.round(PRICE*st.value);   // this strain's $/bud locked in now
+  carriedVal+=buds*Math.round(PRICE*REWARDS.weedFarm.strainValues[st.id]);   // this strain's $/bud locked in now
   spawnBurst(slot);
   removePlant(slot);
   bigText(`+${buds} ${st.name} ${grade(q)}`,'var(--gold)');setTimeout(hideBig,1000);
@@ -402,7 +407,7 @@ function spawnBuyers(): void{
   buyers=DELIV_POINTS.map(d=>{
     const ped=makePed(d.city?0x6a4a8a:0x7a5a3a,0x2a2a30); // makePed adds itself to the scene
     ped.position.set(d.x,groundHeight(d.x,d.z),d.z);ped.rotation.y=Math.random()*6.28;
-    return {x:d.x,z:d.z,city:d.city,ped,served:false,want:4+((Math.random()*5)|0),t:Math.random()*6};
+    return {x:d.x,z:d.z,city:d.city,gated:!!d.gated,ped,served:false,want:4+((Math.random()*5)|0),t:Math.random()*6};
   });
 }
 function despawnBuyers(): void{ for(const b of buyers)if(b.ped)scene.remove(b.ped); buyers=[]; }
@@ -446,7 +451,7 @@ function deliverTo(b: Buyer): void{
   }
   const perBud=pack.val/Math.max(1,pack.buds);
   const chunk=Math.min(pack.buds,b.want);
-  const pay=Math.max(1,Math.round(chunk*perBud*marketFactor()*(b.city?1.3:1)));
+  const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,Math.max(1,Math.round(chunk*perBud*marketFactor()*(b.city?REWARDS.weedFarm.cityPriceMultiplier:1))));
   economy.earn(pay,'weed-deal'); // no anti-rapid-fire cooldown (deals can be close together)
   runEarned+=pay;
   heat=Math.min(100,heat+(b.city?14:8)); // dealing draws heat — city corners more so
@@ -457,7 +462,10 @@ function deliverTo(b: Buyer): void{
   if(b.ped)say(b.ped,pick(WEED_BUYER_LINES),{life:3.8,yOff:2.45});
   const after=()=>{
     if(pack.buds<=0)finishRun();
-    else if(buyers.every(x=>x.served))spawnBuyers(); // out of buyers but still holding: fresh batch
+    // Out of REACHABLE buyers but still holding buds: spawn a fresh batch. The far
+    // ISLAND buyer (gated) is excluded so a player who can't cross water is never left
+    // with a stash and no one to deal to.
+    else if(buyers.every(x=>x.served||x.gated))spawnBuyers();
   };
   // mini-cutscene beat — but never freeze mid-chase: while WANTED the deal is instant
   if(state.wanted<1&&state.mode==='foot')dealCutscene(b,pay,after);
@@ -517,7 +525,7 @@ function hangBuds(): void{
 }
 function collectCured(): void{
   if(rack.state!=='cured')return;
-  carried=rack.buds;carriedVal=Math.round(rack.val*CURE_BONUS);
+  carried=rack.buds;carriedVal=Math.round(rack.val*REWARDS.weedFarm.cureBonus);
   for(const b of rack.fx)scene.remove(b);rack.fx.length=0;
   rack.state='empty';rack.buds=0;rack.val=0;rack.t=0;
   bigText('CURED FLOWERS','var(--gold)');setTimeout(hideBig,1000);
@@ -575,10 +583,10 @@ function updateFx(dt: number): void{
     if(rack.state==='cured')
       return{label:'COLLECT',prompt:`COLLECT ${rack.buds} CURED BUDS`,enabled:true,run:collectCured};
     if(rack.state==='drying')
-      return{label:'DRY',prompt:`DRYING - ${Math.ceil(CURE_TIME-rack.t)}s LEFT`,enabled:true,
+      return{label:'DRY',prompt:`DRYING - ${Math.ceil(REWARDS.weedFarm.cureTimeSec-rack.t)}s LEFT`,enabled:true,
         run:()=>message('STILL DRYING - GIVE IT TIME','var(--cyan)')};
     if(carried>0)
-      return{label:'DRY',prompt:`HANG ${carried} BUDS TO DRY (+${Math.round((CURE_BONUS-1)*100)}% WHEN CURED)`,
+      return{label:'DRY',prompt:`HANG ${carried} BUDS TO DRY (+${Math.round((REWARDS.weedFarm.cureBonus-1)*100)}% WHEN CURED)`,
         enabled:true,run:hangBuds};
   }
   // grow-shack: reinvest earnings into farm upgrades (watering gear → sprinklers)
@@ -626,7 +634,7 @@ function updateFx(dt: number): void{
   for(const b of buyers){if(b.served)continue;const d=dist(p,b);if(d<bd){bd=d;best=b;}}
   if(!best)return null;
   const chunk=Math.min(pack.buds,best.want);
-  const pay=Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*(best.city?1.3:1)));
+  const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*(best.city?REWARDS.weedFarm.cityPriceMultiplier:1))));
   const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
   return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${best.city?' CITY+':''}${risk}`,
     enabled:true,run:()=>deliverTo(best!)};
@@ -728,7 +736,7 @@ export function updateWeedFarm(dt: number): void{
   // drying rack: cure over time, then the hanging buds visibly shrink (dried)
   if(rack.state==='drying'){
     rack.t+=dt;
-    if(rack.t>=CURE_TIME){rack.state='cured';for(const b of rack.fx)b.scale.multiplyScalar(.8);}
+    if(rack.t>=REWARDS.weedFarm.cureTimeSec){rack.state='cured';for(const b of rack.fx)b.scale.multiplyScalar(.8);}
   }
 
   // idle the delivery buyers so they read as living NPCs waiting on the corner — and
