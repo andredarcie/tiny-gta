@@ -3,19 +3,21 @@ import {state,input,refs,keys} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts'; // money ledger — imported here so the genesis tx seeds at boot
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
 import {updateAudio} from '@/audio/audio.ts';
-import {drawMinimap,updateHUD,hideBig,tickFps} from '@/ui/hud.ts';
+import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
 import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle} from '@/world/pedestrians.ts';
+import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collects dead NPCs → hospital
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
+import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
 import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
-import {updateBeach} from '@/world/world.ts';
-import {cops,heli,updateCops,updateHeli} from '@/actors/police.ts';
+import {updateBeach,solids} from '@/world/world.ts';
+import {cops,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
 import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
-import {updateArmy} from '@/actors/army.ts';
+import {updateArmy,initArmy} from '@/actors/army.ts';
 import {delivery,spawnDelivery,updatePickups} from '@/story/missions.ts';
 import {updateTaxi} from '@/activities/taxi.ts';
 import {updateRace} from '@/activities/race.ts';
@@ -110,6 +112,7 @@ refs.trafficPos=trafficPos;
 refs.spawnTraffic=spawnTraffic;
 refs.ejectDriver=ejectDriver;
 refs.addBloodPuddle=addBloodPuddle; // morte do jogador deixa poça igual NPC
+refs.citySolids=solids; // building AABBs — NPC name tags hide when occluded by them
 refs.gangs=gangs; // hud desenha os territórios no minimapa via refs
 refs.setGangsHidden=setGangsHidden; // corrida de rua esconde/restaura as gangues
 refs.interiorBlips=()=>interiors
@@ -165,6 +168,8 @@ spawnDelivery();
 // Gangues nascem só agora, com os prédios especiais já registrados em interiors[]
 // (assim a zona de fachada vale desde o primeiro membro). Ver gangs.js.
 spawnInitialGangs();
+initPolice(); // the fixed pool of named patrol cops exists from the start (no spawn-from-beyond)
+initArmy();   // the fixed named squad exists (stationed) from the start too
 
 setupInput();
 setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)
@@ -183,6 +188,7 @@ const SHADOW_EVERY=12; // re-renderiza o shadow map 1 a cada N frames (~5fps @60
 // fica visualmente idêntico e libera o orçamento do frame.
 let mmAccum=0;
 const MM_INTERVAL=1/22;
+let fullMapAccum=0; // throttle the live full-map "Show NPCs" redraw (~20fps, like the radar)
 function step(dt: number){
   updateKeyboardInput();
   updateTouchControls();
@@ -196,7 +202,11 @@ function step(dt: number){
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
   if(updateClothesShop(dt)){renderer.render(scene,camera);return;} // provador da loja de roupas congela o mundo
-  if(state.mapOpen){renderer.render(scene,camera);return;} // mapa completo (tecla M) congela o mundo
+  // Mapa completo (tecla M): congela o mundo — EXCETO quando o overlay "Show NPCs"
+  // está ligado, daí o mundo continua simulando pros pontinhos se moverem em tempo
+  // real (o jogador segue bloqueado por isBlocked). O mapa é redesenhado ao final do
+  // step. Sem o overlay, mantém o congelamento estático de sempre.
+  if(state.mapOpen&&!mapNpcsShown()){renderer.render(scene,camera);return;}
   if(state.adminOpen){renderer.render(scene,camera);return;} // dashboard de admin (tecla Y) congela o mundo
   if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
@@ -229,11 +239,14 @@ function step(dt: number){
   P.end();
 
   P.begin('traffic');updateTraffic(dt);P.end();
-  P.begin('peds');updatePeds(dt);P.end();
+  P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
-  P.begin('cops');if(state.mode!=='cut'&&!state.cine){updateCops(dt);updatePoliceBoats(dt);}P.end();
-  P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: the army
+  // While the full map is open (even with live NPCs shown) the player is input-locked,
+  // so the police/army must NOT chase, shoot or arrest them — freeze those threats.
+  const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
+  P.begin('cops');if(combatOn){updateCops(dt);updatePoliceBoats(dt);}P.end();
+  P.begin('army');if(combatOn)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
   updateHeli(dt);
   updatePickups(dt);
@@ -277,6 +290,8 @@ function step(dt: number){
   P.end();
 
   P.begin('camera');updateCamera(dt);P.end();
+  updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
+  reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
   updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
   updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
@@ -308,6 +323,15 @@ function step(dt: number){
   dlight.target.position.set(pp.x,0,pp.z);
 
   P.begin('render');renderer.render(scene,camera);P.end();
+  // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),
+  // redraw the full map every frame so the NPC dots/trails move in real time.
+  // "Show NPCs" map overlay: redraw the full map only while the toggle is on (the
+  // static map is drawn once on open), throttled to ~20fps so the dots move without
+  // burning a full redraw + per-NPC allocation every frame.
+  if(state.mapOpen&&mapNpcsShown()){
+    fullMapAccum+=dt;
+    if(fullMapAccum>=1/20){fullMapAccum=0;drawFullMap();}
+  }
 }
 
 // ----- Resolução adaptativa: REDE DE SEGURANÇA, decisão única no boot -----

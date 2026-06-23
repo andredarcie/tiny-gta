@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-23-living-npcs-police",
+    "date": "2026-06-23",
+    "title": "Meet the locals — and a living police force",
+    "description": "Everyone in town is now a real person. Every pedestrian, shopkeeper, gang member, officer and soldier is a named individual with their own personality and home neighborhood, and their name floats above their head. Some folks will flag you down to buy weed, and many have something to say. The police are reborn as a living force: a fixed cast of named officers patrols the streets and now chases you along smart routes through the roads instead of grinding into walls. One of them is the Sheriff — in his own tan uniform — who runs the police radio: he calls in shots fired by your clothing and location, dispatches the nearest officers by name, escalates as your wanted level climbs, reports officers down and exploding cars, and summons the named Army squad at maximum heat. Officers now get out of the car to arrest you — at one star they order you to surrender, but resist (or push it to two stars) and they open fire. The siren grows louder the closer a chasing car gets, and your wanted star sticks while the police can still see you."
+  },
+  {
     "id": "2026-06-23-objective-markers",
     "date": "2026-06-23",
     "title": "Cleaner, consistent objective markers",

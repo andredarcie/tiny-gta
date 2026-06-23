@@ -14,6 +14,7 @@ import {blip} from '@/audio/audio.ts';
 import {HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {Npc} from '@/actors/npc.ts';
 
 // Side-mission de paramédico estilo open-world (Vigilante/Paramedic): uma ambulância
 // fica estacionada na esquina do hospital. Entrou nela, começa o plantão: feridos
@@ -35,8 +36,17 @@ amb.g.position.set(nodeX(HOSP_I)+4,0,nodeX(HOSP_J));
 amb.g.rotation.y=0;
 idleCars.push(amb);
 
-// ferido caído pela cidade (ped + marcador no chão), e o marcador do hospital
-interface Patient{g:THREE.Object3D;x:number;z:number;ring:THREE.Mesh|null;beacon:Beacon|null;loaded:boolean;}
+// An injured civilian collapsed in the street (ped + ground marker). Extends Npc
+// (so 100% of NPCs share the base class) but with register:false — a patient must
+// be RESCUED, never shot, so it stays out of the unified weapon scan.
+class Patient extends Npc{
+  x:number;z:number;ring:THREE.Mesh|null;beacon:Beacon|null;loaded:boolean;
+  constructor(g:THREE.Object3D,x:number,z:number,ring:THREE.Mesh,beacon:Beacon){
+    super(g,{kind:'patient',hp:1,register:false,area:'City streets'});
+    this.x=x;this.z=z;this.ring=ring;this.beacon=beacon;this.loaded=false;
+  }
+  override aliveState():string{return this.loaded?'In the ambulance':'Injured — needs rescue';}
+}
 interface Marker{ring:THREE.Mesh;beacon:Beacon;}
 
 let phase='off';   // off | rescue (recolhendo feridos) | hospital (levando ao hospital)
@@ -105,14 +115,14 @@ function spawnPatients(){
     g.rotation.y=Math.random()*Math.PI*2;
     scene.add(g);
     const mk=spawnMarker(0x5eff8a,x,z);
-    patients.push({g,x,z,ring:mk.ring,beacon:mk.beacon,loaded:false});
+    patients.push(new Patient(g,x,z,mk.ring,mk.beacon));
   }
 }
 
 function clearPatients(){
   for(const p of patients){
-    if(p.g.parent)scene.remove(p.g);
-    if(p.ring){scene.remove(p.ring);p.beacon!.dispose();}
+    if(p.ring){scene.remove(p.ring);p.beacon!.dispose();} // new Beacon class disposes itself
+    p.despawn(); // removes the ped from the scene + the NPC census
   }
   patients.length=0;
 }

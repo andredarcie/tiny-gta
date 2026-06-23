@@ -6,6 +6,7 @@ import {animatePed} from '@/core/entities.ts';
 import {blip} from '@/audio/audio.ts';
 import {camera} from '@/core/engine.ts';
 import {Interior} from '@/world/interior.ts';
+import {nameInteriorNpc} from '@/actors/npc.ts';
 import {buyWeapon,ownsWeapon,weaponAmmoInfo,refillAmmo,beginTrainingWeapon,
   clearTrainingWeapon,getTrainingWeaponId,isTrainingWeaponActive} from '@/combat/weapons.ts';
 import {GUNSHOP_DOOR,GUNSHOP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
@@ -112,6 +113,9 @@ export const gunShop=new GunShopInterior({
   exterior:{x:-110,z:66,r:24}, // fachada: gangue não chega perto
   mapIcon:{id:'gun-shop',label:'AMMO DEPOT',icon:'gun',color:'#f5c518'},
 });
+
+// Give the gun-shop clerk a name (women get the female look).
+if(gunShopFx.keeper)nameInteriorNpc(gunShopFx.keeper.g,'clerk','Ammo Depot');
 
 // arma do balcão mais perto do jogador (só dentro da loja)
 function nearItem():any{

@@ -13,6 +13,7 @@ import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {API,getNickname,flush} from '@/ui/leaderboard.ts';
 import {settings,setSetting,resetSettings} from '@/core/settings.ts';
+import {getNpcRoster,kindLabel,type NpcRosterEntry} from '@/actors/npc.ts';
 import UPDATES from '../../updates.json';
 import MINIGAME_REWARDS from '../../minigame-rewards.json';
 
@@ -77,7 +78,7 @@ let view='main';
 // Parent of each sub-view, so BACK / hardware-back walks up exactly one level.
 const PARENT: Record<string, string>={
   info:'main', settings:'main',
-  leaderboard:'info', transactions:'info', updates:'info', minigames:'info',
+  leaderboard:'info', transactions:'info', updates:'info', minigames:'info', npcs:'info',
 };
 function goBack(): void { openView(PARENT[view]||'main'); }
 function openView(v: string): void {
@@ -87,6 +88,7 @@ function openView(v: string): void {
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
     case'minigames': openMiniGames(); break;
+    case'npcs': openNpcs(); break;
     case'settings': openSettings(); break;
     default: goMain();
   }
@@ -127,7 +129,68 @@ function goInfo(): void {
       `<button class="pause-btn" data-act="updates">UPDATES${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
       `<button class="pause-btn" data-act="map">MAP</button>`+
       `<button class="pause-btn" data-act="minigames">MINI GAMES</button>`+
+      `<button class="pause-btn" data-act="npcs">NPCS</button>`+
     `</div>`+
+    backBtn();
+}
+
+// ---- NPCs (full roster of the town's population, paginated + filterable) ----
+// Lists EVERY NPC in the game with its identity and live status: name, sex, type,
+// the district it lives in and what it's doing right now. Two filter rows narrow the
+// list by AREA and by current STATUS (e.g. show only everyone in the "Down" state).
+// The world is frozen while the pause menu is open, so the snapshot stays accurate.
+const NPC_PER_PAGE=12;
+let npcList: NpcRosterEntry[]=[],npcPage=0;
+let npcFilterArea='All',npcFilterState='All';
+function openNpcs(): void {
+  view='npcs';
+  setTitle('NPCS');
+  npcList=getNpcRoster();
+  npcFilterArea='All';npcFilterState='All';
+  npcPage=0;
+  renderNpcsPage();
+}
+// Distinct values for a roster field, sorted, with an "All" option at the front.
+function npcFilterValues(key:'area'|'state'): string[] {
+  const set=new Set<string>();
+  for(const n of npcList)set.add(n[key]);
+  return ['All',...Array.from(set).sort((a,b)=>a.localeCompare(b))];
+}
+// A row of filter chips for one dimension; the active value is highlighted.
+function npcFilterRow(label:string,dim:'area'|'state',active:string): string {
+  const chips=npcFilterValues(dim).map(v=>
+    `<button class="pause-chip${v===active?' on':''}" data-act="npcfilter" data-dim="${dim}" `+
+    `data-val="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('');
+  return `<div class="pause-filter"><span class="pause-filter-label">${label}</span>`+
+    `<div class="pause-chips">${chips}</div></div>`;
+}
+function renderNpcsPage(): void {
+  const filtered=npcList.filter(n=>
+    (npcFilterArea==='All'||n.area===npcFilterArea)&&
+    (npcFilterState==='All'||n.state===npcFilterState));
+  const pages=Math.max(1,Math.ceil(filtered.length/NPC_PER_PAGE));
+  npcPage=Math.min(Math.max(0,npcPage),pages-1);
+  const start=npcPage*NPC_PER_PAGE;
+  const rows=filtered.slice(start,start+NPC_PER_PAGE).map(n=>
+    `<tr>`+
+      `<td class="pause-tname">${escapeHtml(n.name)}</td>`+
+      `<td class="pause-npc-sex">${n.gender==='F'?'&#9792;':'&#9794;'}</td>`+
+      `<td>${escapeHtml(kindLabel(n.kind))}</td>`+
+      `<td>${escapeHtml(n.area)}</td>`+
+      `<td>${escapeHtml(n.state)}</td>`+
+    `</tr>`
+  ).join('');
+  const table=filtered.length
+    ? `<table class="pause-table pause-npc-table"><thead><tr>`+
+        `<th>NAME</th><th>SEX</th><th>TYPE</th><th>AREA</th><th>STATUS</th>`+
+      `</tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="pause-empty">No NPCs match these filters.</div>`;
+  const filters=npcFilterRow('AREA','area',npcFilterArea)+npcFilterRow('STATUS','state',npcFilterState);
+  const note=`${filtered.length} of ${npcList.length} NPC${npcList.length===1?'':'s'}`;
+  bodyEl().innerHTML=
+    filters+
+    `<div class="pause-scroll">${table}</div>`+
+    pager(npcPage,pages,note)+
     backBtn();
 }
 
@@ -349,6 +412,7 @@ function renderSettings(): void {
 function changePage(dir: number): void {
   if(view==='leaderboard'){lbPage+=dir;renderLeaderboardPage();}
   else if(view==='transactions'){txPage+=dir;renderTransactionsPage();}
+  else if(view==='npcs'){npcPage+=dir;renderNpcsPage();}
 }
 function onBodyClick(e: MouseEvent): void {
   // settings toggle (a <button> switch)
@@ -371,6 +435,14 @@ function onBodyClick(e: MouseEvent): void {
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
     case'minigames': openMiniGames(); break;
+    case'npcs': openNpcs(); break;
+    case'npcfilter':{                                 // narrow the roster by area / status
+      const dim=el.dataset.dim;
+      const val=el.dataset.val||'All';
+      if(dim==='area')npcFilterArea=val;else if(dim==='state')npcFilterState=val;
+      npcPage=0;renderNpcsPage();
+      break;
+    }
     case'map':                                        // leave the pause, open the full-map overlay
       refs.togglePause?.();                           // resume first (clears state.paused + closes this menu)
       refs.openFullMap?.();                           // then open the existing fullscreen map

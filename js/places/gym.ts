@@ -10,6 +10,7 @@ import {openMiniGameIntro} from '@/activities/minigame-leaderboard.ts';
 import {MiniGameId,dailyLockCleared} from '@/activities/minigame.ts';
 import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
   gymFx,gymInterior} from '../../assets/models/city/gym.ts';
+import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Academia "IRON TEMPLE": estende a classe base de interiores (js/world/interior.ts),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
@@ -53,6 +54,9 @@ export const gym=new GymInterior({
   exterior:{x:154,z:-110,r:24}, // fachada: gangue não chega perto
   mapIcon:{id:'gym',label:'IRON TEMPLE',icon:'gym',color:'#ff8a1e'},
 });
+
+// Name every gym-goer (women get the female look); they keep lifting via updateFx.
+for(const m of gymFx.lifters)nameInteriorNpc(m.g,'gymgoer','Iron Temple');
 
 // jogador perto do supino, dentro da academia (HUD/interact usam isto)
 function gymTrainNear(){

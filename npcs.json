@@ -1,0 +1,70 @@
+{
+  "_comment": "Pure definition of EVERY NPC in the game — a FIXED, curated cast of exactly maxNpcs people (nobody spawns 'from beyond'). Each entry is one persistent individual: name, neighborhood/area, sex, a personality archetype that shapes behaviour, likes (e.g. 'smoke_weed'), an initial behaviour state, and (for some) a 'dialogues' list — the lines that NPC says in its speech bubble, written to fit its place + personality + likes + state. ALL chatter bubbles come from these 'dialogues'; an NPC with none stays quiet. 'indoor':true marks NPCs inside an interior (their neighborhood is the interior's name). The runtime tracks each NPC's live state (states list); identity is fixed here so every player meets the same people.",
+  "maxNpcs": 50,
+  "states": ["walking", "idle", "fleeing", "chasing", "driving", "down", "hospital"],
+  "personalities": ["brave", "nervous", "friendly", "greedy", "hostile", "chill"],
+  "neighborhoods": ["North Side", "East End", "Downtown", "Seaside", "Pine Hollow", "Countryside", "Police Patrol", "Army", "The Flamingo", "Iron Temple", "County Jail", "Hospital", "Ammo Depot", "General Store"],
+  "npcs": [
+    { "id": 1,  "name": "James",       "sex": "M", "kind": "civilian", "neighborhood": "North Side", "personality": "brave",    "likes": [], "dialogues": ["Lived in North Side my whole life.", "Nobody runs me off my block."], "state": "walking" },
+    { "id": 2,  "name": "Mary",        "sex": "F", "kind": "civilian", "neighborhood": "North Side", "personality": "chill",    "likes": ["smoke_weed"], "dialogues": ["Just taking it slow today.", "You holding any green, friend?"], "state": "walking" },
+    { "id": 3,  "name": "Robert",      "sex": "M", "kind": "civilian", "neighborhood": "North Side", "personality": "greedy",   "likes": [], "dialogues": ["Time is money, pal.", "Everything's got a price."], "state": "idle" },
+    { "id": 4,  "name": "Patricia",    "sex": "F", "kind": "civilian", "neighborhood": "North Side", "personality": "friendly", "likes": [], "dialogues": ["Lovely day, isn't it?", "You have a good one now!"], "state": "walking" },
+    { "id": 5,  "name": "Michael",     "sex": "M", "kind": "civilian", "neighborhood": "North Side", "personality": "chill",    "likes": ["smoke_weed"], "state": "walking" },
+    { "id": 6,  "name": "Jennifer",    "sex": "F", "kind": "civilian", "neighborhood": "North Side", "personality": "friendly", "likes": ["smoke_weed"], "state": "idle" },
+
+    { "id": 7,  "name": "Elizabeth",   "sex": "F", "kind": "civilian", "neighborhood": "East End", "personality": "nervous",  "likes": [], "dialogues": ["This part of town's gotten dangerous.", "I should get home before dark."], "state": "walking" },
+    { "id": 8,  "name": "Richard",     "sex": "M", "kind": "civilian", "neighborhood": "East End", "personality": "hostile",  "likes": [], "dialogues": ["What are you looking at?", "Keep walking, buddy."], "state": "idle" },
+    { "id": 9,  "name": "Barbara",     "sex": "F", "kind": "civilian", "neighborhood": "East End", "personality": "friendly", "likes": [], "state": "walking" },
+    { "id": 10, "name": "Joseph",      "sex": "M", "kind": "civilian", "neighborhood": "East End", "personality": "chill",    "likes": ["smoke_weed"], "state": "walking" },
+    { "id": 11, "name": "Susan",       "sex": "F", "kind": "civilian", "neighborhood": "East End", "personality": "nervous",  "likes": [], "state": "walking" },
+    { "id": 12, "name": "Thomas",      "sex": "M", "kind": "civilian", "neighborhood": "East End", "personality": "brave",    "likes": [], "dialogues": ["I'm not afraid of anybody around here.", "You want trouble? I'm right here."], "state": "idle" },
+
+    { "id": 13, "name": "Christopher", "sex": "M", "kind": "civilian", "neighborhood": "Downtown", "personality": "greedy",   "likes": [], "dialogues": ["Downtown's where the money is.", "Buying or just window shopping?"], "state": "walking" },
+    { "id": 14, "name": "Karen",       "sex": "F", "kind": "civilian", "neighborhood": "Downtown", "personality": "hostile",  "likes": [], "dialogues": ["Watch where you're going!", "I'd like to speak to someone in charge."], "state": "walking" },
+    { "id": 15, "name": "Daniel",      "sex": "M", "kind": "civilian", "neighborhood": "Downtown", "personality": "chill",    "likes": ["smoke_weed"], "dialogues": ["This city moves way too fast for me.", "Anybody around holding?"], "state": "idle" },
+    { "id": 16, "name": "Nancy",       "sex": "F", "kind": "civilian", "neighborhood": "Downtown", "personality": "friendly", "likes": [], "state": "walking" },
+    { "id": 17, "name": "Matthew",     "sex": "M", "kind": "civilian", "neighborhood": "Downtown", "personality": "brave",    "likes": [], "state": "walking" },
+    { "id": 18, "name": "Lisa",        "sex": "F", "kind": "civilian", "neighborhood": "Downtown", "personality": "chill",    "likes": ["smoke_weed"], "state": "walking" },
+
+    { "id": 19, "name": "Margaret",    "sex": "F", "kind": "civilian", "neighborhood": "Seaside", "personality": "nervous",  "likes": [], "dialogues": ["The sea air's the only calm thing here.", "Did you hear that? I'm jumpy today."], "state": "walking" },
+    { "id": 20, "name": "Donald",      "sex": "M", "kind": "civilian", "neighborhood": "Seaside", "personality": "greedy",   "likes": [], "state": "walking" },
+    { "id": 21, "name": "Sandra",      "sex": "F", "kind": "civilian", "neighborhood": "Seaside", "personality": "friendly", "likes": [], "dialogues": ["Beautiful by the water, isn't it?", "Enjoy the breeze!"], "state": "idle" },
+    { "id": 22, "name": "Steven",      "sex": "M", "kind": "civilian", "neighborhood": "Seaside", "personality": "chill",    "likes": ["smoke_weed"], "state": "walking" },
+    { "id": 23, "name": "Ashley",      "sex": "F", "kind": "civilian", "neighborhood": "Seaside", "personality": "friendly", "likes": ["smoke_weed"], "dialogues": ["Hey there! Nice day for a smoke by the sea.", "Spare a little green?"], "state": "walking" },
+
+    { "id": 24, "name": "Kenneth",     "sex": "M", "kind": "rural", "neighborhood": "Pine Hollow", "personality": "chill",    "likes": ["smoke_weed"], "dialogues": ["Quiet out here in Pine Hollow.", "Homegrown's the only way, ya know."], "state": "idle" },
+    { "id": 25, "name": "Donna",       "sex": "F", "kind": "rural", "neighborhood": "Pine Hollow", "personality": "friendly", "likes": [], "dialogues": ["Howdy, stranger! Don't see many folk out here.", "Mind the dirt road, now."], "state": "idle" },
+    { "id": 26, "name": "Kevin",       "sex": "M", "kind": "rural", "neighborhood": "Pine Hollow", "personality": "chill",    "likes": ["smoke_weed"], "state": "walking" },
+    { "id": 27, "name": "Michelle",    "sex": "F", "kind": "rural", "neighborhood": "Countryside", "personality": "nervous",  "likes": [], "state": "idle" },
+    { "id": 28, "name": "George",      "sex": "M", "kind": "rural", "neighborhood": "Countryside", "personality": "chill",    "likes": ["smoke_weed"], "dialogues": ["Crops are comin' in good this year.", "Nothin' beats country air."], "state": "idle" },
+    { "id": 29, "name": "Carol",       "sex": "F", "kind": "rural", "neighborhood": "Countryside", "personality": "friendly", "likes": [], "state": "walking" },
+
+    { "id": 30, "name": "Edward",      "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "sheriff": true, "likes": [], "dialogues": ["Keep it clean, citizen.", "Move along, nothing to see here."], "state": "driving" },
+    { "id": 31, "name": "Ronald",      "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "likes": [], "state": "driving" },
+    { "id": 32, "name": "Stephanie",   "sex": "F", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "likes": ["smoke_weed"], "dialogues": ["Patrol's quiet today. Let's keep it that way.", "Stay out of trouble and we're good."], "state": "driving" },
+    { "id": 33, "name": "Timothy",     "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "hostile", "likes": [], "dialogues": ["I've got my eye on you.", "One wrong move, pal."], "state": "driving" },
+    { "id": 34, "name": "Rebecca",     "sex": "F", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "likes": [], "state": "idle" },
+
+    { "id": 35, "name": "Jason",       "sex": "M", "kind": "military", "neighborhood": "Army", "personality": "brave", "likes": [], "dialogues": ["Hold the line, soldier.", "Threat level critical."], "state": "idle" },
+    { "id": 36, "name": "Jeffrey",     "sex": "M", "kind": "military", "neighborhood": "Army", "personality": "brave", "likes": [], "state": "idle" },
+    { "id": 37, "name": "Laura",       "sex": "F", "kind": "military", "neighborhood": "Army", "personality": "brave", "likes": [], "state": "idle" },
+
+    { "id": 38, "name": "Bianca",      "sex": "F", "kind": "dancer",  "neighborhood": "The Flamingo", "indoor": true, "personality": "chill",    "likes": ["smoke_weed"], "dialogues": ["This place is wild tonight!", "Come dance, don't be shy."], "state": "idle" },
+    { "id": 39, "name": "Tyler",       "sex": "M", "kind": "dancer",  "neighborhood": "The Flamingo", "indoor": true, "personality": "friendly", "likes": [], "dialogues": ["The Flamingo never disappoints!", "Best beats in the city right here."], "state": "idle" },
+    { "id": 40, "name": "Crystal",     "sex": "F", "kind": "dancer",  "neighborhood": "The Flamingo", "indoor": true, "personality": "chill",    "likes": ["smoke_weed"], "state": "idle" },
+    { "id": 41, "name": "Marcus",      "sex": "M", "kind": "dancer",  "neighborhood": "The Flamingo", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" },
+
+    { "id": 42, "name": "Brandon",     "sex": "M", "kind": "gymgoer", "neighborhood": "Iron Temple", "indoor": true, "personality": "brave", "likes": [], "dialogues": ["No pain, no gain!", "You even lift, bro?"], "state": "idle" },
+    { "id": 43, "name": "Tasha",       "sex": "F", "kind": "gymgoer", "neighborhood": "Iron Temple", "indoor": true, "personality": "brave", "likes": [], "dialogues": ["One more set!", "Iron Temple is my second home."], "state": "idle" },
+
+    { "id": 44, "name": "Frank",       "sex": "M", "kind": "guard",   "neighborhood": "County Jail", "indoor": true, "personality": "hostile", "likes": [], "dialogues": ["Back behind the line, inmate.", "No trouble in my jail."], "state": "idle" },
+    { "id": 45, "name": "Vince",       "sex": "M", "kind": "inmate",  "neighborhood": "County Jail", "indoor": true, "personality": "hostile", "likes": ["smoke_weed"], "dialogues": ["I didn't do nothin', I swear!", "Get me outta here, man."], "state": "idle" },
+
+    { "id": 46, "name": "Walter",      "sex": "M", "kind": "patient", "neighborhood": "Hospital", "indoor": true, "personality": "nervous", "likes": [], "dialogues": ["I remember you... from before I ended up in here.", "When can I go home, doc?"], "state": "idle" },
+    { "id": 47, "name": "Olivia",      "sex": "F", "kind": "medic",   "neighborhood": "Hospital", "indoor": true, "personality": "friendly", "likes": [], "dialogues": ["You're in good hands here.", "Rest up, you'll heal in no time."], "state": "idle" },
+    { "id": 48, "name": "Howard",      "sex": "M", "kind": "medic",   "neighborhood": "Hospital", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" },
+
+    { "id": 49, "name": "Hector",      "sex": "M", "kind": "clerk",   "neighborhood": "Ammo Depot", "indoor": true, "personality": "greedy",   "likes": [], "dialogues": ["Cash only, friend.", "See something you like? It'll cost ya."], "state": "idle" },
+    { "id": 50, "name": "Gladys",      "sex": "F", "kind": "clerk",   "neighborhood": "General Store", "indoor": true, "personality": "friendly", "likes": [], "dialogues": ["Welcome in! Seeds are half off today.", "Need anything for the garden?"], "state": "idle" }
+  ]
+}

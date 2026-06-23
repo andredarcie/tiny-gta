@@ -17,6 +17,8 @@ import {MiniGameId} from '@/activities/minigame.ts';
 import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import {getDay} from '@/world/daynight.ts';
+import {Npc} from '@/actors/npc.ts';
+import {peds,type Ped} from '@/world/pedestrians.ts'; // street peds that like weed (flag you down)
 
 // ============================================================================
 // GREEN ACRES — the HIDDEN weed-farm activity, played entirely in the 3D world on
@@ -132,8 +134,19 @@ const DELIV_POINTS: {x:number;z:number;city:boolean;gated?:boolean}[]=[
   {x:-380,           z:-44, city:true, gated:true },  // far ISLAND: needs a boat/plane to reach (premium rate)
 ];
 // a live delivery buyer placed in the world during a run
-interface Buyer{x:number;z:number;city:boolean;gated:boolean;ped:THREE.Object3D;served:boolean;want:number;t:number;}
-let buyers: Buyer[]=[];   // live {x,z,city,ped,served,want,t}
+// A weed buyer waiting at a deal point. Extends Npc (so 100% of NPCs share the
+// base class) with register:false — buyers are dealt to, never shot, so they stay
+// out of the unified weapon scan. `ped` aliases the base `g` for the existing code.
+class Buyer extends Npc{
+  x:number;z:number;city:boolean;gated:boolean;served:boolean;want:number;t:number;
+  constructor(g:THREE.Object3D,x:number,z:number,city:boolean,gated:boolean,want:number){
+    super(g,{kind:'buyer',hp:1,register:false,area:city?'City buyer':'Country buyer'});
+    this.x=x;this.z=z;this.city=city;this.gated=gated;this.served=false;this.want=want;this.t=0;
+  }
+  get ped():THREE.Object3D{return this.g;}
+  override aliveState():string{return this.served?'Deal done':'Waiting for a deal';}
+}
+let buyers: Buyer[]=[];
 // HEAT — the push-your-luck risk. Each deal raises it (city more), it cools over time.
 // Above WARM, deals can be a STING (undercover cop → no pay + a wanted spike); linger
 // at the farm while HOT and you draw a RAID. The run HUD shows it so it's never blind RNG.
@@ -407,10 +420,12 @@ function spawnBuyers(): void{
   buyers=DELIV_POINTS.map(d=>{
     const ped=makePed(d.city?0x6a4a8a:0x7a5a3a,0x2a2a30); // makePed adds itself to the scene
     ped.position.set(d.x,groundHeight(d.x,d.z),d.z);ped.rotation.y=Math.random()*6.28;
-    return {x:d.x,z:d.z,city:d.city,gated:!!d.gated,ped,served:false,want:4+((Math.random()*5)|0),t:Math.random()*6};
+    const b=new Buyer(ped,d.x,d.z,d.city,!!d.gated,4+((Math.random()*5)|0));
+    b.t=Math.random()*6; // random walk-cycle phase so they don't bob in sync
+    return b;
   });
 }
-function despawnBuyers(): void{ for(const b of buyers)if(b.ped)scene.remove(b.ped); buyers=[]; }
+function despawnBuyers(): void{ for(const b of buyers)b.despawn(); buyers=[]; } // despawn clears the scene + NPC census
 // turn the player and the buyer to face each other and frame the camera on the deal
 function faceForDeal(b: Buyer): void{
   const p=playerPos();
@@ -638,6 +653,54 @@ function updateFx(dt: number): void{
   const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
   return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${best.city?' CITY+':''}${risk}`,
     enabled:true,run:()=>deliverTo(best!)};
+});
+
+// ---------- street deals: weed-liking peds flag you down when you carry the pack ----------
+// 30% of city peds like to smoke (Ped.likesWeed). pedestrians.js reads this flag to make
+// them STOP and wave the player over while the pack is out (refs.isCarryingWeed). Here we
+// close the sale: stand near a waving ped (aiState 'weed') and DEAL.
+refs.isCarryingWeed=()=>delivering&&pack.buds>0;
+
+const STREET_DEAL_RANGE=2.8;
+function dealToPed(ped: Ped): void{
+  if(pack.buds<=0)return;
+  // same STING risk as the fixed buyers: the higher the heat, the likelier a setup
+  if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
+    heat=Math.max(0,heat-50);
+    message('SETUP! - THE BUYER WAS AN UNDERCOVER COP!','var(--pink)');
+    blip([400,200,400,160],.13,'square',.2);
+    getBusted();return;
+  }
+  const perBud=pack.val/Math.max(1,pack.buds);
+  const chunk=Math.min(pack.buds,ped.wantBuds);
+  const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,
+    Math.max(1,Math.round(chunk*perBud*marketFactor()*REWARDS.weedFarm.cityPriceMultiplier)));
+  economy.earn(pay,'weed-deal');runEarned+=pay;
+  heat=Math.min(100,heat+12);
+  pack.buds-=chunk;pack.val=Math.max(0,pack.val-chunk*perBud);
+  message(`DEALT ${chunk} BUDS - +$${pay}${pack.buds>0?` (${pack.buds} LEFT)`:''}`,'var(--gold)');
+  blip([523,659,784,1047],.08,'square',.16);
+  say(ped.g,pick(WEED_BUYER_LINES),{life:3.8,yOff:2.45});
+  ped.markWeedSold(); // back to walking, on cooldown before they flag you again
+  if(pack.buds<=0)finishRun();
+}
+
+// DEAL zone action for a waving street ped (separate from the fixed-buyer one above).
+(refs.zoneActions||(refs.zoneActions=[])).push(()=>{
+  if(!delivering||state.mode!=='foot'||pack.buds<=0)return null;
+  const p=playerPos();
+  let best: Ped|null=null,bd=STREET_DEAL_RANGE;
+  for(const ped of peds){
+    if(ped.aiState!=='weed')continue;
+    const d=Math.hypot(p.x-ped.g.position.x,p.z-ped.g.position.z);
+    if(d<bd){bd=d;best=ped;}
+  }
+  if(!best)return null;
+  const chunk=Math.min(pack.buds,best.wantBuds);
+  const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,
+    Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*REWARDS.weedFarm.cityPriceMultiplier)));
+  const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
+  return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${risk}`,enabled:true,run:()=>dealToPed(best!)};
 });
 
 // The grow-op itself stays OFF the map (you find the walls). But while a delivery run

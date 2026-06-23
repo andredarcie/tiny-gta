@@ -442,13 +442,11 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
     hospFx.peds.push({g,kind:'lie'});
     return g;
   };
-  hospFx.sickPatient=addLying(-806); // este fala quando o jogador chega perto (js/places/hospital.ts)
-  addLying(-796);                    // segundo paciente internado
-  addPed(NURSE,NPANTS,-800,173.4,0,'idle');    // enfermeira na recepção (olha pra sala)
-  addPed(DOCTOR,DOCPANTS,-797.5,181,-Math.PI/2,'idle'); // médico examinando o leito da ponta
-  addPed(DOCTOR,DOCPANTS,-804,181,Math.PI/2,'idle');    // outro médico
-  addPed(NURSE,NPANTS,-803,179,0,'walk',{x0:-808,x1:-794,z:179}); // enfermeira de ronda
-  addPed(GOWN,GOWN,-808,182.5,Math.PI/2,'idle'); // paciente em pé perto da espera
+  // 3 hospital people — matches the 'Hospital' entries in npcs.json (the fixed 50-NPC
+  // cast): one bed-ridden patient (talks to the player), a receptionist nurse and a doctor.
+  hospFx.sickPatient=addLying(-806); // talks when the player approaches (js/places/hospital.ts)
+  addPed(NURSE,NPANTS,-800,173.4,0,'idle');    // receptionist nurse (faces the room)
+  addPed(DOCTOR,DOCPANTS,-797.5,181,-Math.PI/2,'idle'); // doctor examining the far bed
 
   // ----- kit de cura: cruz verde flutuando no centro, com anel/halo no chão -----
   // (a cruz é animada por js/places/hospital.ts; o anel/halo/coluna são decoração estática)

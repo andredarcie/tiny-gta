@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {state,input,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
-import {N,ROAD,BLOCK,SIDE,rand,irand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {isPark} from '@/world/world.ts';
 import {blip,thud,gunshot} from '@/audio/audio.ts';
@@ -10,12 +10,9 @@ import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
 import {settings} from '@/core/settings.ts';
 import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.ts';
-import {peds,addBloodPuddle} from '@/world/pedestrians.ts';
 import {traffic,spawnTraffic} from '@/world/traffic.ts';
-import {cops,officers as copOfficers,killOfficer} from '@/actors/police.ts';
-import {spawnDrop} from '@/story/missions.ts';
-import {gangPeds,killGangPed} from '@/actors/gangs.ts';
-import {npcs} from '@/actors/npc.ts'; // unified NPC registry (rural folk + any future type)
+import {cops} from '@/actors/police.ts';
+import {npcs} from '@/actors/npc.ts'; // unified NPC registry — ALL NPC types
 import {dentCar,poseAiming,disposeGeometries} from '@/core/entities.ts';
 import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
 import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.ts';
@@ -762,9 +759,8 @@ function startMeleeAnimation(range: number|undefined,knock: number|undefined,let
 
 // Non-lethal melee (FISTS): a punch only staggers + knocks back; it takes several
 // hits to down a person. punchHits accumulates per target; PUNCH_DECAY resets it
-// if the same target isn't punched again soon (no cross-encounter carry-over).
-const PUNCH_TO_DOWN_PED=3;   // punches to drop a pedestrian
-const PUNCH_TO_DOWN_TOUGH=4; // gang members / officers are tougher
+// if the same target isn't punched again soon (no cross-encounter carry-over). The
+// number of punches to down each target lives on the Npc itself (npc.punchToDown).
 const PUNCH_DECAY=4;         // seconds: counter resets if not punched again in time
 const PUNCH_SHOVE=.9;        // metres a punch shoves the target along the swing
 
@@ -784,21 +780,17 @@ function resolveMeleeImpact(a: MeleeAnim){
   const pos=origin.clone().addScaledVector(dir,hit.d);
   thud(a.kind==='bat'?8:6);
   // FISTS are non-lethal: stagger + shove the person and only down them after
-  // enough punches. The BAT (lethal) and firearms keep their one/two-shot kill.
-  const punch=a.lethal===false&&(hit.kind==='ped'||hit.kind==='gang'||hit.kind==='officer'||hit.kind==='npc');
+  // enough punches. Every person is an Npc now, so the per-NPC `punchToDown`
+  // field decides the threshold (3 for civilians, 4 for gang/officers). The BAT
+  // (lethal) and firearms keep their one/two-shot kill.
+  const punch=a.lethal===false&&hit.kind==='npc';
   if(punch){
     const tp=hit.target.g.position;
     tp.x+=dir.x*PUNCH_SHOVE;tp.z+=dir.z*PUNCH_SHOVE; // knock back along the swing
-    if(hit.kind==='ped'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_PED))killPed(hit.target,dir);}
-    else if(hit.kind==='gang'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_TOUGH))killGangPed(hit.target,dir);}
-    else if(hit.kind==='npc'){if(tallyPunch(hit.target,PUNCH_TO_DOWN_PED))hit.target.kill(dir);}
-    else if(tallyPunch(hit.target,PUNCH_TO_DOWN_TOUGH))killOfficer(hit.target);
+    if(tallyPunch(hit.target,hit.target.punchToDown))hit.target.kill(dir);
     return;
   }
-  if(hit.kind==='ped')killPed(hit.target,dir);
-  else if(hit.kind==='gang')killGangPed(hit.target,dir);
-  else if(hit.kind==='officer')killOfficer(hit.target);
-  else if(hit.kind==='npc')hit.target.takeDamage(dir);
+  if(hit.kind==='npc')hit.target.takeDamage(dir);
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
@@ -884,29 +876,17 @@ function updateMeleeTrails(dt: number){
 
 function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): WeaponHit{
   let best: WeaponHit={kind:'miss',d:range,target:null,arr:null};
-  for(const p of peds){
-    if(p.state==='dead'||p.state==='fly')continue;
-    const d=rayHitXZ(origin,dir,p.g.position,1.05,range);
-    if(d!==null&&d<best.d)best={kind:'ped',d,target:p};
-  }
-  for(const p of gangPeds){
-    if(p.state==='dead'||p.state==='fly')continue;
-    const d=rayHitXZ(origin,dir,p.g.position,1.05,range);
-    if(d!==null&&d<best.d)best={kind:'gang',d,target:p};
+  // SINGLE unified person scan: peds, gang members, foot officers AND rural folk
+  // are ALL Npc instances in the global registry now, so one loop hits them all
+  // (no more per-type loops that could double-hit or leave a type bullet-proof).
+  for(const n of npcs){
+    if(n.dead)continue;
+    const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
+    if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
   }
   for(const t of refs.storyTargets?.()||[]){ // alvo de missão de assassinato
     const d=rayHitXZ(origin,dir,t.g.position,1.05,range);
     if(d!==null&&d<best.d)best={kind:'story',d,target:t};
-  }
-  for(const o of copOfficers){ // policiais a pé também levam bala
-    if(o.dead)continue;
-    const d=rayHitXZ(origin,dir,o.g.position,1.05,range);
-    if(d!==null&&d<best.d)best={kind:'officer',d,target:o};
-  }
-  for(const n of npcs){ // qualquer NPC do registro unificado (roceiros, futuros tipos)
-    if(n.dead)continue;
-    const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
-    if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
   }
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
@@ -923,16 +903,6 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
     if(d!==null&&d<best.d)best={kind:'army',d,target:t};
   }
   return best;
-}
-
-function killPed(p: any,dir: THREE.Vector3){
-  if(p.state==='dead'||p.state==='fly')return;
-  p.state='fly';state.kills++;
-  p.bloodDropped=true;
-  p.vel.copy(dir).multiplyScalar(9).add(new THREE.Vector3(rand(-1.5,1.5),rand(5,7),rand(-1.5,1.5)));
-  addBloodPuddle(p.g.position.x,p.g.position.z);
-  spawnDrop(p.g.position.x,p.g.position.z,irand(15,55));
-  addWanted(1,'SHOT FIRED!','ped_shot');
 }
 
 function makeExplosion(pos: THREE.Vector3){
@@ -956,22 +926,9 @@ function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
       dentCar((cur as Vehicle).g,bp,dir,.3);(cur as Vehicle).speed*=.5;state.shake=.9;
     }
   }
-  for(const p of peds){
-    if(p.state==='dead'||p.state==='fly')continue;
-    if(p.g.position.distanceTo(pos)>=5)continue;
-    const dir=new THREE.Vector3().subVectors(p.g.position,pos).setY(0).normalize();
-    p.state='fly';p.bloodDropped=false;
-    p.vel.copy(dir).multiplyScalar(8).add(new THREE.Vector3(rand(-1,1),rand(6,9),rand(-1,1)));
-  }
-  for(const p of gangPeds){
-    if(p.state==='dead'||p.state==='fly')continue;
-    if(p.g.position.distanceTo(pos)<5)
-      killGangPed(p,new THREE.Vector3().subVectors(p.g.position,pos).setY(0).normalize());
-  }
-  for(const o of copOfficers){ // a onda de choque também derruba a dupla
-    if(!o.dead&&o.g.position.distanceTo(pos)<5)killOfficer(o);
-  }
-  for(const n of npcs){ // registro unificado: roceiros etc. também voam na explosão
+  // Unified registry: pedestrians, gang members, foot officers and rural folk are
+  // all Npc instances, so one loop catches everyone in the blast radius.
+  for(const n of npcs){
     if(!n.dead&&n.g.position.distanceTo(pos)<5)
       n.takeDamage(new THREE.Vector3().subVectors(n.g.position,pos).setY(0).normalize());
   }
@@ -1008,6 +965,9 @@ function explodeCar(car: any,arr: any[]){
   makeExplosion(pos);
   blastDamage(pos);
   addWanted(1.5,'VEHICLE DESTROYED!','vehicle_destroyed');
+  // sheriff calls the explosion in over the radio — a destroyed cruiser names the
+  // officer who was inside (hurt); other vehicles report as a generic explosion.
+  refs.radioCarExplosion?.(pos.x,pos.z,arr===cops?(car.name as string|undefined):undefined);
   state.shake=.7;
   if(arr===traffic)setTimeout(()=>spawnTraffic(),900);
   // rampage da lança-foguetes: todo carro destruído conta (em cadeia também)
@@ -1056,15 +1016,12 @@ function makeBullet(origin: THREE.Vector3,dir: THREE.Vector3,{speed=86,range=52,
 
 function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,damage=1){
   addImpact(pos,hit);
-  if(hit.kind==='ped')killPed(hit.target,dir);
-  else if(hit.kind==='gang')killGangPed(hit.target,dir);
-  else if(hit.kind==='officer')killOfficer(hit.target);
-  else if(hit.kind==='npc')hit.target.takeDamage(dir);
+  if(hit.kind==='npc')hit.target.takeDamage(dir);
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
-  else if(!refs.inGunShopRange?.())addWanted(.25,'SHOT FIRED!','gunfire');
+  // (firing a gun already adds heat in the gunshot broadcast — no extra on a surface hit)
 }
 
 // Spawn do míssil (compartilhado pela lança-foguetes do inventário e pelo rampage).
@@ -1134,18 +1091,8 @@ function flameAttack(range: number){
   jet.quaternion.setFromUnitVectors(_fwd,dir);
   jet.scale.setScalar(.45+Math.random()*.3);
   scene.add(jet);flameJets.push({g:jet,t:0});
-  for(const p of peds){
-    if(p.state==='dead'||p.state==='fly')continue;
-    if(rayHitXZ(origin,dir,p.g.position,1.4,range)!==null)killPed(p,dir);
-  }
-  for(const p of gangPeds){
-    if(p.state==='dead'||p.state==='fly')continue;
-    if(rayHitXZ(origin,dir,p.g.position,1.4,range)!==null)killGangPed(p,dir);
-  }
-  for(const o of copOfficers){
-    if(!o.dead&&rayHitXZ(origin,dir,o.g.position,1.4,range)!==null)killOfficer(o);
-  }
-  for(const n of npcs){ // registro unificado: o lança-chamas também pega roceiros etc.
+  // Unified registry: one loop torches peds, gang, officers and rural folk alike.
+  for(const n of npcs){
     if(!n.dead&&rayHitXZ(origin,dir,n.g.position,1.4,range)!==null)n.takeDamage(dir);
   }
   for(const arr of[traffic,idleCars,cops] as Vehicle[][]){
@@ -1229,7 +1176,11 @@ const api: WeaponApi={
     if(r.shake)state.shake=Math.max(state.shake,r.shake);
   },
   outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
-  gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z;}, // broadcast a shot so NPCs (rural folk) can scatter
+  gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
+    if(!refs.inGunShopRange?.()){
+      addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
+      refs.policeOnShot?.(pp.x,pp.z);          // sheriff dispatches the nearest patrol over the radio
+    }},
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
   melee(range: number,knock: number,lethal: boolean){meleeAttack(range,knock,lethal);},
   swoosh(){blip([200,130],.05,'sawtooth',.1);},
@@ -1295,10 +1246,7 @@ function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: 
 // Cars are deliberately excluded so the aim doesn't stick to parked traffic.
 function aimAssistError(px: number,pz: number,py: number,yaw: number): number|null{
   _assist.best=null;_assist.bestErr=ASSIST_CONE;
-  for(const p of peds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,py,yaw);
-  for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly')considerAssist(p.g,px,pz,py,yaw);
-  for(const o of copOfficers)if(!o.dead)considerAssist(o.g,px,pz,py,yaw);
-  for(const n of npcs)if(!n.dead)considerAssist(n.g,px,pz,py,yaw);
+  for(const n of npcs)if(!n.dead)considerAssist(n.g,px,pz,py,yaw); // peds+gang+officers+rural
   for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   return _assist.best;
@@ -1524,9 +1472,7 @@ export function updateWeapons(dt: number){
       fp.nextTick=.5;
       const c=fp.g.position;
       const near=(p: any)=>Math.hypot(p.g.position.x-c.x,p.g.position.z-c.z)<fp.radius;
-      for(const p of peds)if(p.state!=='dead'&&p.state!=='fly'&&near(p))killPed(p,_up);
-      for(const p of gangPeds)if(p.state!=='dead'&&p.state!=='fly'&&near(p))killGangPed(p,_up);
-      for(const n of npcs)if(!n.dead&&near(n))n.takeDamage(_up); // registro unificado
+      for(const n of npcs)if(!n.dead&&near(n))n.takeDamage(_up); // unified: peds+gang+officers+rural
 
       for(const arr of[traffic,idleCars,cops] as Vehicle[][])for(const car of arr){
         if(car===cur||car.plane||!near(car))continue;

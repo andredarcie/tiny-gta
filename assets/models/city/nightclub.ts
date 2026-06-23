@@ -172,8 +172,9 @@ export function addNightclub(solids:{x0:number,x1:number,z0:number,z1:number,h:n
   clubFx.exitArrow.position.set(-811.9,1.7,-22);
   clubInterior.add(clubFx.exitArrow);
 
-  // dançarinos: peds fundidos reaproveitados, animados pelo js/places/club.ts
-  const spots=[[-804,-23.5],[-801.8,-21],[-799.5,-24],[-803,-19.8],[-800.6,-26],[-797.8,-21.6]];
+  // dancers: reused peds, animated by js/places/club.ts. Count matches the 'The Flamingo'
+  // entries in npcs.json (the fixed 50-NPC cast), so the live club crowd equals the data.
+  const spots=[[-804,-23.5],[-801.8,-21],[-799.5,-24],[-803,-19.8]];
   for(const[dx,dz]of spots){
     const g=makePed(pick(shirtColors));
     g.position.set(dx+rand(-.3,.3),0,dz+rand(-.3,.3));

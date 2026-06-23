@@ -12,7 +12,7 @@ import {houseBuy,houseEat,houseGaragePark} from '@/places/property.ts';
 import {houseTvInteract,closeHouseTv} from '@/places/house-tv.ts';
 import {startOverkill} from '@/combat/overkill.ts';
 import {setMissionHUD} from '@/story/missions.ts';
-import {message,drawFullMap} from '@/ui/hud.ts';
+import {message,drawFullMap,toggleMapNpcs} from '@/ui/hud.ts';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from '@/combat/weapons.ts';
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.ts';
 import {toggleModelViewer,closeModelViewer} from '@/ui/model-viewer.ts';
@@ -447,6 +447,17 @@ export function setupInput(): void {
 
   // Mapa completo: X fecha; tocar/clicar no radar abre (acesso no celular, sem tecla M)
   document.getElementById('fm-close')?.addEventListener('click',(e: MouseEvent)=>{e.stopPropagation();closeFullMap();});
+  // "Show NPCs" toggle: live dots + path trails for every outdoor NPC (the world
+  // keeps simulating while it is on — see main.js — so the dots move in real time).
+  document.getElementById('fm-npcs')?.addEventListener('click',(e: MouseEvent)=>{
+    e.stopPropagation();
+    const on=toggleMapNpcs();
+    const btn=e.currentTarget as HTMLButtonElement;
+    btn.classList.toggle('on',on);
+    btn.setAttribute('aria-pressed',String(on));
+    btn.textContent=on?'HIDE NPCS':'SHOW NPCS';
+    drawFullMap();
+  });
   document.getElementById('mapwrap')?.addEventListener('pointerdown',(e: PointerEvent)=>{
     if(!state.started)return;
     e.preventDefault();e.stopPropagation();

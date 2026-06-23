@@ -5,8 +5,8 @@ export {makeKombi} from '../../assets/models/vehicles/kombi.ts';
 export {makeFiatUno} from '../../assets/models/vehicles/fiat-uno.ts';
 export {makeMotorcycle} from '../../assets/models/vehicles/motorcycle.ts';
 export {makeBoat} from '../../assets/models/vehicles/boat.ts';
-import {makePed,makePlayerPed,shirtColors} from '../../assets/models/characters/pedestrian.ts';
-export {makePed,makePlayerPed,shirtColors};
+import {makePed,makePlayerPed,shirtColors,addFemaleLook} from '../../assets/models/characters/pedestrian.ts';
+export {makePed,makePlayerPed,shirtColors,addFemaleLook};
 export {makePlane} from '../../assets/models/aircraft/plane.ts';
 import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
 import {makeUziModel} from '../../assets/models/weapons/uzi.ts';
@@ -143,10 +143,18 @@ export function spinWheels(g:THREE.Object3D,speed:number,dt:number,steer=0){
   }
 }
 
+// Registry of seated vehicle occupants (car drivers, boat crew). The NPC layer
+// reconciles this list at runtime — tagging each one as a named Npc (so they appear
+// in the roster) and dropping any whose vehicle has been removed — without entities.ts
+// needing to import the Npc class (which would be a circular import). Callers that
+// seat a figure outside seatDriver (boat captains) push here too.
+export const vehicleOccupants:THREE.Object3D[]=[];
+
 // Cria um NPC já sentado no banco do motorista do carro, mãos no volante,
 // coxas pra frente e pés no piso (mesma pose do jogador dirigindo)
 export function seatDriver(carG:THREE.Object3D,color?:number,pants?:number){
   const d=makePed(color!,pants);
+  vehicleOccupants.push(d); // tagged as a named NPC by the runtime reconcile pass
   d.traverse((o:any)=>{if(o.isMesh)o.castShadow=false;});
   const l=d.userData.limbs;
   if(l){

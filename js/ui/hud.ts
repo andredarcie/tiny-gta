@@ -7,6 +7,7 @@ import {getTod} from '@/world/daynight.ts';
 import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {inGangTerritory} from '@/actors/gangs.ts';
+import {getNpcMapBlips} from '@/actors/npc.ts';
 import {regionAt,mapRegionLabels} from '@/world/regions.ts';
 
 // The interact prompt descriptor computed for the E button (HUD label + prompt +
@@ -77,6 +78,22 @@ export function bigText(t: string,col: string): void {
   hudBig.classList.add('show');
 }
 export function hideBig(): void {hudBig.classList.remove('show');}
+
+// Police radio caption (bottom of screen). The sheriff dispatches units over it,
+// always by name — pass <b>Name</b> for emphasis. Auto-hides after `dur` ms.
+const hudRadio=$('police-radio');
+let radioTimer: ReturnType<typeof setTimeout>|null=null;
+export function radioMessage(html: string,dur=8000): void {
+  if(!hudRadio)return;
+  hudRadio.innerHTML=html; // styled as a discreet movie-style subtitle (no emoji/label)
+  hudRadio.classList.add('show');
+  // linger long enough to read comfortably: a generous floor that scales with length.
+  const plain=html.replace(/<[^>]+>/g,'');
+  const shown=Math.max(dur,Math.min(15000,4500+plain.length*60));
+  if(radioTimer)clearTimeout(radioTimer);
+  radioTimer=setTimeout(()=>hudRadio.classList.remove('show'),shown);
+}
+refs.radioMessage=radioMessage; // exposed for modules that can't import hud without a cycle
 
 // A ação de interação (label/prompt do botão E) é consultada por updateHUD e
 // pelo touch-controls TODO frame, e percorre uma cascata de refs + nearestCar
@@ -639,6 +656,19 @@ function fmFit(): {s: number; ox: number; oy: number} {
   const s=Math.min(fmCanvas!.width/FM_WW,fmCanvas!.height/FM_WH);
   return{s,ox:(fmCanvas!.width-FM_WW*s)/2,oy:(fmCanvas!.height-FM_WH*s)/2};
 }
+// "Show NPCs" overlay: live dots for every outdoor NPC plus a trail to where each
+// is currently headed. Toggled by the button in the full-map header (input.ts);
+// while on, main.js keeps the world simulating so the dots move in real time.
+let showNpcsOnMap=false;
+export function toggleMapNpcs(): boolean { showNpcsOnMap=!showNpcsOnMap; return showNpcsOnMap; }
+export function mapNpcsShown(): boolean { return showNpcsOnMap; }
+// Dot colour per NPC kind on the map.
+const NPC_DOT: Record<string,string>={
+  ped:'#ffffff',gang:'#b06bff',officer:'#3e7bff',soldier:'#8fae5a',rural:'#7ad06b',
+  driver:'#f5c518',dancer:'#ff5fae',gymgoer:'#ff8a1e',guard:'#3e7bff',inmate:'#d9a06b',
+  clerk:'#f4c542',medic:'#19e3ff',patient:'#ff6f6f',fare:'#5eff8a',buyer:'#9dff2e',
+  criminal:'#ff3b56',story:'#ffd24a',sicko:'#9dff2e',
+};
 export function drawFullMap(): void {
   if(!fm)return;
   const{s,ox,oy}=fmFit();
@@ -773,6 +803,26 @@ export function drawFullMap(): void {
       fm.fillStyle='#ffe9c9';fm.fillText(m.label,px,py+15);
     }
   }
+  // ---- live NPC overlay ("Show NPCs"): trail to the current destination, then a
+  // coloured dot per NPC. Off-map points (NPCs inside interiors) are clipped out.
+  if(showNpcsOnMap){
+    const blips=getNpcMapBlips();
+    for(const b of blips){                            // trails first, under the dots
+      if(b.tx==null||b.tz==null)continue;
+      const[px,py]=P(b.x,b.z),[tx,ty]=P(b.tx,b.tz);
+      fm.strokeStyle=NPC_DOT[b.kind]||'#cccccc';fm.globalAlpha=.4;fm.lineWidth=1.3;
+      fm.beginPath();fm.moveTo(px,py);fm.lineTo(tx,ty);fm.stroke();
+    }
+    fm.globalAlpha=1;
+    for(const b of blips){
+      const[px,py]=P(b.x,b.z);
+      if(px<-4||py<-4||px>fmCanvas!.width+4||py>fmCanvas!.height+4)continue; // interiors are off-map
+      fm.fillStyle=NPC_DOT[b.kind]||'#dddddd';
+      fm.beginPath();fm.arc(px,py,2.4,0,Math.PI*2);fm.fill();
+      fm.strokeStyle='rgba(5,3,8,.7)';fm.lineWidth=.7;fm.stroke();
+    }
+  }
+
   // jogador (seta + "YOU"), mesma convenção do radar: norte pra cima, seta gira
   const pp=refs.playerPos?.();
   if(pp){

@@ -13,6 +13,8 @@ import tent from '../../assets/models/rural/tent.ts';
 import logSeat from '../../assets/models/rural/log-seat.ts';
 import woodPile from '../../assets/models/rural/wood-pile.ts';
 import forestSicko from '../../assets/models/missions/forest-sicko.ts';
+import {Npc,NPC_SEED} from '@/actors/npc.ts';
+import {makeRng} from '@/core/rng.ts';
 import type * as THREE from 'three';
 
 // ============================================================================
@@ -62,7 +64,13 @@ function place(obj: THREE.Object3D,x: number,z: number,ry=0){
 
 const rick=buildRick();
 place(rick,CAMP.x+1.3,CAMP.z+1.3);
-rick.rotation.y=Math.atan2(CAMP.x-rick.position.x,CAMP.z-rick.position.z); // encara o fogo
+rick.rotation.y=Math.atan2(CAMP.x-rick.position.x,CAMP.z-rick.position.z); // faces the fire
+// Rick himself is an NPC too — a named, peaceful quest-giver. register:false so he is
+// never a weapon target (he can't be shot), but he carries an identity + name tag +
+// roster entry like everyone else, so 100% of the game's characters inherit Npc.
+new Npc(rick,{kind:'rick',register:false,showLabel:true,name:'Rick',gender:'M',femaleLook:false,
+  area:"Rick's Camp",personality:'chill',
+  dialogues:["The land doesn't hand you a map, brother.","Hunt with your own two eyes."]});
 
 const fire=campfire.build();
 place(fire,CAMP.x,CAMP.z);
@@ -77,19 +85,32 @@ for(const[dx,dz]of[[1.7,.4],[-1.1,1.7],[-.3,-1.8]])
 // colisão só da barraca (o resto é decorativo, dá pra passar perto do fogo)
 solids.push({x0:CAMP.x-3.7,x1:CAMP.x-1.3,z0:CAMP.z-2.7,z1:CAMP.z+.3,h:1.5});
 
-// ---- estado da missão ----
-interface Sicko { g: THREE.Object3D; baseY: number; phase: number; dead: boolean; deadT: number; }
-const sickos: Sicko[]=[]; // {g, baseY, phase, dead, deadT}
+// ---- mission state ----
+// A forest sicko extends Npc (so 100% of NPCs share the base class) but with
+// register:false — it is hunted by proximity here, not by the player's weapons,
+// so it stays out of the unified combat scan.
+class Sicko extends Npc{
+  baseY:number;
+  phase:number;
+  constructor(g:THREE.Object3D,baseY:number,gender:'M'|'F'){
+    super(g,{kind:'sicko',hp:1,register:false,name:'Forest Sicko',area:'Wilderness',gender,femaleLook:false});
+    this.baseY=baseY;this.phase=rand(0,6);
+  }
+  override aliveState():string{return 'Hiding';}
+}
+const sickos: Sicko[]=[];
 let phase='idle'; // idle -> hunting -> returning -> done
 let caught=0;
 
 function spawnSickos(){
+  // Fixed seed: every player hunts the same five sickos at the same spots.
+  const rng=makeRng(NPC_SEED+4);
   for(const s of SPOTS){
-    const x=s.x+rand(-2,2),z=s.z+rand(-2,2),y=groundHeight(x,z);
+    const x=s.x+rng.rand(-2,2),z=s.z+rng.rand(-2,2),y=groundHeight(x,z);
     const g=forestSicko.build();
-    g.position.set(x,y,z);g.rotation.y=rand(0,Math.PI*2);
+    g.position.set(x,y,z);g.rotation.y=rng.rand(0,Math.PI*2);
     scene.add(g);
-    sickos.push({g,baseY:y,phase:rand(0,6),dead:false,deadT:0});
+    sickos.push(new Sicko(g,y,rng.random()<.5?'M':'F'));
   }
 }
 
@@ -153,13 +174,13 @@ export function updateRick(dt: number){
   const pp=playerPos();
   const catchR=state.mode==='car'?2.8:CATCH_R; // atropelar também vale
   for(const s of sickos){
-    if(s.dead){ // pequena animação de "esmagado" e some
+    if(s.dead){ // brief "squashed" animation, then it vanishes
       if(s.g.parent){
         s.deadT+=dt;
         s.g.scale.y=Math.max(.02,1-s.deadT*3);
         s.g.rotation.y+=dt*12;
         s.g.position.y=s.baseY+s.deadT*.35;
-        if(s.deadT>.5)scene.remove(s.g);
+        if(s.deadT>.5)s.despawn(); // removes from the scene + the NPC census
       }
       continue;
     }

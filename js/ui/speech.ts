@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import {scene,camera} from '@/core/engine.ts';
 import {state} from '@/core/state.ts';
 import {rand,pick} from '@/core/constants.ts';
-import {getTod} from '@/world/daynight.ts';
 import {playerPos} from '@/actors/player.ts';
 import {peds} from '@/world/pedestrians.ts';
 import {makeSpeechBubble} from '../../assets/models/characters/speech-bubble.ts';
@@ -70,60 +69,10 @@ export function updateSpeech(dt: number){
 }
 
 // ---------------------------------------------------------------------------
-// Papo de rua: frases aleatórias e contextuais nos pedestres
+// Street chatter: every speech bubble comes from the speaking NPC's OWN `dialogues`
+// in npcs.json (see Npc.speakLine) — no generic shared pool. An NPC with no
+// dialogues stays quiet.
 // ---------------------------------------------------------------------------
-const AMBIENT=[
-  "Nice weather for a getaway.",
-  "This city gets weirder every day.",
-  "Spare some change? No? Figures.",
-  "I'm late for absolutely nothing.",
-  "Tourists. Everywhere.",
-  "My horoscope said avoid strangers today. Whoops.",
-  "Do these palm trees look fake to you?",
-  "I left the stove on... probably.",
-  "Five stars on this sidewalk. Would walk again.",
-  "Is it just me, or is gravity stronger here?",
-  "I came out for milk an hour ago.",
-  "One day I'll move somewhere boring.",
-  "Pretty sure that pigeon is following me.",
-];
-const WANTED=[
-  "He's got a gun! RUN!",
-  "Somebody call the cops!",
-  "I didn't see anything, officer!",
-  "Not today, not me!",
-  "Why is it always MY block?!",
-  "We're all gonna be on the news!",
-];
-const CAR=[
-  "Learn to drive, maniac!",
-  "Hey! Sidewalks are for people!",
-  "My insurance can't take this!",
-  "Ten and two, buddy!",
-  "Was that a red light? It was red!",
-];
-const ARMED=[
-  "Is that thing loaded?",
-  "Easy there, cowboy.",
-  "I'll just... walk the other way.",
-  "Cool gun, please don't.",
-];
-const NIGHT=[
-  "Bit late to be wandering around.",
-  "This city never sleeps, huh?",
-  "I should NOT be out this late.",
-  "Everything's creepier after dark.",
-];
-
-function pickLine(){
-  const r=Math.random();
-  if(state.wanted>=2&&r<.7)return pick(WANTED);
-  if(state.mode==='car'&&r<.45)return pick(CAR);
-  if((state.weaponHeld||state.hasGun)&&r<.4)return pick(ARMED);
-  const tod=getTod();
-  if((tod<.22||tod>.8)&&r<.4)return pick(NIGHT);
-  return pick(AMBIENT);
-}
 
 let chatterT=3;
 export function updateStreetChatter(dt: number){
@@ -135,7 +84,8 @@ export function updateStreetChatter(dt: number){
   camera.getWorldDirection(fwd);
   const cands: any[]=[];
   for(const p of peds){
-    if(p.state!=='walk'&&p.state!=='flee'&&p.state!=='panic')continue;
+    if(p.dead||p.hospitalT>0)continue; // only live, on-street peds chatter
+    if(!p.dialogues.length)continue;   // bubbles come ONLY from this NPC's npcs.json lines
     if(p.g.userData.speaking)continue;
     const d=p.g.position.distanceTo(pp);
     if(d<3||d>VIEW_NEAR)continue;    // só nasce PERTO do NPC (e não em cima)
@@ -145,6 +95,8 @@ export function updateStreetChatter(dt: number){
   }
   if(!cands.length)return;
   const p=pick(cands);
-  say(p.g,pickLine(),{life:6.5,yOff:2.55,
-    alive:()=>p.state!=='fly'&&p.state!=='dead'});
+  const line=p.speakLine();          // a contextual line from npcs.json
+  if(!line)return;
+  say(p.g,line,{life:6.5,yOff:2.55,
+    alive:()=>!p.dead&&p.hospitalT<=0});
 }

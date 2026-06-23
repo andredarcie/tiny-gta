@@ -8,6 +8,7 @@ import {say} from '@/ui/speech.ts';
 import {Interior} from '@/world/interior.ts';
 import {PRISON_DOOR,PRISON_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
   PRISON_RELEASE,prisonFx,prisonInterior} from '../../assets/models/city/prison.ts';
+import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Presidio / County Jail. The player is taken here after BUSTED, just like
 // WASTED wakes the player inside the hospital.
@@ -57,5 +58,10 @@ export const prison=new PrisonInterior({
   exterior:{x:-66,z:-66,r:26},
   mapIcon:{id:'prison',label:'COUNTY JAIL',icon:'prison',color:'#19e3ff'},
 });
+
+// Name the jail's guards and inmates (women get the female look); they keep their
+// patrol/idle animation from updateFx.
+for(const g of prisonFx.guards)nameInteriorNpc(g.g,'guard','County Jail');
+for(const i of prisonFx.inmates)nameInteriorNpc(i.g,'inmate','County Jail');
 
 export function prisonAdmit(){prison.enterAt(PRISON_RELEASE,-Math.PI/2);}
