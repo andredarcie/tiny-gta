@@ -51,21 +51,33 @@ export const MiniGameId=Object.freeze({
   WEED_FARM:'weed-farm',
 });
 
-// ---- REGRA "1x POR DIA" (tempo do jogo) ------------------------------------
-// Cada mini-game de dinheiro só pode ser CONCLUÍDO uma vez por dia in-game; depois
-// o jogador espera virar o próximo dia (obriga a rodar entre mini-games em vez de
-// farmar um só). state.mgDays guarda {id: último dia concluído}; o dia (getDay) E a
-// hora do dia (getTod) são persistidos no save (ver refs.getDailySave) pra não ser
-// burlável recarregando E pra o relógio não voltar pra tarde a cada reload — sem o tod
-// salvo, uma sessão curta nunca cruzava a meia-noite in-game, o dia ficava congelado e
-// a trava "1x/dia" não destravava nunca entre reloads.
-export function mgPlayedToday(id: string){ return state.mgDays?.[id]===getDay(); }
-export function mgMarkPlayed(id: string){ (state.mgDays??(state.mgDays={}))[id]=getDay(); }
+// ---- "ONCE PER DAY" LOCK ----------------------------------------------------
+// Each money mini-game can be COMPLETED once, then it locks. The lock clears two ways:
+//   1) the in-game day rolls past midnight (the original rule — keeps you driving
+//      between attempts in a single sitting), OR
+//   2) at least MG_REAL_RESET_MS of REAL time has passed since you finished it.
+// Path (2) fixes the cross-session frustration: the in-game clock is FROZEN while the
+// game is shut, so a returning player kept the exact same in-game day and was told
+// "come back tomorrow" forever. ~30 min away already feels like a new day, so we let
+// real elapsed time release the lock. state.mgDays holds {id: in-game day completed};
+// state.mgReal holds {id: Date.now() of completion}; both are persisted (getDailySave),
+// alongside the day (getDay) and time of day (getTod) so the clock doesn't snap back to
+// afternoon on reload (which would otherwise refreeze the in-game day across reloads).
+export const MG_REAL_RESET_MS=30*60*1000; // 30 real minutes
+// playedDay = getDay() at completion; playedAt = Date.now() at completion (both from the
+// save). Returns true when the lock should be OPEN (the mini-game is available again).
+export function dailyLockCleared(playedDay: number|undefined, playedAt: number|undefined){
+  if(playedDay===undefined||playedDay!==getDay())return true; // never completed, or in-game day advanced
+  if(playedAt!==undefined&&Date.now()-playedAt>=MG_REAL_RESET_MS)return true; // enough real time elapsed
+  return false;
+}
+export function mgPlayedToday(id: string){ return !dailyLockCleared(state.mgDays?.[id],state.mgReal?.[id]); }
+export function mgMarkPlayed(id: string){ (state.mgDays??(state.mgDays={}))[id]=getDay(); (state.mgReal??(state.mgReal={}))[id]=Date.now(); }
 refs.mgPlayedToday=mgPlayedToday;
 refs.mgMarkPlayed=mgMarkPlayed;
-// slot do save: dia atual + hora do dia + mapa por mini-game (restaurados juntos).
-refs.getDailySave=()=>({day:getDay(),tod:getTod(),mg:{...(state.mgDays||{})}});
-refs.restoreDaily=(v: unknown)=>{ const d=v as {day?: number; tod?: number; mg?: Record<string, number>}|null; if(d&&typeof d==='object'){ setDay(d.day!); restoreTod(d.tod!); if(d.mg&&typeof d.mg==='object') state.mgDays={...d.mg}; } };
+// save slot: current day + time of day + per-mini-game in-game day & real timestamp (restored together).
+refs.getDailySave=()=>({day:getDay(),tod:getTod(),mg:{...(state.mgDays||{})},mgr:{...(state.mgReal||{})}});
+refs.restoreDaily=(v: unknown)=>{ const d=v as {day?: number; tod?: number; mg?: Record<string, number>; mgr?: Record<string, number>}|null; if(d&&typeof d==='object'){ setDay(d.day!); restoreTod(d.tod!); if(d.mg&&typeof d.mg==='object') state.mgDays={...d.mg}; if(d.mgr&&typeof d.mgr==='object') state.mgReal={...d.mgr}; } };
 
 // registro global: uma instância por id (preenchido nos construtores dos módulos)
 const registry=new Map<string, MiniGame>();

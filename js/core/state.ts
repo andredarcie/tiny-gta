@@ -17,7 +17,7 @@ export const state: GameState = {
   seedSel:'', // strain id selected to plant next (set when you buy seeds at the store)
   fertilizer:0, // plant-food charges — bought at the General Store, fed to growing crops
   interior:null, // ambiente interno ativo (instância de Interior) ou null — ver js/world/interior.ts
-  armScale:1,armTarget:1,gymDay:-1, // academia: tamanho do braço, alvo e dia do último treino
+  armScale:1,armTarget:1,gymDay:-1,gymTime:0, // academia: tamanho do braço, alvo, dia e hora real do último treino
   viewerOpen:false, // galeria de objetos (tecla I) aberta
   tvActive:false,   // iframe da TV da safehouse aberto
   gymActive:false,  // mini-game do supino aberto (ver js/places/gym-game.ts)
@@ -35,7 +35,8 @@ export const state: GameState = {
   mgIntro:null,        // id do mini game cujo briefing/ranking está aberto (congela o
                        // mundo até o jogador "passar"); ver js/activities/minigame-leaderboard.ts
   onRoof:null, // registro da porta do prédio em cujo telhado o jogador está
-  mgDays:{} // {minigameId: último dia in-game concluído} — regra "1x por dia" (ver js/activities/minigame.ts)
+  mgDays:{}, // {minigameId: último dia in-game concluído} — regra "1x por dia" (ver js/activities/minigame.ts)
+  mgReal:{} // {minigameId: Date.now() da última conclusão} — destrava a trava após ~30 min reais (ver minigame.ts)
 };
 
 export const input: InputState = {

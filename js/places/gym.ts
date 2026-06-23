@@ -7,7 +7,7 @@ import {getDay} from '@/world/daynight.ts';
 import {Interior} from '@/world/interior.ts';
 import {openGymGame,gymGameActive} from '@/places/gym-game.ts';
 import {openMiniGameIntro} from '@/activities/minigame-leaderboard.ts';
-import {MiniGameId} from '@/activities/minigame.ts';
+import {MiniGameId,dailyLockCleared} from '@/activities/minigame.ts';
 import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
   gymFx,gymInterior} from '../../assets/models/city/gym.ts';
 
@@ -23,7 +23,7 @@ const TRAIN_RANGE=2.2;    // distância pra liberar a ação TRAIN
 
 class GymInterior extends Interior{
   override onEnter(){
-    const left=getDay()!==state.gymDay&&state.armScale<ARM_MAX-1e-3;
+    const left=dailyLockCleared(state.gymDay,state.gymTime)&&state.armScale<ARM_MAX-1e-3;
     message(left?'WELCOME TO IRON TEMPLE - HIT THE BENCH TO TRAIN'
                 :'WELCOME TO IRON TEMPLE','var(--gold)');
   }
@@ -65,7 +65,7 @@ function gymTrainNear(){
 export function gymTrainState(){
   if(!gymTrainNear()||gymGameActive())return null;
   if(state.armScale>=ARM_MAX-1e-3)return{label:'MAX',prompt:'ARMS MAXED OUT',enabled:false};
-  if(getDay()===state.gymDay)return{label:'GYM',prompt:'ALREADY TRAINED - COME BACK TOMORROW',enabled:false};
+  if(!dailyLockCleared(state.gymDay,state.gymTime))return{label:'GYM',prompt:'ALREADY TRAINED - COME BACK TOMORROW',enabled:false};
   return{label:'BENCH',prompt:'HIT THE BENCH PRESS',enabled:true};
 }
 
@@ -75,7 +75,7 @@ export function gymTrainState(){
 export function gymTrain(){
   if(!gymTrainNear())return false;
   if(state.armScale>=ARM_MAX-1e-3){message('YOUR ARMS ARE MAXED OUT','var(--pink)');return true;}
-  if(getDay()===state.gymDay){message('ALREADY TRAINED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
+  if(!dailyLockCleared(state.gymDay,state.gymTime)){message('ALREADY TRAINED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
   // briefing com o top 5 antes de treinar; o supino abre quando o jogador "passa"
   openMiniGameIntro(MiniGameId.GYM,'Bench Press',()=>openGymGame({onWin:onSetComplete}));
   return true;
@@ -84,6 +84,7 @@ export function gymTrain(){
 // chamado pelo mini-game quando o jogador FECHA o set (vitória)
 function onSetComplete(){
   state.gymDay=getDay();
+  state.gymTime=Date.now(); // real timestamp so the lock also clears after ~30 min away (see dailyLockCleared)
   state.armTarget=Math.min(ARM_MAX,state.armScale+ARM_STEP);
   message('PUMPED UP! YOUR ARMS GREW','var(--gold)');
   blip([330,440,587,660],.09,'square',.16);
@@ -101,11 +102,12 @@ function applyArmScale(){
 // Guarda o engrossamento do braço e o dia do último treino (limita 1/dia). No
 // restore aplicamos de imediato; o update() do interior também reaplica todo
 // frame, então o boneco já nasce no tamanho salvo.
-refs.getGymSave=()=>({s:state.armScale,d:state.gymDay});
+refs.getGymSave=()=>({s:state.armScale,d:state.gymDay,t:state.gymTime});
 refs.restoreGym=(a:unknown)=>{
   if(!a||typeof a!=='object')return;
-  const v=a as {s?:number;d?:number};
+  const v=a as {s?:number;d?:number;t?:number};
   if(Number.isFinite(v.s))state.armScale=state.armTarget=Math.min(ARM_MAX,Math.max(1,v.s!));
   if(Number.isFinite(v.d))state.gymDay=v.d!;
+  if(Number.isFinite(v.t))state.gymTime=v.t!;
   applyArmScale();
 };

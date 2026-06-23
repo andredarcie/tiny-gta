@@ -60,6 +60,7 @@ export interface GameState {
   armScale: number;
   armTarget: number;
   gymDay: number;
+  gymTime: number; // Date.now() of last gym training — daily lock also clears after a real break
   viewerOpen: boolean;
   tvActive: boolean;
   gymActive: boolean;
@@ -74,7 +75,8 @@ export interface GameState {
   activeMiniGame: string | null;
   mgIntro: string | null;
   onRoof: any;
-  mgDays: Record<string, number>;
+  mgDays: Record<string, number>; // {minigameId: in-game day completed}
+  mgReal: Record<string, number>; // {minigameId: Date.now() of completion} — real-time grace for the daily lock
 }
 
 /** Normalized input written by input.js / touch-controls.js (js/core/state.ts `input`). */
