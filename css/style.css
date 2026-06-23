@@ -1067,21 +1067,15 @@ body.admin-open #touch-controls{display:none!important}
 #fm-npcs:hover{background:rgba(255,255,255,.16)}
 #fm-npcs.on{background:var(--gold);color:#1a1410;border-color:var(--gold)}
 
-/* Police radio subtitle — a bold, hard-to-miss bottom caption that pops when the sheriff
-   dispatches units over the radio (named, personal). A CSS "POLICE RADIO" header stands
-   in for the old emoji. Slides up + fades in via the .show class. */
-#police-radio{position:fixed;left:50%;bottom:15%;transform:translateX(-50%) translateY(8px);
-  max-width:min(90vw,760px);text-align:center;pointer-events:none;z-index:8;
-  font:600 18px/1.45 'IBM Plex Mono',monospace;letter-spacing:.3px;color:#eaf4ff;
-  background:linear-gradient(rgba(12,20,38,.95),rgba(8,14,28,.95));
-  border:2px solid #4a90e2;border-left:6px solid #ffcf3a;border-radius:10px;
-  padding:14px 22px 12px;opacity:0;transition:opacity .2s ease,transform .2s ease;
-  box-shadow:0 6px 30px rgba(0,0,0,.6),0 0 20px rgba(74,144,226,.35);
-  text-shadow:0 1px 3px #000}
-#police-radio::before{content:'● POLICE RADIO';display:block;margin-bottom:6px;
-  font-size:11px;font-weight:700;letter-spacing:2.5px;color:#ffcf3a}
-#police-radio.show{opacity:1;transform:translateX(-50%) translateY(0)}
-#police-radio b{color:#7fd0ff;font-weight:700}
+/* Police radio caption — styled as a DISCREET movie subtitle: clean light text low on
+   the screen over a faint dark band, gentle fade. Lingers a while (duration set in JS). */
+#police-radio{position:fixed;left:50%;bottom:10%;transform:translateX(-50%);
+  max-width:min(82vw,680px);text-align:center;pointer-events:none;z-index:8;
+  font:500 16px/1.4 'IBM Plex Mono',monospace;color:#f4f4f4;
+  background:rgba(0,0,0,.34);border-radius:5px;padding:5px 14px;
+  opacity:0;transition:opacity .5s ease;
+  text-shadow:0 1px 3px #000,0 0 5px rgba(0,0,0,.8)}
+#police-radio.show{opacity:.96}
+#police-radio b{color:#cfe0ff;font-weight:600}
 @media (max-width:640px),(pointer:coarse){
-  #police-radio{font-size:14px;bottom:18%;padding:10px 14px 9px;max-width:92vw}
-  #police-radio::before{font-size:10px;letter-spacing:2px} }
+  #police-radio{font-size:13px;bottom:13%;max-width:90vw;padding:4px 10px} }
