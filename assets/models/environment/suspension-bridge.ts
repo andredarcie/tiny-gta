@@ -80,6 +80,17 @@ function buildBridge():THREE.Group{
       const rail=box(L,1.0,.28,STEEL,xc,h+.55,s*BRIDGE_DECK_HW,slope);
       g.add(rail);
     }
+    // Muro de arrimo fechando os LADOS da rampa (esquerda e direita) — SÓ nas
+    // rampas, não no vão sobre a água. Preenche o vão entre a rampa elevada e o
+    // chão, então é impossível passar por baixo da rampa. O vão central segue
+    // aberto (a lancha passa por baixo da ponte). Vertical (sem inclinar): vai do
+    // chão (-0.5, enterrado) até logo acima do tabuleiro (h+0.1).
+    if(xc<WB||xc>EB){
+      for(const s of[-1,1]){
+        const wall=box(L,h+.6,.6,PIER,xc,(h+.6)/2-.5,s*BRIDGE_DECK_HW);
+        wall.castShadow=true;wall.receiveShadow=true;g.add(wall);
+      }
+    }
   }
 
   // ---- Pilares de concreto e torres nas duas margens ----
@@ -153,4 +164,10 @@ export function addSuspensionBridge(
   // colisão: as quatro pernas das torres (carro/pedestre não atravessam o aço)
   for(const TX of[WB,EB])for(const LZ of[-LEGZ,LEGZ])
     solids.push({x0:TX-1,x1:TX+1,z0:LZ-1,z1:LZ+1,h:TOWER_TOP});
+  // colisão dos muros das rampas (esquerda/direita de cada rampa): bloqueiam
+  // entrar/passar por baixo da rampa pelos lados. O vão central fica sem colisão
+  // (lancha por baixo); a pista entre os muros (|z|<DECK_HW) segue livre pro carro.
+  for(const[x0,x1]of[[BRIDGE_X0,WB],[EB,BRIDGE_X1]] as [number,number][])
+    for(const s of[-1,1])
+      solids.push({x0,x1,z0:s*BRIDGE_DECK_HW-.4,z1:s*BRIDGE_DECK_HW+.4,h:BRIDGE_H});
 }
