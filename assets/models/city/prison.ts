@@ -238,10 +238,10 @@ export function addPrison(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
     const g=makePed(orange,0x303030);g.position.set(x,0,z);g.rotation.y=face;
     prisonInterior.add(g);prisonFx.inmates.push({g,t:rand(0,6),sp:rand(.7,1.1),face});
   };
-  addGuard(-796,325.8,Math.PI,'idle');
+  // One guard + one inmate — matches the 'County Jail' entries in npcs.json (the
+  // fixed 50-NPC cast), so the live jail population equals the data.
   addGuard(-812,329.2,Math.PI/2,'walk');
   addInmate(cellDefs[0].inmateX,337.1,-Math.PI/2);
-  addInmate(cellDefs[1].inmateX,337.1,-Math.PI/2);
 
   // ===== Cell-block wing (escape route): barred cells fill the east half of the
   // room. The FAR cell stands OPEN over a clandestine HOLE dug down to a dirt tunnel
