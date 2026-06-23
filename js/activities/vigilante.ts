@@ -6,7 +6,8 @@ import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,seatDriver,spinWheels,shirtColors,dentCar} from '@/core/entities.ts';
 import {idleCars,cur,playerPos,resetCarDamage} from '@/actors/player.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
 import {collideStatics} from '@/core/physics.ts';
@@ -45,7 +46,7 @@ cruiser.g.rotation.y=0;
 idleCars.push(cruiser);
 
 // fugitivo: carro + estado de IA (destino, vida, marcador no chão)
-interface Criminal{g:THREE.Object3D;hp:number;destX:number;destZ:number;heading:number;speed:number;lastHit:number;ring?:THREE.Mesh|null;beacon?:THREE.Mesh|null;}
+interface Criminal{g:THREE.Object3D;hp:number;destX:number;destZ:number;heading:number;speed:number;lastHit:number;ring?:THREE.Mesh|null;beacon?:Beacon|null;}
 
 let phase='off';   // off | duty
 let level=1;       // patrulha atual: dificuldade do fugitivo
@@ -94,14 +95,15 @@ function pickDest(px: number,pz: number): [number,number]{
 }
 
 function setCrimMarker(){
-  const{ring,beacon}=makeDeliveryMarker(RED);
+  const ring=makeMarkerRing(RED);
   ring.rotation.x=Math.PI/2;
-  scene.add(ring,beacon);
+  scene.add(ring);
+  const beacon=new Beacon(RED).mount();
   criminal!.ring=ring;criminal!.beacon=beacon;
 }
 
 function clearCrimMarker(){
-  if(criminal?.ring){scene.remove(criminal.ring,criminal.beacon!);
+  if(criminal?.ring){scene.remove(criminal.ring);criminal.beacon!.dispose();
     criminal.ring=criminal.beacon=null;}
 }
 
@@ -263,7 +265,7 @@ function updateCriminal(dt: number){
   // marcador pulsando seguindo o bandido (anel no chão + facho de luz)
   if(c.ring){
     c.ring.position.set(p.x,.4,p.z);
-    c.beacon!.position.set(p.x,30,p.z);
+    c.beacon!.at(p.x,p.z);
     c.ring.rotation.z+=2*dt;
     const sc=1+Math.sin(state.time*4)*.12;c.ring.scale.set(sc,sc,1);
   }

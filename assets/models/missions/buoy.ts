@@ -35,13 +35,11 @@ function buildBuoy(color=0xff8a1e): THREE.Group{
   return g;
 }
 
-// boat-race.js usa makeBuoy(color) e espera {buoy, beacon} (igual ao marcador de
-// entrega): a boia física + um facho de luz alto pra achar o checkpoint de longe.
-export function makeBuoy(color=0xff8a1e): {buoy: THREE.Group; beacon: THREE.Mesh}{
-  const beacon=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,60,12,1,true),
-    new THREE.MeshBasicMaterial({color,transparent:true,opacity:.14,
-      side:THREE.DoubleSide,depthWrite:false}));
-  return{buoy:buildBuoy(color),beacon};
+// boat-race.js usa makeBuoy(color): só a boia física. O facho de luz alto que
+// marca o checkpoint de longe é o Beacon padrão (js/core/beacon.ts), criado
+// separadamente pela corrida de lanchas.
+export function makeBuoy(color=0xff8a1e): THREE.Group{
+  return buildBuoy(color);
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).

@@ -8,7 +8,8 @@ import {blip,thud} from '@/audio/audio.ts';
 import {N,nodeX,HALF,CELL,ROAD,SIDE,irand,pick,clamp,wrapA,groundHeight} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeCar,spinWheels} from '@/core/entities.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeRcRager} from '../../assets/models/vehicles/rc-rager.ts';
 import {makeRcPad} from '../../assets/models/props/rc-pad.ts';
 import {makeRcCrate} from '../../assets/models/props/rc-crate.ts';
@@ -137,7 +138,7 @@ parkRc();
 idleCars.push(rcObj);
 
 // a gang car target cruising the grid (or the rare golden bonus car)
-interface Target{g:THREE.Object3D;ring:THREE.Mesh|null;beacon:THREE.Mesh|null;alive:boolean;gold:boolean;moving:boolean;axis:string;dir:number;speed:number;nextNode:number;panic:number;}
+interface Target{g:THREE.Object3D;ring:THREE.Mesh|null;beacon:Beacon|null;alive:boolean;gold:boolean;moving:boolean;axis:string;dir:number;speed:number;nextNode:number;panic:number;}
 // a floating power-up crate
 interface Crate{g:THREE.Object3D;type:CrateType;base:number;t:number;alive:boolean;}
 
@@ -271,16 +272,16 @@ function spawnTarget(){
   const g=makeCar(gold?GOLD_COLOR:gangColor,false);
   g.position.set(x,groundHeight(x,z),z);
   g.rotation.y=irand(0,3)*Math.PI/2;
-  const{ring,beacon}=makeDeliveryMarker(gold?GOLD_COLOR:GREEN);
+  const ring=makeMarkerRing(gold?GOLD_COLOR:GREEN);
   ring.position.set(x,.4,z);
-  beacon.position.set(x,30,z);
-  scene.add(ring,beacon);
+  const beacon=new Beacon(gold?GOLD_COLOR:GREEN).at(x,z).mount();
+  scene.add(ring);
   const moving=gold||Math.random()<MOVE_CHANCE;
   const t: Target={g,ring,beacon,alive:true,gold,moving,axis:'x',dir:1,speed:0,nextNode:0,panic:0};
   if(moving){ // park exactly on the grid and pick a road to cruise
     g.position.x=snapNode(x);g.position.z=snapNode(z);
     ring.position.set(g.position.x,.4,g.position.z);
-    beacon.position.set(g.position.x,30,g.position.z);
+    beacon.at(g.position.x,g.position.z);
     t.axis=Math.random()<.5?'x':'z';t.dir=Math.random()<.5?1:-1;
     aimNextNode(t);
   }
@@ -296,7 +297,7 @@ function refill(){
 function clearTargets(){
   for(const t of targets){
     scene.remove(t.g);
-    if(t.ring)scene.remove(t.ring,t.beacon!);
+    if(t.ring){scene.remove(t.ring);t.beacon!.dispose();}
   }
   targets=[];
   goldAlive=false;
@@ -413,7 +414,7 @@ function endRound(keepIfDriving=false){
 // the cash + whether it was the gold car (the caller sums these for the blast banner).
 function killTarget(t: Target){
   scene.remove(t.g);
-  if(t.ring)scene.remove(t.ring,t.beacon!);
+  if(t.ring){scene.remove(t.ring);t.beacon!.dispose();}
   t.alive=false;t.ring=t.beacon=null;
   if(t.gold)goldAlive=false;
   destroyed++;
@@ -533,7 +534,7 @@ export function updateRcToyz(dt: number){
     if(t.ring){
       if(t.moving){ // keep the marker glued to the moving car
         t.ring.position.set(t.g.position.x,.4,t.g.position.z);
-        t.beacon!.position.set(t.g.position.x,30,t.g.position.z);
+        t.beacon!.at(t.g.position.x,t.g.position.z);
       }
       t.ring.rotation.z+=2*dt;
       const sc=1+Math.sin(state.time*4)*.12;t.ring.scale.set(sc,sc,1);

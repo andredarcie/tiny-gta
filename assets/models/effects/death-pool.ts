@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {rand} from '@/core/constants.ts';
+import {makeBeacon} from '../missions/beacon.ts';
 
 // DEATH POOL ("bloodstain") do multiplayer assíncrono — estilo Demon's/Dark Souls.
 // É a poça que um jogador MORTO deixa no mundo, visível pra todos os outros online.
@@ -19,7 +20,6 @@ const GLOW = 0xff2e5a;    // brilho do anel/facho (rosa-sangue, casa com a palet
 const puddleMat = new THREE.MeshBasicMaterial({color: STAIN, transparent: true, opacity: .82, depthWrite: false});
 const puddleGeo = new THREE.CircleGeometry(1, 22);
 const ringGeo = new THREE.RingGeometry(.86, 1.04, 30);
-const beamGeo = new THREE.CylinderGeometry(.42, .66, 6, 16, 1, true); // tubo aberto (open-ended)
 
 export function makeDeathPool(): THREE.Group {
   const g = new THREE.Group();
@@ -47,13 +47,10 @@ export function makeDeathPool(): THREE.Group {
   ring.scale.set(1.5, 1.5, 1);
   g.add(ring);
 
-  // facho vertical translúcido (beacon) — additive, sem depthWrite pra não furar a
-  // transparência. Visível de longe sem ofuscar de perto.
-  const beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({
-    color: GLOW, transparent: true, opacity: .16, depthWrite: false,
-    blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
-  }));
-  beam.position.y = 3;
+  // facho vertical: o MESMO beacon padrão de todos os objetivos (makeBeacon / a classe
+  // Beacon em js/core/beacon.ts), só que VERMELHO. Base ancorada no chão; bloodstains.ts
+  // pulsa a opacidade por frame (e dá dispose na geometria/material por-instância).
+  const beam = makeBeacon(GLOW);
   g.add(beam);
 
   g.userData.ring = ring;

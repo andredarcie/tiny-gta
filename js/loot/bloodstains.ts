@@ -81,9 +81,11 @@ function disposeLabel(p: Pool): void {
 function removePool(p: Pool): void {
   disposeLabel(p);
   scene.remove(p.g);
-  // ring/beam usam material clonado por instância (puddle/splatter compartilham o do módulo)
+  // ring/beam têm material por instância (puddle/splatter compartilham o do módulo); o
+  // facho agora é o Beacon padrão (makeBeacon), com geometria por instância também.
   p.g.userData.ring?.material?.dispose?.();
   p.g.userData.beam?.material?.dispose?.();
+  p.g.userData.beam?.geometry?.dispose?.();
   pools.delete(p.id);
 }
 

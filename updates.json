@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-23-objective-markers",
+    "date": "2026-06-23",
+    "title": "Cleaner, consistent objective markers",
+    "description": "The glowing light beam that marks where to go — race checkpoints, deliveries, taxi fares, targets, story objectives and more — now shares one tidy, consistent look across the whole game. The marker left behind where a player fell carries the same style too, glowing red."
+  },
+  {
     "id": "2026-06-23-river-bridge",
     "date": "2026-06-23",
     "title": "Cross the new bridge between the city and the countryside",

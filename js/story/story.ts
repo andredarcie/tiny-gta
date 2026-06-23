@@ -15,7 +15,7 @@ import {makeStoryUsb} from '../../assets/models/missions/story-usb.ts';
 import {makeStoryBottle} from '../../assets/models/missions/story-bottle.ts';
 import {makeStoryBox} from '../../assets/models/missions/story-box.ts';
 import {makeStoryMarker} from '../../assets/models/missions/story-marker.ts';
-import {makeStoryBeacon} from '../../assets/models/missions/story-beacon.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 
@@ -208,7 +208,7 @@ actors[0].marker.visible=true;
 // kill:  available -> active -> (alvo morto) -> completing -> próxima | over
 const S: {
   idx: number; phase: string; spot: Spot | null;
-  itemMesh: THREE.Object3D | null; beacon: THREE.Object3D | null;
+  itemMesh: THREE.Object3D | null; beacon: Beacon | null;
   target: Actor | null; targetNpc: Npc | null;
 }={idx:0,phase:'available',spot:null,itemMesh:null,beacon:null,
   target:null,targetNpc:null};
@@ -459,9 +459,7 @@ function spawnItem(m: Mission){
   S.itemMesh.position.set(S.spot!.x,gh+.75,S.spot!.z);
   S.itemMesh.userData.baseY=gh+.75;
   scene.add(S.itemMesh);
-  S.beacon=makeStoryBeacon(obj.beacon);
-  S.beacon.position.set(S.spot!.x,gh+18,S.spot!.z);
-  scene.add(S.beacon);
+  S.beacon=new Beacon(obj.beacon).at(S.spot!.x,S.spot!.z,gh).mount();
 }
 
 // Missão de assassinato: o alvo é o NPC de outra missão (referência por id)
@@ -469,9 +467,7 @@ function armKillTarget(m: Mission){
   const obj=m.objective as KillObjective;
   const i=STORY.missions.findIndex(x=>x.id===obj.target);
   S.target=actors[i];S.targetNpc=STORY.missions[i].npc;
-  S.beacon=makeStoryBeacon(0xff2e88);
-  S.beacon.position.set(S.targetNpc.x,18,S.targetNpc.z);
-  scene.add(S.beacon);
+  S.beacon=new Beacon(0xff2e88).at(S.targetNpc.x,S.targetNpc.z).mount();
 }
 
 function killTarget(){
@@ -482,7 +478,7 @@ function killTarget(){
   p.y=.2;
   addBloodPuddle(p.x,p.z);
   thud(14);
-  if(S.beacon){scene.remove(S.beacon);S.beacon=null;}
+  if(S.beacon){S.beacon.dispose();S.beacon=null;}
   S.phase='completing';
   if(m.reward)economy.earn(m.reward,'story');
   message(m.foundMsg,'var(--pink)');
@@ -624,7 +620,7 @@ export function updateStory(dt: number){
   if(S.phase==='active'&&S.itemMesh){
     const pp=playerPos();
     if(Math.hypot(pp.x-S.spot!.x,pp.z-S.spot!.z)<2.4){
-      scene.remove(S.itemMesh,S.beacon!);S.itemMesh=null;S.beacon=null;
+      scene.remove(S.itemMesh);S.beacon!.dispose();S.itemMesh=null;S.beacon=null;
       S.phase='returning';
       a!.marker.visible=true;
       message(cm().foundMsg,'var(--pink)');

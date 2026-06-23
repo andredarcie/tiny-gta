@@ -7,7 +7,8 @@ import {scene} from '@/core/engine.ts';
 import {makeCar,spinWheels,seatDriver,shirtColors} from '@/core/entities.ts';
 import {cur,playerPos,cameraRig} from '@/actors/player.ts';
 import {gangs} from '@/actors/gangs.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeRaceGate} from '../../assets/models/missions/race-gate.ts';
 import {makeRaceFinish} from '../../assets/models/missions/race-finish.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
@@ -22,7 +23,7 @@ import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 interface RoutePoint{x: number; z: number;}
 interface RoadWaypoint{x: number; z: number; cp?: boolean;}
 // marcador 3D de um checkpoint (anel/facho) ou da chegada (público + bandeira)
-interface CpMarker{ring?: THREE.Mesh; beacon?: THREE.Mesh; finish?: THREE.Object3D;}
+interface CpMarker{ring?: THREE.Mesh; beacon?: Beacon; finish?: THREE.Object3D;}
 
 // mini game (sessão): trava o mundo durante a prova. A corrida desenha seus
 // próprios checkpoints no radar (ver raceOn no hud.js), então não expõe blips de
@@ -87,15 +88,15 @@ function relocateStart(){
   start.x=x;start.z=z;
   gate.position.set(x,0,z);
   startMk.ring.position.set(x,.4,z);
-  startMk.beacon.position.set(x,30,z);
+  startMk.beacon.at(x,z);
   prepareRace(); // novo percurso e nova orientação do pórtico
 }
 
 // marcador fixo da largada (anel + facho)
-const startMk=makeDeliveryMarker(ORANGE);
+const startMk={ring:makeMarkerRing(ORANGE),beacon:new Beacon(ORANGE)};
 startMk.ring.rotation.x=Math.PI/2;startMk.ring.position.set(start.x,.4,start.z);
-startMk.beacon.position.set(start.x,30,start.z);
-scene.add(startMk.ring,startMk.beacon);
+startMk.beacon.at(start.x,start.z).mount();
+scene.add(startMk.ring);
 
 let phase='idle';   // idle | countdown | racing
 let route: RoutePoint[]=[];       // [{x,z}] pontos do percurso na ordem
@@ -201,17 +202,15 @@ function buildCpMarkers(){
       finish.position.set(p.x,0,p.z);
       finish.rotation.y=Math.atan2(p.x-prev.x,p.z-prev.z);
       scene.add(finish);
-      const m=makeDeliveryMarker(ORANGE);
-      m.beacon.position.set(p.x,30,p.z); // facho de luz pra achar de longe
-      scene.add(m.beacon);
-      cpMarkers.push({beacon:m.beacon,finish});
+      const beacon=new Beacon(ORANGE).at(p.x,p.z).mount(); // facho de luz pra achar de longe
+      cpMarkers.push({beacon,finish});
     }else{
-      const m=makeDeliveryMarker(ORANGE);
-      m.ring.rotation.x=Math.PI/2;m.ring.position.set(p.x,.4,p.z);
-      (m.ring.material as THREE.Material).transparent=true;
-      m.beacon.position.set(p.x,30,p.z);
-      scene.add(m.ring,m.beacon);
-      cpMarkers.push({ring:m.ring,beacon:m.beacon});
+      const ring=makeMarkerRing(ORANGE);
+      ring.rotation.x=Math.PI/2;ring.position.set(p.x,.4,p.z);
+      (ring.material as THREE.Material).transparent=true;
+      const beacon=new Beacon(ORANGE).at(p.x,p.z).mount();
+      scene.add(ring);
+      cpMarkers.push({ring,beacon});
     }
   }
 }
@@ -219,7 +218,7 @@ function buildCpMarkers(){
 function clearCpMarkers(){
   for(const m of cpMarkers){
     if(m.ring)scene.remove(m.ring);
-    if(m.beacon)scene.remove(m.beacon);
+    if(m.beacon)m.beacon.dispose();
     if(m.finish)scene.remove(m.finish);
   }
   cpMarkers=[];
@@ -370,7 +369,7 @@ function updateCpMarkers(dt: number){
     }
     m.ring!.visible=show;
     if(!show)continue;
-    (m.ring!.material as THREE.Material).opacity=1;(m.beacon!.material as THREE.Material).opacity=.18;
+    (m.ring!.material as THREE.Material).opacity=1;m.beacon!.opacity=.18;
     m.ring!.rotation.z+=2*dt;
     const sc=1+Math.sin(state.time*4)*.12;m.ring!.scale.set(sc,sc,1);
   }

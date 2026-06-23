@@ -7,7 +7,8 @@ import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
 import {parks} from '@/world/world.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {message} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -20,7 +21,7 @@ interface Fare{
   x: number; z: number;
   dropX: number; dropZ: number;
   ring?: THREE.Mesh|null;
-  beacon?: THREE.Mesh|null;
+  beacon?: Beacon|null;
   pay: number; tip: number;
   rideStart: number; deadline: number;
 }
@@ -115,14 +116,14 @@ function pickSpot(minD: number,fx: number,fz: number): [number, number]{
 }
 
 function setMarker(x: number,z: number){
-  const{ring,beacon}=makeDeliveryMarker(0x5eff8a);
+  const ring=makeMarkerRing(0x5eff8a);
   ring.rotation.x=Math.PI/2;ring.position.set(x,.4,z);scene.add(ring);
-  beacon.position.set(x,30,z);scene.add(beacon);
+  const beacon=new Beacon(0x5eff8a).at(x,z).mount();
   fare!.ring=ring;fare!.beacon=beacon;
 }
 
 function clearMarker(){
-  if(fare?.ring){scene.remove(fare.ring,fare.beacon!);fare.ring=fare.beacon=null;}
+  if(fare?.ring){scene.remove(fare.ring);fare.beacon!.dispose();fare.ring=fare.beacon=null;}
 }
 
 function currentTip(){

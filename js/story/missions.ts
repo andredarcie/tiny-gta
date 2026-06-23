@@ -6,7 +6,8 @@ import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur} from '@/actors/player.ts';
 import {makeMoneyDrop} from '../../assets/models/missions/money-drop.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {inGangTerritory} from '@/actors/gangs.ts';
 import type * as THREE from 'three';
 import type {Vehicle} from '@/core/types.ts';
@@ -28,7 +29,7 @@ interface Mission {
 // The active delivery target: ring marker, light beacon and world position.
 interface Delivery {
   g: THREE.Object3D;
-  beacon: THREE.Object3D;
+  beacon: Beacon;
   x: number;
   z: number;
   t0: number;
@@ -75,13 +76,13 @@ function nextMission(): Mission{
 
 export let delivery: Delivery | null=null;
 export function spawnDelivery(){
-  if(delivery){scene.remove(delivery.g,delivery.beacon);}
+  if(delivery){scene.remove(delivery.g);delivery.beacon.dispose();}
   const px=playerPos();let x,z,tries=0;
   do{x=nodeX(irand(0,N))+rand(-3.5,3.5);z=nodeX(irand(0,N))+rand(-3.5,3.5);tries++;}
   while((Math.hypot(x-px.x,z-px.z)<90||inGangTerritory(x,z))&&tries<30);
-  const {ring,beacon}=makeDeliveryMarker(0x19e3ff);
+  const ring=makeMarkerRing(0x19e3ff);
   ring.rotation.x=Math.PI/2;ring.position.set(x,.4,z);scene.add(ring);
-  beacon.position.set(x,30,z);scene.add(beacon);
+  const beacon=new Beacon(0x19e3ff).at(x,z).mount();
   curMission=nextMission();
   delivery={g:ring,beacon,x,z,t0:state.time};
   setMissionHUD();

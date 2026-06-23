@@ -6,7 +6,8 @@ import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeAmbulance} from '../../assets/models/vehicles/ambulance.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
@@ -35,8 +36,8 @@ amb.g.rotation.y=0;
 idleCars.push(amb);
 
 // ferido caído pela cidade (ped + marcador no chão), e o marcador do hospital
-interface Patient{g:THREE.Object3D;x:number;z:number;ring:THREE.Mesh|null;beacon:THREE.Mesh|null;loaded:boolean;}
-interface Marker{ring:THREE.Mesh;beacon:THREE.Mesh;}
+interface Patient{g:THREE.Object3D;x:number;z:number;ring:THREE.Mesh|null;beacon:Beacon|null;loaded:boolean;}
+interface Marker{ring:THREE.Mesh;beacon:Beacon;}
 
 let phase='off';   // off | rescue (recolhendo feridos) | hospital (levando ao hospital)
 let level=1;
@@ -75,9 +76,9 @@ refs.getParamedicState=()=>({phase,level,onboard,needed,timeLeft,active:phase!==
 
 // ----- marcadores -----
 function spawnMarker(col: number,x: number,z: number,y=.4): Marker{
-  const{ring,beacon}=makeDeliveryMarker(col);
+  const ring=makeMarkerRing(col);
   ring.rotation.x=Math.PI/2;ring.position.set(x,y,z);scene.add(ring);
-  beacon.position.set(x,30,z);scene.add(beacon);
+  const beacon=new Beacon(col).at(x,z).mount();
   return{ring,beacon};
 }
 function pulse(mk: {ring:THREE.Mesh|null}|null,dt: number){
@@ -111,13 +112,13 @@ function spawnPatients(){
 function clearPatients(){
   for(const p of patients){
     if(p.g.parent)scene.remove(p.g);
-    if(p.ring)scene.remove(p.ring,p.beacon!);
+    if(p.ring){scene.remove(p.ring);p.beacon!.dispose();}
   }
   patients.length=0;
 }
 
 function clearHospMk(){
-  if(hospMk){scene.remove(hospMk.ring,hospMk.beacon);hospMk=null;}
+  if(hospMk){scene.remove(hospMk.ring);hospMk.beacon.dispose();hospMk=null;}
 }
 
 // ----- níveis -----
@@ -158,7 +159,7 @@ function endDuty(text='AMBULANCE RUSH ENDED',col='var(--cyan)'){
 
 function loadPatient(p: Patient){
   if(p.g.parent)scene.remove(p.g);
-  if(p.ring){scene.remove(p.ring,p.beacon!);p.ring=p.beacon=null;}
+  if(p.ring){scene.remove(p.ring);p.beacon!.dispose();p.ring=p.beacon=null;}
   p.loaded=true;
   onboard++;
   blip([587,784],.07,'sine',.15);

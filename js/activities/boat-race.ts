@@ -10,7 +10,8 @@ import {makeBuoy} from '../../assets/models/missions/buoy.ts';
 import {makeSeaMine} from '../../assets/models/missions/sea-mine.ts';
 import {makeExplosionModel} from '../../assets/models/effects/explosion.ts';
 import {makeBoatRaceGate} from '../../assets/models/missions/boat-race-gate.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,raceSiren} from '@/audio/audio.ts';
@@ -31,7 +32,7 @@ interface Mine{g: THREE.Group; x: number; z: number; bobT: number;}
 // explosão ativa de uma mina detonada
 interface Blast{g: THREE.Object3D; t: number;}
 // marcador 3D de uma boia ou da chegada flutuante
-interface CpMarker{buoy?: THREE.Group; beacon?: THREE.Mesh; finish?: THREE.Object3D;}
+interface CpMarker{buoy?: THREE.Group; beacon?: Beacon; finish?: THREE.Object3D;}
 // puff de espuma recicladle do rastro das rivais
 interface RivalWake{g: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>; t: number; life: number; s0: number; s1: number;}
 // objeto que carrega o estado de "pulo" de mina (lancha do jogador ou rival)
@@ -145,9 +146,10 @@ scene.add(gate);
 
 // marcador da largada: anel pulsante na superfície da água + facho (igual à
 // corrida de rua; a lancha estaciona dentro dele, sob o pórtico)
-const startMk=makeDeliveryMarker(ORANGE);
+const startMk={ring:makeMarkerRing(ORANGE),beacon:new Beacon(ORANGE)};
 startMk.ring.rotation.x=Math.PI/2;(startMk.ring.material as THREE.Material).transparent=true;
-scene.add(startMk.ring,startMk.beacon);
+startMk.beacon.mount();
+scene.add(startMk.ring);
 
 let phase='idle';   // idle | countdown | racing
 let dir=1;          // sentido do percurso ao longo do litoral
@@ -293,7 +295,7 @@ function prepareRace(initial?: boolean){
   const h=route.length?Math.atan2(route[0].x-start.x,route[0].z-start.z):0;
   gate.position.set(start.x,SEA_Y,start.z);gate.rotation.y=h;
   startMk.ring.position.set(start.x,SEA_Y+.05,start.z);
-  startMk.beacon.position.set(start.x,30,start.z);
+  startMk.beacon.at(start.x,start.z);
 }
 
 function buildCpMarkers(){
@@ -306,16 +308,14 @@ function buildCpMarkers(){
       finish.position.set(p.x,SEA_Y,p.z);
       finish.rotation.y=Math.atan2(p.x-prev.x,p.z-prev.z);
       scene.add(finish);
-      const m=makeDeliveryMarker(ORANGE); // só o facho de luz da chegada
-      m.beacon.position.set(p.x,30,p.z);
-      scene.add(m.beacon);
-      cpMarkers.push({beacon:m.beacon,finish});
+      const beacon=new Beacon(ORANGE).at(p.x,p.z).mount(); // só o facho de luz da chegada
+      cpMarkers.push({beacon,finish});
     }else{
-      const m=makeBuoy(ORANGE);
-      m.buoy.position.set(p.x,SEA_Y,p.z);
-      m.beacon.position.set(p.x,30,p.z);
-      scene.add(m.buoy,m.beacon);
-      cpMarkers.push({buoy:m.buoy,beacon:m.beacon});
+      const buoy=makeBuoy(ORANGE);
+      buoy.position.set(p.x,SEA_Y,p.z);
+      const beacon=new Beacon(ORANGE).at(p.x,p.z).mount();
+      scene.add(buoy);
+      cpMarkers.push({buoy,beacon});
     }
   }
 }
@@ -323,7 +323,7 @@ function buildCpMarkers(){
 function clearCpMarkers(){
   for(const m of cpMarkers){
     if(m.buoy)scene.remove(m.buoy);
-    if(m.beacon)scene.remove(m.beacon);
+    if(m.beacon)m.beacon.dispose();
     if(m.finish)scene.remove(m.finish);
   }
   cpMarkers=[];
@@ -538,7 +538,7 @@ function updateCpMarkers(dt: number){
     const m=cpMarkers[i];
     const show=i>=playerCp&&i<=playerCp+CP_AHEAD;
     const current=i===playerCp;
-    if(m.beacon){m.beacon.visible=show;if(show)(m.beacon.material as THREE.Material).opacity=current?.18:.08;}
+    if(m.beacon){m.beacon.visible=show;if(show)m.beacon.opacity=current?.18:.08;}
     if(m.finish){
       m.finish.visible=show;
       if(show){

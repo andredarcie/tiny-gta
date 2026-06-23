@@ -6,7 +6,8 @@ import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,spinWheels,seatDriver,shirtColors} from '@/core/entities.ts';
 import {cur,playerPos,cameraRig} from '@/actors/player.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeOffroadGate} from '../../assets/models/missions/offroad-gate.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,raceSiren} from '@/audio/audio.ts';
@@ -19,7 +20,7 @@ import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 // checkpoint (x,z) na ordem do circuito
 interface RoutePoint{x: number; z: number;}
 // marcador 3D de um checkpoint (anel pulsante + facho)
-interface CpMarker{ring: THREE.Mesh; beacon: THREE.Mesh;}
+interface CpMarker{ring: THREE.Mesh; beacon: Beacon;}
 
 // ============================================================================
 // OFF-ROAD — a 3ª corrida do jogo (estilo desafio off-road do open-world), na
@@ -77,11 +78,11 @@ gate.rotation.y=Math.atan2(CPS[0].x-start.x,CPS[0].z-start.z); // arco apontado 
 scene.add(gate);
 
 // marcador da largada: anel pulsante no chão + facho (igual às outras corridas)
-const startMk=makeDeliveryMarker(ORANGE);
+const startMk={ring:makeMarkerRing(ORANGE),beacon:new Beacon(ORANGE)};
 startMk.ring.rotation.x=Math.PI/2;
 startMk.ring.position.set(start.x,groundHeight(start.x,start.z)+.4,start.z);
-startMk.beacon.position.set(start.x,30,start.z);
-scene.add(startMk.ring,startMk.beacon);
+startMk.beacon.at(start.x,start.z).mount();
+scene.add(startMk.ring);
 
 let phase='idle';   // idle | countdown | racing
 let route: RoutePoint[]=CPS;      // [{x,z}] checkpoints na ordem (o último é a chegada)
@@ -142,20 +143,20 @@ refs.startOffroadInteract=()=>{
 function buildCpMarkers(){
   for(let i=0;i<route.length;i++){
     const p=route[i];
-    const m=makeDeliveryMarker(ORANGE);
-    m.ring.rotation.x=Math.PI/2;
-    m.ring.position.set(p.x,groundHeight(p.x,p.z)+.4,p.z);
-    (m.ring.material as THREE.Material).transparent=true;
-    m.beacon.position.set(p.x,30,p.z);
-    scene.add(m.ring,m.beacon);
-    cpMarkers.push({ring:m.ring,beacon:m.beacon});
+    const ring=makeMarkerRing(ORANGE);
+    ring.rotation.x=Math.PI/2;
+    ring.position.set(p.x,groundHeight(p.x,p.z)+.4,p.z);
+    (ring.material as THREE.Material).transparent=true;
+    const beacon=new Beacon(ORANGE).at(p.x,p.z).mount();
+    scene.add(ring);
+    cpMarkers.push({ring,beacon});
   }
 }
 
 function clearCpMarkers(){
   for(const m of cpMarkers){
     if(m.ring)scene.remove(m.ring);
-    if(m.beacon)scene.remove(m.beacon);
+    m.beacon.dispose();
   }
   cpMarkers=[];
 }
@@ -301,7 +302,7 @@ function updateCpMarkers(dt: number){
     m.ring.visible=show;
     m.beacon.visible=show;
     if(!show)continue;
-    (m.beacon.material as THREE.Material).opacity=current?.18:.08;
+    m.beacon.opacity=current?.18:.08;
     (m.ring.material as THREE.Material).opacity=current?1:.4;
     m.ring.rotation.z+=2*dt;
     const sc=(current?1:.8)+Math.sin(state.time*4)*.12;m.ring.scale.set(sc,sc,1);

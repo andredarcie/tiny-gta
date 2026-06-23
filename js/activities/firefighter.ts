@@ -9,7 +9,8 @@ import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud,setFireSiren,setHose} from '@/audio/audio.ts';
 import {N,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
-import {makeDeliveryMarker} from '../../assets/models/missions/delivery-marker.ts';
+import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
+import {Beacon} from '@/core/beacon.ts';
 import {makeBlazeModel} from '../../assets/models/effects/blaze.ts';
 import {makeFireTruck} from '../../assets/models/vehicles/fire-truck.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -64,7 +65,7 @@ const cannon=truck.g.userData.cannon||null;   // pivot do canhão d'água
 const nozzle=truck.g.userData.nozzle||null;    // ponta do cano (origem do jato)
 
 // um incêndio: VEÍCULO em chamas + marcador + "vida" (intensidade)
-interface Fire{x:number;z:number;gy:number;group:THREE.Object3D;ring:THREE.Mesh;beacon:THREE.Mesh;car:THREE.Object3D;hp:number;maxHp:number;startT:number;}
+interface Fire{x:number;z:number;gy:number;group:THREE.Object3D;ring:THREE.Mesh;beacon:Beacon;car:THREE.Object3D;hp:number;maxHp:number;startT:number;}
 
 let phase='off';     // off | duty
 let level=1;         // incêndio atual: paga 60*level
@@ -214,11 +215,11 @@ function spawnFire(initial?: boolean){
   const group=makeBlazeModel();
   group.position.set(x,gy,z);
   group.scale.setScalar(blazeScale(1));      // começa "raging" (hp=maxHp)
-  // marcador no chão (anel laranja + facho), reusa o modelo de entrega
-  const{ring,beacon}=makeDeliveryMarker(ORANGE);
+  // marcador no chão (anel laranja + facho/Beacon padrão)
+  const ring=makeMarkerRing(ORANGE);
   ring.position.set(x,gy+.4,z);
-  beacon.position.set(x,gy+30,z);
-  scene.add(group,ring,beacon);
+  const beacon=new Beacon(ORANGE).at(x,z,gy).mount();
+  scene.add(group,ring);
   const maxHp=2.4+level*0.5;
   fire={x,z,gy,group,ring,beacon,car,hp:maxHp,maxHp,startT:state.time};
   // tempo ~ distância (open-world) + base; acumula no relógio (sobra carrega)
@@ -239,7 +240,7 @@ function removeFire(){
   if(!fire)return;
   // NÃO dar dispose na geometria do carro: makeCar usa geometrias fundidas
   // COMPARTILHADAS entre todos os carros — só tira o veículo da cena.
-  scene.remove(fire.group,fire.ring,fire.beacon,fire.car);
+  scene.remove(fire.group,fire.ring,fire.car);fire.beacon.dispose();
   fire=null;
 }
 
