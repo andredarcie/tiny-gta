@@ -18,6 +18,7 @@ import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import {getDay} from '@/world/daynight.ts';
 import {Npc} from '@/actors/npc.ts';
+import {peds,type Ped} from '@/world/pedestrians.ts'; // street peds that like weed (flag you down)
 
 // ============================================================================
 // GREEN ACRES — the HIDDEN weed-farm activity, played entirely in the 3D world on
@@ -652,6 +653,54 @@ function updateFx(dt: number): void{
   const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
   return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${best.city?' CITY+':''}${risk}`,
     enabled:true,run:()=>deliverTo(best!)};
+});
+
+// ---------- street deals: weed-liking peds flag you down when you carry the pack ----------
+// 30% of city peds like to smoke (Ped.likesWeed). pedestrians.js reads this flag to make
+// them STOP and wave the player over while the pack is out (refs.isCarryingWeed). Here we
+// close the sale: stand near a waving ped (aiState 'weed') and DEAL.
+refs.isCarryingWeed=()=>delivering&&pack.buds>0;
+
+const STREET_DEAL_RANGE=2.8;
+function dealToPed(ped: Ped): void{
+  if(pack.buds<=0)return;
+  // same STING risk as the fixed buyers: the higher the heat, the likelier a setup
+  if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
+    heat=Math.max(0,heat-50);
+    message('SETUP! - THE BUYER WAS AN UNDERCOVER COP!','var(--pink)');
+    blip([400,200,400,160],.13,'square',.2);
+    getBusted();return;
+  }
+  const perBud=pack.val/Math.max(1,pack.buds);
+  const chunk=Math.min(pack.buds,ped.wantBuds);
+  const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,
+    Math.max(1,Math.round(chunk*perBud*marketFactor()*REWARDS.weedFarm.cityPriceMultiplier)));
+  economy.earn(pay,'weed-deal');runEarned+=pay;
+  heat=Math.min(100,heat+12);
+  pack.buds-=chunk;pack.val=Math.max(0,pack.val-chunk*perBud);
+  message(`DEALT ${chunk} BUDS - +$${pay}${pack.buds>0?` (${pack.buds} LEFT)`:''}`,'var(--gold)');
+  blip([523,659,784,1047],.08,'square',.16);
+  say(ped.g,pick(WEED_BUYER_LINES),{life:3.8,yOff:2.45});
+  ped.markWeedSold(); // back to walking, on cooldown before they flag you again
+  if(pack.buds<=0)finishRun();
+}
+
+// DEAL zone action for a waving street ped (separate from the fixed-buyer one above).
+(refs.zoneActions||(refs.zoneActions=[])).push(()=>{
+  if(!delivering||state.mode!=='foot'||pack.buds<=0)return null;
+  const p=playerPos();
+  let best: Ped|null=null,bd=STREET_DEAL_RANGE;
+  for(const ped of peds){
+    if(ped.aiState!=='weed')continue;
+    const d=Math.hypot(p.x-ped.g.position.x,p.z-ped.g.position.z);
+    if(d<bd){bd=d;best=ped;}
+  }
+  if(!best)return null;
+  const chunk=Math.min(pack.buds,best.wantBuds);
+  const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,
+    Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*REWARDS.weedFarm.cityPriceMultiplier)));
+  const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
+  return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${risk}`,enabled:true,run:()=>dealToPed(best!)};
 });
 
 // The grow-op itself stays OFF the map (you find the walls). But while a delivery run
