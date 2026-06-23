@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-22-daily-reset-after-break",
+    "date": "2026-06-22",
+    "title": "Daily activities reset after a real break",
+    "description": "The once-a-day activities — money mini-games like car exports and the scrap crusher, plus gym training — could leave you stuck. Their 'come back tomorrow' timer ran on the in-game clock, which freezes while the game is closed, so stepping away in real life and coming back later didn't help. Now that timer also clears after you've been away for a little while in real life, so returning after a break lets you jump straight back into your favorite activities."
+  },
+  {
     "id": "2026-06-22-rural-performance",
     "date": "2026-06-22",
     "title": "Smoother countryside",
