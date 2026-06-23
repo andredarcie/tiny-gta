@@ -204,7 +204,7 @@ export function updateGangs(dt:number){
     }
     const g=m.gang;
     const distP=Math.hypot(pp.x-p.x,pp.z-p.z);
-    if(distP>=GANG_CULL2){m.g.visible=false;continue;}
+    if(distP*distP>=GANG_CULL2){m.g.visible=false;continue;} // GANG_CULL2 is squared (130m)
     if(!gangsPaused)m.g.visible=true;
     if(!m.g.visible)continue;
     const playerInside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r;
@@ -217,7 +217,7 @@ export function updateGangs(dt:number){
       m.g.rotation.y=Math.atan2(dir.x,dir.z);
       if(distP>13){p.addScaledVector(dir,4.6*dt);mvAmount=.85;m.bob+=dt*10;}
       m.shootT-=dt;
-      if(m.shootT<=0&&distP<34)memberShoot(m,pp,distP);
+      if(m.shootT<=0&&distP<34&&!state.mapOpen)memberShoot(m,pp,distP); // don't shoot the map-locked player
     }else{
       m.tgtT-=dt;
       if(!m.tgt||m.tgtT<=0||p.distanceTo(m.tgt)<1.2){

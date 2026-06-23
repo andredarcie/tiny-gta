@@ -60,9 +60,9 @@
     { "id": 44, "name": "Frank",       "sex": "M", "kind": "guard",   "neighborhood": "County Jail", "indoor": true, "personality": "hostile", "likes": [], "state": "idle" },
     { "id": 45, "name": "Vince",       "sex": "M", "kind": "inmate",  "neighborhood": "County Jail", "indoor": true, "personality": "hostile", "likes": ["smoke_weed"], "state": "idle" },
 
-    { "id": 46, "name": "Olivia",      "sex": "F", "kind": "medic",   "neighborhood": "Hospital", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" },
-    { "id": 47, "name": "Howard",      "sex": "M", "kind": "medic",   "neighborhood": "Hospital", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" },
-    { "id": 48, "name": "Walter",      "sex": "M", "kind": "patient", "neighborhood": "Hospital", "indoor": true, "personality": "nervous", "likes": [], "state": "idle" },
+    { "id": 46, "name": "Walter",      "sex": "M", "kind": "patient", "neighborhood": "Hospital", "indoor": true, "personality": "nervous", "likes": [], "state": "idle" },
+    { "id": 47, "name": "Olivia",      "sex": "F", "kind": "medic",   "neighborhood": "Hospital", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" },
+    { "id": 48, "name": "Howard",      "sex": "M", "kind": "medic",   "neighborhood": "Hospital", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" },
 
     { "id": 49, "name": "Hector",      "sex": "M", "kind": "clerk",   "neighborhood": "Ammo Depot", "indoor": true, "personality": "greedy",   "likes": [], "state": "idle" },
     { "id": 50, "name": "Gladys",      "sex": "F", "kind": "clerk",   "neighborhood": "General Store", "indoor": true, "personality": "friendly", "likes": [], "state": "idle" }

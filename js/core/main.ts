@@ -186,6 +186,7 @@ const SHADOW_EVERY=12; // re-renderiza o shadow map 1 a cada N frames (~5fps @60
 // fica visualmente idêntico e libera o orçamento do frame.
 let mmAccum=0;
 const MM_INTERVAL=1/22;
+let fullMapAccum=0; // throttle the live full-map "Show NPCs" redraw (~20fps, like the radar)
 function step(dt: number){
   updateKeyboardInput();
   updateTouchControls();
@@ -239,8 +240,11 @@ function step(dt: number){
   P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
-  P.begin('cops');if(state.mode!=='cut'&&!state.cine){updateCops(dt);updatePoliceBoats(dt);}P.end();
-  P.begin('army');if(state.mode!=='cut'&&!state.cine)updateArmy(dt);P.end(); // ★6: the army
+  // While the full map is open (even with live NPCs shown) the player is input-locked,
+  // so the police/army must NOT chase, shoot or arrest them — freeze those threats.
+  const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
+  P.begin('cops');if(combatOn){updateCops(dt);updatePoliceBoats(dt);}P.end();
+  P.begin('army');if(combatOn)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
   updateHeli(dt);
   updatePickups(dt);
@@ -319,7 +323,13 @@ function step(dt: number){
   P.begin('render');renderer.render(scene,camera);P.end();
   // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),
   // redraw the full map every frame so the NPC dots/trails move in real time.
-  if(state.mapOpen)drawFullMap();
+  // "Show NPCs" map overlay: redraw the full map only while the toggle is on (the
+  // static map is drawn once on open), throttled to ~20fps so the dots move without
+  // burning a full redraw + per-NPC allocation every frame.
+  if(state.mapOpen&&mapNpcsShown()){
+    fullMapAccum+=dt;
+    if(fullMapAccum>=1/20){fullMapAccum=0;drawFullMap();}
+  }
 }
 
 // ----- Resolução adaptativa: REDE DE SEGURANÇA, decisão única no boot -----

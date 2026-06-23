@@ -77,8 +77,9 @@ export const hospital=new HospitalInterior({
 
 // Name the hospital's staff and patients (women get the female look); they keep
 // their animation from updateFx. The bed-ridden sick patient is already part of
-// hospFx.peds, so this single pass covers everyone (identities come from npcs.json).
-for(const p of hospFx.peds)nameInteriorNpc(p.g,'medic','Hospital');
+// hospFx.peds; tag the lying ones as 'patient' so identities/kinds line up with the
+// 'Hospital' entries in npcs.json (a lying patient must not be a standing female).
+for(const p of hospFx.peds)nameInteriorNpc(p.g,p.kind==='lie'?'patient':'medic','Hospital');
 
 // Acordar no hospital depois de morrer (js/actors/player.ts chama via refs.hospitalAdmit):
 // diferente da entrada pela porta, nasce NO MEIO da sala, olhando pra saída (oeste).

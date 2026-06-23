@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,CELL,HALF,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.ts';
+import {nodeX,irand,rand,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
@@ -83,6 +83,17 @@ function poseWavePed(g:THREE.Object3D,phase:number){
   l.leftCalf?.rotation.set(0,0,0);l.rightCalf?.rotation.set(0,0,0);
 }
 
+// Turn a ped to face the player (module-level so the hot loop allocates no closures).
+function pedFace(p:Ped,pp:THREE.Vector3){
+  p.g.rotation.y=Math.atan2(pp.x-p.g.position.x,pp.z-p.g.position.z);
+}
+// Face the player and idle in place (brave stare / greedy beg / hostile confront).
+function pedStandFacing(p:Ped,pp:THREE.Vector3,dt:number,amt:number){
+  pedFace(p,pp);p.t+=dt;
+  p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
+  Entities.animatePed?.(p.g,p.t,amt);
+}
+
 export function addBloodPuddle(x:number,z:number){
   const puddle=makeBloodPuddle();
   puddle.position.set(x+rand(-.12,.12),groundHeight(x,z)+.02,z+rand(-.12,.12));
@@ -137,7 +148,7 @@ export function ejectDriver(x:number,z:number,heading:number){
   const pp=playerPos();
   let best:Ped|null=null,bd=-1;
   for(const p of peds){
-    if(p.dead||p.hospitalT>0)continue;
+    if(p.dead||p.hospitalT>0||p.aiState==='weed')continue; // don't yank a ped mid-deal
     const d=p.g.position.distanceTo(pp);
     if(d>bd){bd=d;best=p;}
   }
@@ -146,7 +157,8 @@ export function ejectDriver(x:number,z:number,heading:number){
   best.g.position.set(x,0,z).addScaledVector(right,1.6);
   best.g.rotation.set(0,heading,0);
   best.aiState='panic';best.panicT=rand(3.5,5);best.t=0;
-  best.block=[clamp(Math.floor((x+HALF)/CELL),0,N-1),clamp(Math.floor((z+HALF)/CELL),0,N-1)];
+  // when the panic ends it walks back to a block inside its OWN neighborhood
+  best.block=randomBlockIn(best.neighborhood);
   best.corner=irand(0,3);
 }
 
@@ -228,18 +240,15 @@ export function updatePeds(dt:number){
       //   greedy   → walks up and waits (begs)    hostile → strides up and confronts
       // (nervous/chill have their tells in the flee distance / walk speed above.)
       const distP=state.mode==='foot'?p.g.position.distanceTo(pp):1e9;
-      const faceP=()=>{p.g.rotation.y=Math.atan2(pp.x-p.g.position.x,pp.z-p.g.position.z);};
-      const standFacing=(amt:number)=>{faceP();p.t+=dt;
-        p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);Entities.animatePed?.(p.g,p.t,amt);};
       if(p.personality==='friendly'&&distP<6){          // greet + wave
-        faceP();p.t+=dt*4;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
+        pedFace(p,pp);p.t+=dt*4;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
         poseWavePed(p.g,p.t);continue;
       }
-      if(p.personality==='brave'&&distP<4){standFacing(.05);continue;} // stare you down
+      if(p.personality==='brave'&&distP<4){pedStandFacing(p,pp,dt,.05);continue;} // stare you down
       const confront=p.personality==='hostile',beg=p.personality==='greedy';
       if((confront||beg)&&distP<(confront?7:9)){
         const stop=confront?1.8:2.7;
-        if(distP<=stop){standFacing(confront?.25:.08);continue;} // arrived: face the player
+        if(distP<=stop){pedStandFacing(p,pp,dt,confront?.25:.08);continue;} // arrived: face the player
         tgt.copy(pp);tgt.y=0;                            // approach the player
       }else if(p.aiState==='idle'){                      // standing-around people idle in place
         p.t+=dt;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
