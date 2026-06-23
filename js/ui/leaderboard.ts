@@ -88,6 +88,22 @@ export async function accountRequest(action: string, username: string, password:
   } catch (e) { return { ok: false, error: 'network' }; }
 }
 
+// Pergunta ao backend se um apelido já é de uma CONTA cadastrada (sem senha). Usado
+// pra impedir que um CONVIDADO entre com o apelido de outra pessoa. Em falha de rede
+// devolve false (não trava o convidado offline) — o /api/session ainda protege o
+// servidor recusando a sessão de convidado num apelido cadastrado.
+export async function checkNameRegistered(name: string): Promise<boolean> {
+  try {
+    const r = await fetch(API + '/api/account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'check', username: name }),
+    });
+    const d = (await r.json().catch(() => ({}))) as { registered?: boolean };
+    return !!d.registered;
+  } catch (e) { return false; }
+}
+
 // Lê/grava o espelho local do save (só do pid atual: nunca restaura o save de
 // outra identidade que tenha ficado no mesmo aparelho).
 function writeMirror(save: SaveLike): void {

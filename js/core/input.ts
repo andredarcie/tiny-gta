@@ -17,7 +17,7 @@ import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} fr
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.ts';
 import {toggleModelViewer,closeModelViewer} from '@/ui/model-viewer.ts';
 import {toggleAdmin,closeAdmin,isAdmin} from '@/ui/admin.ts';
-import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest} from '@/ui/leaderboard.ts';
+import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest,checkNameRegistered} from '@/ui/leaderboard.ts';
 import {applySave} from '@/core/save.ts';
 import {hasProfanity} from '@/core/profanity.ts';
 import {MiniGame} from '@/activities/minigame.ts';
@@ -238,10 +238,19 @@ function beginRun(): void {
   });
 }
 
-// Jogar como CONVIDADO: fluxo anônimo de sempre (pid no localStorage, sem conta).
-function playAsGuest(): void {
+// Jogar como CONVIDADO: fluxo anônimo (pid no localStorage, sem conta). Antes de
+// entrar, confere no backend se o apelido já é de uma CONTA cadastrada — um
+// convidado NÃO pode usar o apelido de outra pessoa (senão herdaria o dinheiro/save
+// dela). Se estiver cadastrado, manda fazer LOG IN com senha ou escolher outro nome.
+async function playAsGuest(): Promise<void> {
   const name=readNick();
   if(!name||hasProfanity(name)){nickShake();setNickStatus('Pick a valid nickname.');return;}
+  setNickStatus('Checking nickname…',true);
+  if(await checkNameRegistered(name)){
+    nickShake();
+    setNickStatus('That nickname belongs to an account. LOG IN with your password, or pick another name.');
+    return;
+  }
   setNickname(name);
   beginRun();
 }
@@ -254,6 +263,7 @@ const ACCT_ERR: Record<string, string>={
   invalid_password:'Password must be 4+ characters.',
   invalid_name:'Pick a valid nickname.',
   network:'Network error — try again.',
+  name_registered:'That nickname belongs to an account. LOG IN with your password.',
 };
 
 // CRIAR CONTA ou ENTRAR: valida local, resolve a conta no backend (adota pid+nick)
