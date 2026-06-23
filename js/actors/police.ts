@@ -492,8 +492,10 @@ export function updateCops(dt:number){
       c.heading-=Math.sign(diff)*1.4*dt;
     }else{
       c.heading+=clamp(diff,-1,1)*2.5*dt*clamp(Math.abs(c.speed)/8+.25,0,1);
-      const ts=dist>15?27:state.mode==='foot'&&dist<9?2.5:12;
-      c.speed+=(ts-c.speed)*(ts<c.speed?3.2:1.3)*dt;
+      // On foot the cruiser brakes to a full STOP as it reaches the suspect (~13m) and
+      // deploys, instead of driving into them; in a car chase it keeps the pressure on.
+      const ts=state.mode==='foot'?(dist>20?24:dist>13?10:0):(dist>15?27:12);
+      c.speed+=(ts-c.speed)*(ts<c.speed?3.4:1.3)*dt;
     }
     p.x+=Math.sin(c.heading)*c.speed*dt;
     p.z+=Math.cos(c.heading)*c.speed*dt;
@@ -506,13 +508,25 @@ export function updateCops(dt:number){
         o.g.position.x-=sx*push;o.g.position.z-=sz*push;
       }
     }
+    // Anti-runover: never drive into a player on foot — keep the cruiser ≥6m off them.
+    if(state.mode==='foot'){
+      const ax=p.x-pp.x,az=p.z-pp.z,ad=Math.hypot(ax,az)||1;
+      if(ad<6){p.x=pp.x+ax/ad*6;p.z=pp.z+az/ad*6;c.speed*=.3;}
+    }
     if(collideStatics(p,1.3)){c.speed*=.3;c.stuckT+=dt*3;}
-    if(Math.abs(c.speed)<2.5)c.stuckT+=dt;else c.stuckT=Math.max(0,c.stuckT-dt*2);
-    if(c.stuckT>1.2){c.backT=.9;c.stuckT=0;}
+    // "stuck" only counts while still FAR and meant to be driving. Near the suspect,
+    // stopping is ON PURPOSE (about to deploy) — without this the braked cruiser reads as
+    // jammed, reverses, and never gets out (the same fix the army truck carries).
+    if(dist>14){
+      if(Math.abs(c.speed)<2.5)c.stuckT+=dt;else c.stuckT=Math.max(0,c.stuckT-dt*2);
+      if(c.stuckT>1.2){c.backT=.9;c.stuckT=0;}
+    }else c.stuckT=0;
     c.g.rotation.y=c.heading;
     spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
+    // If the player is ON FOOT, stop and get out as soon as the cruiser is near (~13m),
+    // rather than nosing right up to them. In a car chase, pull alongside first.
     if(pp.y<6&&!c.backT&&
-      (state.mode==='foot'?dist<8:dist<13&&Math.abs(cur?.speed||0)<4)){
+      (state.mode==='foot'?dist<13:dist<13&&Math.abs(cur?.speed||0)<4)){
       deployOfficers(c);
       if(state.time-lastShout>6){lastShout=state.time;message('POLICE! FREEZE!','var(--blue)');}
       continue;
