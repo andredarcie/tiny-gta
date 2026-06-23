@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {clamp,wrapA,rand,irand,SWIM_BOUND,isLand} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
-import {makeBoat,makePed,attachHandGun,blinkBar,disposeGeometries} from '@/core/entities.ts';
+import {makeBoat,makePed,attachHandGun,blinkBar,disposeGeometries,vehicleOccupants} from '@/core/entities.ts';
 import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
@@ -57,6 +57,7 @@ function seatCop(boatG:THREE.Object3D):THREE.Object3D{
   d.position.set(0,-.05,-.15);
   attachHandGun(d);
   boatG.add(d);
+  vehicleOccupants.push(d); // tagged as a named NPC by the runtime reconcile pass
   return d;
 }
 

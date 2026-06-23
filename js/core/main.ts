@@ -3,17 +3,18 @@ import {state,input,refs,keys} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts'; // money ledger — imported here so the genesis tx seeds at boot
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
 import {updateAudio} from '@/audio/audio.ts';
-import {drawMinimap,updateHUD,hideBig,tickFps} from '@/ui/hud.ts';
+import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
 import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle} from '@/world/pedestrians.ts';
+import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collects dead NPCs → hospital
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
-import {updateNpcLabels} from '@/actors/npc.ts'; // floating name tags above NPCs' heads
+import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
 import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
-import {updateBeach} from '@/world/world.ts';
+import {updateBeach,solids} from '@/world/world.ts';
 import {cops,heli,updateCops,updateHeli} from '@/actors/police.ts';
 import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
 import {updateArmy} from '@/actors/army.ts';
@@ -111,6 +112,7 @@ refs.trafficPos=trafficPos;
 refs.spawnTraffic=spawnTraffic;
 refs.ejectDriver=ejectDriver;
 refs.addBloodPuddle=addBloodPuddle; // morte do jogador deixa poça igual NPC
+refs.citySolids=solids; // building AABBs — NPC name tags hide when occluded by them
 refs.gangs=gangs; // hud desenha os territórios no minimapa via refs
 refs.setGangsHidden=setGangsHidden; // corrida de rua esconde/restaura as gangues
 refs.interiorBlips=()=>interiors
@@ -197,7 +199,11 @@ function step(dt: number){
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
   if(updateClothesShop(dt)){renderer.render(scene,camera);return;} // provador da loja de roupas congela o mundo
-  if(state.mapOpen){renderer.render(scene,camera);return;} // mapa completo (tecla M) congela o mundo
+  // Mapa completo (tecla M): congela o mundo — EXCETO quando o overlay "Show NPCs"
+  // está ligado, daí o mundo continua simulando pros pontinhos se moverem em tempo
+  // real (o jogador segue bloqueado por isBlocked). O mapa é redesenhado ao final do
+  // step. Sem o overlay, mantém o congelamento estático de sempre.
+  if(state.mapOpen&&!mapNpcsShown()){renderer.render(scene,camera);return;}
   if(state.adminOpen){renderer.render(scene,camera);return;} // dashboard de admin (tecla Y) congela o mundo
   if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
@@ -230,7 +236,7 @@ function step(dt: number){
   P.end();
 
   P.begin('traffic');updateTraffic(dt);P.end();
-  P.begin('peds');updatePeds(dt);P.end();
+  P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
   P.begin('cops');if(state.mode!=='cut'&&!state.cine){updateCops(dt);updatePoliceBoats(dt);}P.end();
@@ -279,6 +285,7 @@ function step(dt: number){
 
   P.begin('camera');updateCamera(dt);P.end();
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
+  reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
   updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
   updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
@@ -310,6 +317,9 @@ function step(dt: number){
   dlight.target.position.set(pp.x,0,pp.z);
 
   P.begin('render');renderer.render(scene,camera);P.end();
+  // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),
+  // redraw the full map every frame so the NPC dots/trails move in real time.
+  if(state.mapOpen)drawFullMap();
 }
 
 // ----- Resolução adaptativa: REDE DE SEGURANÇA, decisão única no boot -----

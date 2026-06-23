@@ -10,6 +10,7 @@ import {openMiniGameIntro,reportMiniGameResult} from '@/activities/minigame-lead
 import {MiniGameId} from '@/activities/minigame.ts';
 import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
   from '../../assets/models/city/nightclub.ts';
+import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Boate "THE FLAMINGO": estende a classe base de interiores (js/world/interior.ts),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
@@ -52,6 +53,10 @@ export const club=new ClubInterior({
   exterior:{x:-154,z:-22,r:24}, // fachada: gangue não chega perto
   mapIcon:{id:'club',label:'THE FLAMINGO',icon:'club',color:'#ff2e88'},
 });
+
+// Give every clubber a name (and the women the female look). They keep being
+// animated by updateFx above; this only attaches identity + a name tag.
+for(const d of clubFx.dancers)nameInteriorNpc(d.g,'dancer','The Flamingo');
 
 // jogador no meio da pista, dentro da boate (HUD/interact usam isto)
 function clubDanceNear(){

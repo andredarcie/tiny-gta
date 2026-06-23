@@ -56,6 +56,10 @@ class RuralFolk extends Npc{
       default:return 'Idle';
     }
   }
+  override pathTarget():{x:number;z:number}|null{
+    // strolling toward a spot in its patch; otherwise anchored at its home spot
+    return this.state==='walk'?{x:this.tx,z:this.tz}:{x:this.home.x,z:this.home.z};
+  }
 }
 
 const folk:RuralFolk[]=[];

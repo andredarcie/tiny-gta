@@ -87,7 +87,7 @@ class Sicko extends Npc{
   baseY:number;
   phase:number;
   constructor(g:THREE.Object3D,baseY:number,gender:'M'|'F'){
-    super(g,{kind:'sicko',hp:1,register:false,name:'Forest Sicko',area:'Wilderness',gender});
+    super(g,{kind:'sicko',hp:1,register:false,name:'Forest Sicko',area:'Wilderness',gender,femaleLook:false});
     this.baseY=baseY;this.phase=rand(0,6);
   }
   override aliveState():string{return 'Hiding';}

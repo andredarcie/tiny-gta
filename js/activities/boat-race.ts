@@ -4,7 +4,7 @@ import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
-import {makeBoat,makePed,shirtColors,disposeGeometries} from '@/core/entities.ts';
+import {makeBoat,makePed,shirtColors,disposeGeometries,vehicleOccupants} from '@/core/entities.ts';
 import {cur,playerPos,cameraRig} from '@/actors/player.ts';
 import {makeBuoy} from '../../assets/models/missions/buoy.ts';
 import {makeSeaMine} from '../../assets/models/missions/sea-mine.ts';
@@ -395,6 +395,7 @@ function seatCaptain(boatG: THREE.Object3D,shirt: number){
   }
   d.position.set(0,-.05,-.15);
   boatG.add(d);
+  vehicleOccupants.push(d); // tagged as a named NPC by the runtime reconcile pass
   return d;
 }
 
