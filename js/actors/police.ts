@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {N,CELL,HALF,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
@@ -34,7 +34,13 @@ interface Cop{
   uniform?:number;              // shirt colour (sheriff tan vs. patrol blue)
   dispatchT?:number;            // >0 = radio-dispatched to investigate (chases even at ★0)
   siren?:boolean;               // true while actively chasing (lights+siren on) — drives the audio
+  // road-grid route to the player (A*): a list of intersection waypoints to follow.
+  path?:GridNode[];
+  pathI?:number;                // current waypoint index
+  repathT?:number;              // countdown to recompute the route
+  goalI?:number;goalJ?:number;  // the player's node the current path targets (recompute when it moves)
 }
+type GridNode=[number,number];
 
 // A foot officer dropped from a cruiser. Extends Npc so weapons can target them
 // via the unified npcs[] registry instead of a separate copOfficers loop.
@@ -79,6 +85,48 @@ const POLICE_DEFS=npcDefsByKind('police');
 const POOL=POLICE_DEFS.length||5;
 let respawnT=0; // throttles how fast a lost cruiser comes back from afar
 const _patrol=new THREE.Vector3();
+
+// ---------------------------------------------------------------------------
+// ROAD-GRID PATHFINDING — the city is a fully-connected grid of intersections at
+// (nodeX(i),nodeX(j)), i,j∈0..N (same graph traffic drives). A* over it gives the
+// cruiser a real route ALONG the roads to the player, so it rounds buildings instead
+// of grinding into walls. Cheap: ≤81 nodes, recomputed only a few times a second.
+// ---------------------------------------------------------------------------
+function nearestNode(x:number,z:number):GridNode{
+  return[clamp(Math.round((x+HALF)/CELL),0,N),clamp(Math.round((z+HALF)/CELL),0,N)];
+}
+function gridPath(start:GridNode,goal:GridNode):GridNode[]{
+  const W=N+1,key=(i:number,j:number)=>i*W+j;
+  const sk=key(start[0],start[1]),gk=key(goal[0],goal[1]);
+  if(sk===gk)return[goal];
+  const h=(i:number,j:number)=>Math.abs(i-goal[0])+Math.abs(j-goal[1]);
+  const came=new Map<number,number>(),g=new Map<number,number>([[sk,0]]);
+  const f=new Map<number,number>([[sk,h(start[0],start[1])]]);
+  const open:GridNode[]=[start],closed=new Set<number>();
+  while(open.length){
+    let bi=0;for(let k=1;k<open.length;k++)
+      if((f.get(key(open[k][0],open[k][1]))??1e9)<(f.get(key(open[bi][0],open[bi][1]))??1e9))bi=k;
+    const cur=open.splice(bi,1)[0],ck=key(cur[0],cur[1]);
+    if(ck===gk){
+      const path:GridNode[]=[cur];let k2=ck;
+      while(came.has(k2)){const pk=came.get(k2)!;path.unshift([Math.floor(pk/W),pk%W]);k2=pk;}
+      return path;
+    }
+    closed.add(ck);
+    const[ci,cj]=cur,nbs:GridNode[]=[];
+    if(ci>0)nbs.push([ci-1,cj]);if(ci<N)nbs.push([ci+1,cj]);
+    if(cj>0)nbs.push([ci,cj-1]);if(cj<N)nbs.push([ci,cj+1]);
+    for(const nb of nbs){
+      const nk=key(nb[0],nb[1]);if(closed.has(nk))continue;
+      const ng=(g.get(ck)??1e9)+1;
+      if(ng<(g.get(nk)??1e9)){
+        came.set(nk,ck);g.set(nk,ng);f.set(nk,ng+h(nb[0],nb[1]));
+        if(!open.some(o=>o[0]===nb[0]&&o[1]===nb[1]))open.push(nb);
+      }
+    }
+  }
+  return[goal];
+}
 
 // A far road node (≥80m from the player) — where cops spawn/respawn and patrol toward.
 function farNode():[number,number]{
@@ -486,7 +534,28 @@ export function updateCops(dt:number){
       for(const o of c.officers)o.mode=fleeing?'return':'hunt';
       continue;
     }
-    const desired=Math.atan2(dx,dz),diff=wrapA(desired-c.heading);
+    // ROUTE along the road grid: steer toward the next intersection waypoint rather than
+    // straight at the player through buildings. Recompute when the player changes block or
+    // the route times out. Close in (last leg / within ~one block), drive straight at them.
+    const goal=nearestNode(pp.x,pp.z);
+    c.repathT=(c.repathT??0)-dt;
+    if(!c.path||c.repathT<=0||c.goalI!==goal[0]||c.goalJ!==goal[1]){
+      c.path=gridPath(nearestNode(p.x,p.z),goal);
+      c.pathI=Math.min(1,c.path.length-1); // skip the start node, head to the next one
+      c.repathT=.6;c.goalI=goal[0];c.goalJ=goal[1];
+    }
+    let tx=pp.x,tz=pp.z; // default: aim straight at the player
+    const lastLeg=(c.pathI??0)>=c.path.length-1;
+    if(!lastLeg&&dist>=CELL*0.8){
+      // advance past any waypoints already reached, then aim at the current one
+      while((c.pathI??0)<c.path.length-1){
+        const w=c.path[c.pathI!];
+        if(Math.hypot(p.x-nodeX(w[0]),p.z-nodeX(w[1]))<8)c.pathI!++;else break;
+      }
+      const w=c.path[Math.min(c.pathI??0,c.path.length-1)];
+      tx=nodeX(w[0]);tz=nodeX(w[1]);
+    }
+    const desired=Math.atan2(tx-p.x,tz-p.z),diff=wrapA(desired-c.heading);
     if(c.backT>0){
       c.backT-=dt;c.speed+=(-8-c.speed)*3*dt;
       c.heading-=Math.sign(diff)*1.4*dt;
