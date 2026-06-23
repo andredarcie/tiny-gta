@@ -104,7 +104,7 @@ export function spawnCop(){
   c.g.position.set(nx,0,nz);
   // tag the driver as a named police NPC so it shows in the census (and
   // reconcileVehicleNpcs leaves it be).
-  if(c.driver)c.driver.userData.occupantNpc=new Npc(c.driver,{kind:'police',register:false,showLabel:false,
+  if(c.driver)c.driver.userData.occupantNpc=new Npc(c.driver,{kind:'police',register:false,showLabel:true,
     area:isSheriff?'Sheriff':'Police Patrol',name:def?.name,gender:def?.sex,personality:def?.personality,dialogues:def?.dialogues});
   cops.push(c);
 }
@@ -250,7 +250,7 @@ function deployOfficers(c:Cop){
     g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     const o=new Officer(g,{
       kind:'officer',hp:1,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
-      punchToDown:4,showLabel:false,area:c.isSheriff?'Sheriff':'On patrol',name:c.name, // the cruiser's named cop, on foot
+      punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name, // the cruiser's named cop, on foot
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
     o.rocket=Math.floor(state.wanted)>=5;
@@ -386,7 +386,7 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
   if(!policeLethal){
     // ★1 SURRENDER: close right in to make the arrest, gun drawn but NEVER fired, and
     // bark a surrender order. They only turn lethal if the suspect resists (see updateCops).
-    const stop=2.2;
+    const stop=1.6;
     if(distP>stop){
       p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
       o.bob+=dt*11;animatePed(o.g,o.bob,1);
@@ -464,6 +464,9 @@ export function updateCops(dt:number){
   for(const c of cops){
     const p=c.g.position;
     const dx=pp.x-p.x,dz=pp.z-p.z,dist=Math.hypot(dx,dz);
+    // The seated driver is hidden while his officers are out, so a deployed cruiser
+    // looks genuinely EMPTY (no fake third cop still sitting inside); shown again on re-board.
+    if(c.driver)c.driver.visible=!(c.officers&&c.officers.length);
     if(c.dispatchT&&c.dispatchT>0)c.dispatchT-=dt;
     // chases if its slot is responding to the star OR it was radio-dispatched to a
     // shots-fired call (so a single shot already sends the nearest unit to investigate).
@@ -556,15 +559,20 @@ export function updateCops(dt:number){
   for(const o of officers)if(!o.dead)
     nearOff=Math.min(nearOff,Math.hypot(pp.x-o.g.position.x,pp.z-o.g.position.z));
   // Arrest now REQUIRES an officer ON FOOT close by — the cruiser alone can't bust you,
-  // so the police must always get out of the car to make the arrest.
-  const cornered=nearOff<3.4&&pp.y<3;
+  // so the police must always get out of the car to make the arrest. Radius is generous
+  // so once an officer reaches you (surrender approach stops at ~1.6m) the bust is steady.
+  const cornered=nearOff<4.5&&pp.y<3;
   if(state.wanted>0&&cornered&&                       // only an actually-wanted player is arrested
     (state.mode==='foot'||Math.abs(cur?.speed||0)<3.5)){
     state.bustT+=dt;
     if(state.bustT>.4)message('THE POLICE ARE SURROUNDING YOU!','var(--blue)');
     if(state.bustT>1.8){getBusted();return;}
   }else state.bustT=Math.max(0,state.bustT-dt*2);
+  // The star NEVER cools while the police are actively on you — officers out on foot, or
+  // a chasing cruiser within sight (~110m). Only once you've truly shaken them (and given
+  // a longer grace after the last crime) does it tick down, and it does so slowly.
+  const engaged=officers.length>0||minD<110;
   const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
-  if(!sixHold&&state.wanted>0&&state.time-state.lastCrime>9&&(minD>70||!cops.length)&&(refs.armyDist?.()??1e9)>70)
-    state.wanted=Math.max(0,state.wanted-dt/5);
+  if(!sixHold&&state.wanted>0&&!engaged&&state.time-state.lastCrime>14&&(refs.armyDist?.()??1e9)>90)
+    state.wanted=Math.max(0,state.wanted-dt/8);
 }
