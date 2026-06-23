@@ -32,6 +32,7 @@ interface Cop{
   isSheriff?:boolean;           // the one SHERIFF (radio dispatcher, distinct uniform)
   uniform?:number;              // shirt colour (sheriff tan vs. patrol blue)
   dispatchT?:number;            // >0 = radio-dispatched to investigate (chases even at ★0)
+  siren?:boolean;               // true while actively chasing (lights+siren on) — drives the audio
 }
 
 // A foot officer dropped from a cruiser. Extends Npc so weapons can target them
@@ -59,6 +60,7 @@ const SIX_STAR_HOLD=30;
 const ARMY_AT=6;              // the wanted star at which the sheriff calls in the army
 let lastShout=-99;
 let radioCd=0;                // throttle between radio dispatches (one per few seconds)
+let carRadioCd=0;             // throttle for generic (non-police) vehicle-explosion calls
 let lastRadioStar=0;          // last wanted star the radio escalated at (so each rise speaks once)
 
 // The FIXED police roster from npcs.json (kind:'police'). The pool never grows beyond
@@ -191,7 +193,28 @@ function radioDispatch(x:number,z:number){
 function radioOfficerDown(name?:string){
   const sName=sheriffCop()?.name||'Dispatch';
   const who=name?`<b>Officer ${name}</b>`:'an officer';
-  radioMessage(`<b>Sheriff ${sName}</b>: "10-99 — ${who} has been gravely wounded! Officer needs assistance, all units respond!"`,6000);
+  radioMessage(`<b>Sheriff ${sName}</b>: "10-99 — ${who} has been gravely wounded! Officer needs assistance, all units respond!"`);
+}
+
+// A lost unit has come back from afar — the radio puts them back in service by name.
+function radioReturn(name?:string){
+  const sName=sheriffCop()?.name||'Dispatch';
+  const who=name?`<b>Unit ${name}</b>`:'a unit';
+  radioMessage(`<b>Sheriff ${sName}</b>: "Be advised, ${who} is 10-8, back in service and resuming patrol."`);
+}
+
+// A vehicle just exploded. Police cruisers are named (the officer inside is hurt);
+// other vehicles are reported as a generic explosion at the location.
+function radioCarExplosion(x:number,z:number,copName?:string){
+  const sName=sheriffCop()?.name||'Dispatch';
+  const region=regionName(x,z);
+  if(copName){
+    radioMessage(`<b>Sheriff ${sName}</b>: "10-52! Officer <b>${copName}</b>'s unit just went up in <b>${region}</b> — he's hurt, get me fire and rescue!"`,7500);
+  }else{
+    if(carRadioCd>0)return; // don't spam on a rampage of civilian cars
+    carRadioCd=8;
+    radioMessage(`<b>Sheriff ${sName}</b>: "Dispatch, vehicle explosion reported in <b>${region}</b>. Rolling fire and rescue."`);
+  }
 }
 
 // Each rise in the wanted level speaks once on the radio (more units, then the army at
@@ -254,7 +277,9 @@ export function clearCops(){
     const[nx,nz]=farNode();
     c.g.position.set(nx,0,nz);
     c.speed=0;c.backT=0;c.stuckT=0;c.patrolTgt=null;
+    c.siren=false;c.dispatchT=0; // kill the siren immediately (e.g. when the player dies / is busted)
   }
+  lastRadioStar=0; // re-arm the radio escalation for the next time
   for(const m of copMissiles){disposeGeometries(m.g);scene.remove(m.g);}
   copMissiles.length=0;
   for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
@@ -263,6 +288,24 @@ export function clearCops(){
 }
 refs.clearCops=clearCops;
 refs.policeOnShot=radioDispatch; // weapons.ts calls this when the player fires
+refs.radioCarExplosion=radioCarExplosion; // weapons.ts calls this when any vehicle explodes
+
+// Siren loudness 0..1 from the NEAREST actively-chasing cruiser: it swells in as a unit
+// closes on you and fades to nothing when no one is chasing (so it goes quiet the moment
+// you're caught/killed and while cops merely patrol). audio.ts maps this to the gain.
+const SIREN_NEAR=7,SIREN_FAR=95; // metres: full volume ≤7m, silent ≥95m, gradual between
+refs.sirenLevel=()=>{
+  // Silent during any cutscene (WASTED/BUSTED/story): clearCops only fires at the END of
+  // the death cut, so without this the siren would linger while you ride to the hospital.
+  if(state.mode==='cut'||state.cine)return 0;
+  const pp=playerPos();let best=1e9;
+  for(const c of cops)if(c.siren){
+    const d=Math.hypot(c.g.position.x-pp.x,c.g.position.z-pp.z);
+    if(d<best)best=d;
+  }
+  if(best>=SIREN_FAR)return 0;
+  return clamp(1-(best-SIREN_NEAR)/(SIREN_FAR-SIREN_NEAR),0,1);
+};
 
 function addTracer(a:THREE.Vector3,b:THREE.Vector3){
   const line=makeGangTracerLine(a,b);
@@ -371,6 +414,7 @@ const _mid=new THREE.Vector3();
 export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
   if(radioCd>0)radioCd-=dt;
+  if(carRadioCd>0)carRadioCd-=dt;
   // RADIO escalation: each new star, the sheriff speaks once (more units, then the
   // army at the top). Resets as the wanted level falls so it speaks again next time.
   if(want>lastRadioStar){lastRadioStar=want;radioEscalate(want);}
@@ -379,7 +423,7 @@ export function updateCops(dt:number){
   // clean). A destroyed cruiser is replaced from afar quickly, so the streets never run
   // out of police — nobody spawns "from beyond", it's always the same roster.
   respawnT-=dt;
-  if(cops.length<POOL&&respawnT<=0){spawnCop();respawnT=.8;}
+  if(cops.length<POOL&&respawnT<=0){spawnCop();respawnT=.8;radioReturn(cops[cops.length-1]?.name);}
   // How many cruisers actively CHASE scales with the stars: none when clean, none at
   // ★6 (the army takes over). The rest keep patrolling the streets.
   const chasers=(want>0&&want<6)?Math.min(POOL,want):0;
@@ -394,10 +438,12 @@ export function updateCops(dt:number){
     // shots-fired call (so a single shot already sends the nearest unit to investigate).
     if(ci++>=chasers&&!(c.dispatchT&&c.dispatchT>0)){ // not responding → recall officers + patrol
       if(c.officers)for(const o of c.officers)o.mode='return';
+      c.siren=false; // patrolling: lights & siren off
       patrolCop(c,dt);
       continue;
     }
     minD=Math.min(minD,dist);
+    c.siren=true;  // chasing: lights & siren on (the audio fades in by distance)
     blinkBar(c.g);
     if(c.officers){
       c.speed+=(0-c.speed)*6*dt;

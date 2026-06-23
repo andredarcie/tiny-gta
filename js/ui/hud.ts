@@ -83,12 +83,15 @@ export function hideBig(): void {hudBig.classList.remove('show');}
 // always by name — pass <b>Name</b> for emphasis. Auto-hides after `dur` ms.
 const hudRadio=$('police-radio');
 let radioTimer: ReturnType<typeof setTimeout>|null=null;
-export function radioMessage(html: string,dur=4800): void {
+export function radioMessage(html: string,dur=6500): void {
   if(!hudRadio)return;
-  hudRadio.innerHTML='📻 '+html; // 📻 prefix
+  hudRadio.innerHTML=html; // the "POLICE RADIO" label is drawn by CSS — no emoji
   hudRadio.classList.add('show');
+  // stay up long enough to read: a floor that scales with the message length.
+  const plain=html.replace(/<[^>]+>/g,'');
+  const shown=Math.max(dur,Math.min(12000,3800+plain.length*48));
   if(radioTimer)clearTimeout(radioTimer);
-  radioTimer=setTimeout(()=>hudRadio.classList.remove('show'),dur);
+  radioTimer=setTimeout(()=>hudRadio.classList.remove('show'),shown);
 }
 refs.radioMessage=radioMessage; // exposed for modules that can't import hud without a cycle
 
