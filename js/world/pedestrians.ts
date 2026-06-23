@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {N,CELL,HALF,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.ts';
-import {state} from '@/core/state.ts';
+import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
 import * as Entities from '@/core/entities.ts';
@@ -26,18 +26,25 @@ export class Ped extends Npc{
   block!:[number,number];
   corner!:number;
   dir!:number;
-  aiState!:string; // 'walk'|'panic'|'flee'  (dead/grounded live on the base Npc)
+  aiState!:string; // 'walk'|'panic'|'flee'|'weed'  (dead/grounded live on the base Npc)
   t!:number;
   speed!:number;
   panicT!:number;
   neighborhood!:Neighborhood;
+  likesWeed!:boolean; // 30% of peds — wave the player over to buy weed when they carry the pack
+  wantBuds!:number;   // how many buds this ped buys in one deal
+  weedCdT!:number;    // cooldown after a deal before they will flag you down again
   override aliveState():string{
+    if(this.aiState==='weed')return 'Wants to buy weed';
     return this.aiState==='panic'?'Panicking':this.aiState==='flee'?'Fleeing':'Walking';
   }
   override pathTarget():{x:number;z:number}|null{
+    if(this.aiState==='weed')return null; // standing still, flagging you down
     const c=pedCorner(this); // the street corner it is currently walking toward
     return{x:c[0],z:c[1]};
   }
+  // Called by the weed-farm deal logic after a sale: back to walking, on cooldown.
+  markWeedSold(){this.weedCdT=WEED_DEAL_CD;this.aiState='walk';}
 }
 
 const _corner:[number,number]=[0,0];
@@ -58,6 +65,20 @@ const _dir=new THREE.Vector3();
 const _rnd=new THREE.Vector3();
 
 export const HOSPITAL_TIME=60; // seconds before a killed ped returns from hospital
+const WEED_NOTICE=15;     // a weed-liking ped flags you down within this range (pack out)
+const WEED_DEAL_CD=45;    // seconds before a ped will flag you down again after a deal
+
+// Wave pose for a weed-liking ped flagging the player down: right arm up, hand
+// swinging side to side (animatePed restores the walk cycle once they move again).
+function poseWavePed(g:THREE.Object3D,phase:number){
+  const l=g.userData.limbs;if(!l)return;
+  l.rightArm.rotation.set(-2.5,0,-.3+Math.sin(phase*6)*.45);
+  l.rightForearm?.rotation.set(-.2,0,0);
+  l.leftArm.rotation.set(-.12,0,.12);
+  l.leftForearm?.rotation.set(-.22,0,0);
+  l.leftLeg.rotation.set(0,0,0);l.rightLeg.rotation.set(0,0,0);
+  l.leftCalf?.rotation.set(0,0,0);l.rightCalf?.rotation.set(0,0,0);
+}
 
 export function addBloodPuddle(x:number,z:number){
   const puddle=makeBloodPuddle();
@@ -99,6 +120,9 @@ for(const nh of CITY_NEIGHBORHOODS){
     p.speed=pedRng.rand(1,1.8);
     p.panicT=0;
     p.neighborhood=nh;
+    p.likesWeed=pedRng.random()<.3;       // 30% of peds enjoy a smoke — deterministic
+    p.wantBuds=pedRng.irand(2,6);         // how many buds they buy in one deal
+    p.weedCdT=0;
     peds.push(p);
   }
 }
@@ -168,7 +192,20 @@ export function updatePeds(dt:number){
       continue;
     }
     if(p.aiState==='panic'&&(p.panicT-=dt)<=0)p.aiState='walk';
+    if(p.weedCdT>0)p.weedCdT-=dt;
+    // Weed buyer: carrying the backpack near a weed-liking ped → they STOP, face you
+    // and wave you over. Danger (panic/flee) still takes priority below.
+    const wantsWeed=p.likesWeed&&p.weedCdT<=0&&!!refs.isCarryingWeed?.()&&
+      !(danger&&p.g.position.distanceTo(activeCur.g.position)<11)&&p.aiState!=='panic';
     const tgt=_tgt;
+    if(wantsWeed&&p.g.position.distanceTo(pp)<WEED_NOTICE){
+      p.aiState='weed'; // stand still, face the player, wave
+      p.g.rotation.y=Math.atan2(pp.x-p.g.position.x,pp.z-p.g.position.z);
+      p.t+=dt*4;
+      p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
+      poseWavePed(p.g,p.t);
+      continue;
+    }
     if(p.aiState==='panic'){
       tgt.subVectors(p.g.position,pp).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
@@ -177,7 +214,7 @@ export function updatePeds(dt:number){
       tgt.subVectors(p.g.position,activeCur.g.position).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
     }else{
-      if(p.aiState==='flee')p.aiState='walk';
+      if(p.aiState==='flee'||p.aiState==='weed')p.aiState='walk';
       const c=pedCorner(p);tgt.set(c[0],0,c[1]);
     }
     const d=_d.subVectors(tgt,p.g.position);d.y=0;
