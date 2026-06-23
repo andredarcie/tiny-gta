@@ -39,7 +39,7 @@
     { "id": 28, "name": "George",      "sex": "M", "kind": "rural", "neighborhood": "Countryside", "personality": "chill",    "likes": ["smoke_weed"], "dialogues": ["Crops are comin' in good this year.", "Nothin' beats country air."], "state": "idle" },
     { "id": 29, "name": "Carol",       "sex": "F", "kind": "rural", "neighborhood": "Countryside", "personality": "friendly", "likes": [], "state": "walking" },
 
-    { "id": 30, "name": "Edward",      "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "likes": [], "dialogues": ["Keep it clean, citizen.", "Move along, nothing to see here."], "state": "driving" },
+    { "id": 30, "name": "Edward",      "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "sheriff": true, "likes": [], "dialogues": ["Keep it clean, citizen.", "Move along, nothing to see here."], "state": "driving" },
     { "id": 31, "name": "Ronald",      "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "likes": [], "state": "driving" },
     { "id": 32, "name": "Stephanie",   "sex": "F", "kind": "police", "neighborhood": "Police Patrol", "personality": "brave",   "likes": ["smoke_weed"], "dialogues": ["Patrol's quiet today. Let's keep it that way.", "Stay out of trouble and we're good."], "state": "driving" },
     { "id": 33, "name": "Timothy",     "sex": "M", "kind": "police", "neighborhood": "Police Patrol", "personality": "hostile", "likes": [], "dialogues": ["I've got my eye on you.", "One wrong move, pal."], "state": "driving" },

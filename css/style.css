@@ -1066,3 +1066,15 @@ body.admin-open #touch-controls{display:none!important}
   padding:5px 12px;cursor:pointer;margin-left:auto}
 #fm-npcs:hover{background:rgba(255,255,255,.16)}
 #fm-npcs.on{background:var(--gold);color:#1a1410;border-color:var(--gold)}
+
+/* Police radio subtitle — a bottom-centre caption that pops when the sheriff dispatches
+   units over the radio (named, personal). Fades in/out via the .show class. */
+#police-radio{position:fixed;left:50%;bottom:13%;transform:translateX(-50%);
+  max-width:min(86vw,720px);text-align:center;pointer-events:none;z-index:7;
+  font:600 15px 'IBM Plex Mono',monospace;letter-spacing:.3px;color:#cfe8ff;
+  background:rgba(8,14,26,.82);border:1px solid rgba(90,150,220,.5);border-left:4px solid #4a90e2;
+  border-radius:8px;padding:8px 14px;opacity:0;transition:opacity .25s;
+  text-shadow:0 1px 2px #000}
+#police-radio.show{opacity:1}
+#police-radio b{color:#7fd0ff}
+@media (max-width:640px),(pointer:coarse){ #police-radio{font-size:12px;bottom:16%;padding:6px 10px} }

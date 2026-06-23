@@ -12,6 +12,7 @@ export interface NpcDef{
   neighborhood:string;    // the district/area the NPC belongs to (interior name if indoor)
   indoor?:boolean;        // true = lives inside an interior (club, jail, hospital, …)
   personality?:string;    // archetype shaping behaviour (brave|nervous|friendly|greedy|hostile|chill)
+  sheriff?:boolean;       // the one police officer who is the SHERIFF (radio dispatcher, distinct uniform)
   likes:string[];         // tastes, e.g. ["smoke_weed"]
   dialogues?:string[];    // the lines this NPC says in its speech bubble (may be absent → silent)
   state:string;           // initial behaviour state (see NPC_STATES)

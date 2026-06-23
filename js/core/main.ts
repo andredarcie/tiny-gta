@@ -17,7 +17,7 @@ import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country c
 import {updateBeach,solids} from '@/world/world.ts';
 import {cops,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
 import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
-import {updateArmy} from '@/actors/army.ts';
+import {updateArmy,initArmy} from '@/actors/army.ts';
 import {delivery,spawnDelivery,updatePickups} from '@/story/missions.ts';
 import {updateTaxi} from '@/activities/taxi.ts';
 import {updateRace} from '@/activities/race.ts';
@@ -169,6 +169,7 @@ spawnDelivery();
 // (assim a zona de fachada vale desde o primeiro membro). Ver gangs.js.
 spawnInitialGangs();
 initPolice(); // the fixed pool of named patrol cops exists from the start (no spawn-from-beyond)
+initArmy();   // the fixed named squad exists (stationed) from the start too
 
 setupInput();
 setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)

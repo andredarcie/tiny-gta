@@ -10,6 +10,7 @@ import {collideStatics} from '@/core/physics.ts';
 import {playerPos,cur,getWasted} from '@/actors/player.ts';
 import {message} from '@/ui/hud.ts';
 import {Npc} from '@/actors/npc.ts';
+import {npcDefsByKind} from '@/core/npc-defs.ts';
 
 // ============================================================================
 // ARMY — the MAX-STAR (★6) response. When the player hits 6 stars, ONE green
@@ -63,18 +64,20 @@ class Soldier extends Npc{
   wpn:SquadWpn;
   flank:number;
   stop:number;
-  mode:string; // 'ride'|'hunt'|'return'
+  mode:string; // 'stationed'|'ride'|'hunt'|'return'
   bob:number;
   shootT:number;
   burstLeft:number;
   restT:number;
-  constructor(g:THREE.Object3D,seat:Seat,wpn:SquadWpn,flank:number,stop:number){
-    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,area:'Army squad'});
+  respawnT:number; // >0 = counting down to return from afar after being killed
+  constructor(g:THREE.Object3D,seat:Seat,wpn:SquadWpn,flank:number,stop:number,name?:string,gender?:'M'|'F'){
+    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,area:'Army squad',name,gender});
     this.seat=seat;this.wpn=wpn;this.flank=flank;this.stop=stop;
-    this.mode='ride';this.bob=rand(0,6);this.shootT=0;this.burstLeft=0;this.restT=rand(.2,1);
+    this.mode='stationed';this.bob=rand(0,6);this.shootT=0;this.burstLeft=0;this.restT=rand(.2,1);this.respawnT=0;
   }
   override aliveState():string{
-    return this.mode==='ride'?'In the truck':this.mode==='return'?'Re-boarding':'Open fire';
+    return this.mode==='stationed'?'On standby':this.mode==='ride'?'In the truck':
+      this.mode==='return'?'Re-boarding':'Open fire';
   }
 }
 // A bullet-trail line that fades out over a fraction of a second.
@@ -82,7 +85,12 @@ interface Tracer{line:THREE.Line;t:number;}
 
 const ARMY_AT=6;          // wanted star that summons the army (the max)
 const TRUCK_MAXSPD=25;    // truck top speed during the chase
-const RESPAWN_GAP=4;      // seconds before a fresh wave when the whole squad falls
+const SOLDIER_RESPAWN=5;  // seconds a fallen soldier takes to return from afar
+// The FIXED military roster from npcs.json (kind:'military'). These named soldiers are
+// created ONCE and reused for every ★6 deployment — never spawned "from beyond".
+const MILITARY_DEFS=npcDefsByKind('military');
+const SQUAD_SIZE=MILITARY_DEFS.length||3;
+const BARRACKS={x:nodeX(0)-400,z:nodeX(0)-400}; // off-map spot where stationed soldiers wait, hidden
 
 // Each soldier carries a DIFFERENT weapon (variety). Fire happens in RHYTHM:
 // it fires `burst` shots spaced by `fire` seconds, then PAUSES for `gap` seconds
@@ -95,9 +103,8 @@ const SQUAD:SquadWpn[]=[
   {model:'pistol', fire:[.30,.50],burst:[1,2], gap:[1.1,2.0],range:28,spread:1.2,pellets:1,dmgFoot:[5,9],dmgCar:[2,4],vol:.3},
 ];
 
-let truck:Truck|null=null;           // {g,heading,speed,stuckT,backT,dentT,deployed,allDeadAt,bestDist,noProgressT}
-let soldiers:Soldier[]=[];          // {g,seat,wpn,flank,stop,mode,bob,shootT,burstLeft,restT,dead,deadT}
-let respawnAt=-1;         // state.time at which the next wave may spawn
+let truck:Truck|null=null;           // the deploy vehicle (created on ★6, removed below)
+const soldiers:Soldier[]=[];        // the FIXED named squad (created once by initArmy, reused)
 let lastMsg=-99;
 const tracers:Tracer[]=[];
 
@@ -114,6 +121,48 @@ function seatInBed(o:Soldier){
   o.g.rotation.set(0,o.seat.ry,0);
   holdPose(o);
   o.mode='ride';
+}
+
+// Park a soldier off-map, hidden, 'stationed' — where the FIXED squad waits between
+// ★6 deployments (it is never destroyed, so it always returns the same individuals).
+function stationSoldier(o:Soldier){
+  if(o.g.parent!==scene)scene.add(o.g);
+  o.mode='stationed';o.dead=false;o.deadT=0;o.respawnT=0;o.grounded=false;
+  o.g.position.set(BARRACKS.x,0,BARRACKS.z);o.g.rotation.set(0,0,0);
+  o.g.visible=false;
+}
+
+// A killed soldier RETURNS FROM AFAR: revived on foot at a far intersection, running
+// in to rejoin the fight — so the squad is never permanently thinned during a ★6.
+function reviveSoldierFar(o:Soldier){
+  const px=playerPos();
+  let nx=px.x,nz=px.z,best=1e9;
+  for(let t=0;t<40;t++){
+    const x=nodeX(irand(0,N)),z=nodeX(irand(0,N)),d=Math.hypot(x-px.x,z-px.z);
+    if(d>=40&&d<=70){nx=x;nz=z;break;}
+    if(Math.abs(d-55)<best){best=Math.abs(d-55);nx=x;nz=z;}
+  }
+  if(o.g.parent!==scene)scene.add(o.g);
+  o.dead=false;o.deadT=0;o.respawnT=0;o.grounded=false;
+  o.g.position.set(nx,groundHeight(nx,nz),nz);o.g.rotation.set(0,0,0);o.g.visible=true;
+  o.mode='hunt';o.bob=rand(0,6);o.shootT=0;o.burstLeft=0;o.restT=rand(.3,1.2);
+}
+
+// Boot: create the FIXED squad ONCE (named from npcs.json kind:'military'), stationed
+// off-map. They are reused for every ★6 deployment — no soldier is ever spawned "from
+// beyond". The census shows them on standby.
+export function initArmy(){
+  if(soldiers.length)return;
+  for(let i=0;i<SQUAD_SIZE;i++){
+    const def=MILITARY_DEFS[i];
+    const wpn=SQUAD[i%SQUAD.length];
+    const g=makePed(OLIVE,OLIVE_PANTS);
+    g.traverse(m=>{if((m as THREE.Mesh).isMesh)m.castShadow=false;});
+    attachHandGun(g,wpn.model);
+    const o=new Soldier(g,{x:0,y:1.0,z:0,ry:0},wpn,(i-(SQUAD_SIZE-1)/2)*0.5,9+(i%2)*3,def?.name,def?.sex);
+    stationSoldier(o);
+    soldiers.push(o);
+  }
 }
 
 function spawnArmy(){
@@ -134,17 +183,16 @@ function spawnArmy(){
   scene.add(g);
   truck={g,heading:g.rotation.y,speed:0,stuckT:0,backT:0,dentT:0,deployed:false,allDeadAt:0,
     bestDist:1e9,noProgressT:0};
-  soldiers=[];
+  if(!soldiers.length)initArmy(); // safety: ensure the fixed pool exists
+  // re-board the FIXED named squad (revive any that were down) into the new truck —
+  // the same individuals every time, never freshly spawned.
   const seats:Seat[]=g.userData.seats||[];
-  for(let i=0;i<4;i++){
-    const wpn=SQUAD[i%SQUAD.length]; // each one gets a different weapon
-    const o=new Soldier(makePed(OLIVE,OLIVE_PANTS),seats[i]||{x:0,y:1.0,z:0,ry:0},
-      wpn,(i-1.5)*0.5,9+(i%2)*3); // fan around the player; rings at 9m and 12m
-    o.g.traverse(m=>{if((m as THREE.Mesh).isMesh)m.castShadow=false;}); // squad casts no shadow (cost)
-    attachHandGun(o.g,wpn.model); // their own weapon in the right hand
+  soldiers.forEach((o,i)=>{
+    o.seat=seats[i]||{x:0,y:1.0,z:0,ry:0};
+    o.dead=false;o.deadT=0;o.respawnT=0;o.grounded=false;o.g.visible=true;
+    o.g.rotation.set(0,0,0);
     seatInBed(o);
-    soldiers.push(o);
-  }
+  });
   if(state.time-lastMsg>4){lastMsg=state.time;
     message('★6 — THE ARMY IS HERE! RUN!','var(--pink)');}
 }
@@ -208,7 +256,7 @@ function fireRound(o:Soldier,pp:THREE.Vector3,dist:number){
 
 function killSoldier(o:Soldier){
   if(o.dead)return;
-  o.dead=true;o.deadT=0;state.kills++;
+  o.dead=true;o.deadT=0;o.respawnT=SOLDIER_RESPAWN;state.kills++;
   o.g.rotation.set(-Math.PI/2,o.g.rotation.y,0); // falls onto its back like the others
   o.g.position.y=.35;
   refs.addBloodPuddle?.(o.g.position.x,o.g.position.z);
@@ -217,8 +265,9 @@ function killSoldier(o:Soldier){
 
 function removeArmy(){
   if(truck){scene.remove(truck.g);truck=null;}
-  for(const o of soldiers)o.despawn(); // removes from the scene + the NPC census
-  soldiers=[];
+  // station (hide) the FIXED pool — never despawn it, so the same named soldiers
+  // come back for the next ★6.
+  for(const o of soldiers)stationSoldier(o);
 }
 
 // WASTED/BUSTED clears everything (player.js calls this via refs, like clearCops)
@@ -226,7 +275,6 @@ export function clearArmy(){
   removeArmy();
   for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
   tracers.length=0;
-  respawnAt=-1;
 }
 refs.clearArmy=clearArmy;
 
@@ -242,6 +290,9 @@ refs.blastArmy=(pos:THREE.Vector3)=>{
     if(Math.hypot(o.g.position.x-pos.x,o.g.position.z-pos.z)<5)killSoldier(o);
   }
 };
+
+// the named soldiers, for the sheriff's radio call when the army is summoned at ★6.
+refs.armyNames=()=>soldiers.map(o=>o.name).filter((n):n is string=>!!n);
 
 // distance from the truck to the player. police.js uses it to NOT cool the wanted
 // level while the army is on top of you (the army keeps the heat in place of the
@@ -262,7 +313,11 @@ refs.getArmyState=()=>({active:!!truck,deployed:!!truck?.deployed,
 function updateSoldier(o:Soldier,dt:number,pp:THREE.Vector3){
   if(o.dead){
     o.deadT+=dt;
-    if(o.deadT>8&&o.g.parent){scene.remove(o.g);}
+    o.respawnT-=dt;
+    // RETURN FROM AFAR: while the army is still deployed, a fallen soldier comes back
+    // on foot at a far intersection and runs in to rejoin.
+    if(o.respawnT<=0&&truck){reviveSoldierFar(o);return;}
+    if(o.deadT>8&&o.g.parent)scene.remove(o.g); // hide the body if it lingers
     return;
   }
   if(o.mode==='ride')return; // position/pose come from the truck (parented)
@@ -311,25 +366,15 @@ function updateSoldier(o:Soldier,dt:number,pp:THREE.Vector3){
 export function updateArmy(dt:number){
   const need=Math.floor(state.wanted)>=ARMY_AT;
 
-  if(!need){ if(truck)clearArmy(); return; } // dropped below 6: the army leaves
+  if(!need){ if(truck)clearArmy(); return; } // dropped below 6: the army stands down
 
-  if(!truck){
-    if(respawnAt>0&&state.time<respawnAt)return; // breather between waves
-    spawnArmy();
-    return;
-  }
+  if(!truck){spawnArmy();return;} // ★6: deploy the fixed squad (no breather, no new wave)
 
   const pp=playerPos();
   const tp=truck.g.position;
   const dx=pp.x-tp.x,dz=pp.z-tp.z,dist=Math.hypot(dx,dz)||1;
-
-  // whole squad down: truck pulls back and leaves; a fresh wave comes after RESPAWN_GAP
-  if(soldiers.length&&soldiers.every(o=>o.dead)){
-    if(!truck.allDeadAt)truck.allDeadAt=state.time;
-    if(state.time-truck.allDeadAt>RESPAWN_GAP){
-      clearArmy();respawnAt=state.time+1.2;return;
-    }
-  }else truck.allDeadAt=0;
+  // (No whole-squad-wipe handling: fallen soldiers return from afar individually, so
+  // the squad self-heals while the army is up.)
 
   if(truck.deployed){
     // squad dismounted: truck waits in place. Player opened distance (or sped off

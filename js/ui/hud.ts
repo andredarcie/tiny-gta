@@ -79,6 +79,19 @@ export function bigText(t: string,col: string): void {
 }
 export function hideBig(): void {hudBig.classList.remove('show');}
 
+// Police radio caption (bottom of screen). The sheriff dispatches units over it,
+// always by name — pass <b>Name</b> for emphasis. Auto-hides after `dur` ms.
+const hudRadio=$('police-radio');
+let radioTimer: ReturnType<typeof setTimeout>|null=null;
+export function radioMessage(html: string,dur=4800): void {
+  if(!hudRadio)return;
+  hudRadio.innerHTML='📻 '+html; // 📻 prefix
+  hudRadio.classList.add('show');
+  if(radioTimer)clearTimeout(radioTimer);
+  radioTimer=setTimeout(()=>hudRadio.classList.remove('show'),dur);
+}
+refs.radioMessage=radioMessage; // exposed for modules that can't import hud without a cycle
+
 // A ação de interação (label/prompt do botão E) é consultada por updateHUD e
 // pelo touch-controls TODO frame, e percorre uma cascata de refs + nearestCar
 // (loop por carros/tráfego/viaturas). O alvo muda devagar do ponto de vista do
