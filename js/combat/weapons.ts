@@ -1021,7 +1021,7 @@ function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,da
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
-  else if(!refs.inGunShopRange?.())addWanted(.25,'SHOT FIRED!','gunfire');
+  // (firing a gun already adds heat in the gunshot broadcast — no extra on a surface hit)
 }
 
 // Spawn do míssil (compartilhado pela lança-foguetes do inventário e pelo rampage).
@@ -1177,7 +1177,10 @@ const api: WeaponApi={
   },
   outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
   gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
-    if(!refs.inGunShopRange?.())refs.policeOnShot?.(pp.x,pp.z);}, // sheriff dispatches the nearest patrol over the radio
+    if(!refs.inGunShopRange?.()){
+      addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
+      refs.policeOnShot?.(pp.x,pp.z);          // sheriff dispatches the nearest patrol over the radio
+    }},
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
   melee(range: number,knock: number,lethal: boolean){meleeAttack(range,knock,lethal);},
   swoosh(){blip([200,130],.05,'sawtooth',.1);},
