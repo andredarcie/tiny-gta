@@ -1173,7 +1173,8 @@ const api: WeaponApi={
     if(r.shake)state.shake=Math.max(state.shake,r.shake);
   },
   outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
-  gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z;}, // broadcast a shot so NPCs (rural folk) can scatter
+  gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
+    if(!refs.inGunShopRange?.())refs.policeOnShot?.(pp.x,pp.z);}, // sheriff dispatches the nearest patrol over the radio
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
   melee(range: number,knock: number,lethal: boolean){meleeAttack(range,knock,lethal);},
   swoosh(){blip([200,130],.05,'sawtooth',.1);},

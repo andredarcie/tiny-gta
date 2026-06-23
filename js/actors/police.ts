@@ -10,7 +10,9 @@ import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
 import {collideStatics} from '@/core/physics.ts';
 import {message} from '@/ui/hud.ts';
-import {playerPos,cur,getBusted,getWasted} from '@/actors/player.ts';
+import {playerPos,cur,getBusted,getWasted,player} from '@/actors/player.ts';
+import {radioMessage} from '@/ui/hud.ts';
+import {regionAt} from '@/world/regions.ts';
 import {Npc} from '@/actors/npc.ts';
 import {npcDefsByKind} from '@/core/npc-defs.ts';
 
@@ -27,6 +29,9 @@ interface Cop{
   dentT?:number;
   name?:string;                 // the named officer driving this cruiser (npcs.json)
   patrolTgt?:THREE.Vector3|null; // current patrol destination (wandered when clean)
+  isSheriff?:boolean;           // the one SHERIFF (radio dispatcher, distinct uniform)
+  uniform?:number;              // shirt colour (sheriff tan vs. patrol blue)
+  dispatchT?:number;            // >0 = radio-dispatched to investigate (chases even at ★0)
 }
 
 // A foot officer dropped from a cruiser. Extends Npc so weapons can target them
@@ -48,8 +53,13 @@ export const officers:Officer[]=[];
 export let heli:THREE.Group|null=null;
 
 const COP_BLUE=0x2a3f6e;
+const SHERIFF_TAN=0x8a7a44;   // the sheriff wears a tan/khaki uniform (distinct from patrol blue)
+const SHERIFF_BROWN=0x46381f; // sheriff trousers
 const SIX_STAR_HOLD=30;
+const ARMY_AT=6;              // the wanted star at which the sheriff calls in the army
 let lastShout=-99;
+let radioCd=0;                // throttle between radio dispatches (one per few seconds)
+let lastRadioStar=0;          // last wanted star the radio escalated at (so each rise speaks once)
 
 // The FIXED police roster from npcs.json (kind:'police'). The pool never grows beyond
 // this — the same named officers patrol and respond; a destroyed cruiser is replaced
@@ -72,15 +82,19 @@ function farNode():[number,number]{
 // parked at a far node and patrolling. The driver is tagged as a 'police' census NPC.
 export function spawnCop(){
   const[nx,nz]=farNode();
-  const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null,patrolTgt:null};
-  c.driver=seatDriver(c.g,0x2a3f6e,0x1a2440);
-  c.g.position.set(nx,0,nz);
-  // give this unit a roster name not already on the streets, and tag the driver as a
-  // named police NPC so it shows in the census (and reconcileVehicleNpcs leaves it be).
+  // give this unit a roster name not already on the streets; the SHERIFF (flagged in
+  // npcs.json) always keeps his identity and wears a distinct tan uniform.
   const def=POLICE_DEFS.find(d=>!cops.some(c2=>c2.name===d.name))||POLICE_DEFS[cops.length%POOL];
-  c.name=def?.name;
+  const isSheriff=!!def?.sheriff;
+  const uniform=isSheriff?SHERIFF_TAN:COP_BLUE;
+  const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null,patrolTgt:null,
+    isSheriff,uniform,name:def?.name};
+  c.driver=seatDriver(c.g,uniform,isSheriff?SHERIFF_BROWN:0x1a2440);
+  c.g.position.set(nx,0,nz);
+  // tag the driver as a named police NPC so it shows in the census (and
+  // reconcileVehicleNpcs leaves it be).
   if(c.driver)c.driver.userData.occupantNpc=new Npc(c.driver,{kind:'police',register:false,showLabel:false,
-    area:'Police Patrol',name:def?.name,gender:def?.sex,personality:def?.personality,dialogues:def?.dialogues});
+    area:isSheriff?'Sheriff':'Police Patrol',name:def?.name,gender:def?.sex,personality:def?.personality,dialogues:def?.dialogues});
   cops.push(c);
 }
 
@@ -108,15 +122,102 @@ export function initPolice(){
   for(let i=0;i<POOL;i++)spawnCop();
 }
 
+// ---------------------------------------------------------------------------
+// POLICE RADIO — realistic dispatch chatter. The sheriff is the dispatcher; the
+// nearest patrol units are sent (always by name) to a shots-fired call. Wording uses
+// real US police-radio convention (shots fired, Code 3, 10-76 en route, 10-32 armed
+// suspect, "be advised"), describing the suspect by the player's ACTUAL shirt colour
+// and the real region name — nothing random or invented.
+// ---------------------------------------------------------------------------
+
+// Player's actual shirt colour → a plain colour word, for the suspect description.
+const COLOR_NAMES:[number,string][]=[
+  [0xc23b4e,'red'],[0x19e3ff,'cyan'],[0x3b7ac2,'blue'],[0x2a3f6e,'navy'],[0xcf9a3a,'yellow'],
+  [0x3aa06b,'green'],[0xd96fae,'pink'],[0xe8e3d2,'white'],[0x222831,'black'],[0x7a4f9e,'purple'],
+  [0x8a7a44,'tan'],[0xff8a3a,'orange'],[0x8a8f99,'grey'],
+];
+function colorName(hex:number):string{
+  const r=(hex>>16)&255,g=(hex>>8)&255,b=hex&255;
+  let best='dark',bd=1e9;
+  for(const[h,n] of COLOR_NAMES){
+    const dr=((h>>16)&255)-r,dg=((h>>8)&255)-g,db=(h&255)-b,d=dr*dr+dg*dg+db*db;
+    if(d<bd){bd=d;best=n;}
+  }
+  return best;
+}
+function suspectDesc():string{
+  const shirt=(player.g.userData.clothing?.shirt as number)??0x19e3ff;
+  return `wearing a ${colorName(shirt)} shirt`;
+}
+function regionName(x:number,z:number):string{return regionAt(x,z)||'the area';}
+// "Ronald", "Ronald and Stephanie", "Ronald, Stephanie and Timothy"
+function nameList(names:string[]):string{
+  const a=names.filter(Boolean);
+  if(a.length<=1)return a[0]||'';
+  if(a.length===2)return `${a[0]} and ${a[1]}`;
+  return `${a.slice(0,-1).join(', ')} and ${a[a.length-1]}`;
+}
+const sheriffCop=()=>cops.find(c=>c.isSheriff);
+const distTo=(c:Cop,x:number,z:number)=>Math.hypot(c.g.position.x-x,c.g.position.z-z);
+
+// A shot was fired at (x,z): the sheriff dispatches the nearest patrol over the radio,
+// by name, and those units start responding (drive to investigate) even before a star.
+function radioDispatch(x:number,z:number){
+  if(radioCd>0||!cops.length)return;
+  radioCd=6;
+  const sheriff=sheriffCop();
+  const sName=sheriff?.name||'Dispatch';
+  const region=regionName(x,z);
+  const desc=suspectDesc();
+  const sorted=[...cops].sort((a,b)=>distTo(a,x,z)-distTo(b,x,z));
+  const nearest=sorted[0],partner=sorted[1];
+  if(nearest)nearest.dispatchT=15; // respond/investigate for a while
+  if(partner)partner.dispatchT=15;
+  let line:string;
+  if(nearest?.isSheriff){
+    // the sheriff himself is closest
+    const second=partner?.name;
+    line=`<b>Sheriff ${sName}</b>: "Dispatch, shots fired in <b>${region}</b> — suspect ${desc}. `+
+      (second?`I'm 10-76, <b>${second}</b> and I responding Code 3."`:`I'm 10-76, responding Code 3."`);
+  }else{
+    const who=nameList([nearest?.name,partner?.name].filter(Boolean) as string[]);
+    line=`<b>Sheriff ${sName}</b>: "Shots fired in <b>${region}</b>, suspect ${desc}. <b>${who}</b>, respond Code 3."`;
+  }
+  radioMessage(line);
+}
+
+// An officer was just killed — the radio calls it in by name (gravely wounded, officer
+// needs assistance), so every cop reads as a named person, not a faceless unit.
+function radioOfficerDown(name?:string){
+  const sName=sheriffCop()?.name||'Dispatch';
+  const who=name?`<b>Officer ${name}</b>`:'an officer';
+  radioMessage(`<b>Sheriff ${sName}</b>: "10-99 — ${who} has been gravely wounded! Officer needs assistance, all units respond!"`,6000);
+}
+
+// Each rise in the wanted level speaks once on the radio (more units, then the army at
+// the top), always naming the officers/soldiers involved.
+function radioEscalate(star:number){
+  const sName=sheriffCop()?.name||'Dispatch';
+  if(star>=ARMY_AT){
+    const army=(refs.armyNames?.()||[]) as string[];
+    const who=army.length?nameList(army):'all available units';
+    radioMessage(`<b>Sheriff ${sName}</b>: "All units, suspect is 10-32 and out of control — requesting military support. <b>${who}</b>, you are cleared to engage."`,6500);
+    return;
+  }
+  // name the cruisers now responding (the first `star` units)
+  const who=nameList(cops.slice(0,Math.min(POOL,star)).map(c=>c.name||'').filter(Boolean));
+  radioMessage(`<b>Sheriff ${sName}</b>: "Be advised, suspect is 10-32, armed and dangerous in <b>${regionName(playerPos().x,playerPos().z)}</b>. <b>${who}</b>, converge and engage Code 3."`,5600);
+}
+
 function deployOfficers(c:Cop){
   c.officers=[];
   const h=c.heading;
   for(const side of[1.3,-1.3]){
-    const g=makePed(COP_BLUE);
+    const g=makePed(c.uniform||COP_BLUE); // the sheriff's officers wear his tan uniform
     g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     const o=new Officer(g,{
       kind:'officer',hp:1,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
-      punchToDown:4,showLabel:false,area:'On patrol',name:c.name, // the cruiser's named cop, on foot
+      punchToDown:4,showLabel:false,area:c.isSheriff?'Sheriff':'On patrol',name:c.name, // the cruiser's named cop, on foot
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
     o.rocket=Math.floor(state.wanted)>=5;
@@ -128,6 +229,7 @@ function deployOfficers(c:Cop){
         const idx=o.car.officers.indexOf(o);if(idx>=0)o.car.officers.splice(idx,1);
         if(!o.car.officers.length)o.car.officers=null;
       }
+      radioOfficerDown(o.name); // the radio names the downed officer — cops are real people
     };
     if(o.rocket){
       const bz=makeRocketLauncherModel();
@@ -160,6 +262,7 @@ export function clearCops(){
   refs.clearPoliceBoats?.();
 }
 refs.clearCops=clearCops;
+refs.policeOnShot=radioDispatch; // weapons.ts calls this when the player fires
 
 function addTracer(a:THREE.Vector3,b:THREE.Vector3){
   const line=makeGangTracerLine(a,b);
@@ -267,6 +370,11 @@ const _mid=new THREE.Vector3();
 
 export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
+  if(radioCd>0)radioCd-=dt;
+  // RADIO escalation: each new star, the sheriff speaks once (more units, then the
+  // army at the top). Resets as the wanted level falls so it speaks again next time.
+  if(want>lastRadioStar){lastRadioStar=want;radioEscalate(want);}
+  else if(want<lastRadioStar)lastRadioStar=want;
   // FIXED pool: keep POOL cruisers alive at all times (they patrol when the player is
   // clean). A destroyed cruiser is replaced from afar quickly, so the streets never run
   // out of police — nobody spawns "from beyond", it's always the same roster.
@@ -281,7 +389,10 @@ export function updateCops(dt:number){
   for(const c of cops){
     const p=c.g.position;
     const dx=pp.x-p.x,dz=pp.z-p.z,dist=Math.hypot(dx,dz);
-    if(ci++>=chasers){               // not responding → recall any officers and patrol
+    if(c.dispatchT&&c.dispatchT>0)c.dispatchT-=dt;
+    // chases if its slot is responding to the star OR it was radio-dispatched to a
+    // shots-fired call (so a single shot already sends the nearest unit to investigate).
+    if(ci++>=chasers&&!(c.dispatchT&&c.dispatchT>0)){ // not responding → recall officers + patrol
       if(c.officers)for(const o of c.officers)o.mode='return';
       patrolCop(c,dt);
       continue;

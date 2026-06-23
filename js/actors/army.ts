@@ -291,6 +291,9 @@ refs.blastArmy=(pos:THREE.Vector3)=>{
   }
 };
 
+// the named soldiers, for the sheriff's radio call when the army is summoned at ★6.
+refs.armyNames=()=>soldiers.map(o=>o.name).filter((n):n is string=>!!n);
+
 // distance from the truck to the player. police.js uses it to NOT cool the wanted
 // level while the army is on top of you (the army keeps the heat in place of the
 // police, which withdrew at 6 stars).
