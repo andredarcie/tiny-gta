@@ -10,8 +10,9 @@ import {message} from '@/ui/hud.ts';
 import {playerPos,cur} from '@/actors/player.ts';
 import {spawnDrop} from '@/story/missions.ts';
 import {makeBloodPuddle} from '../../assets/models/effects/blood-puddle.ts';
-import {Npc,NPC_SEED,pickName,balancedGenders} from '@/actors/npc.ts';
+import {Npc,NPC_SEED} from '@/actors/npc.ts';
 import {makeRng} from '@/core/rng.ts';
+import {npcDefsByKind} from '@/core/npc-defs.ts';
 import {CITY_NEIGHBORHOODS,randomBlockIn} from '@/world/neighborhoods.ts';
 import type {Neighborhood} from '@/world/neighborhoods.ts';
 
@@ -26,7 +27,8 @@ export class Ped extends Npc{
   block!:[number,number];
   corner!:number;
   dir!:number;
-  aiState!:string; // 'walk'|'panic'|'flee'|'weed'  (dead/grounded live on the base Npc)
+  aiState!:string; // 'walk'|'idle'|'panic'|'flee'|'weed'  (dead/grounded live on the base Npc)
+  baseState!:string; // 'walk' or 'idle' — what they return to after a transient state
   t!:number;
   speed!:number;
   panicT!:number;
@@ -36,6 +38,7 @@ export class Ped extends Npc{
   weedCdT!:number;    // cooldown after a deal before they will flag you down again
   override aliveState():string{
     if(this.aiState==='weed')return 'Wants to buy weed';
+    if(this.aiState==='idle')return 'Standing';
     return this.aiState==='panic'?'Panicking':this.aiState==='flee'?'Fleeing':'Walking';
   }
   override pathTarget():{x:number;z:number}|null{
@@ -93,38 +96,39 @@ export function addBloodPuddle(x:number,z:number){
 // DETERMINISTIC: a fixed-seed stream drives every identity/placement choice, so
 // every player gets the exact same 42 named civilians in the same homes. The 50/50
 // male/female split is computed up-front across the whole population.
-const TOTAL_PEDS=CITY_NEIGHBORHOODS.reduce((s,nh)=>s+nh.pedCount,0); // 42
+// The city civilians are DEFINED in npcs.json — a fixed roster, no random identities
+// and nobody spawning "from beyond". Each 'civilian' entry becomes one Ped placed in
+// its named neighborhood; name / sex / likes (e.g. smoke_weed) come straight from the
+// file, so every player meets the same people. Position is seeded for determinism.
 const pedRng=makeRng(NPC_SEED+1);
-const pedGenders=balancedGenders(TOTAL_PEDS,pedRng);
-let pedGi=0;
-for(const nh of CITY_NEIGHBORHOODS){
-  for(let k=0;k<nh.pedCount;k++){
-    const gender=pedGenders[pedGi++];
-    const[bi,bj]=randomBlockIn(nh,pedRng);
-    const tmpCorner=pedRng.irand(0,3);
-    const xa=nodeX(bi)+9,xb=nodeX(bi+1)-9,za=nodeX(bj)+9,zb=nodeX(bj+1)-9;
-    const cx=(tmpCorner===1||tmpCorner===2)?xb:xa;
-    const cz=tmpCorner>=2?zb:za;
-    const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
-    g.position.set(cx+pedRng.rand(-2,2),0,cz+pedRng.rand(-2,2));
-    const p=new Ped(g,{
-      kind:'ped',hp:1,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
-      punchToDown:3,showLabel:true,area:nh.name,
-      gender,name:pickName(gender,pedRng),
-    });
-    p.block=[bi,bj];
-    p.corner=tmpCorner;
-    p.dir=pedRng.random()<.5?1:-1;
-    p.aiState='walk';
-    p.t=0;
-    p.speed=pedRng.rand(1,1.8);
-    p.panicT=0;
-    p.neighborhood=nh;
-    p.likesWeed=pedRng.random()<.3;       // 30% of peds enjoy a smoke — deterministic
-    p.wantBuds=pedRng.irand(2,6);         // how many buds they buy in one deal
-    p.weedCdT=0;
-    peds.push(p);
-  }
+for(const def of npcDefsByKind('civilian')){
+  const nh=CITY_NEIGHBORHOODS.find(n=>n.name===def.neighborhood);
+  if(!nh)continue; // unknown neighborhood in the data — skip rather than misplace
+  const[bi,bj]=randomBlockIn(nh,pedRng);
+  const tmpCorner=pedRng.irand(0,3);
+  const xa=nodeX(bi)+9,xb=nodeX(bi+1)-9,za=nodeX(bj)+9,zb=nodeX(bj+1)-9;
+  const cx=(tmpCorner===1||tmpCorner===2)?xb:xa;
+  const cz=tmpCorner>=2?zb:za;
+  const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
+  g.position.set(cx+pedRng.rand(-2,2),0,cz+pedRng.rand(-2,2));
+  const p=new Ped(g,{
+    kind:'ped',hp:1,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
+    punchToDown:3,showLabel:true,area:nh.name,
+    gender:def.sex,name:def.name,likes:def.likes,
+  });
+  p.block=[bi,bj];
+  p.corner=tmpCorner;
+  p.dir=pedRng.random()<.5?1:-1;
+  p.baseState=def.state==='idle'?'idle':'walk'; // some people just stand around
+  p.aiState=p.baseState;
+  p.t=pedRng.rand(0,6);
+  p.speed=pedRng.rand(1,1.8);
+  p.panicT=0;
+  p.neighborhood=nh;
+  p.likesWeed=def.likes.includes('smoke_weed'); // who flags you down for a deal
+  p.wantBuds=pedRng.irand(2,6);                 // how many buds they buy in one deal
+  p.weedCdT=0;
+  peds.push(p);
 }
 
 // Stolen-car driver: reuse the ped farthest from the player (the pool is fixed),
@@ -160,7 +164,7 @@ export function updatePeds(dt:number){
         p.block=[bi,bj];p.corner=irand(0,3);
         const c=pedCorner(p);
         p.revive(c[0]+rand(-2,2),c[1]+rand(-2,2));
-        p.aiState='walk';
+        p.aiState=p.baseState;
         Entities.animatePed?.(p.g,0,0);
       }
       continue;
@@ -191,7 +195,7 @@ export function updatePeds(dt:number){
       thud(Math.abs(activeCur.speed));state.shake=.35;
       continue;
     }
-    if(p.aiState==='panic'&&(p.panicT-=dt)<=0)p.aiState='walk';
+    if(p.aiState==='panic'&&(p.panicT-=dt)<=0)p.aiState=p.baseState;
     if(p.weedCdT>0)p.weedCdT-=dt;
     // Weed buyer: carrying the backpack near a weed-liking ped → they STOP, face you
     // and wave you over. Danger (panic/flee) still takes priority below.
@@ -214,7 +218,15 @@ export function updatePeds(dt:number){
       tgt.subVectors(p.g.position,activeCur.g.position).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
     }else{
-      if(p.aiState==='flee'||p.aiState==='weed')p.aiState='walk';
+      if(p.aiState==='flee'||p.aiState==='weed')p.aiState=p.baseState;
+      // standing-around people don't patrol corners — they idle in place (but still
+      // flee danger and wave the player over for weed, handled above).
+      if(p.aiState==='idle'){
+        p.t+=dt;
+        p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
+        Entities.animatePed?.(p.g,p.t,.05);
+        continue;
+      }
       const c=pedCorner(p);tgt.set(c[0],0,c[1]);
     }
     const d=_d.subVectors(tgt,p.g.position);d.y=0;

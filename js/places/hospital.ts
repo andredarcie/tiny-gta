@@ -75,10 +75,10 @@ export const hospital=new HospitalInterior({
   mapIcon:{id:'hospital',label:'HOSPITAL',icon:'hospital',color:'#44e6b1'},
 });
 
-// Name the hospital's staff/patients and the bed-ridden sick patient (women get the
-// female look); they keep their animation from updateFx.
+// Name the hospital's staff and patients (women get the female look); they keep
+// their animation from updateFx. The bed-ridden sick patient is already part of
+// hospFx.peds, so this single pass covers everyone (identities come from npcs.json).
 for(const p of hospFx.peds)nameInteriorNpc(p.g,'medic','Hospital');
-if(hospFx.sickPatient)nameInteriorNpc(hospFx.sickPatient,'patient','Hospital');
 
 // Acordar no hospital depois de morrer (js/actors/player.ts chama via refs.hospitalAdmit):
 // diferente da entrada pela porta, nasce NO MEIO da sala, olhando pra saída (oeste).
