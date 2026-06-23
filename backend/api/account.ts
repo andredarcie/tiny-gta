@@ -23,11 +23,22 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   if (hits > C.RL_MAX) return sendError(res, 429, 'rate_limited');
 
   const body = jsonBody(req);
-  const action = body.action === 'register' || body.action === 'login' ? body.action : null;
+  const action = body.action === 'register' || body.action === 'login' || body.action === 'check' ? body.action : null;
   const username = C.sanitizeName(body.username);     // mesmo saneamento do apelido
-  const password = C.sanitizePassword(body.password);
   if (!action) return sendError(res, 400, 'invalid_action');
   if (!username) return sendError(res, 400, 'invalid_name');
+
+  // 'check': o cliente pergunta se um apelido já pertence a uma CONTA cadastrada,
+  // pra impedir que um CONVIDADO entre com o apelido de outra pessoa. Não exige
+  // senha e não revela mais do que o 'register' já revela (com 'taken'); protegido
+  // pelo rate-limit por IP acima. O bloqueio real é server-side no /api/session.
+  if (action === 'check') {
+    const acct = await redis.get(C.acctKey(username));
+    res.status(200).json({ ok: true, registered: !!acct });
+    return;
+  }
+
+  const password = C.sanitizePassword(body.password);
   if (!password) return sendError(res, 400, 'invalid_password');
 
   if (action === 'register') {

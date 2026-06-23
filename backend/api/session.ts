@@ -29,6 +29,16 @@ async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   const body = jsonBody(req);
   const pid = C.sanitizePid(body.pid);
   const name = C.sanitizeName(body.name);
+  // SEGURANÇA: um apelido CADASTRADO (conta com senha) só pode ser usado pela
+  // PRÓPRIA conta. Se há conta para este nome e o pid não é o dela (ex.: convidado
+  // digitando o apelido de outra pessoa), recusa a sessão — assim ninguém entra como
+  // convidado no apelido alheio e herda o dinheiro/save/seed dele. Quem faz login
+  // legítimo adota o pid da conta (ver /api/account), então passa por aqui.
+  if (name) {
+    const acct = await redis.get<C.Account>(C.acctKey(name));
+    if (acct && typeof acct === 'object' && acct.pid !== pid)
+      return sendError(res, 403, 'name_registered');
+  }
   let save: C.SaveBlob | null = null;
   if (pid && name) {
     const member = C.saveMember(pid, name);
