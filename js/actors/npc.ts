@@ -373,7 +373,7 @@ export interface NpcRosterEntry{
 
 // Friendly label per NPC kind (player-facing in the roster).
 const KIND_LABELS:Record<string,string>={
-  ped:'Civilian',gang:'Gang',officer:'Police',rural:'Country folk',
+  ped:'Civilian',gang:'Gang',officer:'Police',police:'Police',rural:'Country folk',
   soldier:'Army',criminal:'Criminal',patient:'Injured',story:'Story',
   sicko:'Sicko',npc:'NPC',
   // interior NPCs

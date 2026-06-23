@@ -12,8 +12,10 @@ import {collideStatics} from '@/core/physics.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted} from '@/actors/player.ts';
 import {Npc} from '@/actors/npc.ts';
+import {npcDefsByKind} from '@/core/npc-defs.ts';
 
-// A police cruiser chasing the player.
+// A police cruiser — one of the FIXED pool of named officers. It patrols when the
+// player is clean and chases when a star appears (see updateCops).
 interface Cop{
   g:THREE.Object3D;
   heading:number;
@@ -23,6 +25,8 @@ interface Cop{
   officers:Officer[]|null;
   driver?:THREE.Object3D;
   dentT?:number;
+  name?:string;                 // the named officer driving this cruiser (npcs.json)
+  patrolTgt?:THREE.Vector3|null; // current patrol destination (wandered when clean)
 }
 
 // A foot officer dropped from a cruiser. Extends Npc so weapons can target them
@@ -47,15 +51,61 @@ const COP_BLUE=0x2a3f6e;
 const SIX_STAR_HOLD=30;
 let lastShout=-99;
 
-export function spawnCop(){
+// The FIXED police roster from npcs.json (kind:'police'). The pool never grows beyond
+// this — the same named officers patrol and respond; a destroyed cruiser is replaced
+// by the same roster (a cop "returns from afar"), never an NPC "from beyond".
+const POLICE_DEFS=npcDefsByKind('police');
+const POOL=POLICE_DEFS.length||5;
+let respawnT=0; // throttles how fast a lost cruiser comes back from afar
+const _patrol=new THREE.Vector3();
+
+// A far road node (≥80m from the player) — where cops spawn/respawn and patrol toward.
+function farNode():[number,number]{
   const px=playerPos();
   let nx,nz,tries=0;
   do{nx=nodeX(irand(0,N));nz=nodeX(irand(0,N));tries++;}
   while(Math.hypot(nx-px.x,nz-px.z)<80&&tries<30);
-  const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null};
+  return[nx,nz];
+}
+
+// Create one cruiser unit driven by a named officer (an unused name from the roster),
+// parked at a far node and patrolling. The driver is tagged as a 'police' census NPC.
+export function spawnCop(){
+  const[nx,nz]=farNode();
+  const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null,patrolTgt:null};
   c.driver=seatDriver(c.g,0x2a3f6e,0x1a2440);
   c.g.position.set(nx,0,nz);
+  // give this unit a roster name not already on the streets, and tag the driver as a
+  // named police NPC so it shows in the census (and reconcileVehicleNpcs leaves it be).
+  const def=POLICE_DEFS.find(d=>!cops.some(c2=>c2.name===d.name))||POLICE_DEFS[cops.length%POOL];
+  c.name=def?.name;
+  if(c.driver)c.driver.userData.occupantNpc=new Npc(c.driver,{kind:'police',register:false,showLabel:false,
+    area:'Police Patrol',name:def?.name,gender:def?.sex,personality:def?.personality,dialogues:def?.dialogues});
   cops.push(c);
+}
+
+// Drive a patrolling cruiser around the streets (no lights, calm speed) toward a far
+// node, re-picking when it arrives or gets stuck.
+function patrolCop(c:Cop,dt:number){
+  const p=c.g.position;
+  if(!c.patrolTgt||_patrol.copy(c.patrolTgt).sub(p).setY(0).length()<6||c.stuckT>1.5){
+    const[tx,tz]=farNode();c.patrolTgt=new THREE.Vector3(tx,0,tz);c.stuckT=0;
+  }
+  const desired=Math.atan2(c.patrolTgt.x-p.x,c.patrolTgt.z-p.z),diff=wrapA(desired-c.heading);
+  c.heading+=clamp(diff,-1,1)*1.8*dt;
+  c.speed+=(11-c.speed)*1.2*dt;
+  p.x+=Math.sin(c.heading)*c.speed*dt;
+  p.z+=Math.cos(c.heading)*c.speed*dt;
+  if(collideStatics(p,1.3)){c.speed*=.4;c.stuckT+=dt*3;}else c.stuckT=Math.max(0,c.stuckT-dt);
+  c.g.rotation.y=c.heading;
+  spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
+}
+
+// Boot: stand up the fixed patrol pool once (after the world exists). The cops are
+// always on the map from the start.
+export function initPolice(){
+  if(cops.length)return;
+  for(let i=0;i<POOL;i++)spawnCop();
 }
 
 function deployOfficers(c:Cop){
@@ -66,7 +116,7 @@ function deployOfficers(c:Cop){
     g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     const o=new Officer(g,{
       kind:'officer',hp:1,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
-      punchToDown:4,showLabel:false,area:'On patrol',
+      punchToDown:4,showLabel:false,area:'On patrol',name:c.name, // the cruiser's named cop, on foot
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
     o.rocket=Math.floor(state.wanted)>=5;
@@ -89,22 +139,20 @@ function deployOfficers(c:Cop){
   }
 }
 
-function removeCop(c:Cop){
-  scene.remove(c.g);
-  if(c.officers)for(const o of c.officers){
-    o.despawn(); // removes from npcs[] + scene
-    const i=officers.indexOf(o);if(i>=0)officers.splice(i,1);
-  }
-  c.officers=null;
-}
-
 const copMissiles:CopMissile[]=[];
 const tracers:Tracer[]=[];
 
 export function clearCops(){
-  while(cops.length)removeCop(cops.pop()!);
+  // WASTED / BUSTED: the fixed cruiser pool is NOT destroyed — everyone is recalled to
+  // a far patrol (deployed foot officers are removed; they re-deploy on the next chase).
   for(const o of officers)o.despawn();
   officers.length=0;
+  for(const c of cops){
+    c.officers=null;
+    const[nx,nz]=farNode();
+    c.g.position.set(nx,0,nz);
+    c.speed=0;c.backT=0;c.stuckT=0;c.patrolTgt=null;
+  }
   for(const m of copMissiles){disposeGeometries(m.g);scene.remove(m.g);}
   copMissiles.length=0;
   for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
@@ -219,18 +267,25 @@ const _mid=new THREE.Vector3();
 
 export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
-  if(want>=6){
-    while(cops.length)removeCop(cops.pop()!);
-    for(let i=officers.length-1;i>=0;i--){officers[i].despawn();officers.splice(i,1);}
-  }else{
-    if(cops.length<want&&cops.length<5&&Math.random()<dt*.8)spawnCop();
-    while(cops.length>want)removeCop(cops.pop()!);
-  }
+  // FIXED pool: keep POOL cruisers alive at all times (they patrol when the player is
+  // clean). A destroyed cruiser is replaced from afar quickly, so the streets never run
+  // out of police — nobody spawns "from beyond", it's always the same roster.
+  respawnT-=dt;
+  if(cops.length<POOL&&respawnT<=0){spawnCop();respawnT=.8;}
+  // How many cruisers actively CHASE scales with the stars: none when clean, none at
+  // ★6 (the army takes over). The rest keep patrolling the streets.
+  const chasers=(want>0&&want<6)?Math.min(POOL,want):0;
   const pp=playerPos();
   let minD=1e9;
+  let ci=0;
   for(const c of cops){
     const p=c.g.position;
     const dx=pp.x-p.x,dz=pp.z-p.z,dist=Math.hypot(dx,dz);
+    if(ci++>=chasers){               // not responding → recall any officers and patrol
+      if(c.officers)for(const o of c.officers)o.mode='return';
+      patrolCop(c,dt);
+      continue;
+    }
     minD=Math.min(minD,dist);
     blinkBar(c.g);
     if(c.officers){
@@ -313,7 +368,7 @@ export function updateCops(dt:number){
   for(const o of officers)if(!o.dead)
     nearOff=Math.min(nearOff,Math.hypot(pp.x-o.g.position.x,pp.z-o.g.position.z));
   const cornered=(minD<6||nearOff<3.4)&&pp.y<3;
-  if((cops.length||officers.length)&&cornered&&
+  if(state.wanted>0&&cornered&&                       // only an actually-wanted player is arrested
     (state.mode==='foot'||Math.abs(cur?.speed||0)<3.5)){
     state.bustT+=dt;
     if(state.bustT>.4)message('THE POLICE ARE SURROUNDING YOU!','var(--blue)');
