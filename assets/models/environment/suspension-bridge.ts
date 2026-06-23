@@ -164,10 +164,24 @@ export function addSuspensionBridge(
   // colisão: as quatro pernas das torres (carro/pedestre não atravessam o aço)
   for(const TX of[WB,EB])for(const LZ of[-LEGZ,LEGZ])
     solids.push({x0:TX-1,x1:TX+1,z0:LZ-1,z1:LZ+1,h:TOWER_TOP});
-  // colisão dos muros das rampas (esquerda/direita de cada rampa): bloqueiam
-  // entrar/passar por baixo da rampa pelos lados. O vão central fica sem colisão
-  // (lancha por baixo); a pista entre os muros (|z|<DECK_HW) segue livre pro carro.
-  for(const[x0,x1]of[[BRIDGE_X0,WB],[EB,BRIDGE_X1]] as [number,number][])
-    for(const s of[-1,1])
-      solids.push({x0,x1,z0:s*BRIDGE_DECK_HW-.4,z1:s*BRIDGE_DECK_HW+.4,h:BRIDGE_H});
+  // Pilares de concreto das torres: barram a lancha (e quem nada) de entrar na base
+  // da ponte. Topo baixo (h≈1.5): quem está no tabuleiro (y alto) passa por cima; a
+  // lancha (na linha d'água) é parada — cruza só pelo VÃO CENTRAL, entre os pilares.
+  for(const TX of[WB,EB])
+    solids.push({x0:TX-3,x1:TX+3,z0:-(BRIDGE_DECK_HW+1.5),z1:BRIDGE_DECK_HW+1.5,h:1.5});
+  // Colisão SOB as rampas: enche a área abaixo de cada rampa (largura TOTAL do
+  // tabuleiro, z∈[-DECK_HW,DECK_HW]) com caixas por segmento. A altura de cada caixa
+  // = altura local da rampa menos uma folga (1.5): quem anda/dirige POR CIMA passa
+  // (collideStatics ignora sólidos abaixo do pé, p.y>b.h), mas a pé é IMPOSSÍVEL
+  // entrar por baixo da rampa (no nível do chão é barrado) e a lancha não atravessa.
+  // O trecho baixo perto do pé é pulado (não há "embaixo" a fechar). O vão central
+  // sobre a água NÃO entra aqui — segue livre pra lancha passar por baixo.
+  const RC=3;
+  for(const[xa,xb]of[[BRIDGE_X0,WB],[EB,BRIDGE_X1]] as [number,number][])
+    for(let x=xa;x<xb;x+=RC){
+      const xc=Math.min(x+RC/2,xb-.01);
+      const h=bridgeDeckH(xc,0)-1.5;
+      if(h<=.2)continue;
+      solids.push({x0:x,x1:Math.min(x+RC,xb),z0:-BRIDGE_DECK_HW,z1:BRIDGE_DECK_HW,h});
+    }
 }

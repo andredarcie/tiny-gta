@@ -914,6 +914,10 @@ function updateBoat(dt:number){
   // parede invisível bem mar adentro (igual aos demais veículos)
   p.x=clamp(p.x,-SWIM_BOUND,SWIM_BOUND);
   p.z=clamp(p.z,-SWIM_BOUND,SWIM_BOUND);
+  // colide com estruturas sólidas na água (pilares/torres da ponte): a lancha passa
+  // pelo VÃO CENTRAL mas não atravessa a base da ponte. p.y fica na linha d'água, bem
+  // abaixo do tabuleiro/cabos (sem colisão), então o vão segue livre por baixo.
+  collideStatics(p,1.4,SWIM_BOUND);
   // flutua na linha d'água com balança suave; planando, a proa levanta
   c.bobT=(c.bobT||0)+dt;
   const plane=clamp(c.speed/MAX,0,1);
