@@ -91,6 +91,9 @@ interface NpcOpts{
   likes?:string[];
   // Lives inside an interior (club, jail, hospital, …)? Recorded for the census.
   indoor?:boolean;
+  // Personality archetype from npcs.json (brave|nervous|friendly|greedy|hostile|chill)
+  // — shapes how the NPC reacts (e.g. flee distance). Defaults to 'chill'.
+  personality?:string;
 }
 
 // Global registry of all NPCs (the combat scan iterates this). Holds the unified
@@ -144,6 +147,8 @@ export class Npc{
   likes:string[];
   // Lives inside an interior (club/jail/hospital/…)?
   indoor:boolean;
+  // Personality archetype (brave|nervous|friendly|greedy|hostile|chill).
+  personality:string;
   // Whether this NPC joined the combat registry (npcs[]).
   registered:boolean;
   // Optional hooks a sub-class may define to react to hurt/death (see RuralFolk).
@@ -152,7 +157,7 @@ export class Npc{
 
   constructor(g:THREE.Object3D,{
     kind='npc',hp=1,drop=null,wanted=0,wantedMsg='SHOT FIRED!',crime='npc_shot',
-    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,likes,indoor=false,
+    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,likes,indoor=false,personality='chill',
   }:NpcOpts={}){
     this.g=g;
     this.kind=kind;
@@ -175,6 +180,7 @@ export class Npc{
     this.hospitalT=0;
     this.likes=likes??[];
     this.indoor=indoor;
+    this.personality=personality;
     this.punchToDown=punchToDown;
     this.area=area;
     if(showLabel){
@@ -347,6 +353,7 @@ export interface NpcRosterEntry{
   kind:string;
   area:string;
   state:string;
+  personality:string;
   likes:string[];
   x:number;
   z:number;
@@ -375,7 +382,7 @@ export function nameInteriorNpc(g:THREE.Object3D,kind:string,area:string):Npc{
   const i=_interiorCursor[area]||0;_interiorCursor[area]=i+1;
   const def:NpcDef|undefined=defs[i];
   return new Npc(g,{kind,register:false,showLabel:true,area,indoor:true,
-    name:def?.name,gender:def?.sex,likes:def?.likes});
+    name:def?.name,gender:def?.sex,likes:def?.likes,personality:def?.personality});
 }
 
 // Is an object still part of the live scene graph (vs. removed with its vehicle)?
@@ -408,7 +415,8 @@ export function reconcileVehicleNpcs():void{
 
 export function getNpcRoster():NpcRosterEntry[]{
   const out=allNpcs.map(n=>({
-    name:n.name,gender:n.gender,kind:n.kind,area:n.area,state:n.stateName(),likes:n.likes,
+    name:n.name,gender:n.gender,kind:n.kind,area:n.area,state:n.stateName(),
+    personality:n.personality,likes:n.likes,
     x:Math.round(n.g.position.x),z:Math.round(n.g.position.z),
   }));
   out.sort((a,b)=>a.kind===b.kind?a.name.localeCompare(b.name):a.kind.localeCompare(b.kind));

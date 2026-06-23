@@ -11,6 +11,7 @@ export interface NpcDef{
   kind:string;            // civilian | rural | police | military
   neighborhood:string;    // the district/area the NPC belongs to (interior name if indoor)
   indoor?:boolean;        // true = lives inside an interior (club, jail, hospital, …)
+  personality?:string;    // archetype shaping behaviour (brave|nervous|friendly|greedy|hostile|chill)
   likes:string[];         // tastes, e.g. ["smoke_weed"]
   state:string;           // initial behaviour state (see NPC_STATES)
 }
