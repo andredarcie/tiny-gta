@@ -15,7 +15,7 @@ import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name ta
 import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach,solids} from '@/world/world.ts';
-import {cops,heli,updateCops,updateHeli} from '@/actors/police.ts';
+import {cops,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
 import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
 import {updateArmy} from '@/actors/army.ts';
 import {delivery,spawnDelivery,updatePickups} from '@/story/missions.ts';
@@ -168,6 +168,7 @@ spawnDelivery();
 // Gangues nascem só agora, com os prédios especiais já registrados em interiors[]
 // (assim a zona de fachada vale desde o primeiro membro). Ver gangs.js.
 spawnInitialGangs();
+initPolice(); // the fixed pool of named patrol cops exists from the start (no spawn-from-beyond)
 
 setupInput();
 setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)
