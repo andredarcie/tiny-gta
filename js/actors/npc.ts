@@ -5,6 +5,7 @@ import {addWanted} from '@/core/physics.ts';
 import {spawnDrop} from '@/story/missions.ts';
 import {setOpacity,addFemaleLook,vehicleOccupants} from '@/core/entities.ts';
 import {scene} from '@/core/engine.ts';
+import {NPC_DEFS,type NpcDef} from '@/core/npc-defs.ts';
 
 // ============================================================================
 // BASE class for EVERY NPC in the game. It centralises the SHARED behaviour —
@@ -85,6 +86,11 @@ interface NpcOpts{
   // Apply the female appearance (long hair + bust + lips) when gender is 'F'.
   // Default true; non-humanoid NPCs (e.g. forest sickos) pass false.
   femaleLook?:boolean;
+  // Likes/tastes from npcs.json (e.g. ["smoke_weed"]) — drives behaviour like the
+  // weed flag-down and shows in the census.
+  likes?:string[];
+  // Lives inside an interior (club, jail, hospital, …)? Recorded for the census.
+  indoor?:boolean;
 }
 
 // Global registry of all NPCs (the combat scan iterates this). Holds the unified
@@ -134,6 +140,10 @@ export class Npc{
   label:HTMLElement|null;
   // District / region (pause-menu roster). Subclasses set the concrete name.
   area:string;
+  // Likes/tastes from npcs.json (e.g. ["smoke_weed"]).
+  likes:string[];
+  // Lives inside an interior (club/jail/hospital/…)?
+  indoor:boolean;
   // Whether this NPC joined the combat registry (npcs[]).
   registered:boolean;
   // Optional hooks a sub-class may define to react to hurt/death (see RuralFolk).
@@ -142,7 +152,7 @@ export class Npc{
 
   constructor(g:THREE.Object3D,{
     kind='npc',hp=1,drop=null,wanted=0,wantedMsg='SHOT FIRED!',crime='npc_shot',
-    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,
+    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,likes,indoor=false,
   }:NpcOpts={}){
     this.g=g;
     this.kind=kind;
@@ -163,6 +173,8 @@ export class Npc{
     this.homeX=g.position.x;
     this.homeZ=g.position.z;
     this.hospitalT=0;
+    this.likes=likes??[];
+    this.indoor=indoor;
     this.punchToDown=punchToDown;
     this.area=area;
     if(showLabel){
@@ -335,6 +347,7 @@ export interface NpcRosterEntry{
   kind:string;
   area:string;
   state:string;
+  likes:string[];
   x:number;
   z:number;
 }
@@ -352,12 +365,17 @@ const KIND_LABELS:Record<string,string>={
 export function kindLabel(kind:string):string{return KIND_LABELS[kind]||kind;}
 
 // Tag an already-built interior doll (club dancer, jail guard, shop clerk, …) as a
-// named NPC: it gets an identity + a floating name tag + a roster entry, with
-// register:false so it never joins the combat scan. Returns the Npc (usually unused;
-// the doll keeps being animated by its own interior system). This is how interior
-// people get names so 100% of the game's NPCs are named.
+// named NPC. Identity (name/sex/likes) is pulled from the matching indoor entries in
+// npcs.json for this area, in order — so the people inside the club/jail/etc. are the
+// fixed, documented cast. register:false (never shot); marked indoor for the census.
+// If the data defines fewer than the scene builds, extras get an auto name.
+const _interiorCursor:Record<string,number>={};
 export function nameInteriorNpc(g:THREE.Object3D,kind:string,area:string):Npc{
-  return new Npc(g,{kind,register:false,showLabel:true,area});
+  const defs=NPC_DEFS.filter(d=>d.neighborhood===area);
+  const i=_interiorCursor[area]||0;_interiorCursor[area]=i+1;
+  const def:NpcDef|undefined=defs[i];
+  return new Npc(g,{kind,register:false,showLabel:true,area,indoor:true,
+    name:def?.name,gender:def?.sex,likes:def?.likes});
 }
 
 // Is an object still part of the live scene graph (vs. removed with its vehicle)?
@@ -390,7 +408,7 @@ export function reconcileVehicleNpcs():void{
 
 export function getNpcRoster():NpcRosterEntry[]{
   const out=allNpcs.map(n=>({
-    name:n.name,gender:n.gender,kind:n.kind,area:n.area,state:n.stateName(),
+    name:n.name,gender:n.gender,kind:n.kind,area:n.area,state:n.stateName(),likes:n.likes,
     x:Math.round(n.g.position.x),z:Math.round(n.g.position.z),
   }));
   out.sort((a,b)=>a.kind===b.kind?a.name.localeCompare(b.name):a.kind.localeCompare(b.kind));

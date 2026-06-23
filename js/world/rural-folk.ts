@@ -4,8 +4,9 @@ import * as Entities from '@/core/entities.ts';
 import {collideStatics} from '@/core/physics.ts';
 import {state} from '@/core/state.ts';
 import {playerPos,cur} from '@/actors/player.ts';
-import {Npc,NPC_SEED,pickName,balancedGenders} from '@/actors/npc.ts';
+import {Npc,NPC_SEED} from '@/actors/npc.ts';
 import {makeRng} from '@/core/rng.ts';
+import {npcDefsByKind} from '@/core/npc-defs.ts';
 import type * as THREE from 'three';
 
 // Ambient rural NPCs ("rednecks") living across the eastern peninsula. Each one now
@@ -36,10 +37,10 @@ class RuralFolk extends Npc{
   tx:number;
   tz:number;
 
-  constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string){
+  constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string,likes?:string[]){
     // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
     super(g,{kind:'rural',hp:1,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
-      area:role==='town'?'Pine Hollow':'Countryside',gender,name});
+      area:role==='town'?'Pine Hollow':'Countryside',gender,name,likes});
     this.role=role;
     this.home={x:g.position.x,z:g.position.z};
     this.wander=role==='farm'?14:11;
@@ -76,19 +77,25 @@ const spots:[number,number,string][]=[
   [360,20,'farm'],[430,26,'farm'],[470,-30,'farm'],[352,42,'farm'],[455,34,'farm'],
 ];
 
-// DETERMINISTIC: a fixed-seed stream places the country folk and assigns their
-// names + a 50/50 gender split, so every player meets the same villagers.
+// The country folk are DEFINED in npcs.json (kind 'rural') — fixed identities, no
+// random people. Each 'rural' entry takes one home spot below (Pine Hollow square
+// for town folk, the fields for farm folk); name / sex / likes come from the file.
+// Placement is seeded for determinism.
+const townSpots=spots.filter(s=>s[2]==='town');
+const farmSpots=spots.filter(s=>s[2]==='farm');
 const folkRng=makeRng(NPC_SEED+2);
-const folkGenders=balancedGenders(spots.length,folkRng);
-let folkGi=0;
-for(const[x,z,role]of spots){
+let townI=0,farmI=0;
+for(const def of npcDefsByKind('rural')){
+  const role=def.neighborhood==='Pine Hollow'?'town':'farm';
+  const spot=role==='town'?townSpots[townI++]:farmSpots[farmI++];
+  if(!spot)continue; // more rural defs than home spots — skip the overflow
+  const[x,z]=spot;
   const g=makeRedneck();
   const px=x+folkRng.rand(-1.5,1.5),pz=z+folkRng.rand(-1.5,1.5);
   g.position.set(px,groundHeight(px,pz),pz);
   collideStatics(g.position,.4,SWIM_BOUND);   // never start stuck; SWIM_BOUND keeps the peninsula reachable
   g.rotation.y=folkRng.rand(-Math.PI,Math.PI);
-  const gender=folkGenders[folkGi++];
-  folk.push(new RuralFolk(g,role,gender,pickName(gender,folkRng)));
+  folk.push(new RuralFolk(g,role,def.sex,def.name,def.likes));
 }
 
 // ---- action poses (called instead of animatePed for the custom actions) -------
