@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,clamp,rand,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {N,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
@@ -12,6 +12,7 @@ import {collideStatics} from '@/core/physics.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted,player} from '@/actors/player.ts';
 import {radioMessage} from '@/ui/hud.ts';
+import {say} from '@/ui/speech.ts';
 import {regionAt} from '@/world/regions.ts';
 import {Npc} from '@/actors/npc.ts';
 import {npcDefsByKind} from '@/core/npc-defs.ts';
@@ -62,6 +63,14 @@ let lastShout=-99;
 let radioCd=0;                // throttle between radio dispatches (one per few seconds)
 let carRadioCd=0;             // throttle for generic (non-police) vehicle-explosion calls
 let lastRadioStar=0;          // last wanted star the radio escalated at (so each rise speaks once)
+// Arrest model: at ★1 the deployed officers give a SURRENDER chance (no shooting) — they
+// only open fire if the suspect RESISTS (fires a weapon after they're out) or it's ★2+.
+let policeLethal=false;       // recomputed each frame in updateCops
+let resisted=false;           // latched true when the suspect fights back at ★1
+let lastDeployT=-99;          // when officers last got out of a cruiser
+let surrenderBarkT=0;         // throttle for the spoken surrender orders
+const SURRENDER_LINES=['Hands up! You\'re under arrest!','Freeze! Get on the ground, now!',
+  'Don\'t move! Hands where I can see them!','Drop the weapon and surrender — last warning!'];
 
 // The FIXED police roster from npcs.json (kind:'police'). The pool never grows beyond
 // this — the same named officers patrol and respond; a destroyed cruiser is replaced
@@ -234,6 +243,7 @@ function radioEscalate(star:number){
 
 function deployOfficers(c:Cop){
   c.officers=[];
+  lastDeployT=state.time; // a shot AFTER this counts as resisting arrest (→ lethal at ★1)
   const h=c.heading;
   for(const side of[1.3,-1.3]){
     const g=makePed(c.uniform||COP_BLUE); // the sheriff's officers wear his tan uniform
@@ -373,6 +383,21 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
     return;
   }
   const dx=pp.x-p.x,dz=pp.z-p.z,distP=Math.hypot(dx,dz);
+  if(!policeLethal){
+    // ★1 SURRENDER: close right in to make the arrest, gun drawn but NEVER fired, and
+    // bark a surrender order. They only turn lethal if the suspect resists (see updateCops).
+    const stop=2.2;
+    if(distP>stop){
+      p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
+      o.bob+=dt*11;animatePed(o.g,o.bob,1);
+    }else animatePed(o.g,o.bob,0);
+    poseAiming(o.g);
+    o.g.rotation.y=Math.atan2(dx,dz);
+    collideStatics(p,.5);
+    if(surrenderBarkT<=0&&distP<18){surrenderBarkT=3.4;say(o.g,pick(SURRENDER_LINES),{life:3.2,yOff:2.4});}
+    return;
+  }
+  // ★2+ (or the suspect resisted): approach to firing range and open fire.
   const stop=o.rocket?16:9;
   if(distP>stop){
     p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
@@ -415,6 +440,12 @@ export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
   if(radioCd>0)radioCd-=dt;
   if(carRadioCd>0)carRadioCd-=dt;
+  if(surrenderBarkT>0)surrenderBarkT-=dt;
+  // Arrest model: ★1 = surrender chance (officers hold fire); ★2+ = lethal. At ★1 the
+  // suspect resisting (firing a weapon AFTER officers got out) latches them lethal.
+  if(want===0)resisted=false;
+  if(!resisted&&officers.length>0&&(state.shotT??-99)>lastDeployT+.4)resisted=true;
+  policeLethal=want>=2||resisted;
   // RADIO escalation: each new star, the sheriff speaks once (more units, then the
   // army at the top). Resets as the wanted level falls so it speaks again next time.
   if(want>lastRadioStar){lastRadioStar=want;radioEscalate(want);}
@@ -524,7 +555,9 @@ export function updateCops(dt:number){
   let nearOff=1e9;
   for(const o of officers)if(!o.dead)
     nearOff=Math.min(nearOff,Math.hypot(pp.x-o.g.position.x,pp.z-o.g.position.z));
-  const cornered=(minD<6||nearOff<3.4)&&pp.y<3;
+  // Arrest now REQUIRES an officer ON FOOT close by — the cruiser alone can't bust you,
+  // so the police must always get out of the car to make the arrest.
+  const cornered=nearOff<3.4&&pp.y<3;
   if(state.wanted>0&&cornered&&                       // only an actually-wanted player is arrested
     (state.mode==='foot'||Math.abs(cur?.speed||0)<3.5)){
     state.bustT+=dt;
