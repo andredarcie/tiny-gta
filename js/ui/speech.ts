@@ -135,7 +135,7 @@ export function updateStreetChatter(dt: number){
   camera.getWorldDirection(fwd);
   const cands: any[]=[];
   for(const p of peds){
-    if(p.state!=='walk'&&p.state!=='flee'&&p.state!=='panic')continue;
+    if(p.dead||p.hospitalT>0)continue; // only live, on-street peds chatter
     if(p.g.userData.speaking)continue;
     const d=p.g.position.distanceTo(pp);
     if(d<3||d>VIEW_NEAR)continue;    // só nasce PERTO do NPC (e não em cima)
@@ -146,5 +146,5 @@ export function updateStreetChatter(dt: number){
   if(!cands.length)return;
   const p=pick(cands);
   say(p.g,pickLine(),{life:6.5,yOff:2.55,
-    alive:()=>p.state!=='fly'&&p.state!=='dead'});
+    alive:()=>!p.dead&&p.hospitalT<=0});
 }

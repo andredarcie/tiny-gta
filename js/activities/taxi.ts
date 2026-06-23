@@ -5,6 +5,7 @@ import {state,refs,saveBest} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.ts';
+import {Npc} from '@/actors/npc.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
 import {parks} from '@/world/world.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
@@ -15,18 +16,27 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 import type {Blip} from '@/core/types.ts';
 
-// corrida atual: o passageiro (ped) + origem/destino + pagamento e prazo
-interface Fare{
-  ped: THREE.Object3D;
+// Current ride: the passenger + origin/destination + payment and deadline. Extends
+// Npc (so 100% of NPCs share the base class) with register:false — fares ride in
+// your cab, they are not weapon targets. `ped` aliases the base `g` for the code below.
+class Fare extends Npc{
   x: number; z: number;
   dropX: number; dropZ: number;
   ring?: THREE.Mesh|null;
   beacon?: Beacon|null;
   pay: number; tip: number;
   rideStart: number; deadline: number;
+  constructor(ped: THREE.Object3D,x: number,z: number){
+    super(ped,{kind:'fare',hp:1,register:false,area:'Taxi passenger'});
+    this.x=x;this.z=z;this.dropX=0;this.dropZ=0;
+    this.pay=0;this.tip=0;this.rideStart=0;this.deadline=0;
+  }
+  get ped(): THREE.Object3D{return this.g;}
+  override aliveState():string{return 'Riding the cab';}
 }
-// passageiro recém-desembarcado caminhando embora
-interface LeavingPed{g: THREE.Object3D; t: number; bob: number; h: number;}
+// A just-dropped-off passenger walking away (carries its Npc so it leaves the
+// census once it has wandered off and is removed).
+interface LeavingPed{g: THREE.Object3D; npc: Fare; t: number; bob: number; h: number;}
 
 // Minigame de táxi estilo Open-world: um táxi amarelo fica estacionado na rua ao
 // lado de uma praça. Entrou nele, começa o expediente: sempre tem um
@@ -188,8 +198,8 @@ function spawnFare(announce=true){
   const ped=makePed(pick(shirtColors));
   ped.position.set(x,0,z);
   ped.rotation.y=Math.random()*Math.PI*2;
-  scene.add(ped); // passageiro acenando fica visível na rua (boardFare reparenta pro carro)
-  fare={ped,x,z,dropX:0,dropZ:0,pay:0,tip:0,rideStart:0,deadline:0};
+  // makePed already added the ped to the scene; boardFare reparents it into the cab
+  fare=new Fare(ped,x,z);
   setMarker(x,z);
   phase='pickup';
   if(announce)message('PICK UP THE FARE','var(--gold)');
@@ -223,19 +233,20 @@ function boardFare(){
 
 // desce do carro (fim de corrida ou expediente encerrado) e vai embora a pé
 function dropPassenger(){
-  const ped=fare!.ped;
+  const f=fare!;
+  const ped=f.ped;
   taxi.g.remove(ped);
   unseatPose(ped);
   const h=taxi.heading;
   ped.position.copy(taxi.g.position)
-    .add(new THREE.Vector3(Math.cos(h)*2,0,-Math.sin(h)*2)); // calçada à direita
+    .add(new THREE.Vector3(Math.cos(h)*2,0,-Math.sin(h)*2)); // sidewalk on the right
   ped.rotation.set(0,h+Math.PI/2,0);
   scene.add(ped);
-  leaving.push({g:ped,t:0,bob:0,h:ped.rotation.y});
+  leaving.push({g:ped,npc:f,t:0,bob:0,h:ped.rotation.y}); // keep the Npc so it leaves the census on removal
 }
 
 function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
-  if(phase==='pickup'&&fare){clearMarker();scene.remove(fare.ped);}
+  if(phase==='pickup'&&fare){clearMarker();fare.despawn();} // removes the waiting fare from the scene + census
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
   // ranking: o expediente inteiro conta como UMA sessão (ganho = total da corrida)
   reportMiniGameResult(game.id,{won:shiftFares>0,score:shiftEarnings});
@@ -288,7 +299,8 @@ export function updateTaxi(dt: number){
     p.g.position.x+=Math.sin(p.h)*1.6*dt;
     p.g.position.z+=Math.cos(p.h)*1.6*dt;
     animatePed(p.g,p.bob,.5);
-    if(p.t>3.5){scene.remove(p.g);leaving.splice(i,1);}
+    if(p.t>3.5){p.npc.despawn();leaving.splice(i,1);} // despawn clears the scene + census
+
   }
   // táxi destruído: reaparece no ponto da praça depois de um tempo
   if(!taxi.g.parent&&cur!==taxi){

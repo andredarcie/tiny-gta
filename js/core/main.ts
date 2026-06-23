@@ -10,6 +10,7 @@ import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle} from '@/world/pedestrians.ts';
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
+import {updateNpcLabels} from '@/actors/npc.ts'; // floating name tags above NPCs' heads
 import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach} from '@/world/world.ts';
@@ -277,6 +278,7 @@ function step(dt: number){
   P.end();
 
   P.begin('camera');updateCamera(dt);P.end();
+  updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   P.begin('story');
   updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
   updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)

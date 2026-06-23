@@ -17,6 +17,7 @@ import {MiniGameId} from '@/activities/minigame.ts';
 import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import {getDay} from '@/world/daynight.ts';
+import {Npc} from '@/actors/npc.ts';
 
 // ============================================================================
 // GREEN ACRES — the HIDDEN weed-farm activity, played entirely in the 3D world on
@@ -132,8 +133,19 @@ const DELIV_POINTS: {x:number;z:number;city:boolean;gated?:boolean}[]=[
   {x:-380,           z:-44, city:true, gated:true },  // far ISLAND: needs a boat/plane to reach (premium rate)
 ];
 // a live delivery buyer placed in the world during a run
-interface Buyer{x:number;z:number;city:boolean;gated:boolean;ped:THREE.Object3D;served:boolean;want:number;t:number;}
-let buyers: Buyer[]=[];   // live {x,z,city,ped,served,want,t}
+// A weed buyer waiting at a deal point. Extends Npc (so 100% of NPCs share the
+// base class) with register:false — buyers are dealt to, never shot, so they stay
+// out of the unified weapon scan. `ped` aliases the base `g` for the existing code.
+class Buyer extends Npc{
+  x:number;z:number;city:boolean;gated:boolean;served:boolean;want:number;t:number;
+  constructor(g:THREE.Object3D,x:number,z:number,city:boolean,gated:boolean,want:number){
+    super(g,{kind:'buyer',hp:1,register:false,area:city?'City buyer':'Country buyer'});
+    this.x=x;this.z=z;this.city=city;this.gated=gated;this.served=false;this.want=want;this.t=0;
+  }
+  get ped():THREE.Object3D{return this.g;}
+  override aliveState():string{return this.served?'Deal done':'Waiting for a deal';}
+}
+let buyers: Buyer[]=[];
 // HEAT — the push-your-luck risk. Each deal raises it (city more), it cools over time.
 // Above WARM, deals can be a STING (undercover cop → no pay + a wanted spike); linger
 // at the farm while HOT and you draw a RAID. The run HUD shows it so it's never blind RNG.
@@ -407,10 +419,12 @@ function spawnBuyers(): void{
   buyers=DELIV_POINTS.map(d=>{
     const ped=makePed(d.city?0x6a4a8a:0x7a5a3a,0x2a2a30); // makePed adds itself to the scene
     ped.position.set(d.x,groundHeight(d.x,d.z),d.z);ped.rotation.y=Math.random()*6.28;
-    return {x:d.x,z:d.z,city:d.city,gated:!!d.gated,ped,served:false,want:4+((Math.random()*5)|0),t:Math.random()*6};
+    const b=new Buyer(ped,d.x,d.z,d.city,!!d.gated,4+((Math.random()*5)|0));
+    b.t=Math.random()*6; // random walk-cycle phase so they don't bob in sync
+    return b;
   });
 }
-function despawnBuyers(): void{ for(const b of buyers)if(b.ped)scene.remove(b.ped); buyers=[]; }
+function despawnBuyers(): void{ for(const b of buyers)b.despawn(); buyers=[]; } // despawn clears the scene + NPC census
 // turn the player and the buyer to face each other and frame the camera on the deal
 function faceForDeal(b: Buyer): void{
   const p=playerPos();
