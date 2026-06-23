@@ -33,19 +33,25 @@ function build(): THREE.Group {
     const col=new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,COL_H,10),colM);
     col.position.set(Math.cos(a)*R,FLOOR_Y+COL_H/2,Math.sin(a)*R);col.castShadow=true;g.add(col);
   }
-  // guarda-corpo branco nas faces (menos a da entrada): mureta + corrimão + balaústres
+  // guarda-corpo branco nas faces (menos a da entrada): mureta + corrimão + balaústres.
+  // O painel corre TANGENTE à circunferência (ao longo da aresta do octógono, entre duas
+  // colunas), por isso a caixa é girada para -a-π/2 — não -a, que a deixaria radial.
+  const side=2*R*Math.sin(Math.PI/8);          // comprimento da aresta do octógono
+  const len=side*0.9;                          // painel encaixa entre as colunas
   for(let k=0;k<8;k++){
     if(k===ENTRY)continue;
     const a=k*Math.PI/4;                       // centro da face
-    const cx=Math.cos(a)*(R-.05),cz=Math.sin(a)*(R-.05),len=R*0.82;
+    const cx=Math.cos(a)*(R-.05),cz=Math.sin(a)*(R-.05);
+    const ry=-a-Math.PI/2;                     // eixo do painel = tangente à face
     const low=new THREE.Mesh(new THREE.BoxGeometry(len,.5,.12),railM);
-    low.position.set(cx,FLOOR_Y+.28,cz);low.rotation.y=-a;g.add(low);
+    low.position.set(cx,FLOOR_Y+.28,cz);low.rotation.y=ry;g.add(low);
     const top=new THREE.Mesh(new THREE.BoxGeometry(len,.1,.18),railM);
-    top.position.set(cx,FLOOR_Y+.92,cz);top.rotation.y=-a;g.add(top);
-    for(const t of[-.3,0,.3]){ // balaústres distribuídos ao longo da face
+    top.position.set(cx,FLOOR_Y+.92,cz);top.rotation.y=ry;g.add(top);
+    // balaústres distribuídos ao longo da face (mesma direção tangente do painel)
+    const tdx=Math.cos(a-Math.PI/2),tdz=Math.sin(a-Math.PI/2);
+    for(const t of[-.36,-.12,.12,.36]){
       const bal=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.5,8),railM);
-      const tx=Math.cos(a-Math.PI/2)*t*len, tz=Math.sin(a-Math.PI/2)*t*len;
-      bal.position.set(cx+tx,FLOOR_Y+.62,cz+tz);g.add(bal);
+      bal.position.set(cx+tdx*t*len,FLOOR_Y+.62,cz+tdz*t*len);g.add(bal);
     }
   }
   // escada de acesso na entrada (+z)

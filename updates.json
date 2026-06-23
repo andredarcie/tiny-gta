@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-22-bandstand-railings",
+    "date": "2026-06-22",
+    "title": "Fixed the bandstand in the town square",
+    "description": "The octagonal bandstand in Pine Hollow's town square had its white railings turned the wrong way — they jutted outward like spokes instead of running neatly between the columns. The railings now sit flush along each side the way they should, so the bandstand finally looks right."
+  },
+  {
     "id": "2026-06-22-daily-reset-after-break",
     "date": "2026-06-22",
     "title": "Daily activities reset after a real break",
