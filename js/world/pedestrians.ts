@@ -114,7 +114,7 @@ for(const def of npcDefsByKind('civilian')){
   const p=new Ped(g,{
     kind:'ped',hp:1,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
     punchToDown:3,showLabel:true,area:nh.name,
-    gender:def.sex,name:def.name,likes:def.likes,
+    gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,
   });
   p.block=[bi,bj];
   p.corner=tmpCorner;
@@ -122,7 +122,7 @@ for(const def of npcDefsByKind('civilian')){
   p.baseState=def.state==='idle'?'idle':'walk'; // some people just stand around
   p.aiState=p.baseState;
   p.t=pedRng.rand(0,6);
-  p.speed=pedRng.rand(1,1.8);
+  p.speed=pedRng.rand(1,1.8)*(def.personality==='chill'?.72:1); // chill folk amble
   p.panicT=0;
   p.neighborhood=nh;
   p.likesWeed=def.likes.includes('smoke_weed'); // who flags you down for a deal
@@ -197,10 +197,13 @@ export function updatePeds(dt:number){
     }
     if(p.aiState==='panic'&&(p.panicT-=dt)<=0)p.aiState=p.baseState;
     if(p.weedCdT>0)p.weedCdT-=dt;
+    // PERSONALITY shapes when they bolt from a speeding car: the nervous scatter from
+    // way off, the brave barely budge until it's nearly on them.
+    const fleeR=p.personality==='nervous'?16:p.personality==='brave'?7:11;
     // Weed buyer: carrying the backpack near a weed-liking ped → they STOP, face you
     // and wave you over. Danger (panic/flee) still takes priority below.
     const wantsWeed=p.likesWeed&&p.weedCdT<=0&&!!refs.isCarryingWeed?.()&&
-      !(danger&&p.g.position.distanceTo(activeCur.g.position)<11)&&p.aiState!=='panic';
+      !(danger&&p.g.position.distanceTo(activeCur.g.position)<fleeR)&&p.aiState!=='panic';
     const tgt=_tgt;
     if(wantsWeed&&p.g.position.distanceTo(pp)<WEED_NOTICE){
       p.aiState='weed'; // stand still, face the player, wave
@@ -213,21 +216,37 @@ export function updatePeds(dt:number){
     if(p.aiState==='panic'){
       tgt.subVectors(p.g.position,pp).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
-    }else if(danger&&p.g.position.distanceTo(activeCur.g.position)<11){
+    }else if(danger&&p.g.position.distanceTo(activeCur.g.position)<fleeR){
       p.aiState='flee';
       tgt.subVectors(p.g.position,activeCur.g.position).setY(0).normalize()
         .multiplyScalar(20).add(p.g.position);
     }else{
       if(p.aiState==='flee'||p.aiState==='weed')p.aiState=p.baseState;
-      // standing-around people don't patrol corners — they idle in place (but still
-      // flee danger and wave the player over for weed, handled above).
-      if(p.aiState==='idle'){
-        p.t+=dt;
-        p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
-        Entities.animatePed?.(p.g,p.t,.05);
-        continue;
+      // PERSONALITY reactions to a nearby player ON FOOT (no car danger) — each one
+      // visibly different on the street:
+      //   friendly → faces you and WAVES hello   brave → stands ground and stares
+      //   greedy   → walks up and waits (begs)    hostile → strides up and confronts
+      // (nervous/chill have their tells in the flee distance / walk speed above.)
+      const distP=state.mode==='foot'?p.g.position.distanceTo(pp):1e9;
+      const faceP=()=>{p.g.rotation.y=Math.atan2(pp.x-p.g.position.x,pp.z-p.g.position.z);};
+      const standFacing=(amt:number)=>{faceP();p.t+=dt;
+        p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);Entities.animatePed?.(p.g,p.t,amt);};
+      if(p.personality==='friendly'&&distP<6){          // greet + wave
+        faceP();p.t+=dt*4;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
+        poseWavePed(p.g,p.t);continue;
       }
-      const c=pedCorner(p);tgt.set(c[0],0,c[1]);
+      if(p.personality==='brave'&&distP<4){standFacing(.05);continue;} // stare you down
+      const confront=p.personality==='hostile',beg=p.personality==='greedy';
+      if((confront||beg)&&distP<(confront?7:9)){
+        const stop=confront?1.8:2.7;
+        if(distP<=stop){standFacing(confront?.25:.08);continue;} // arrived: face the player
+        tgt.copy(pp);tgt.y=0;                            // approach the player
+      }else if(p.aiState==='idle'){                      // standing-around people idle in place
+        p.t+=dt;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
+        Entities.animatePed?.(p.g,p.t,.05);continue;
+      }else{
+        const c=pedCorner(p);tgt.set(c[0],0,c[1]);
+      }
     }
     const d=_d.subVectors(tgt,p.g.position);d.y=0;
     const dist=d.length();
