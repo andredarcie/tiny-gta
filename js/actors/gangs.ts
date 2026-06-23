@@ -1,10 +1,10 @@
 import * as THREE from 'three';
-import {rand,irand,clamp,nodeX} from '@/core/constants.ts';
+import {rand,irand,clamp,nodeX,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,attachHandGun,poseAiming} from '@/core/entities.ts';
 import * as Entities from '@/core/entities.ts';
-import {collideStatics,addWanted} from '@/core/physics.ts';
+import {collideStatics,addWanted,hasLineOfSight} from '@/core/physics.ts';
 import {blip,thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,getWasted} from '@/actors/player.ts';
@@ -197,7 +197,9 @@ export function updateGangs(dt:number){
     }
     // Hit by a fast car: manually trigger death (different wanted path handled here).
     if(danger&&p.distanceTo(c!.g.position)<2.3){
+      const mw=m.wanted;m.wanted=0; // hit-and-run heat is the single +1 below, not the base kill()'s 0.4
       m.kill(new THREE.Vector3(Math.sin(c!.heading),0,Math.cos(c!.heading)).multiplyScalar(c!.speed*.4));
+      m.wanted=mw;
       addWanted(1,'HIT AND RUN!','hit_run');
       thud(Math.abs(c!.speed));state.shake=.35;
       continue;
@@ -219,7 +221,7 @@ export function updateGangs(dt:number){
       m.shootT-=dt;
       // only fire at a target roughly at street level — never up at the police helicopter
       // (or anything else high overhead). Also not at the map-locked player.
-      if(m.shootT<=0&&distP<34&&pp.y-p.y<3&&!state.mapOpen)memberShoot(m,pp,distP);
+      if(m.shootT<=0&&distP<34&&pp.y-p.y<3&&!state.mapOpen&&hasLineOfSight(p.x,p.z,pp.x,pp.z))memberShoot(m,pp,distP);
     }else{
       m.tgtT-=dt;
       if(!m.tgt||m.tgtT<=0||p.distanceTo(m.tgt)<1.2){
@@ -235,7 +237,7 @@ export function updateGangs(dt:number){
     }
     collideStatics(p,.4);
     repelFromZones(p);
-    p.y=Math.abs(Math.sin(m.bob))*.07;
+    p.y=groundHeight(p.x,p.z)+Math.abs(Math.sin(m.bob))*.07;
     Entities.animatePed?.(m.g,m.bob,mvAmount);
     if(aggro)poseAiming(m.g);
   }

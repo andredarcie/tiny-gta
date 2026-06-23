@@ -36,6 +36,31 @@ export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOU
   return hit;
 }
 
+// 2D segment (a→b) vs an axis-aligned box, slab method — true if the segment crosses it.
+function segHitsBox(ax:number,az:number,bx:number,bz:number,b:{x0:number;x1:number;z0:number;z1:number}):boolean{
+  const dx=bx-ax,dz=bz-az;
+  let t0=0,t1=1;
+  if(Math.abs(dx)<1e-9){if(ax<b.x0||ax>b.x1)return false;}
+  else{let ta=(b.x0-ax)/dx,tb=(b.x1-ax)/dx;if(ta>tb){const t=ta;ta=tb;tb=t;}t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return false;}
+  if(Math.abs(dz)<1e-9){if(az<b.z0||az>b.z1)return false;}
+  else{let ta=(b.z0-az)/dz,tb=(b.z1-az)/dz;if(ta>tb){const t=ta;ta=tb;tb=t;}t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return false;}
+  return t1>=t0;
+}
+
+// Line-of-sight for NPC gunfire: true if NO tall building stands between (ax,az) and
+// (bx,bz). Lets cover matter — an NPC holds fire when a wall blocks the shot. Always
+// clear indoors (interior rooms have no street buildings between the two points). Only
+// solids ≥2m tall (buildings/walls) block; low props/curbs are ignored.
+const LOS_MIN_H=2;
+export function hasLineOfSight(ax:number,az:number,bx:number,bz:number):boolean{
+  if(state.interior)return true;
+  for(const b of solids){
+    if(b.h===undefined||b.h<LOS_MIN_H)continue;
+    if(segHitsBox(ax,az,bx,bz,b))return false;
+  }
+  return true;
+}
+
 export function addWanted(n:number,why?:string,crime='pursuit'){
   const before=Math.floor(state.wanted);
   // cap 6 = MAX star (was 5, so the HUD's 6th star never lit). Reaching 6 stars

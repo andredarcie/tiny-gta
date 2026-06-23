@@ -6,7 +6,7 @@ import {makePed,animatePed,spinWheels,dentCar,attachHandGun,poseAiming,disposeGe
 import {makeArmyTruck} from '../../assets/models/vehicles/army-truck.ts';
 import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
-import {collideStatics} from '@/core/physics.ts';
+import {collideStatics,hasLineOfSight} from '@/core/physics.ts';
 import {playerPos,cur,getWasted} from '@/actors/player.ts';
 import {message} from '@/ui/hud.ts';
 import {Npc} from '@/actors/npc.ts';
@@ -353,7 +353,7 @@ function updateSoldier(o:Soldier,dt:number,pp:THREE.Vector3){
   const distP=Math.hypot(pp.x-p.x,pp.z-p.z);
   // RHYTHM fire: a short burst then a PAUSE (gap) — never 100% of the time
   o.shootT-=dt;o.restT-=dt;
-  if(pp.y-p.y<3&&distP<o.wpn.range&&o.restT<=0){
+  if(pp.y-p.y<3&&distP<o.wpn.range&&o.restT<=0&&hasLineOfSight(p.x,p.z,pp.x,pp.z)){
     if(o.burstLeft<=0)o.burstLeft=irand(o.wpn.burst[0],o.wpn.burst[1]);
     if(o.shootT<=0){
       fireRound(o,pp,distP);

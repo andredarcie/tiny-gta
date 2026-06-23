@@ -20,6 +20,7 @@ interface RuralCar{
   name:string;
   brakeT:number;
   stuckT:number;
+  hitT?:number;
   driver?:THREE.Object3D;
 }
 
@@ -101,6 +102,7 @@ export function updateRuralTraffic(dt:number){
   const activeCur=cur;
   for(const t of ruralTraffic){
     const s0=sample(t.u,t.dir);
+    if(t.hitT&&t.hitT>0)t.hitT-=dt; // cooldown between car-vs-pedestrian hits
     // brake for the player (or their car) sitting on the road just ahead
     const ax=s0.x+s0.tx*5,az=s0.z+s0.tz*5;
     let blocked=Math.hypot(ax-pp.x,az-pp.z)<3.8;
@@ -158,8 +160,15 @@ export function updateRuralTraffic(dt:number){
         }
         activeCur.speed*=.6;t.brakeT=2;
       }
-    }else if(state.mode==='foot'&&t.speed>5){
-      if(t.g.position.distanceTo(player.g.position)<1.5)getWasted();
+    }else if(state.mode==='foot'&&t.speed>4&&!(t.hitT&&t.hitT>0)){
+      // Hit a pedestrian: speed-scaled damage (not an instant kill), brief cooldown, only
+      // WASTED once health hits 0.
+      if(t.g.position.distanceTo(player.g.position)<1.5){
+        t.hitT=.8;
+        state.health-=irand(10,18)+Math.round(Math.abs(t.speed)*1.5);
+        state.shake=Math.max(state.shake,.35);thud(Math.abs(t.speed));
+        if(state.health<=0){state.health=100;getWasted();}
+      }
     }
   }
 }
