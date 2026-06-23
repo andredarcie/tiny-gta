@@ -33,9 +33,11 @@ interface CpMarker{ring: THREE.Mesh; beacon: THREE.Mesh;}
 // colar. Música/rádio exclusivos da prova; se todos os rivais chegarem antes,
 // você perde. Sair do carro / WASTED / BUSTED abandona.
 //
-// O circuito fica em x∈[196,320], |z|≤84 — pradaria/colinas baixas, LONGE das
-// fazendas/silo (x≥342), do rancho (x≈550) e da montanha (x≈509). Nenhum prédio
-// no caminho; gangues só existem na cidade, então a prova nunca cai em território.
+// O circuito fica na PRADARIA logo a LESTE da ponte (x∈[300,338], |z|≤99): a faixa
+// de pasto aberta entre o rio/ponte (a oeste, x≤294) e as roças de Drycreek (a
+// leste, x≥342). LONGE da água do estreito, das fazendas/silo, do rancho (x≈550) e
+// da montanha (x≈509). Árvores/cercas não têm colisão; nenhum prédio no caminho.
+// Gangues só existem na cidade, então a prova nunca cai em território.
 // ============================================================================
 
 const OFF_BUILD=' ◆ OFFROAD';
@@ -51,19 +53,22 @@ const SEP=3.8;         // distância mínima entre dois rivais: separa quem enco
 const offColors=[0x2e6f3a,0xc9a227,0x8a3b2b]; // verde-mato, mostarda e barro (carro do jogador é o seu)
 
 // Pórtico de largada (= chegada: o percurso é um loop que volta pra cá). O carro
-// passa por baixo. Fica na entrada da pradaria, perto da estrada de terra (z≈0).
-const start={x:196,z:4};
-// Circuito em loop pelas colinas (sentido horário visto de cima). O ÚLTIMO ponto
-// volta pra perto do pórtico — cruzar ele é a linha de chegada.
+// passa por baixo. Fica na estrada de terra (z≈0) logo a leste da ponte, fácil de
+// alcançar atravessando o estreito de carro.
+const start={x:308,z:0};
+// Circuito em loop pela pradaria a leste da ponte (oval vertical: retas norte-sul
+// no pasto, curvas abrindo pro pasto aberto). O ÚLTIMO ponto volta pra perto do
+// pórtico — cruzar ele é a linha de chegada. Tudo a oeste das roças (x≥342) e a
+// leste da água do estreito (x≤294); árvores/cercas não colidem.
 const CPS: RoutePoint[]=[
-  {x:230,z:-54},
-  {x:280,z:-80},
-  {x:318,z:-46},
-  {x:320,z: 24},
-  {x:286,z: 72},
-  {x:238,z: 84},
-  {x:208,z: 48},
-  {x:198,z:  8}, // chegada, de volta ao pórtico
+  {x:302,z: 62}, // sobe a reta oeste
+  {x:322,z: 99}, // curva norte
+  {x:332,z: 84}, // abre pro pasto norte
+  {x:322,z:-30}, // desce a reta leste
+  {x:335,z:-94}, // abre pro pasto sul
+  {x:308,z:-99}, // curva sul
+  {x:300,z:-46}, // volta pela reta oeste
+  {x:305,z: -6}, // chegada, de volta ao pórtico
 ];
 
 const gate=makeOffroadGate(ORANGE); // make* NÃO adiciona à cena
