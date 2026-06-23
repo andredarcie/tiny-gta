@@ -6,6 +6,7 @@
 import {
   HALF, RURAL_TIP, MOUNT_X, MOUNT_R, TOWN_CX, HILL_X1, RURAL_HALF,
   ISLAND_CX, ISLAND_CZ, ISLAND_MAXR, isLand, clamp,
+  RIVER_CX, RIVER_HW, BRIDGE_RAMP, BRIDGE_DECK_HW,
 } from '@/core/constants.ts';
 
 // A region name anchored on the full map. `kind` only drives the label styling
@@ -34,6 +35,11 @@ export function regionAt(x: number, z: number): string | null {
   // Rural peninsula (east of the city junction). Small radial zones — the
   // mountain overlook and the village — win over the broad x-bands they sit in.
   if (x >= HALF && x <= RURAL_TIP + 24 && Math.abs(z) <= RURAL_HALF + 30) {
+    // The river strait + its landmark bridge cut the peninsula in two: the bridge
+    // corridor (deck + approach ramps, narrow in z) reads as the bridge; the wider
+    // open channel each side of it reads as the strait you boat through.
+    if (Math.abs(x - RIVER_CX) < RIVER_HW + BRIDGE_RAMP && Math.abs(z) < BRIDGE_DECK_HW + 4) return 'Vesper Bridge';
+    if (Math.abs(x - RIVER_CX) < RIVER_HW) return 'Vesper Strait';
     if (Math.hypot(x - MOUNT_X, z) < MOUNT_R) return 'Mount Vesper';
     if (Math.abs(x - TOWN_CX) < 60 && Math.abs(z) < 60) return 'Pine Hollow';
     if (x < HILL_X1 + 20) return 'Meadowbrook';        // pastoral corridor + rolling hills
@@ -65,7 +71,8 @@ for (let row = 0; row < 3; row++)
       kind: 'city',
     });
 mapRegionLabels.push(
-  { name: 'Meadowbrook',      cx: 262,     cz: -58, kind: 'rural' },
+  { name: 'Vesper Bridge',    cx: RIVER_CX, cz:  -8, kind: 'rural' },
+  { name: 'Meadowbrook',      cx: 290,     cz: -58, kind: 'rural' },
   { name: 'Drycreek Farms',   cx: 400,     cz:  62, kind: 'rural' },
   { name: 'Mount Vesper',     cx: MOUNT_X, cz:   0, kind: 'rural' },
   { name: 'Whispering Pines', cx: 586,     cz: -80, kind: 'rural' },
