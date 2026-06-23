@@ -294,7 +294,10 @@ function segHitsBox(ax:number,az:number,bx:number,bz:number,b:OccluderBox):boole
 }
 
 export function updateNpcLabels(camera:THREE.Camera,playerPos:THREE.Vector3){
-  const solids=refs.citySolids as OccluderBox[]|undefined;
+  // Building occlusion only applies OUTDOORS — inside an interior the solids list
+  // holds the room's own walls/bars (e.g. jail cell bars), which must NOT hide the
+  // tags of the people in that room. So skip occlusion while in an interior.
+  const solids=state.interior?undefined:(refs.citySolids as OccluderBox[]|undefined);
   const camX=camera.position.x,camZ=camera.position.z;
   for(const n of allNpcs){
     const el=n.label;
@@ -303,7 +306,7 @@ export function updateNpcLabels(camera:THREE.Camera,playerPos:THREE.Vector3){
     n.g.getWorldPosition(_wp);
     const dx=_wp.x-playerPos.x,dz=_wp.z-playerPos.z;
     if(dx*dx+dz*dz>LABEL_DIST*LABEL_DIST){el.style.display='none';continue;}
-    // occlusion: a building between the camera and the NPC hides the tag
+    // occlusion: a building between the camera and the NPC hides the tag (outdoors only)
     if(solids){
       let blocked=false;
       for(const b of solids){
