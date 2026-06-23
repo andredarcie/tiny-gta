@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-23-npc-ai-fixes",
+    "date": "2026-06-23",
+    "title": "Take cover — and survive a fender-bender",
+    "description": "A round of fixes to how the people of the city behave. Enemies — the police, the gangs and the army — can no longer shoot you straight through walls: duck behind a building and they'll hold their fire until they can actually see you again. And getting clipped by a passing car while on foot now hurts based on how fast it was going, instead of killing you outright from full health. We also tidied up some smaller things: run-over victims leave a blood pool like everyone else, gang members stand properly on the ground, and your wanted star keeps better track of when the police have truly lost you."
+  },
+  {
     "id": "2026-06-23-living-npcs-police",
     "date": "2026-06-23",
     "title": "Meet the locals — and a living police force",

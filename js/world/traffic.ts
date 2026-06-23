@@ -21,6 +21,7 @@ interface TrafficCar{
   heading:number;
   driver?:THREE.Object3D;
   stuckT?:number;
+  hitT?:number;
 }
 
 export const traffic:TrafficCar[]=[];
@@ -111,6 +112,7 @@ export function updateTraffic(dt:number){
   const pp=playerPos();
   for(const t of traffic){
     const pos=trafficPos(t);
+    if(t.hitT&&t.hitT>0)t.hitT-=dt; // cooldown between car-vs-pedestrian hits
     // Freia pelo jogador/carro do jogador logo à frente (ponto 5m adiante).
     const ax=pos.x+pos.dx*5,az=pos.z+pos.dz*5;
     let blocked=Math.hypot(ax-pp.x,az-pp.z)<3.8;
@@ -173,8 +175,15 @@ export function updateTraffic(dt:number){
         }
         activeCur.speed*=.6;t.brakeT=2;
       }
-    }else if(state.mode==='foot'&&t.speed>6.5){
-      if(t.g.position.distanceTo(player.g.position)<1.5)getWasted();
+    }else if(state.mode==='foot'&&t.speed>4&&!(t.hitT&&t.hitT>0)){
+      // Hit a pedestrian: speed-scaled damage (not an instant kill), a brief cooldown so
+      // one bump doesn't drain health every frame, only WASTED once health hits 0.
+      if(t.g.position.distanceTo(player.g.position)<1.5){
+        t.hitT=.8;
+        state.health-=irand(10,18)+Math.round(Math.abs(t.speed)*1.5);
+        state.shake=Math.max(state.shake,.35);thud(Math.abs(t.speed));
+        if(state.health<=0){state.health=100;getWasted();}
+      }
     }
   }
 }

@@ -8,7 +8,7 @@ import {makeHeli} from '../../assets/models/police/helicopter.ts';
 import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.ts';
 import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
-import {collideStatics} from '@/core/physics.ts';
+import {collideStatics,hasLineOfSight} from '@/core/physics.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted,player} from '@/actors/player.ts';
 import {radioMessage} from '@/ui/hud.ts';
@@ -470,8 +470,8 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
   o.g.rotation.y=Math.atan2(dx,dz);
   collideStatics(p,.5);
   o.shootT-=dt;
-  if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.rocket?44:26)){
-    if(o.rocket)officerRocket(o,pp);
+  if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.rocket?44:26)&&hasLineOfSight(p.x,p.z,pp.x,pp.z)){
+    if(o.rocket&&Math.floor(state.wanted)>=5)officerRocket(o,pp); // only rocket while still ★5+
     else officerShoot(o,pp,distP);
   }
 }
@@ -505,7 +505,7 @@ const _mid=new THREE.Vector3();
 // if a unit is near and chasing, it can see you, so the star must hold.
 const SEEN_RANGE=115; // metres
 function policeOnYou(pp:THREE.Vector3):boolean{
-  if(officers.length>0)return true;
+  for(const o of officers)if(!o.dead)return true;
   for(const c of cops)if(c.siren&&
     Math.hypot(c.g.position.x-pp.x,c.g.position.z-pp.z)<SEEN_RANGE)return true;
   return false;

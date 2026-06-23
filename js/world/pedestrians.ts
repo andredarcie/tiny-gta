@@ -195,7 +195,8 @@ export function updatePeds(dt:number){
     // Hit-and-run: ped is close to a fast car — launch without the standard `kill()`
     // path (different wanted message + combo multiplier).
     if(danger&&p.g.position.distanceTo(activeCur.g.position)<2.0){
-      p.dead=true;p.grounded=false;p.deadT=0;p.bloodDropped=false;
+      p.dead=true;p.grounded=false;p.deadT=0;p.bloodDropped=true;
+      addBloodPuddle(p.g.position.x,p.g.position.z); // run-over victims bleed like shot ones
       _dir.set(Math.sin(activeCur.heading),0,Math.cos(activeCur.heading));
       _rnd.set(rand(-2,2),rand(5,8),rand(-2,2));
       p.vel.copy(_dir).multiplyScalar(activeCur.speed*.4).add(_rnd);
