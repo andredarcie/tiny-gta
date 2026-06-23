@@ -106,10 +106,11 @@ export const npcs:Npc[]=[];
 // roster so even own-targeted/untouchable NPCs appear in "all NPCs of the game".
 export const allNpcs:Npc[]=[];
 
-// Lazy-resolved container for name labels (created once on first use).
-let _labelRoot:HTMLElement|null|undefined;
+// Lazy-resolved container for name labels. Re-queries until found — never caches a
+// null (so labels still work if the first NPC is built before #npc-labels exists).
+let _labelRoot:HTMLElement|null=null;
 function getLabelRoot():HTMLElement|null{
-  if(_labelRoot!==undefined)return _labelRoot;
+  if(_labelRoot)return _labelRoot;
   _labelRoot=document.getElementById('npc-labels');
   return _labelRoot;
 }
@@ -405,8 +406,11 @@ export function reconcileVehicleNpcs():void{
     const npc=d.userData.occupantNpc as Npc|undefined;
     if(live&&!npc){
       d.userData.occupantNpc=new Npc(d,{kind:'driver',register:false,showLabel:false,area:'On the road'});
-    }else if(!live&&npc){
-      npc.despawn();
+    }else if(!live){
+      // vehicle gone from the scene (destroyed, or the player stole the car and the
+      // seated driver was removed): reap the NPC if it was tagged, and ALWAYS drop the
+      // doll from the list — including the detached-before-tagged case (no census leak).
+      if(npc)npc.despawn();
       d.userData.occupantNpc=undefined;
       vehicleOccupants.splice(i,1);
     }
