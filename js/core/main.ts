@@ -15,7 +15,7 @@ import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name ta
 import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach,solids} from '@/world/world.ts';
-import {cops,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
+import {cops,officers,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
 import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
 import {updateArmy,initArmy} from '@/actors/army.ts';
 import {delivery,spawnDelivery,updatePickups} from '@/story/missions.ts';
@@ -108,6 +108,7 @@ refs.getPlayerHeading=()=>state.mode==='car'?cur?.heading:player.heading;
 refs.getRadarHeading=()=>cameraRig.yaw;
 refs.traffic=traffic;
 refs.cops=cops;
+refs.officers=officers; // hud draws each foot officer's vision cone on the minimap
 refs.trafficPos=trafficPos;
 refs.spawnTraffic=spawnTraffic;
 refs.ejectDriver=ejectDriver;

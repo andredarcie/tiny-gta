@@ -9,6 +9,7 @@ import {MiniGame} from '@/activities/minigame.ts';
 import {inGangTerritory} from '@/actors/gangs.ts';
 import {getNpcMapBlips} from '@/actors/npc.ts';
 import {regionAt,mapRegionLabels} from '@/world/regions.ts';
+import {COP_VIEW_RANGE,COP_VIEW_HALF,OFF_VIEW_RANGE,OFF_VIEW_HALF} from '@/actors/vision.ts';
 
 // The interact prompt descriptor computed for the E button (HUD label + prompt +
 // whether it is actionable). Some sources (zone actions) also carry a `run`
@@ -47,6 +48,7 @@ let shownMoney=250,msgT=0;
 // escrevemos quando muda de fato (a maioria dos frames não muda nada).
 let _money='',_clock='',_health=-1,_wanted=-1,_wname='',_prompt='',_promptShown: boolean | null=null;
 let _breath=-1,_breathShown: boolean | null=null;
+let _searching=false; // last 'police searching' (blinking-stars) state pushed to the DOM
 // Letreiro de localização (estilo open-world): anuncia o nome do bairro/região ao
 // entrar numa nova e some depois de alguns segundos. _region guarda a última
 // região mostrada pra disparar a troca só quando o jogador cruza pra outra.
@@ -501,6 +503,27 @@ export function drawMinimap(): void {
     mm.beginPath();mm.arc(g.x,g.z,g.r,0,Math.PI*2);mm.fill();
     mm.strokeStyle=g.css;mm.lineWidth=2/scale;mm.stroke();
   }
+  // Police vision cones (Metal Gear Solid-style): a translucent wedge in front of every
+  // cruiser and foot officer marking exactly where it can see. It glows RED the instant
+  // that unit has eyes on you (the same cone+line-of-sight test that holds your stars
+  // solid) and sits a calm amber while it is only scanning. Drawn in world space, UNDER
+  // the badge icons, so it scales with the radar and gets clipped to the dial.
+  if(!raceOn&&!mgActive){
+    const drawCone=(cx:number,cz:number,facing:number,range:number,half:number,hot:boolean):void=>{
+      if(Math.hypot(cx-pp.x,cz-pp.z)>MM_RANGE+range)return;      // wedge can't reach the radar
+      const a=Math.atan2(Math.cos(facing),Math.sin(facing));     // world (sin,cos) → canvas angle
+      mm.beginPath();mm.moveTo(cx,cz);mm.arc(cx,cz,range,a-half,a+half);mm.closePath();
+      mm.fillStyle=hot?'rgba(255,60,60,.32)':'rgba(255,206,64,.13)';mm.fill();
+      mm.strokeStyle=hot?'rgba(255,92,92,.7)':'rgba(255,206,64,.32)';
+      mm.lineWidth=1.4/scale;mm.stroke();
+    };
+    for(const c of refs.cops||[])
+      drawCone(c.g.position.x,c.g.position.z,c.heading,COP_VIEW_RANGE,COP_VIEW_HALF,!!c.sees);
+    for(const o of refs.officers||[]){
+      if(o.dead||o.mode==='return')continue;
+      drawCone(o.g.position.x,o.g.position.z,o.g.rotation.y,OFF_VIEW_RANGE,OFF_VIEW_HALF,!!o.sees);
+    }
+  }
   mm.restore();
 
   // Blips de objetivo agora usam o MESMO esquema de ícone dos POIs (em vez de
@@ -857,6 +880,12 @@ export function updateHUD(dt: number): void {
     hudStars.forEach((s,i)=>s.classList.toggle('on',i<w));
     _wanted=w;
   }
+  // Stars blink while the police have LOST sight of a wanted player (you slipped out of
+  // every vision cone — the cooldown is now counting down) and go solid the moment a unit
+  // re-acquires you. Mirrors GTA's flashing-stars "they're searching for you" cue. This is
+  // checked every frame because `spotted` flips independently of the star count `w`.
+  const searching=w>0&&!state.spotted;
+  if(searching!==_searching){hudStarsBox?.classList.toggle('searching',searching);_searching=searching;}
   // Fôlego: aparece nadando (e até reencher fora d'água); pisca/vermelho sem ar
   if(hudBreath){
     const showB=state.swimming||state.swimAir<.999;

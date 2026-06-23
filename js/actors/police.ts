@@ -9,6 +9,7 @@ import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weap
 import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
 import {collideStatics,hasLineOfSight} from '@/core/physics.ts';
+import {COP_VIEW_RANGE,COP_VIEW_COS,COP_NEAR,OFF_VIEW_RANGE,OFF_VIEW_COS,OFF_NEAR,inCone} from '@/actors/vision.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted,player} from '@/actors/player.ts';
 import {radioMessage} from '@/ui/hud.ts';
@@ -34,6 +35,7 @@ interface Cop{
   uniform?:number;              // shirt colour (sheriff tan vs. patrol blue)
   dispatchT?:number;            // >0 = radio-dispatched to investigate (chases even at ★0)
   siren?:boolean;               // true while actively chasing (lights+siren on) — drives the audio
+  sees?:boolean;                // recomputed each frame: this unit's vision cone currently has the player (drives the radar wedge colour + the wanted cooldown)
   // road-grid route to the player (A*): a list of intersection waypoints to follow.
   path?:GridNode[];
   pathI?:number;                // current waypoint index
@@ -50,6 +52,7 @@ export class Officer extends Npc{
   shootT!:number;
   mode!:string; // 'hunt'|'return'
   rocket!:boolean;
+  sees=false;   // vision-cone has the player this frame (see policeSeesPlayer / the radar wedge)
   override aliveState():string{return this.mode==='return'?'Returning to car':'In pursuit';}
 }
 
@@ -502,13 +505,31 @@ const _mid=new THREE.Vector3();
 // Are the police currently ON you? True if an officer is on foot, or any actively-chasing
 // cruiser is within sight range. DISTANCE-based on purpose (no building occlusion): in a
 // dense city a wall between you and a cop two metres away must NOT count as "lost them" —
-// if a unit is near and chasing, it can see you, so the star must hold.
-const SEEN_RANGE=115; // metres
-function policeOnYou(pp:THREE.Vector3):boolean{
-  for(const o of officers)if(!o.dead)return true;
-  for(const c of cops)if(c.siren&&
-    Math.hypot(c.g.position.x-pp.x,c.g.position.z-pp.z)<SEEN_RANGE)return true;
-  return false;
+// MGS-style vision cones decide whether the police actually have eyes on you. A unit
+// sees the player only if they're inside its forward cone AND nothing blocks the line of
+// sight (duck behind a building and you drop out of view — that's what starts the star
+// blinking). The cheap cone test runs first; the costlier LOS ray only fires when the
+// cone already passed, so most frames this is a couple of dot products per unit. Each
+// unit's `sees` flag is stamped here for the radar wedge colour (js/ui/hud.ts).
+// Returns true if ANY unit currently has the player in view.
+function policeSeesPlayer(pp:THREE.Vector3):boolean{
+  const px=pp.x,pz=pp.z;
+  let any=false;
+  for(const c of cops){
+    const p=c.g.position;
+    const see=inCone(p.x,p.z,c.heading,px,pz,COP_VIEW_RANGE,COP_VIEW_COS,COP_NEAR)
+      &&hasLineOfSight(p.x,p.z,px,pz);
+    c.sees=see;any=any||see;
+  }
+  for(const o of officers){
+    const p=o.g.position;
+    // a downed cop, or one walking back to its cruiser, isn't looking for you
+    const see=!o.dead&&o.mode!=='return'
+      &&inCone(p.x,p.z,o.g.rotation.y,px,pz,OFF_VIEW_RANGE,OFF_VIEW_COS,OFF_NEAR)
+      &&hasLineOfSight(p.x,p.z,px,pz);
+    o.sees=see;any=any||see;
+  }
+  return any;
 }
 
 export function updateCops(dt:number){
@@ -699,7 +720,10 @@ export function updateCops(dt:number){
   // truly broken contact does a LONG grace start, after which it cools slowly. Because the
   // HUD shows floor(wanted), the visible star lasts essentially as long as this grace, so
   // it is generous on purpose — even ★1 lingers a good while after you lose them.
-  const seen=policeOnYou(pp);
+  const seen=policeSeesPlayer(pp);
+  // `spotted` = the police currently have eyes on a WANTED player. The HUD shows solid
+  // stars while spotted and blinks them the moment you break their line of sight.
+  state.spotted=seen&&state.wanted>0;
   if(seen&&state.wanted>0)state.lastCrime=state.time; // on you → heat stays maxed
   const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
   if(!sixHold&&state.wanted>0&&!seen&&state.time-state.lastCrime>WANTED_GRACE&&(refs.armyDist?.()??1e9)>90)

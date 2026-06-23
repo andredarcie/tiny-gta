@@ -5,7 +5,7 @@ import type { GameState, InputState, BestScore, Refs } from '@/core/types.ts';
 export const INITIAL_MONEY=250;
 
 export const state: GameState = {
-  started:false,paused:false,mode:'foot',money:INITIAL_MONEY,wanted:0,health:100,lastCrime:-99,
+  started:false,paused:false,mode:'foot',money:INITIAL_MONEY,wanted:0,spotted:false,health:100,lastCrime:-99,
   sixStarT:-999, // time of the last crime that reached/held 6 stars (max-star hold; see police.js)
   deliveries:0,taxiFares:0,taxiEarnings:0,bustT:0,cutT:0,cutFn:null,shake:0,time:0,comboN:0,lastHit:-99,dlgActive:false,cine:false,
   kills:0, // contador monotônico de inimigos/pedestres mortos (usado pelo Rampage)

@@ -16,6 +16,7 @@ export interface GameState {
   mode: Mode;
   money: number;
   wanted: number;
+  spotted: boolean; // police currently have a wanted player in a vision cone (HUD: solid vs blinking stars)
   health: number;
   lastCrime: number;
   sixStarT: number;
