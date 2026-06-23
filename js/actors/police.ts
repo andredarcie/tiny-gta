@@ -65,6 +65,7 @@ const SHERIFF_TAN=0x8a7a44;   // the sheriff wears a tan/khaki uniform (distinct
 const SHERIFF_BROWN=0x46381f; // sheriff trousers
 const SIX_STAR_HOLD=30;
 const ARMY_AT=6;              // the wanted star at which the sheriff calls in the army
+const BUST_TIME=5;            // seconds of officer contact before the player is booked
 let lastShout=-99;
 let radioCd=0;                // throttle between radio dispatches (one per few seconds)
 let carRadioCd=0;             // throttle for generic (non-police) vehicle-explosion calls
@@ -157,14 +158,24 @@ export function spawnCop(){
   cops.push(c);
 }
 
-// Drive a patrolling cruiser around the streets (no lights, calm speed) toward a far
-// node, re-picking when it arrives or gets stuck.
+// Drive a patrolling cruiser around the streets (no lights, calm speed). It now FOLLOWS
+// THE ROAD GRID (same A* as the chase) toward a far node, so a free-roaming patrol car
+// rounds corners on the streets instead of grinding into buildings.
 function patrolCop(c:Cop,dt:number){
   const p=c.g.position;
-  if(!c.patrolTgt||_patrol.copy(c.patrolTgt).sub(p).setY(0).length()<6||c.stuckT>1.5){
-    const[tx,tz]=farNode();c.patrolTgt=new THREE.Vector3(tx,0,tz);c.stuckT=0;
+  if(!c.patrolTgt||!c.path||_patrol.copy(c.patrolTgt).sub(p).setY(0).length()<8||c.stuckT>1.6){
+    const[tx,tz]=farNode();
+    c.patrolTgt=new THREE.Vector3(tx,0,tz);
+    c.path=gridPath(nearestNode(p.x,p.z),nearestNode(tx,tz));
+    c.pathI=Math.min(1,c.path.length-1);
+    c.stuckT=0;
   }
-  const desired=Math.atan2(c.patrolTgt.x-p.x,c.patrolTgt.z-p.z),diff=wrapA(desired-c.heading);
+  while((c.pathI??0)<c.path.length-1){
+    const w=c.path[c.pathI!];
+    if(Math.hypot(p.x-nodeX(w[0]),p.z-nodeX(w[1]))<8)c.pathI!++;else break;
+  }
+  const w=c.path[Math.min(c.pathI??0,c.path.length-1)];
+  const desired=Math.atan2(nodeX(w[0])-p.x,nodeX(w[1])-p.z),diff=wrapA(desired-c.heading);
   c.heading+=clamp(diff,-1,1)*1.8*dt;
   c.speed+=(11-c.speed)*1.2*dt;
   p.x+=Math.sin(c.heading)*c.speed*dt;
@@ -293,7 +304,9 @@ function deployOfficers(c:Cop){
   c.officers=[];
   lastDeployT=state.time; // a shot AFTER this counts as resisting arrest (→ lethal at ★1)
   const h=c.heading;
-  for(const side of[1.3,-1.3]){
+  // ONE officer per cruiser — matches the single driver who got out (1 in, 1 out). More
+  // cruisers respond as the wanted level rises, so the squad still grows with the stars.
+  for(const side of[1.1]){
     const g=makePed(c.uniform||COP_BLUE); // the sheriff's officers wear his tan uniform
     g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     const o=new Officer(g,{
@@ -434,7 +447,7 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
   if(!policeLethal){
     // ★1 SURRENDER: close right in to make the arrest, gun drawn but NEVER fired, and
     // bark a surrender order. They only turn lethal if the suspect resists (see updateCops).
-    const stop=1.6;
+    const stop=1.4;
     if(distP>stop){
       p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
       o.bob+=dt*11;animatePed(o.g,o.bob,1);
@@ -484,6 +497,33 @@ const _heliTgt=new THREE.Vector3();
 const _push=new THREE.Vector3();
 const _mid=new THREE.Vector3();
 
+// LINE OF SIGHT — does any chasing cruiser currently SEE the player (within sight range
+// and no tall building between them)? Used to keep the wanted star from EVER cooling
+// while the police have eyes on you. Reuses the city occluder boxes (refs.citySolids).
+interface Occ{x0:number;x1:number;z0:number;z1:number;h:number;}
+const SIGHT=130; // metres a cruiser can spot the suspect in the open
+function segBox(ax:number,az:number,bx:number,bz:number,o:Occ):boolean{
+  const dx=bx-ax,dz=bz-az;let t0=0,t1=1;
+  if(Math.abs(dx)<1e-9){if(ax<o.x0||ax>o.x1)return false;}
+  else{let a=(o.x0-ax)/dx,b=(o.x1-ax)/dx;if(a>b){const t=a;a=b;b=t;}t0=Math.max(t0,a);t1=Math.min(t1,b);if(t0>t1)return false;}
+  if(Math.abs(dz)<1e-9){if(az<o.z0||az>o.z1)return false;}
+  else{let a=(o.z0-az)/dz,b=(o.z1-az)/dz;if(a>b){const t=a;a=b;b=t;}t0=Math.max(t0,a);t1=Math.min(t1,b);if(t0>t1)return false;}
+  return t1>=t0;
+}
+function copSeesPlayer(pp:THREE.Vector3):boolean{
+  const solids=refs.citySolids as Occ[]|undefined;
+  for(const c of cops){
+    if(!c.siren)continue; // only an actively-chasing unit is "looking"
+    const cx=c.g.position.x,cz=c.g.position.z;
+    if(Math.hypot(cx-pp.x,cz-pp.z)>SIGHT)continue;
+    if(!solids)return true;
+    let blocked=false;
+    for(const b of solids){if(b.h<3)continue;if(segBox(cx,cz,pp.x,pp.z,b)){blocked=true;break;}}
+    if(!blocked)return true;
+  }
+  return false;
+}
+
 export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
   if(radioCd>0)radioCd-=dt;
@@ -507,7 +547,6 @@ export function updateCops(dt:number){
   // ★6 (the army takes over). The rest keep patrolling the streets.
   const chasers=(want>0&&want<6)?Math.min(POOL,want):0;
   const pp=playerPos();
-  let minD=1e9;
   let ci=0;
   for(const c of cops){
     const p=c.g.position;
@@ -516,15 +555,16 @@ export function updateCops(dt:number){
     // looks genuinely EMPTY (no fake third cop still sitting inside); shown again on re-board.
     if(c.driver)c.driver.visible=!(c.officers&&c.officers.length);
     if(c.dispatchT&&c.dispatchT>0)c.dispatchT-=dt;
-    // chases if its slot is responding to the star OR it was radio-dispatched to a
-    // shots-fired call (so a single shot already sends the nearest unit to investigate).
-    if(ci++>=chasers&&!(c.dispatchT&&c.dispatchT>0)){ // not responding → recall officers + patrol
-      if(c.officers)for(const o of c.officers)o.mode='return';
+    // chases if its slot is responding to the star, OR it was radio-dispatched, OR it
+    // already has officers out (a cruiser COMMITS to its arrest — it is never yanked back
+    // to patrol while its men are on foot next to you, which used to abort the bust).
+    const hasMen=!!(c.officers&&c.officers.length);
+    if(ci++>=chasers&&!(c.dispatchT&&c.dispatchT>0)&&!hasMen){ // not responding → patrol
+      if(c.siren){c.patrolTgt=null;c.path=undefined;} // just stopped chasing → re-plan a patrol route
       c.siren=false; // patrolling: lights & siren off
       patrolCop(c,dt);
       continue;
     }
-    minD=Math.min(minD,dist);
     c.siren=true;  // chasing: lights & siren on (the audio fades in by distance)
     blinkBar(c.g);
     if(c.officers){
@@ -620,6 +660,21 @@ export function updateCops(dt:number){
 
   for(let i=officers.length-1;i>=0;i--)updateOfficer(officers[i],dt,pp);
 
+  // Separation: deployed officers never pile into one another (push apart any that touch),
+  // so two cops from different cruisers don't end up standing inside the same body.
+  for(let i=0;i<officers.length;i++){
+    const a=officers[i];if(a.dead)continue;
+    for(let j=i+1;j<officers.length;j++){
+      const b=officers[j];if(b.dead)continue;
+      const sx=a.g.position.x-b.g.position.x,sz=a.g.position.z-b.g.position.z,sd=Math.hypot(sx,sz);
+      if(sd<1.4&&sd>.001){
+        const push=(1.4-sd)*.5/sd;
+        a.g.position.x+=sx*push;a.g.position.z+=sz*push;
+        b.g.position.x-=sx*push;b.g.position.z-=sz*push;
+      }
+    }
+  }
+
   for(let i=copMissiles.length-1;i>=0;i--){
     const m=copMissiles[i];
     const step=26*dt;
@@ -641,21 +696,23 @@ export function updateCops(dt:number){
   let nearOff=1e9;
   for(const o of officers)if(!o.dead)
     nearOff=Math.min(nearOff,Math.hypot(pp.x-o.g.position.x,pp.z-o.g.position.z));
-  // Arrest now REQUIRES an officer ON FOOT close by — the cruiser alone can't bust you,
-  // so the police must always get out of the car to make the arrest. Radius is generous
-  // so once an officer reaches you (surrender approach stops at ~1.6m) the bust is steady.
-  const cornered=nearOff<4.5&&pp.y<3;
-  if(state.wanted>0&&cornered&&                       // only an actually-wanted player is arrested
-    (state.mode==='foot'||Math.abs(cur?.speed||0)<3.5)){
+  // Arrest REQUIRES an officer ON FOOT in contact — the cruiser alone can't bust you, so
+  // the police must always get out of the car. Once an officer is on you (in contact for
+  // ~5s), you're booked. The radius is generous so the contact is steady, and it drains
+  // slowly so a brief step away doesn't reset the whole countdown.
+  const inContact=nearOff<5.5&&pp.y<3&&
+    (state.mode==='foot'||Math.abs(cur?.speed||0)<3.5);
+  if(state.wanted>0&&inContact){
     state.bustT+=dt;
-    if(state.bustT>.4)message('THE POLICE ARE SURROUNDING YOU!','var(--blue)');
-    if(state.bustT>1.8){getBusted();return;}
-  }else state.bustT=Math.max(0,state.bustT-dt*2);
-  // The star NEVER cools while the police are actively on you — officers out on foot, or
-  // a chasing cruiser within sight (~110m). Only once you've truly shaken them (and given
-  // a longer grace after the last crime) does it tick down, and it does so slowly.
-  const engaged=officers.length>0||minD<110;
+    if(state.bustT>.4)message('THE POLICE HAVE YOU SURROUNDED!','var(--blue)');
+    if(state.bustT>=BUST_TIME){getBusted();return;}
+  }else state.bustT=Math.max(0,state.bustT-dt*1.2);
+  // The star NEVER cools while the police can SEE you (officers on foot, or a chasing
+  // cruiser with line-of-sight): being seen keeps the heat fresh every frame. Only once
+  // you've truly broken contact (and after a grace period) does it tick down slowly.
+  const seen=officers.length>0||copSeesPlayer(pp);
+  if(seen&&state.wanted>0)state.lastCrime=state.time; // in sight → heat stays maxed
   const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
-  if(!sixHold&&state.wanted>0&&!engaged&&state.time-state.lastCrime>14&&(refs.armyDist?.()??1e9)>90)
+  if(!sixHold&&state.wanted>0&&!seen&&state.time-state.lastCrime>14&&(refs.armyDist?.()??1e9)>90)
     state.wanted=Math.max(0,state.wanted-dt/8);
 }
