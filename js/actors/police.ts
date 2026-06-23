@@ -66,6 +66,8 @@ const SHERIFF_BROWN=0x46381f; // sheriff trousers
 const SIX_STAR_HOLD=30;
 const ARMY_AT=6;              // the wanted star at which the sheriff calls in the army
 const BUST_TIME=5;            // seconds of officer contact before the player is booked
+const WANTED_GRACE=24;        // seconds after losing the police before the star starts to cool
+const WANTED_COOL=10;         // seconds to shed one star once it finally starts cooling
 let lastShout=-99;
 let radioCd=0;                // throttle between radio dispatches (one per few seconds)
 let carRadioCd=0;             // throttle for generic (non-police) vehicle-explosion calls
@@ -497,30 +499,15 @@ const _heliTgt=new THREE.Vector3();
 const _push=new THREE.Vector3();
 const _mid=new THREE.Vector3();
 
-// LINE OF SIGHT — does any chasing cruiser currently SEE the player (within sight range
-// and no tall building between them)? Used to keep the wanted star from EVER cooling
-// while the police have eyes on you. Reuses the city occluder boxes (refs.citySolids).
-interface Occ{x0:number;x1:number;z0:number;z1:number;h:number;}
-const SIGHT=130; // metres a cruiser can spot the suspect in the open
-function segBox(ax:number,az:number,bx:number,bz:number,o:Occ):boolean{
-  const dx=bx-ax,dz=bz-az;let t0=0,t1=1;
-  if(Math.abs(dx)<1e-9){if(ax<o.x0||ax>o.x1)return false;}
-  else{let a=(o.x0-ax)/dx,b=(o.x1-ax)/dx;if(a>b){const t=a;a=b;b=t;}t0=Math.max(t0,a);t1=Math.min(t1,b);if(t0>t1)return false;}
-  if(Math.abs(dz)<1e-9){if(az<o.z0||az>o.z1)return false;}
-  else{let a=(o.z0-az)/dz,b=(o.z1-az)/dz;if(a>b){const t=a;a=b;b=t;}t0=Math.max(t0,a);t1=Math.min(t1,b);if(t0>t1)return false;}
-  return t1>=t0;
-}
-function copSeesPlayer(pp:THREE.Vector3):boolean{
-  const solids=refs.citySolids as Occ[]|undefined;
-  for(const c of cops){
-    if(!c.siren)continue; // only an actively-chasing unit is "looking"
-    const cx=c.g.position.x,cz=c.g.position.z;
-    if(Math.hypot(cx-pp.x,cz-pp.z)>SIGHT)continue;
-    if(!solids)return true;
-    let blocked=false;
-    for(const b of solids){if(b.h<3)continue;if(segBox(cx,cz,pp.x,pp.z,b)){blocked=true;break;}}
-    if(!blocked)return true;
-  }
+// Are the police currently ON you? True if an officer is on foot, or any actively-chasing
+// cruiser is within sight range. DISTANCE-based on purpose (no building occlusion): in a
+// dense city a wall between you and a cop two metres away must NOT count as "lost them" —
+// if a unit is near and chasing, it can see you, so the star must hold.
+const SEEN_RANGE=115; // metres
+function policeOnYou(pp:THREE.Vector3):boolean{
+  if(officers.length>0)return true;
+  for(const c of cops)if(c.siren&&
+    Math.hypot(c.g.position.x-pp.x,c.g.position.z-pp.z)<SEEN_RANGE)return true;
   return false;
 }
 
@@ -707,12 +694,14 @@ export function updateCops(dt:number){
     if(state.bustT>.4)message('THE POLICE HAVE YOU SURROUNDED!','var(--blue)');
     if(state.bustT>=BUST_TIME){getBusted();return;}
   }else state.bustT=Math.max(0,state.bustT-dt*1.2);
-  // The star NEVER cools while the police can SEE you (officers on foot, or a chasing
-  // cruiser with line-of-sight): being seen keeps the heat fresh every frame. Only once
-  // you've truly broken contact (and after a grace period) does it tick down slowly.
-  const seen=officers.length>0||copSeesPlayer(pp);
-  if(seen&&state.wanted>0)state.lastCrime=state.time; // in sight → heat stays maxed
+  // The star NEVER cools while the police are on you (an officer on foot, or a chasing
+  // cruiser within range): being seen keeps the heat maxed every frame. Only once you've
+  // truly broken contact does a LONG grace start, after which it cools slowly. Because the
+  // HUD shows floor(wanted), the visible star lasts essentially as long as this grace, so
+  // it is generous on purpose — even ★1 lingers a good while after you lose them.
+  const seen=policeOnYou(pp);
+  if(seen&&state.wanted>0)state.lastCrime=state.time; // on you → heat stays maxed
   const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
-  if(!sixHold&&state.wanted>0&&!seen&&state.time-state.lastCrime>14&&(refs.armyDist?.()??1e9)>90)
-    state.wanted=Math.max(0,state.wanted-dt/8);
+  if(!sixHold&&state.wanted>0&&!seen&&state.time-state.lastCrime>WANTED_GRACE&&(refs.armyDist?.()??1e9)>90)
+    state.wanted=Math.max(0,state.wanted-dt/WANTED_COOL);
 }
