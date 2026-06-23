@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {scene,renderer} from '@/core/engine.ts';
-import {cityCoastR,ruralHalf,RURAL_X0,RURAL_TIP}
+import {cityCoastR,ruralHalf,RURAL_X0,RURAL_TIP,RIVER_CX,RIVER_HW}
   from '@/core/constants.ts';
 import {makeRng} from '@/core/rng.ts';
 // Seeded so the coast sand-speckle texture is identical every load.
@@ -67,9 +67,12 @@ function cityShape(extra=0): THREE.Shape{
 }
 
 // --- contorno da península (percorre a borda norte e volta pela sul) ---
-function ruralShape(extra=0): THREE.Shape{
+// xa/xb permitem desenhar só um trecho em x: a areia é montada em DUAS partes que
+// pulam o estreito navegável do rio (constants.ts), deixando o canal sem areia pra
+// o mar global aflorar como água (senão a faixa de areia a -0.06 taparia o rio).
+function ruralShape(extra=0,xa=RURAL_X0-8,xb=RURAL_TIP): THREE.Shape{
   const sh=new THREE.Shape();
-  const x0=RURAL_X0-8, x1=RURAL_TIP, step=5;
+  const x0=xa, x1=xb, step=5;
   let first=true;
   for(let x=x0;x<=x1;x+=step){            // borda norte: z = +ruralHalf
     const z=ruralHalf(x)+extra*(ruralHalf(x)>0?1:0);
@@ -140,7 +143,10 @@ export function buildIsland(): Foam[]{
   // 1) AREIA: disco irregular da cidade + franja da península (preenchidos; o
   //    chão/gramado cobrem o miolo, a areia só assoma na orla)
   layFlat(new THREE.ShapeGeometry(cityShape(0)),sandMat,SAND_Y);
-  layFlat(new THREE.ShapeGeometry(ruralShape(0)),sandMat,SAND_Y);
+  // A península é cortada por um estreito navegável: duas faixas de areia, oeste e
+  // leste do canal, deixando a boca do rio sem areia (o mar aflora ali).
+  layFlat(new THREE.ShapeGeometry(ruralShape(0,RURAL_X0-8,RIVER_CX-RIVER_HW)),sandMat,SAND_Y);
+  layFlat(new THREE.ShapeGeometry(ruralShape(0,RIVER_CX+RIVER_HW,RURAL_TIP)),sandMat,SAND_Y);
 
   // 2) RASO turquesa: dois anéis seguindo a costa, logo acima do mar (a borda
   //    interna tuca sob a areia → sem emenda; o miolo fica vazado → sem overdraw)

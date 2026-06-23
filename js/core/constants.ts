@@ -79,6 +79,59 @@ export function ruralHillH(x: number, z: number): number {
   const h=.5+.5*Math.sin(x*.085+z*.05)*Math.cos(z*.07-x*.035+.6); // hummocks irregulares
   return env*h*HILL_AMP;
 }
+// ===== Rio + ponte cartão-postal entre a cidade e a península rural ==========
+// Um ESTREITO navegável corta a península de norte a sul, separando o lado da
+// cidade do lado rural; a estrada central (z=0) o cruza por uma PONTE SUSPENSA que
+// é o cartão-postal do mapa. Como a montanha e a ilha, tudo nasce de funções
+// ÚNICAS compartilhadas pela física (groundHeight/isLand) e pelo visual (a malha da
+// ponte e o gramado rural rebaixado):
+//  - o LEITO é cavado ABAIXO do mar (sea.ts, y=-0.32), então o mar global aflora
+//    sozinho como água navegável — sem precisar de uma malha d'água própria;
+//  - o TABULEIRO entra no groundHeight, então carro/pedestre/trânsito rural sobem
+//    na MESMA rampa que se vê e não afundam (isLand devolve "terra" no tabuleiro);
+//  - a LANCHA ignora o relevo (boia na linha d'água), então cruza POR BAIXO do vão
+//    (ver updateBoat + underBridge em player.ts).
+// Min/max inline (sem clamp) pra evitar a zona-morta (TDZ) do const, igual islandHeight.
+export const RIVER_CX=250;            // centro x do estreito (corta a península em z)
+export const RIVER_HW=26;             // meia-largura do canal navegável (x)
+export const RIVER_BED=-3.2;          // profundidade do leito cavado (bem abaixo do mar)
+export const BRIDGE_DECK_HW=8;        // meia-largura do tabuleiro (z): leva a estrada z=0
+export const BRIDGE_H=6;              // altura do tabuleiro (vão livre pra lancha por baixo)
+export const BRIDGE_RAMP=18;          // comprimento da rampa de acesso em cada margem
+export const BRIDGE_X0=RIVER_CX-RIVER_HW-BRIDGE_RAMP; // pé da rampa, margem oeste (cidade)
+export const BRIDGE_X1=RIVER_CX+RIVER_HW+BRIDGE_RAMP; // pé da rampa, margem leste (rural)
+// Perfil de altura do tabuleiro ao longo do x. 0 fora da faixa do tabuleiro; nela
+// sobe 0→BRIDGE_H pela rampa (smoothstep, sem quina no pé), fica plano sobre o vão e
+// desce de novo na outra margem. A MESMA curva monta a malha do tabuleiro
+// (assets/models/environment/suspension-bridge.ts), então o asfalto bate 1:1 com o
+// chão que o carro pisa.
+export function bridgeDeckH(x: number, z: number): number{
+  if(x<=BRIDGE_X0||x>=BRIDGE_X1)return 0;
+  if(Math.abs(z)>BRIDGE_DECK_HW)return 0;
+  const wb=RIVER_CX-RIVER_HW, eb=RIVER_CX+RIVER_HW; // margens d'água
+  let t;                                            // 0 nos pés das rampas, 1 no vão plano
+  if(x<wb)t=(x-BRIDGE_X0)/BRIDGE_RAMP;
+  else if(x>eb)t=(BRIDGE_X1-x)/BRIDGE_RAMP;
+  else t=1;
+  if(t<0)t=0;else if(t>1)t=1;
+  return BRIDGE_H*t*t*(3-2*t);
+}
+// Leito do rio: canal de fundo chato atravessando o estreito, cavado ABAIXO do mar
+// pra o mar global preencher como água aberta. 0 fora da faixa (dx>=RIVER_HW). Sobe
+// de volta a 0 numa parede curta (~4m) junto à margem, então a linha d'água do isLand
+// (dx<RIVER_HW) bate com onde a grama mergulha — sem "nadar na grama" na beirada.
+export function riverBedH(x: number): number{
+  const dx=Math.abs(x-RIVER_CX);
+  if(dx>=RIVER_HW)return 0;
+  let t=(RIVER_HW-dx)/4;          // 0 na margem, 1 a ~4m pra dentro do canal
+  if(t<0)t=0;else if(t>1)t=1;
+  return RIVER_BED*t*t*(3-2*t);   // smoothstep curto: parede de margem em ~4m, fundo chato
+}
+// Está dentro da faixa d'água do estreito (em x)? Fonte única pro isLand (água do
+// canal) e pra lancha (underBridge, pra deslizar por baixo do tabuleiro).
+export function inRiverStrait(x: number): boolean{
+  return Math.abs(x-RIVER_CX)<RIVER_HW;
+}
 // ===== Ilha paradisíaca a oeste: alcançável de barco e explorável a pé ========
 // Uma ilha isolada bem a oeste, em mar aberto além do anel da prova de lanchas
 // (costa a leste ~x=-331, longe da reta oeste da prova em ~-273). Como a montanha,
@@ -135,6 +188,8 @@ export function groundHeight(x: number, z: number): number {
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2){const ih=islandHeight(x,z);if(ih>0)return ih;}
   }
+  const b=bridgeDeckH(x,z);if(b>0)return b;   // sobre o tabuleiro da ponte: dirige/anda na rampa
+  const r=riverBedH(x);if(r<0)return r;        // dentro do estreito (fora do tabuleiro): leito submerso
   return ruralHillH(x,z)+mountainH(x,z)+cityCurbH(x,z);
 }
 // ===== Ilha: costa irregular unificada (fonte ÚNICA de verdade) ============
@@ -191,6 +246,9 @@ export function isLand(x: number, z: number): boolean {
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2&&Math.hypot(dx,dz)<islandCoastR(Math.atan2(dz,dx)))return true;
   }
+  // estreito do rio: água aberta cortando a península, EXCETO o tabuleiro da ponte
+  // (travessia seca). A lancha cruza POR BAIXO do tabuleiro via underBridge (player.ts).
+  if(inRiverStrait(x))return bridgeDeckH(x,z)>0;
   const rh=ruralHalf(x);
   if(rh>0&&Math.abs(z)<=rh)return true;           // península
   const ax=Math.abs(x),az=Math.abs(z),cheb=ax>az?ax:az;

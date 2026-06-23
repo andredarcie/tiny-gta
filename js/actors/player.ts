@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
-  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z} from '@/core/constants.ts';
+  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z,RIVER_CX,RIVER_HW,BRIDGE_DECK_HW} from '@/core/constants.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
@@ -884,9 +884,14 @@ function updateWake(dt:number){
 // Lancha: o oposto do carro — voa sobre a água e ENCALHA na areia/terra.
 // Quica de leve parada, levanta a proa ao planar e inclina pra dentro da curva.
 const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.ts)
+// Sob o tabuleiro da ponte, isLand devolve "terra" (carro/pedestre andam por cima),
+// então inWater seria falso bem no meio do estreito e a lancha "encalharia" no vão.
+// underBridge devolve a água ali: a lancha boia na linha d'água e cruza por baixo.
+const underBridge=(x:number,z:number):boolean=>
+  Math.abs(x-RIVER_CX)<RIVER_HW&&Math.abs(z)<=BRIDGE_DECK_HW;
 function updateBoat(dt:number){
   const c=cur!,p=c.g.position;
-  const onWater=inWater(p);
+  const onWater=inWater(p)||underBridge(p.x,p.z);
   // boarding a boat gets the player out of the water: breath recovers just like
   // stepping back onto land (see updateFoot).
   if(state.swimAir<1)state.swimAir=Math.min(1,state.swimAir+dt*.55);

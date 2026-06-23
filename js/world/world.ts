@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {N,CELL,ROAD,BLOCK,SIDE,HALF,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
   RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,
-  TOWN_CX,ruralRoadPath,groundHeight,ruralHillH} from '@/core/constants.ts';
+  TOWN_CX,ruralRoadPath,groundHeight,ruralHillH,riverBedH,
+  RIVER_CX,RIVER_HW,BRIDGE_X0,BRIDGE_X1,BRIDGE_DECK_HW} from '@/core/constants.ts';
 import {scene,renderer} from '@/core/engine.ts';
 // Fixed, baked world layout. Every procedurally-placed object (city lots, park
 // vegetation, beach props, the whole forest, mountain rocks) is read from this
@@ -59,6 +60,7 @@ import {buildIslandParadise,updateIslandFoam} from '../../assets/models/terrain/
 import {addBeachRock} from '../../assets/models/terrain/beach-rock.ts';
 import {makeMountain} from '../../assets/models/terrain/mountain.ts';
 import {addMountainRock} from '../../assets/models/terrain/mountain-rock.ts';
+import {addSuspensionBridge} from '../../assets/models/environment/suspension-bridge.ts';
 
 // Static collision boxes (AABBs in world space) pushed by the model add*() calls.
 type Solid={x0:number;x1:number;z0:number;z1:number;h:number};
@@ -342,8 +344,13 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   const rcx=RURAL_X0+RW/2;
   const rgeo=new THREE.PlaneGeometry(RW,RD,Math.round(RW/5),Math.round(RD/5));
   const rpos=rgeo.attributes.position;
-  for(let k=0;k<rpos.count;k++)
-    rpos.setZ(k,ruralHillH(rpos.getX(k)+rcx,-rpos.getY(k)));
+  for(let k=0;k<rpos.count;k++){
+    const wx=rpos.getX(k)+rcx,wz=-rpos.getY(k);
+    // O estreito do rio rebaixa a grama ABAIXO do mar (riverBedH<0): o mar global
+    // (sea.ts, y=-0.32) aflora como água navegável. Fora dele, colinas suaves.
+    const rb=riverBedH(wx);
+    rpos.setZ(k,rb<0?rb:ruralHillH(wx,wz));
+  }
   rgeo.computeVertexNormals();
   const ground=new THREE.Mesh(rgeo,new THREE.MeshLambertMaterial({map:t}));
   ground.rotation.x=-Math.PI/2;ground.position.set(rcx,-.02,0);
@@ -368,6 +375,11 @@ for(const[x,z,r]of FARMHOUSES)solids.push(addFarmHouse(x,z,r));
 // Barn + silo footprint centre (see addBarnWithSilo: placed at 250+gap,-34).
 const BARN_CX=250+RURAL_GAP,BARN_CZ=-34;
 
+// Ponte suspensa cartão-postal sobre o estreito do rio, na saída da cidade pra
+// zona rural (centro do vão em RIVER_CX). Leva a estrada z=0 por cima; a lancha
+// passa por baixo (ver constants.ts: bridgeDeckH/riverBedH/isLand e player.ts).
+addSuspensionBridge(solids);
+
 // celeiro vermelho com silo
 addBarnWithSilo(solids);
 
@@ -391,11 +403,17 @@ addWeedFarm(solids);
   // undergrowth and the mushroom/log decay detail) is baked into world.json — see
   // js/world/world-gen.ts for the clustering/exclusion rules. Every prop merges into the
   // batched chunk meshes at finalizeProps, so a thick wood is nearly free.
+  // O estreito do rio e o corredor da ponte abrem um rasgo na península: nenhum
+  // prop pode nascer dentro d'água nem sobre o tabuleiro/rampas. Limpa a faixa do
+  // canal (com folga pra margem submersa) e o corredor da estrada na ponte.
+  const inRiverGap=(x:number,z:number):boolean=>
+    Math.abs(x-RIVER_CX)<RIVER_HW+3 ||
+    (x>BRIDGE_X0-2&&x<BRIDGE_X1+2&&Math.abs(z)<BRIDGE_DECK_HW+3);
   const f=worldData.forest;
-  for(const o of f.trees)plantSmall(o.t,o.x,o.z);    // 'pine' | 'tree'
-  for(const o of f.bushes)addBush(o.x,o.z);
-  for(const o of f.ferns)addFern(o.x,o.z);
-  for(const o of f.details)plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
+  for(const o of f.trees)if(!inRiverGap(o.x,o.z))plantSmall(o.t,o.x,o.z);    // 'pine' | 'tree'
+  for(const o of f.bushes)if(!inRiverGap(o.x,o.z))addBush(o.x,o.z);
+  for(const o of f.ferns)if(!inRiverGap(o.x,o.z))addFern(o.x,o.z);
+  for(const o of f.details)if(!inRiverGap(o.x,o.z))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
 }
 
 // fardos de feno nas roças
