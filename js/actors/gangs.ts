@@ -39,6 +39,7 @@ export class GangMember extends Npc{
   tgt!:THREE.Vector3|null;
   tgtT!:number;
   override aliveState():string{return this.aiState==='aggro'?'Attacking':'Roaming turf';}
+  override pathTarget():{x:number;z:number}|null{return this.tgt?{x:this.tgt.x,z:this.tgt.z}:null;}
 }
 
 // A bullet-trail line that fades out over a fraction of a second.

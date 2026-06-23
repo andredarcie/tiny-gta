@@ -3,7 +3,8 @@ import {state,refs} from '@/core/state.ts';
 import {groundHeight,rand,irand} from '@/core/constants.ts';
 import {addWanted} from '@/core/physics.ts';
 import {spawnDrop} from '@/story/missions.ts';
-import {setOpacity} from '@/core/entities.ts';
+import {setOpacity,addFemaleLook,vehicleOccupants} from '@/core/entities.ts';
+import {scene} from '@/core/engine.ts';
 
 // ============================================================================
 // BASE class for EVERY NPC in the game. It centralises the SHARED behaviour —
@@ -81,6 +82,9 @@ interface NpcOpts{
   // — they still INHERIT this base class (so 100% of NPCs share it), but the unified
   // weapon scan skips them so existing mini-game logic is untouched.
   register?:boolean;
+  // Apply the female appearance (long hair + bust + lips) when gender is 'F'.
+  // Default true; non-humanoid NPCs (e.g. forest sickos) pass false.
+  femaleLook?:boolean;
 }
 
 // Global registry of all NPCs (the combat scan iterates this). Holds the unified
@@ -138,7 +142,7 @@ export class Npc{
 
   constructor(g:THREE.Object3D,{
     kind='npc',hp=1,drop=null,wanted=0,wantedMsg='SHOT FIRED!',crime='npc_shot',
-    name,gender,punchToDown=3,showLabel=false,area='Cidade',register=true,
+    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,
   }:NpcOpts={}){
     this.g=g;
     this.kind=kind;
@@ -154,6 +158,7 @@ export class Npc{
     this.wantedMsg=wantedMsg;this.crime=crime;
     const g2:'M'|'F'=gender??(Math.random()<.5?'M':'F');
     this.gender=g2;
+    if(g2==='F'&&femaleLook)addFemaleLook(g); // women get the female appearance
     this.name=name??pickName(g2);
     this.homeX=g.position.x;
     this.homeZ=g.position.z;
@@ -185,6 +190,10 @@ export class Npc{
   }
   aliveState():string{return 'Active';}
 
+  // Where this NPC is currently headed, in WORLD x/z (for the full-map path trail).
+  // Base returns null (no known path); wandering subclasses override it.
+  pathTarget():{x:number;z:number}|null{return null;}
+
   takeDamage(dir?:THREE.Vector3,dmg=1){
     if(this.dead)return;
     this.hp-=dmg;
@@ -204,7 +213,12 @@ export class Npc{
     this.onDeath?.(dir);
   }
 
-  updateRagdoll(dt:number){
+  // Animate the death tumble. With fade=true (default) the body fades out after a
+  // few seconds (the old behaviour: rural folk revive, gang bodies vanish). With
+  // fade=false the body stays put as a CORPSE — used by city peds, whose bodies the
+  // ambulance service later collects (see js/world/body-recovery.ts). Returns true once
+  // the body has come to rest.
+  updateRagdoll(dt:number,fade=true){
     this.deadT+=dt;
     const gy=groundHeight(this.g.position.x,this.g.position.z);
     if(!this.grounded){
@@ -214,7 +228,7 @@ export class Npc{
         this.g.position.y=gy+.35;this.grounded=true;
         this.g.rotation.set(-Math.PI/2,this.g.rotation.y,0);
       }
-    }else if(this.deadT>5){
+    }else if(fade&&this.deadT>5){
       setOpacity(this.g,Math.max(0,1-(this.deadT-5)/1));
     }
     return this.deadT>6;
@@ -247,27 +261,63 @@ export class Npc{
 }
 
 // ---------------------------------------------------------------------------
-// Floating name labels — call once per frame from the main loop.
-// Only shows labels for NPCs within LABEL_DIST of the player and in front of camera.
+// Floating name labels — call once per frame from the main loop. Shows a name tag
+// for any labelled NPC that is within LABEL_DIST, in front of the camera AND not
+// hidden behind a building. Iterates allNpcs so interior NPCs (register:false) are
+// covered too; uses WORLD position so nested (interior) dolls project correctly.
 // ---------------------------------------------------------------------------
 const LABEL_DIST=20;
-const _lp=new THREE.Vector3();
+const _wp=new THREE.Vector3();
+// An occluder solid: only walls/buildings (tall boxes) should hide a label, not low
+// props/curbs — so we ignore anything shorter than a person+label.
+interface OccluderBox{x0:number;x1:number;z0:number;z1:number;h:number;}
+const OCCLUDE_MIN_H=2;
+
+// 2D segment (a→b) vs an axis-aligned rectangle, slab method. Used to tell whether a
+// building stands between the camera and an NPC (so its name tag must be hidden).
+function segHitsBox(ax:number,az:number,bx:number,bz:number,b:OccluderBox):boolean{
+  const dx=bx-ax,dz=bz-az;
+  let t0=0,t1=1;
+  // X slab
+  if(Math.abs(dx)<1e-9){if(ax<b.x0||ax>b.x1)return false;}
+  else{
+    let ta=(b.x0-ax)/dx,tb=(b.x1-ax)/dx;if(ta>tb){const t=ta;ta=tb;tb=t;}
+    t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return false;
+  }
+  // Z slab
+  if(Math.abs(dz)<1e-9){if(az<b.z0||az>b.z1)return false;}
+  else{
+    let ta=(b.z0-az)/dz,tb=(b.z1-az)/dz;if(ta>tb){const t=ta;ta=tb;tb=t;}
+    t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return false;
+  }
+  return t1>=t0;
+}
 
 export function updateNpcLabels(camera:THREE.Camera,playerPos:THREE.Vector3){
-  for(const n of npcs){
+  const solids=refs.citySolids as OccluderBox[]|undefined;
+  const camX=camera.position.x,camZ=camera.position.z;
+  for(const n of allNpcs){
     const el=n.label;
     if(!el)continue;
     if(n.dead||n.hospitalT>0||!n.g.visible){el.style.display='none';continue;}
-    const dist=n.g.position.distanceTo(playerPos);
-    if(dist>LABEL_DIST){el.style.display='none';continue;}
-    _lp.copy(n.g.position).setY(n.g.position.y+2.2);
-    _lp.project(camera as THREE.PerspectiveCamera);
-    if(_lp.z>=1){el.style.display='none';continue;}
-    const x=(_lp.x*.5+.5)*100;
-    const y=(.5-_lp.y*.5)*100;
+    n.g.getWorldPosition(_wp);
+    const dx=_wp.x-playerPos.x,dz=_wp.z-playerPos.z;
+    if(dx*dx+dz*dz>LABEL_DIST*LABEL_DIST){el.style.display='none';continue;}
+    // occlusion: a building between the camera and the NPC hides the tag
+    if(solids){
+      let blocked=false;
+      for(const b of solids){
+        if(b.h<OCCLUDE_MIN_H)continue;
+        if(segHitsBox(camX,camZ,_wp.x,_wp.z,b)){blocked=true;break;}
+      }
+      if(blocked){el.style.display='none';continue;}
+    }
+    _wp.y+=2.2; // float above the head
+    _wp.project(camera as THREE.PerspectiveCamera);
+    if(_wp.z>=1){el.style.display='none';continue;} // behind the camera
     el.style.display='block';
-    el.style.left=x+'%';
-    el.style.top=y+'%';
+    el.style.left=(_wp.x*.5+.5)*100+'%';
+    el.style.top=(.5-_wp.y*.5)*100+'%';
   }
 }
 
@@ -291,8 +341,49 @@ const KIND_LABELS:Record<string,string>={
   ped:'Civilian',gang:'Gang',officer:'Police',rural:'Country folk',
   soldier:'Army',criminal:'Criminal',patient:'Injured',story:'Story',
   sicko:'Sicko',npc:'NPC',
+  // interior NPCs
+  dancer:'Clubber',gymgoer:'Gym-goer',guard:'Guard',inmate:'Inmate',
+  clerk:'Clerk',medic:'Hospital',fare:'Passenger',buyer:'Buyer',
+  driver:'Driver',
 };
 export function kindLabel(kind:string):string{return KIND_LABELS[kind]||kind;}
+
+// Tag an already-built interior doll (club dancer, jail guard, shop clerk, …) as a
+// named NPC: it gets an identity + a floating name tag + a roster entry, with
+// register:false so it never joins the combat scan. Returns the Npc (usually unused;
+// the doll keeps being animated by its own interior system). This is how interior
+// people get names so 100% of the game's NPCs are named.
+export function nameInteriorNpc(g:THREE.Object3D,kind:string,area:string):Npc{
+  return new Npc(g,{kind,register:false,showLabel:true,area});
+}
+
+// Is an object still part of the live scene graph (vs. removed with its vehicle)?
+function attachedToScene(o:THREE.Object3D):boolean{
+  let p:THREE.Object3D|null=o.parent;
+  while(p){if(p===scene)return true;p=p.parent;}
+  return false;
+}
+
+// Runtime reconcile of seated vehicle occupants (car drivers, boat crew). Every
+// driver doll registered by seatDriver becomes a named Npc so it shows in the roster;
+// when its vehicle is removed from the scene the Npc is reaped, keeping the census
+// leak-free without coupling the vehicle systems to the NPC class. Called each frame
+// from the main loop. register:false (drivers aren't shot) and no floating tag (a
+// name over every passing car would be noise — they appear in the modal instead).
+export function reconcileVehicleNpcs():void{
+  for(let i=vehicleOccupants.length-1;i>=0;i--){
+    const d=vehicleOccupants[i];
+    const live=attachedToScene(d);
+    const npc=d.userData.occupantNpc as Npc|undefined;
+    if(live&&!npc){
+      d.userData.occupantNpc=new Npc(d,{kind:'driver',register:false,showLabel:false,area:'On the road'});
+    }else if(!live&&npc){
+      npc.despawn();
+      d.userData.occupantNpc=undefined;
+      vehicleOccupants.splice(i,1);
+    }
+  }
+}
 
 export function getNpcRoster():NpcRosterEntry[]{
   const out=allNpcs.map(n=>({
@@ -300,5 +391,24 @@ export function getNpcRoster():NpcRosterEntry[]{
     x:Math.round(n.g.position.x),z:Math.round(n.g.position.z),
   }));
   out.sort((a,b)=>a.kind===b.kind?a.name.localeCompare(b.name):a.kind.localeCompare(b.kind));
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// Live map blips — feeds the full-map "Show NPCs" overlay. One entry per LIVING
+// NPC in WORLD coordinates, with its current path target (for the trail). Skips
+// the dead/hospitalised. Uses world position so nested (interior) NPCs report true
+// coords (interiors are off-map, so the map naturally clips them out).
+// ---------------------------------------------------------------------------
+export interface NpcMapBlip{x:number;z:number;kind:string;tx:number|null;tz:number|null;}
+const _mwp=new THREE.Vector3();
+export function getNpcMapBlips():NpcMapBlip[]{
+  const out:NpcMapBlip[]=[];
+  for(const n of allNpcs){
+    if(n.dead||n.hospitalT>0)continue;
+    n.g.getWorldPosition(_mwp);
+    const t=n.pathTarget();
+    out.push({x:_mwp.x,z:_mwp.z,kind:n.kind,tx:t?t.x:null,tz:t?t.z:null});
+  }
   return out;
 }

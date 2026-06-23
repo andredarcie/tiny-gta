@@ -7,6 +7,7 @@ import {say} from '@/ui/speech.ts';
 import {Interior} from '@/world/interior.ts';
 import {HOSP_DOOR,HOSP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,HOSP_HEAL,HOSP_BED,
   hospFx,hospInterior} from '../../assets/models/city/hospital.ts';
+import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Hospital "SANTA CASA": estende a classe base de interiores (js/world/interior.ts).
 // Particularidades: é pra onde o jogador acorda quando morre (admit(), chamada
@@ -73,6 +74,11 @@ export const hospital=new HospitalInterior({
   fx:hospFx,exterior:{x:110,z:110,r:24},
   mapIcon:{id:'hospital',label:'HOSPITAL',icon:'hospital',color:'#44e6b1'},
 });
+
+// Name the hospital's staff/patients and the bed-ridden sick patient (women get the
+// female look); they keep their animation from updateFx.
+for(const p of hospFx.peds)nameInteriorNpc(p.g,'medic','Hospital');
+if(hospFx.sickPatient)nameInteriorNpc(hospFx.sickPatient,'patient','Hospital');
 
 // Acordar no hospital depois de morrer (js/actors/player.ts chama via refs.hospitalAdmit):
 // diferente da entrada pela porta, nasce NO MEIO da sala, olhando pra saída (oeste).

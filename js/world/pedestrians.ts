@@ -34,6 +34,10 @@ export class Ped extends Npc{
   override aliveState():string{
     return this.aiState==='panic'?'Panicking':this.aiState==='flee'?'Fleeing':'Walking';
   }
+  override pathTarget():{x:number;z:number}|null{
+    const c=pedCorner(this); // the street corner it is currently walking toward
+    return{x:c[0],z:c[1]};
+  }
 }
 
 const _corner:[number,number]=[0,0];
@@ -53,7 +57,7 @@ const _d=new THREE.Vector3();
 const _dir=new THREE.Vector3();
 const _rnd=new THREE.Vector3();
 
-const HOSPITAL_TIME=60; // seconds before a killed ped returns from hospital
+export const HOSPITAL_TIME=60; // seconds before a killed ped returns from hospital
 
 export function addBloodPuddle(x:number,z:number){
   const puddle=makeBloodPuddle();
@@ -137,13 +141,11 @@ export function updatePeds(dt:number){
       }
       continue;
     }
-    // DEAD: play the inherited ragdoll tumble, then send to hospital.
+    // DEAD: the body tumbles, then LIES as a corpse (no fade). The ambulance service
+    // (js/world/body-recovery.ts) collects it — a visual pickup when the player is near,
+    // or a numeric one when far — setting hospitalT and managing the body's visibility.
     if(p.dead){
-      p.g.visible=true;
-      if(p.updateRagdoll(dt)){
-        p.hospitalT=HOSPITAL_TIME;
-        p.g.visible=false;
-      }
+      p.updateRagdoll(dt,false);
       continue;
     }
     // LOD: a ped far from the player is neither drawn nor simulated.

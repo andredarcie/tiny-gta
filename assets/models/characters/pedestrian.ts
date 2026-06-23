@@ -34,6 +34,13 @@ const skArmG=new THREE.CylinderGeometry(.06,.033,.58,16,16);    // wide shoulder
 const skLegG=new THREE.CylinderGeometry(.072,.05,.9,18,16);     // hip -> ankle
 const skShoulderG=new THREE.SphereGeometry(.058,14,12);        // small rounded shoulder (sleeve cap)
 const skYokeG=new THREE.CapsuleGeometry(.062,.32,8,16);        // horizontal shoulder yoke (broad shoulders)
+// Female-look add-ons (see addFemaleLook): a long hairstyle (crown cap + a length
+// down the back + two side locks framing the face) plus a subtle bust. They are
+// extra meshes layered over the unisex doll — the same trick the redneck hat uses.
+const femHairCapG=new THREE.SphereGeometry(.185,14,12);
+const femHairBackG=new THREE.SphereGeometry(.15,12,12);
+const femLockG=new THREE.SphereGeometry(.085,10,10);
+const femBustG=new THREE.SphereGeometry(.06,12,10);
 
 const skinColors=[0xf0c08b,0xd9a06b,0xb8754c,0x8f5637,0x6f3e2a];
 const pantsColors=[0x202435,0x263454,0x2e2a24,0x3d3f46,0x18191f];
@@ -206,6 +213,7 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
   const posAttr=geo.getAttribute('position') as THREE.BufferAttribute;
   const _rc=new THREE.Color(),_rcA=new THREE.Color(),_rcB=new THREE.Color();
   g.userData.clothing={shirt:color,pants,shoe,skin};
+  g.userData.hairColor=hairColor; // exposed so addFemaleLook can match the brows/hair
   g.userData.setClothing=(cols: {shirt?: number;pants?: number;shoe?: number})=>{
     const c=Object.assign(g.userData.clothing,cols) as Record<string,number>;
     for(const op of recolorOps){
@@ -239,4 +247,41 @@ export function makePed(color: number,pantsColor?: number): THREE.Group{
 // Player-only helper: the smooth Schedule I skinned figure (see buildToonPlayer).
 export function makePlayerPed(color: number): THREE.Group{
   const g=buildToonPlayer({color});scene.add(g);return g;
+}
+
+// Give an already-built doll a FEMALE appearance — MANDATORY for every female NPC.
+// Two unmistakable cues: BIG HAIR (a full crown + a long mane down the back + thick
+// side locks framing the face) and bright LIPSTICK, plus a subtle bust. Layered as a
+// single extra mesh over the unisex doll (same approach as the redneck hat), so it
+// works on ANY doll regardless of how it was spawned — the Npc base calls this once
+// for every female NPC. Idempotent guard via userData.femaleLook so it never doubles.
+const LIPSTICK=0xe23a64; // vivid red lipstick
+export function addFemaleLook(g: THREE.Object3D): void{
+  if(g.userData.femaleLook)return;
+  g.userData.femaleLook=true;
+  const hairColor=(g.userData.hairColor as number)??0x2a1911;
+  const shirt=(g.userData.clothing?.shirt as number)??0xc23b4e;
+  const parts: THREE.BufferGeometry[]=[];
+  // BIG HAIR: a full crown sitting over the egg head (front kept clear of the eyes),
+  // a long mane falling well down the back, and a thick lock framing each side.
+  parts.push(tinted(femHairCapG,partM([0,1.72,-.05],null,[1.18,1.12,1.28]),hairColor));        // voluminous crown
+  parts.push(tinted(femHairBackG,partM([0,1.30,-.13],null,[1.34,3.1,.6]),hairColor));          // long mane down the back
+  for(const sx of[-1,1]){
+    parts.push(tinted(femLockG,partM([sx*.185,1.46,.03],null,[.7,2.5,1.0]),hairColor));         // thick side lock to the shoulder
+    parts.push(tinted(femBustG,partM([sx*.07,1.255,.085],null,[1,.85,.95]),shirt));             // subtle bust
+  }
+  const merged=mergeGeometries(parts,false);
+  const mat=new THREE.MeshStandardMaterial({roughness:.9,vertexColors:true});
+  const mesh=new THREE.Mesh(merged,mat);
+  mesh.castShadow=true;
+  g.add(mesh);
+  // fade with the body on death (setOpacity drives userData.fadeMats)
+  (g.userData.fadeMats as THREE.Material[]|undefined)?.push(mat);
+  // bright LIPSTICK — the mouth is its own mesh; recolour it and widen it a touch so
+  // the lips read clearly as made-up.
+  const mouth=g.userData.mouth as THREE.Mesh|undefined;
+  if(mouth){
+    (mouth.material as THREE.MeshBasicMaterial).color.set(LIPSTICK);
+    mouth.scale.x*=1.3;mouth.scale.y*=1.5;
+  }
 }
