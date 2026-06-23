@@ -71,7 +71,7 @@ class Soldier extends Npc{
   restT:number;
   respawnT:number; // >0 = counting down to return from afar after being killed
   constructor(g:THREE.Object3D,seat:Seat,wpn:SquadWpn,flank:number,stop:number,name?:string,gender?:'M'|'F'){
-    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,area:'Army squad',name,gender});
+    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,showLabel:true,area:'Army squad',name,gender});
     this.seat=seat;this.wpn=wpn;this.flank=flank;this.stop=stop;
     this.mode='stationed';this.bob=rand(0,6);this.shootT=0;this.burstLeft=0;this.restT=rand(.2,1);this.respawnT=0;
   }

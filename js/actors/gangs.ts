@@ -119,7 +119,7 @@ function spawnMember(gang:Gang){
   repelFromZones(g.position);
   const m=new GangMember(g,{
     kind:'gang',hp:1,drop:[25,90],wanted:0.4,wantedMsg:'',crime:'ped_shot',
-    punchToDown:4,showLabel:false,area:gang.name+' turf',
+    punchToDown:4,showLabel:true,area:gang.name+' turf',
   });
   m.gang=gang;
   m.aiState='walk';
@@ -217,7 +217,9 @@ export function updateGangs(dt:number){
       m.g.rotation.y=Math.atan2(dir.x,dir.z);
       if(distP>13){p.addScaledVector(dir,4.6*dt);mvAmount=.85;m.bob+=dt*10;}
       m.shootT-=dt;
-      if(m.shootT<=0&&distP<34&&!state.mapOpen)memberShoot(m,pp,distP); // don't shoot the map-locked player
+      // only fire at a target roughly at street level — never up at the police helicopter
+      // (or anything else high overhead). Also not at the map-locked player.
+      if(m.shootT<=0&&distP<34&&pp.y-p.y<3&&!state.mapOpen)memberShoot(m,pp,distP);
     }else{
       m.tgtT-=dt;
       if(!m.tgt||m.tgtT<=0||p.distanceTo(m.tgt)<1.2){

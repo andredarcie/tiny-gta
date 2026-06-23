@@ -416,7 +416,7 @@ export function reconcileVehicleNpcs():void{
     const live=attachedToScene(d);
     const npc=d.userData.occupantNpc as Npc|undefined;
     if(live&&!npc){
-      d.userData.occupantNpc=new Npc(d,{kind:'driver',register:false,showLabel:false,area:'On the road'});
+      d.userData.occupantNpc=new Npc(d,{kind:'driver',register:false,showLabel:true,area:'On the road'});
     }else if(!live){
       // vehicle gone from the scene (destroyed, or the player stole the car and the
       // seated driver was removed): reap the NPC if it was tagged, and ALWAYS drop the
