@@ -125,7 +125,7 @@ for(const def of npcDefsByKind('civilian')){
   const p=new Ped(g,{
     kind:'ped',hp:1,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
     punchToDown:3,showLabel:true,area:nh.name,
-    gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,
+    gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,dialogues:def.dialogues,
   });
   p.block=[bi,bj];
   p.corner=tmpCorner;

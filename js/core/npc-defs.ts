@@ -13,6 +13,7 @@ export interface NpcDef{
   indoor?:boolean;        // true = lives inside an interior (club, jail, hospital, …)
   personality?:string;    // archetype shaping behaviour (brave|nervous|friendly|greedy|hostile|chill)
   likes:string[];         // tastes, e.g. ["smoke_weed"]
+  dialogues?:string[];    // the lines this NPC says in its speech bubble (may be absent → silent)
   state:string;           // initial behaviour state (see NPC_STATES)
 }
 interface NpcsFile{maxNpcs:number;states:string[];neighborhoods:string[];npcs:NpcDef[];}

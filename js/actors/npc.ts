@@ -94,6 +94,8 @@ interface NpcOpts{
   // Personality archetype from npcs.json (brave|nervous|friendly|greedy|hostile|chill)
   // — shapes how the NPC reacts (e.g. flee distance). Defaults to 'chill'.
   personality?:string;
+  // Speech-bubble lines from npcs.json (contextual to this NPC). May be empty → silent.
+  dialogues?:string[];
 }
 
 // Global registry of all NPCs (the combat scan iterates this). Holds the unified
@@ -150,6 +152,8 @@ export class Npc{
   indoor:boolean;
   // Personality archetype (brave|nervous|friendly|greedy|hostile|chill).
   personality:string;
+  // Speech-bubble lines (from npcs.json). Empty = this NPC never chatters.
+  dialogues:string[];
   // Whether this NPC joined the combat registry (npcs[]).
   registered:boolean;
   // Optional hooks a sub-class may define to react to hurt/death (see RuralFolk).
@@ -158,7 +162,7 @@ export class Npc{
 
   constructor(g:THREE.Object3D,{
     kind='npc',hp=1,drop=null,wanted=0,wantedMsg='SHOT FIRED!',crime='npc_shot',
-    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,likes,indoor=false,personality='chill',
+    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,likes,indoor=false,personality='chill',dialogues,
   }:NpcOpts={}){
     this.g=g;
     this.kind=kind;
@@ -182,6 +186,7 @@ export class Npc{
     this.likes=likes??[];
     this.indoor=indoor;
     this.personality=personality;
+    this.dialogues=dialogues??[];
     this.punchToDown=punchToDown;
     this.area=area;
     if(showLabel){
@@ -212,6 +217,12 @@ export class Npc{
   // Where this NPC is currently headed, in WORLD x/z (for the full-map path trail).
   // Base returns null (no known path); wandering subclasses override it.
   pathTarget():{x:number;z:number}|null{return null;}
+
+  // A random speech-bubble line for this NPC (from its npcs.json dialogues), or null
+  // if it has none. ALL chatter bubbles come from here, so they're always contextual.
+  speakLine():string|null{
+    return this.dialogues.length?this.dialogues[Math.floor(Math.random()*this.dialogues.length)]:null;
+  }
 
   takeDamage(dir?:THREE.Vector3,dmg=1){
     if(this.dead)return;
@@ -383,7 +394,7 @@ export function nameInteriorNpc(g:THREE.Object3D,kind:string,area:string):Npc{
   const i=_interiorCursor[area]||0;_interiorCursor[area]=i+1;
   const def:NpcDef|undefined=defs[i];
   return new Npc(g,{kind,register:false,showLabel:true,area,indoor:true,
-    name:def?.name,gender:def?.sex,likes:def?.likes,personality:def?.personality});
+    name:def?.name,gender:def?.sex,likes:def?.likes,personality:def?.personality,dialogues:def?.dialogues});
 }
 
 // Is an object still part of the live scene graph (vs. removed with its vehicle)?

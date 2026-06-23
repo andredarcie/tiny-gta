@@ -37,10 +37,10 @@ class RuralFolk extends Npc{
   tx:number;
   tz:number;
 
-  constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string,likes?:string[]){
+  constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string,likes?:string[],dialogues?:string[]){
     // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
     super(g,{kind:'rural',hp:1,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
-      area:role==='town'?'Pine Hollow':'Countryside',gender,name,likes});
+      area:role==='town'?'Pine Hollow':'Countryside',gender,name,likes,dialogues});
     this.role=role;
     this.home={x:g.position.x,z:g.position.z};
     this.wander=role==='farm'?14:11;
@@ -95,7 +95,7 @@ for(const def of npcDefsByKind('rural')){
   g.position.set(px,groundHeight(px,pz),pz);
   collideStatics(g.position,.4,SWIM_BOUND);   // never start stuck; SWIM_BOUND keeps the peninsula reachable
   g.rotation.y=folkRng.rand(-Math.PI,Math.PI);
-  folk.push(new RuralFolk(g,role,def.sex,def.name,def.likes));
+  folk.push(new RuralFolk(g,role,def.sex,def.name,def.likes,def.dialogues));
 }
 
 // ---- action poses (called instead of animatePed for the custom actions) -------
