@@ -277,13 +277,16 @@ export function updateAudio(){
     audioEngine.g.gain.value=state.mode==='car'?.028+sp/32*.035:0;
   }
   if(siren){
-    const cops=refs.cops||[];
-    const on=cops.length>0;
-    const tgt=on?.05:0;
+    // Volume comes from the NEAREST chasing cruiser's distance (police.ts): it swells in
+    // as a unit closes on you and fades out when nobody is chasing — so a distant patrol
+    // car is faint, one on your bumper is loud, and it goes silent the instant you're
+    // caught or killed. Gradual and positional, "from the car itself".
+    const lvl=refs.sirenLevel?.()??0;
+    const tgt=lvl*.06; // peak gain right next to a cruiser
     siren.g.gain.value+=(tgt-siren.g.gain.value)*.08;
-    // Alternate slow "wail" / fast "yelp" every ~4s while cops are present,
-    // ramping the LFO rate so the rate change itself never clicks.
-    if(on){
+    // Alternate slow "wail" / fast "yelp" every ~4s while audible, ramping the LFO rate
+    // so the rate change itself never clicks.
+    if(lvl>.02){
       const rate=Math.floor(state.time/4)%2?3.6:.5;
       if(siren.rate!==rate){siren.rate=rate;siren.lfo.frequency.setTargetAtTime(rate,AC.currentTime,.06);}
     }

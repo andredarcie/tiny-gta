@@ -965,6 +965,9 @@ function explodeCar(car: any,arr: any[]){
   makeExplosion(pos);
   blastDamage(pos);
   addWanted(1.5,'VEHICLE DESTROYED!','vehicle_destroyed');
+  // sheriff calls the explosion in over the radio — a destroyed cruiser names the
+  // officer who was inside (hurt); other vehicles report as a generic explosion.
+  refs.radioCarExplosion?.(pos.x,pos.z,arr===cops?(car.name as string|undefined):undefined);
   state.shake=.7;
   if(arr===traffic)setTimeout(()=>spawnTraffic(),900);
   // rampage da lança-foguetes: todo carro destruído conta (em cadeia também)
