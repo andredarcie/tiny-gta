@@ -13,6 +13,7 @@ import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {API,getNickname,flush} from '@/ui/leaderboard.ts';
 import {settings,setSetting,resetSettings} from '@/core/settings.ts';
+import {getNpcRoster,kindLabel,type NpcRosterEntry} from '@/actors/npc.ts';
 import UPDATES from '../../updates.json';
 import MINIGAME_REWARDS from '../../minigame-rewards.json';
 
@@ -77,7 +78,7 @@ let view='main';
 // Parent of each sub-view, so BACK / hardware-back walks up exactly one level.
 const PARENT: Record<string, string>={
   info:'main', settings:'main',
-  leaderboard:'info', transactions:'info', updates:'info', minigames:'info',
+  leaderboard:'info', transactions:'info', updates:'info', minigames:'info', npcs:'info',
 };
 function goBack(): void { openView(PARENT[view]||'main'); }
 function openView(v: string): void {
@@ -87,6 +88,7 @@ function openView(v: string): void {
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
     case'minigames': openMiniGames(); break;
+    case'npcs': openNpcs(); break;
     case'settings': openSettings(); break;
     default: goMain();
   }
@@ -127,7 +129,46 @@ function goInfo(): void {
       `<button class="pause-btn" data-act="updates">UPDATES${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
       `<button class="pause-btn" data-act="map">MAP</button>`+
       `<button class="pause-btn" data-act="minigames">MINI GAMES</button>`+
+      `<button class="pause-btn" data-act="npcs">NPCS</button>`+
     `</div>`+
+    backBtn();
+}
+
+// ---- NPCs (full roster of the town's population, paginated) ----------------
+// Lists EVERY NPC in the game with its identity and live status: name, sex, type,
+// the district it lives in and what it's doing right now. The world is frozen while
+// the pause menu is open, so a one-time snapshot stays accurate across pages.
+const NPC_PER_PAGE=12;
+let npcList: NpcRosterEntry[]=[],npcPage=0;
+function openNpcs(): void {
+  view='npcs';
+  setTitle('NPCS');
+  npcList=getNpcRoster();
+  npcPage=0;
+  renderNpcsPage();
+}
+function renderNpcsPage(): void {
+  const pages=Math.max(1,Math.ceil(npcList.length/NPC_PER_PAGE));
+  npcPage=Math.min(Math.max(0,npcPage),pages-1);
+  const start=npcPage*NPC_PER_PAGE;
+  const rows=npcList.slice(start,start+NPC_PER_PAGE).map(n=>
+    `<tr>`+
+      `<td class="pause-tname">${escapeHtml(n.name)}</td>`+
+      `<td class="pause-npc-sex">${n.gender==='F'?'&#9792;':'&#9794;'}</td>`+
+      `<td>${escapeHtml(kindLabel(n.kind))}</td>`+
+      `<td>${escapeHtml(n.area)}</td>`+
+      `<td>${escapeHtml(n.state)}</td>`+
+    `</tr>`
+  ).join('');
+  const table=npcList.length
+    ? `<table class="pause-table pause-npc-table"><thead><tr>`+
+        `<th>NAME</th><th>SEX</th><th>TYPE</th><th>AREA</th><th>STATUS</th>`+
+      `</tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="pause-empty">No NPCs in the world.</div>`;
+  const note=`${npcList.length} NPC${npcList.length===1?'':'s'} in the world`;
+  bodyEl().innerHTML=
+    `<div class="pause-scroll">${table}</div>`+
+    pager(npcPage,pages,note)+
     backBtn();
 }
 
@@ -349,6 +390,7 @@ function renderSettings(): void {
 function changePage(dir: number): void {
   if(view==='leaderboard'){lbPage+=dir;renderLeaderboardPage();}
   else if(view==='transactions'){txPage+=dir;renderTransactionsPage();}
+  else if(view==='npcs'){npcPage+=dir;renderNpcsPage();}
 }
 function onBodyClick(e: MouseEvent): void {
   // settings toggle (a <button> switch)
@@ -371,6 +413,7 @@ function onBodyClick(e: MouseEvent): void {
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
     case'minigames': openMiniGames(); break;
+    case'npcs': openNpcs(); break;
     case'map':                                        // leave the pause, open the full-map overlay
       refs.togglePause?.();                           // resume first (clears state.paused + closes this menu)
       refs.openFullMap?.();                           // then open the existing fullscreen map

@@ -4,7 +4,8 @@ import * as Entities from '@/core/entities.ts';
 import {collideStatics} from '@/core/physics.ts';
 import {state} from '@/core/state.ts';
 import {playerPos,cur} from '@/actors/player.ts';
-import {Npc} from '@/actors/npc.ts';
+import {Npc,NPC_SEED,pickName,balancedGenders} from '@/actors/npc.ts';
+import {makeRng} from '@/core/rng.ts';
 import type * as THREE from 'three';
 
 // Ambient rural NPCs ("rednecks") living across the eastern peninsula. Each one now
@@ -35,15 +36,25 @@ class RuralFolk extends Npc{
   tx:number;
   tz:number;
 
-  constructor(g:THREE.Object3D,role:string){
+  constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string){
     // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
-    super(g,{kind:'rural',hp:1,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot'});
+    super(g,{kind:'rural',hp:1,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
+      area:role==='town'?'Pine Hollow':'Countryside',gender,name});
     this.role=role;
     this.home={x:g.position.x,z:g.position.z};
     this.wander=role==='farm'?14:11;
     this.state='idle';this.stateT=rand(1,4);
     this.face=g.rotation.y;this.lookT=rand(1,4);
     this.phase=rand(0,6);this.bob=rand(0,6);this.tx=0;this.tz=0;
+  }
+  override aliveState():string{
+    switch(this.state){
+      case 'walk':return 'Strolling';
+      case 'work':return 'Working the field';
+      case 'wave':return 'Greeting';
+      case 'flee':return 'Fleeing';
+      default:return 'Idle';
+    }
   }
 }
 
@@ -61,13 +72,19 @@ const spots:[number,number,string][]=[
   [360,20,'farm'],[430,26,'farm'],[470,-30,'farm'],[352,42,'farm'],[455,34,'farm'],
 ];
 
+// DETERMINISTIC: a fixed-seed stream places the country folk and assigns their
+// names + a 50/50 gender split, so every player meets the same villagers.
+const folkRng=makeRng(NPC_SEED+2);
+const folkGenders=balancedGenders(spots.length,folkRng);
+let folkGi=0;
 for(const[x,z,role]of spots){
   const g=makeRedneck();
-  const px=x+rand(-1.5,1.5),pz=z+rand(-1.5,1.5);
+  const px=x+folkRng.rand(-1.5,1.5),pz=z+folkRng.rand(-1.5,1.5);
   g.position.set(px,groundHeight(px,pz),pz);
   collideStatics(g.position,.4,SWIM_BOUND);   // never start stuck; SWIM_BOUND keeps the peninsula reachable
-  g.rotation.y=rand(-Math.PI,Math.PI);
-  folk.push(new RuralFolk(g,role));
+  g.rotation.y=folkRng.rand(-Math.PI,Math.PI);
+  const gender=folkGenders[folkGi++];
+  folk.push(new RuralFolk(g,role,gender,pickName(gender,folkRng)));
 }
 
 // ---- action poses (called instead of animatePed for the custom actions) -------

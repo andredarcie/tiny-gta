@@ -8,15 +8,10 @@ import {makeHeli} from '../../assets/models/police/helicopter.ts';
 import {makeRocketLauncherModel,makeMissileModel} from '../../assets/models/weapons/rocket-launcher.ts';
 import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
-import {collideStatics,addWanted} from '@/core/physics.ts';
+import {collideStatics} from '@/core/physics.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted} from '@/actors/player.ts';
-
-// IA da polícia estilo Open-world: a viatura persegue; perto de um alvo parado/a pé
-// ela ENCOSTA e desce uma dupla de policiais que corre até a distância de
-// tiro e atira. Se o jogador abre distância, a dupla volta correndo, embarca
-// e a perseguição recomeça. No nível máximo de procurado (5 estrelas) os
-// policiais descem com LANÇA-FOGUETES e atiram mísseis (explodem via weapons.js).
+import {Npc} from '@/actors/npc.ts';
 
 // A police cruiser chasing the player.
 interface Cop{
@@ -29,30 +24,27 @@ interface Cop{
   driver?:THREE.Object3D;
   dentT?:number;
 }
-// A foot officer dropped from a cruiser (and, briefly, their body).
-interface Officer{
-  g:THREE.Object3D;
-  car:Cop;
-  bob:number;
-  shootT:number;
-  mode:string;
-  dead:boolean;
-  deadT:number;
-  punchHits:number;
-  lastPunchT:number;
-  rocket:boolean;
+
+// A foot officer dropped from a cruiser. Extends Npc so weapons can target them
+// via the unified npcs[] registry instead of a separate copOfficers loop.
+export class Officer extends Npc{
+  car!:Cop;
+  bob!:number;
+  shootT!:number;
+  mode!:string; // 'hunt'|'return'
+  rocket!:boolean;
+  override aliveState():string{return this.mode==='return'?'Returning to car':'In pursuit';}
 }
-// A police rocket-launcher missile in flight.
+
 interface CopMissile{g:THREE.Object3D;dir:THREE.Vector3;left:number;}
-// A bullet-trail line that fades out over a fraction of a second.
 interface Tracer{line:THREE.Line;t:number;}
 
 export const cops:Cop[]=[];
-export const officers:Officer[]=[]; // policiais a pé em campo (e corpos, por uns segundos)
+export const officers:Officer[]=[];
 export let heli:THREE.Group|null=null;
 
 const COP_BLUE=0x2a3f6e;
-const SIX_STAR_HOLD=30; // seconds the 6th star (max) HOLDS before it can drop to 5
+const SIX_STAR_HOLD=30;
 let lastShout=-99;
 
 export function spawnCop(){
@@ -61,27 +53,37 @@ export function spawnCop(){
   do{nx=nodeX(irand(0,N));nz=nodeX(irand(0,N));tries++;}
   while(Math.hypot(nx-px.x,nz-px.z)<80&&tries<30);
   const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null};
-  c.driver=seatDriver(c.g,0x2a3f6e,0x1a2440); // policial de uniforme azul ao volante
+  c.driver=seatDriver(c.g,0x2a3f6e,0x1a2440);
   c.g.position.set(nx,0,nz);
   cops.push(c);
 }
 
-// ----- dupla a pé: desce da viatura, caça, atira, e volta se o alvo foge -----
 function deployOfficers(c:Cop){
   c.officers=[];
   const h=c.heading;
   for(const side of[1.3,-1.3]){
-    const o:Officer={g:makePed(COP_BLUE),car:c,bob:rand(0,6),shootT:rand(.5,1.1),
-      mode:'hunt',dead:false,deadT:0,
-      punchHits:0,lastPunchT:-99, // punchHits: non-lethal fist counter
-      rocket:Math.floor(state.wanted)>=5}; // 5 estrelas: esquadrão de lança-foguetes
-    o.g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
+    const g=makePed(COP_BLUE);
+    g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
+    const o=new Officer(g,{
+      kind:'officer',hp:1,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
+      punchToDown:4,showLabel:false,area:'On patrol',
+    });
+    o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
+    o.rocket=Math.floor(state.wanted)>=5;
+    // Officers fall flat on their back instantly — no ragdoll tumble.
+    o.onDeath=()=>{
+      o.grounded=true;o.vel.set(0,0,0);
+      o.g.rotation.x=-Math.PI/2;o.g.position.y=.35;
+      if(o.car?.officers){
+        const idx=o.car.officers.indexOf(o);if(idx>=0)o.car.officers.splice(idx,1);
+        if(!o.car.officers.length)o.car.officers=null;
+      }
+    };
     if(o.rocket){
       const bz=makeRocketLauncherModel();
-      bz.scale.set(.85,.85,.85);
-      bz.position.set(.32,1.42,.12); // apoiada no ombro
+      bz.scale.set(.85,.85,.85);bz.position.set(.32,1.42,.12);
       o.g.add(bz);
-    }else attachHandGun(o.g); // pistola na mão direita (empunhadura padrão)
+    }else attachHandGun(o.g);
     scene.add(o.g);
     officers.push(o);c.officers.push(o);
   }
@@ -90,7 +92,7 @@ function deployOfficers(c:Cop){
 function removeCop(c:Cop){
   scene.remove(c.g);
   if(c.officers)for(const o of c.officers){
-    scene.remove(o.g);
+    o.despawn(); // removes from npcs[] + scene
     const i=officers.indexOf(o);if(i>=0)officers.splice(i,1);
   }
   c.officers=null;
@@ -99,32 +101,17 @@ function removeCop(c:Cop){
 const copMissiles:CopMissile[]=[];
 const tracers:Tracer[]=[];
 
-// WASTED/BUSTED limpam tudo de uma vez (player.js chama via refs)
 export function clearCops(){
   while(cops.length)removeCop(cops.pop()!);
-  for(const o of officers)scene.remove(o.g);
+  for(const o of officers)o.despawn();
   officers.length=0;
   for(const m of copMissiles){disposeGeometries(m.g);scene.remove(m.g);}
   copMissiles.length=0;
   for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
   tracers.length=0;
-  refs.clearPoliceBoats?.(); // tira também as lanchas da polícia (perseguição marítima)
+  refs.clearPoliceBoats?.();
 }
 refs.clearCops=clearCops;
-
-// chamado por weapons.js quando bala/explosão do jogador acerta um policial
-export function killOfficer(o:Officer){
-  if(o.dead)return;
-  o.dead=true;o.deadT=0;state.kills++;
-  if(o.car?.officers){
-    const i=o.car.officers.indexOf(o);if(i>=0)o.car.officers.splice(i,1);
-    if(!o.car.officers.length)o.car.officers=null; // viatura volta à caça
-  }
-  o.g.rotation.x=-Math.PI/2; // tomba de costas como os outros peds
-  o.g.position.y=.35;
-  refs.addBloodPuddle?.(o.g.position.x,o.g.position.z);
-  addWanted(1.5,'OFFICER DOWN!','cop_killed');
-}
 
 function addTracer(a:THREE.Vector3,b:THREE.Vector3){
   const line=makeGangTracerLine(a,b);
@@ -143,13 +130,12 @@ function officerShoot(o:Officer,pp:THREE.Vector3,dist:number){
   addTracer(from,to);
   gunshot(.35);
   if(hit){
-    state.health-=state.mode==='car'?irand(2,4):irand(4,9); // lataria protege
+    state.health-=state.mode==='car'?irand(2,4):irand(4,9);
     state.shake=Math.max(state.shake,.12);
     if(state.health<=0){state.health=100;getWasted();}
   }
 }
 
-// míssil de lança-foguetes: mira onde o jogador ESTÁ — o tempo de voo dá a esquiva
 function officerRocket(o:Officer,pp:THREE.Vector3){
   o.shootT=rand(2.6,3.8);
   const from=o.g.position.clone();from.y+=1.45;
@@ -166,10 +152,10 @@ function officerRocket(o:Officer,pp:THREE.Vector3){
 }
 
 function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
-  if(o.dead){ // corpo fica uns segundos no chão e some
+  if(o.dead){
     o.deadT+=dt;
     if(o.deadT>8){
-      scene.remove(o.g);
+      o.despawn();
       const i=officers.indexOf(o);if(i>=0)officers.splice(i,1);
     }
     return;
@@ -179,8 +165,8 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
     const c=o.car;
     if(!c){o.mode='hunt';return;}
     const dx=c.g.position.x-p.x,dz=c.g.position.z-p.z,d=Math.hypot(dx,dz);
-    if(d<1.7){ // embarcou: some da rua, a viatura retoma a perseguição
-      scene.remove(o.g);
+    if(d<1.7){
+      o.despawn();
       const oi=officers.indexOf(o);if(oi>=0)officers.splice(oi,1);
       const ci=c.officers?c.officers.indexOf(o):-1;if(ci>=0)c.officers!.splice(ci,1);
       if(c.officers&&!c.officers.length)c.officers=null;
@@ -192,18 +178,16 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
     collideStatics(p,.5);
     return;
   }
-  // caçando: corre até a distância de tiro e atira parado (para, mira, atira)
   const dx=pp.x-p.x,dz=pp.z-p.z,distP=Math.hypot(dx,dz);
   const stop=o.rocket?16:9;
   if(distP>stop){
     p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
     o.bob+=dt*11;animatePed(o.g,o.bob,1);
   }else animatePed(o.g,o.bob,0);
-  poseAiming(o.g); // arma apontada pro jogador (pose padrão de mira)
+  poseAiming(o.g);
   o.g.rotation.y=Math.atan2(dx,dz);
   collideStatics(p,.5);
   o.shootT-=dt;
-  // só atira em alvo no nível da rua (telhado fica fora do alcance deles)
   if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.rocket?44:26)){
     if(o.rocket)officerRocket(o,pp);
     else officerShoot(o,pp,distP);
@@ -235,11 +219,9 @@ const _mid=new THREE.Vector3();
 
 export function updateCops(dt:number){
   const want=Math.floor(state.wanted);
-  // 6 stars (the MAX): the police WITHDRAW — the ARMY takes over (js/actors/army.ts).
-  // No cruisers and no arrest up there: only the military truck.
   if(want>=6){
     while(cops.length)removeCop(cops.pop()!);
-    for(let i=officers.length-1;i>=0;i--){scene.remove(officers[i].g);officers.splice(i,1);}
+    for(let i=officers.length-1;i>=0;i--){officers[i].despawn();officers.splice(i,1);}
   }else{
     if(cops.length<want&&cops.length<5&&Math.random()<dt*.8)spawnCop();
     while(cops.length>want)removeCop(cops.pop()!);
@@ -252,8 +234,6 @@ export function updateCops(dt:number){
     minD=Math.min(minD,dist);
     blinkBar(c.g);
     if(c.officers){
-      // dupla em campo: viatura encostada esperando; se o alvo abre
-      // distância (ou arranca de carro), a dupla volta pra embarcar
       c.speed+=(0-c.speed)*6*dt;
       spinWheels(c.g,c.speed,dt,0);
       const fleeing=dist>30||(state.mode==='car'&&Math.abs(cur?.speed||0)>10);
@@ -266,13 +246,11 @@ export function updateCops(dt:number){
       c.heading-=Math.sign(diff)*1.4*dt;
     }else{
       c.heading+=clamp(diff,-1,1)*2.5*dt*clamp(Math.abs(c.speed)/8+.25,0,1);
-      // alvo a pé: freia ao se aproximar e encosta devagar (nunca atropela)
       const ts=dist>15?27:state.mode==='foot'&&dist<9?2.5:12;
       c.speed+=(ts-c.speed)*(ts<c.speed?3.2:1.3)*dt;
     }
     p.x+=Math.sin(c.heading)*c.speed*dt;
     p.z+=Math.cos(c.heading)*c.speed*dt;
-    // viaturas não se atravessam: empurra uma pra fora da outra
     for(const o of cops){
       if(o===c)continue;
       const sx=p.x-o.g.position.x,sz=p.z-o.g.position.z,sd=Math.hypot(sx,sz);
@@ -287,8 +265,6 @@ export function updateCops(dt:number){
     if(c.stuckT>1.2){c.backT=.9;c.stuckT=0;}
     c.g.rotation.y=c.heading;
     spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
-    // alvo ao alcance: encosta e desce a dupla atirando — a pé a viatura
-    // chega BEM perto antes de parar; de carro só se você estiver quase parado
     if(pp.y<6&&!c.backT&&
       (state.mode==='foot'?dist<8:dist<13&&Math.abs(cur?.speed||0)<4)){
       deployOfficers(c);
@@ -302,7 +278,6 @@ export function updateCops(dt:number){
         const push=_push.subVectors(activeCur.g.position,p).setY(0).normalize();
         activeCur.g.position.addScaledVector(push,(2.9-d)*.7);
         activeCur.speed*=.75;c.speed*=.6;thud(8);state.shake=.35;
-        // amassa os dois na pancada (cooldown: o encosto dura vários frames)
         if(!c.dentT||state.time-c.dentT>.5){
           c.dentT=state.time;
           const mid=_mid.addVectors(p,activeCur.g.position)
@@ -312,14 +287,10 @@ export function updateCops(dt:number){
         }
       }
     }
-    // a polícia NUNCA atropela quem está a pé: o empurrão do updateFoot
-    // (jogador não atravessa carros) afasta o corpo, e a viatura já freia perto
   }
 
-  // policiais a pé (iteração reversa: embarque/corpo somem da lista no meio)
   for(let i=officers.length-1;i>=0;i--)updateOfficer(officers[i],dt,pp);
 
-  // mísseis das lança-foguetes da polícia: voo reto, explode no destino/obstáculo
   for(let i=copMissiles.length-1;i>=0;i--){
     const m=copMissiles[i];
     const step=26*dt;
@@ -338,7 +309,6 @@ export function updateCops(dt:number){
     if(t.t>.15){disposeGeometries(t.line);scene.remove(t.line);tracers.splice(i,1);}
   }
 
-  // cerco: viatura colada OU policial a pé do lado, com o jogador parado/a pé
   let nearOff=1e9;
   for(const o of officers)if(!o.dead)
     nearOff=Math.min(nearOff,Math.hypot(pp.x-o.g.position.x,pp.z-o.g.position.z));
@@ -349,13 +319,7 @@ export function updateCops(dt:number){
     if(state.bustT>.4)message('THE POLICE ARE SURROUNDING YOU!','var(--blue)');
     if(state.bustT>1.8){getBusted();return;}
   }else state.bustT=Math.max(0,state.bustT-dt*2);
-  // 6 stars (max) HOLD for a minimum time (SIX_STAR_HOLD) from the last crime that
-  // kept you at 6 — before, they dropped too fast for the army to even engage. Once
-  // the hold passes, the normal cool-down rules apply.
   const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
-  // cool down only with no pursuer nearby AND no crime for 9s. At 6 stars the police
-  // withdrew, so the ARMY counts as a pursuer: with the truck on top of you (<70m)
-  // the wanted level also won't drop.
   if(!sixHold&&state.wanted>0&&state.time-state.lastCrime>9&&(minD>70||!cops.length)&&(refs.armyDist?.()??1e9)>70)
     state.wanted=Math.max(0,state.wanted-dt/5);
 }

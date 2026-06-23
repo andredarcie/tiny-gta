@@ -18,10 +18,14 @@ import {makeStoryMarker} from '../../assets/models/missions/story-marker.ts';
 import {makeStoryBeacon} from '../../assets/models/missions/story-beacon.ts';
 import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
 import {MiniGame} from '@/activities/minigame.ts';
+import {Npc,NPC_SEED} from '@/actors/npc.ts';
+import {makeRng} from '@/core/rng.ts';
 
 // ---- shapes for the story mission descriptors / engine ----------------------
 interface Voice { freq: number; type: OscillatorType; }
-interface Npc {
+// Static mission-NPC descriptor from the story JSON (NOT a runtime NPC — that is
+// the Actor class below, which extends the shared Npc base).
+interface StoryNpcDef {
   name: string; letter: string;
   shirt: number; pants: number | null;
   color: number; css: string;
@@ -34,21 +38,28 @@ interface KillObjective { type: 'kill'; target: string; }
 type Objective = FetchObjective | KillObjective;
 interface Mission {
   id: string; title: string; reward: number;
-  npc: Npc;
+  npc: StoryNpcDef;
   intro: string[]; outro: string[];
   objective: Objective;
   startMsg: string; foundMsg: string; unlockMsg: string;
 }
 interface Story { chapter: string; missions: Mission[]; }
 
-// The on-stage NPC for a mission: ped + floating marker (+ runtime dead flag for
-// kill targets). Only the current mission's actor is visible.
-interface Actor {
-  ped: THREE.Object3D;
+// The on-stage NPC for a mission: a ped + floating marker. Extends the shared Npc
+// base (so 100% of NPCs share one class), but with register:false — kill targets
+// are hit through storyTargets()/killTarget(), so the actor must NOT also join the
+// unified weapon scan. `ped` is kept as an alias of the base `g` so the existing
+// cut-scene code reads unchanged. Only the current mission's actor is visible.
+class Actor extends Npc {
   marker: THREE.Object3D;
   mat: THREE.MeshBasicMaterial;
   phase: number;
-  dead?: boolean;
+  constructor(ped: THREE.Object3D, marker: THREE.Object3D, mat: THREE.MeshBasicMaterial, def: StoryNpcDef, gender: 'M'|'F'){
+    super(ped,{kind:'story',hp:1,register:false,name:def.name,area:'Story mission',gender});
+    this.marker=marker;this.mat=mat;this.phase=rand(0,6);
+  }
+  get ped(): THREE.Object3D {return this.g;}
+  override aliveState():string{return 'Story role';}
 }
 // A randomized objective spot, with the diálogo placeholders it resolves.
 interface Spot { x: number; z: number; where?: string; side?: string; vert?: string; }
@@ -192,6 +203,7 @@ function fillLines(lines: string[],spot: Spot | null): string[]{
 // ---------------------------------------------------------------------------
 // Atores: ped + marcador de cada NPC da história (só o da missão atual aparece)
 // ---------------------------------------------------------------------------
+const storyRng=makeRng(NPC_SEED+3); // fixed gender per story character (same for all players)
 const actors: Actor[]=STORY.missions.map(m=>{
   const ped=makePed(m.npc.shirt,m.npc.pants??undefined);
   ped.position.set(m.npc.x,0,m.npc.z);
@@ -200,7 +212,7 @@ const actors: Actor[]=STORY.missions.map(m=>{
   marker.position.set(m.npc.x,3.6,m.npc.z);
   marker.visible=false;
   scene.add(marker);
-  return{ped,marker,mat,phase:rand(0,6)};
+  return new Actor(ped,marker,mat,m.npc,storyRng.random()<.5?'M':'F');
 });
 actors[0].marker.visible=true;
 
@@ -209,7 +221,7 @@ actors[0].marker.visible=true;
 const S: {
   idx: number; phase: string; spot: Spot | null;
   itemMesh: THREE.Object3D | null; beacon: THREE.Object3D | null;
-  target: Actor | null; targetNpc: Npc | null;
+  target: Actor | null; targetNpc: StoryNpcDef | null;
 }={idx:0,phase:'available',spot:null,itemMesh:null,beacon:null,
   target:null,targetNpc:null};
 const cm=()=>STORY.missions[S.idx];

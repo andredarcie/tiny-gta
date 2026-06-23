@@ -11,12 +11,11 @@
 // Wired in via refs (refs.isCarryingDrugs / refs.startDrugBust) so player.js
 // stays decoupled from the weed-farm + cut-scene machinery.
 // ---------------------------------------------------------------------------
-import type * as THREE from 'three';
-import {scene} from '@/core/engine.ts';
 import {state,refs} from '@/core/state.ts';
 import {player} from '@/actors/player.ts';
 import {playCutscene} from '@/story/story.ts';
 import {makePed} from '@/core/entities.ts';
+import {Npc} from '@/actors/npc.ts';
 import {economy} from '@/core/economy.ts';
 import {message} from '@/ui/hud.ts';
 import {groundHeight,RURAL_X0} from '@/core/constants.ts';
@@ -28,7 +27,9 @@ const WOODS={x:RURAL_X0+95,z:86};
 // Gruff, low cop voice for the typed-dialogue beeps.
 const COP_VOICE:{freq:number;type:OscillatorType}={freq:96,type:'sawtooth'};
 
-let copPed: THREE.Object3D | null = null;
+// The bent cop is a one-scene actor, but still an Npc (so 100% of NPCs share the
+// base class). register:false — it is a cut-scene puppet, never a weapon target.
+let copNpc: Npc | null = null;
 
 // Is the player right now carrying the drug delivery backpack? (weed-farm.js)
 export function isCarryingDrugs(){
@@ -78,17 +79,17 @@ export function startDrugBust(){
   player.g.visible=true;
 
   // Spawn the bent cop right in front of them (startCutscene turns both to face
-  // each other and frames the shot).
-  copPed=makePed(0x21407e,0x141d35); // dark-blue uniform reads as police
+  // each other and frames the shot). makePed already adds it to the scene.
+  const cop=makePed(0x21407e,0x141d35); // dark-blue uniform reads as police
   const cx=WOODS.x+2.6,cz=WOODS.z+.5;
-  copPed.position.set(cx,groundHeight(cx,cz),cz);
-  scene.add(copPed);
+  cop.position.set(cx,groundHeight(cx,cz),cz);
+  copNpc=new Npc(cop,{kind:'officer',hp:1,register:false,area:'Roadside bust'});
 
-  playCutscene(copPed,COP_VOICE,buildLines(bribe),()=>finishDrugBust(bribe));
+  playCutscene(cop,COP_VOICE,buildLines(bribe),()=>finishDrugBust(bribe));
 }
 
 function finishDrugBust(bribe: number){
-  if(copPed){copPed.parent?.remove(copPed);copPed=null;}
+  if(copNpc){copNpc.despawn();copNpc=null;} // clears the scene + the NPC census
   if(bribe>0)economy.spend(bribe,'bribe');
   refs.seizeDrugBackpack?.(); // the cop pockets the stash; ends the delivery run
   state.mode='foot';

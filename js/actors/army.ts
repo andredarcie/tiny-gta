@@ -9,6 +9,7 @@ import {thud,gunshot} from '@/audio/audio.ts';
 import {collideStatics} from '@/core/physics.ts';
 import {playerPos,cur,getWasted} from '@/actors/player.ts';
 import {message} from '@/ui/hud.ts';
+import {Npc} from '@/actors/npc.ts';
 
 // ============================================================================
 // ARMY — the MAX-STAR (★6) response. When the player hits 6 stars, ONE green
@@ -53,20 +54,28 @@ interface Truck{
   bestDist:number;
   noProgressT:number;
 }
-// A single soldier (in the bed or on foot).
-interface Soldier{
-  g:THREE.Object3D;
+// A single soldier (in the bed or on foot). Extends Npc so it shares the base
+// identity/death machinery, but with register:false — the army has its OWN target
+// list (refs.armyTargets), so it must NOT also join the unified weapon scan, which
+// would double-hit it and target riders still in the truck bed.
+class Soldier extends Npc{
   seat:Seat;
   wpn:SquadWpn;
   flank:number;
   stop:number;
-  mode:string;
+  mode:string; // 'ride'|'hunt'|'return'
   bob:number;
   shootT:number;
   burstLeft:number;
   restT:number;
-  dead:boolean;
-  deadT:number;
+  constructor(g:THREE.Object3D,seat:Seat,wpn:SquadWpn,flank:number,stop:number){
+    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,area:'Army squad'});
+    this.seat=seat;this.wpn=wpn;this.flank=flank;this.stop=stop;
+    this.mode='ride';this.bob=rand(0,6);this.shootT=0;this.burstLeft=0;this.restT=rand(.2,1);
+  }
+  override aliveState():string{
+    return this.mode==='ride'?'In the truck':this.mode==='return'?'Re-boarding':'Open fire';
+  }
 }
 // A bullet-trail line that fades out over a fraction of a second.
 interface Tracer{line:THREE.Line;t:number;}
@@ -129,10 +138,8 @@ function spawnArmy(){
   const seats:Seat[]=g.userData.seats||[];
   for(let i=0;i<4;i++){
     const wpn=SQUAD[i%SQUAD.length]; // each one gets a different weapon
-    const o:Soldier={g:makePed(OLIVE,OLIVE_PANTS),seat:seats[i]||{x:0,y:1.0,z:0,ry:0},
-      wpn,flank:(i-1.5)*0.5,   // fan around the player (−0.75..+0.75 rad)
-      stop:9+(i%2)*3,          // rings at 9m and 12m (depth to the fan)
-      mode:'ride',bob:rand(0,6),shootT:0,burstLeft:0,restT:rand(.2,1),dead:false,deadT:0};
+    const o=new Soldier(makePed(OLIVE,OLIVE_PANTS),seats[i]||{x:0,y:1.0,z:0,ry:0},
+      wpn,(i-1.5)*0.5,9+(i%2)*3); // fan around the player; rings at 9m and 12m
     o.g.traverse(m=>{if((m as THREE.Mesh).isMesh)m.castShadow=false;}); // squad casts no shadow (cost)
     attachHandGun(o.g,wpn.model); // their own weapon in the right hand
     seatInBed(o);
@@ -210,7 +217,7 @@ function killSoldier(o:Soldier){
 
 function removeArmy(){
   if(truck){scene.remove(truck.g);truck=null;}
-  for(const o of soldiers)scene.remove(o.g);
+  for(const o of soldiers)o.despawn(); // removes from the scene + the NPC census
   soldiers=[];
 }
 
