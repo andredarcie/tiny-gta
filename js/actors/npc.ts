@@ -379,7 +379,7 @@ const KIND_LABELS:Record<string,string>={
   // interior NPCs
   dancer:'Clubber',gymgoer:'Gym-goer',guard:'Guard',inmate:'Inmate',
   clerk:'Clerk',medic:'Hospital',fare:'Passenger',buyer:'Buyer',
-  driver:'Driver',
+  driver:'Driver',rick:'Hermit',
 };
 export function kindLabel(kind:string):string{return KIND_LABELS[kind]||kind;}
 

@@ -64,7 +64,13 @@ function place(obj: THREE.Object3D,x: number,z: number,ry=0){
 
 const rick=buildRick();
 place(rick,CAMP.x+1.3,CAMP.z+1.3);
-rick.rotation.y=Math.atan2(CAMP.x-rick.position.x,CAMP.z-rick.position.z); // encara o fogo
+rick.rotation.y=Math.atan2(CAMP.x-rick.position.x,CAMP.z-rick.position.z); // faces the fire
+// Rick himself is an NPC too — a named, peaceful quest-giver. register:false so he is
+// never a weapon target (he can't be shot), but he carries an identity + name tag +
+// roster entry like everyone else, so 100% of the game's characters inherit Npc.
+new Npc(rick,{kind:'rick',register:false,showLabel:true,name:'Rick',gender:'M',femaleLook:false,
+  area:"Rick's Camp",personality:'chill',
+  dialogues:["The land doesn't hand you a map, brother.","Hunt with your own two eyes."]});
 
 const fire=campfire.build();
 place(fire,CAMP.x,CAMP.z);
