@@ -141,12 +141,12 @@ function goInfo(): void {
 // The world is frozen while the pause menu is open, so the snapshot stays accurate.
 const NPC_PER_PAGE=12;
 let npcList: NpcRosterEntry[]=[],npcPage=0;
-let npcFilterArea='All',npcFilterState='All';
+let npcFilterArea='All',npcFilterState='All',npcFiltersOpen=false;
 function openNpcs(): void {
   view='npcs';
   setTitle('NPCS');
   npcList=getNpcRoster();
-  npcFilterArea='All';npcFilterState='All';
+  npcFilterArea='All';npcFilterState='All';npcFiltersOpen=false; // start collapsed: the chip rows are tall
   npcPage=0;
   renderNpcsPage();
 }
@@ -163,6 +163,23 @@ function npcFilterRow(label:string,dim:'area'|'state',active:string): string {
     `data-val="${escapeHtml(v)}">${escapeHtml(v)}</button>`).join('');
   return `<div class="pause-filter"><span class="pause-filter-label">${label}</span>`+
     `<div class="pause-chips">${chips}</div></div>`;
+}
+// Collapsible filter panel: a SHOW/HIDE toggle plus (only when open) the two chip rows.
+// Collapsed by default so the long lists of areas/statuses don't dominate the modal; when
+// collapsed with a filter active, the active values are summarised next to the button so
+// the player still sees that the list is being narrowed.
+function npcFilterSection(): string {
+  const active: string[]=[];
+  if(npcFilterArea!=='All')active.push(npcFilterArea);
+  if(npcFilterState!=='All')active.push(npcFilterState);
+  const toggle=`<button class="pause-mini npc-filter-toggle${active.length?' on':''}" `+
+    `data-act="npcfilttoggle" aria-expanded="${npcFiltersOpen}">`+
+    `${npcFiltersOpen?'HIDE FILTERS':'SHOW FILTERS'}</button>`;
+  const summary=(!npcFiltersOpen&&active.length)
+    ? `<span class="npc-filter-active">${active.map(escapeHtml).join(' · ')}</span>` : '';
+  const rows=npcFiltersOpen
+    ? npcFilterRow('AREA','area',npcFilterArea)+npcFilterRow('STATUS','state',npcFilterState) : '';
+  return `<div class="pause-filter-bar">${toggle}${summary}</div>${rows}`;
 }
 function renderNpcsPage(): void {
   const filtered=npcList.filter(n=>
@@ -185,7 +202,7 @@ function renderNpcsPage(): void {
         `<th>NAME</th><th>SEX</th><th>TYPE</th><th>AREA</th><th>STATUS</th>`+
       `</tr></thead><tbody>${rows}</tbody></table>`
     : `<div class="pause-empty">No NPCs match these filters.</div>`;
-  const filters=npcFilterRow('AREA','area',npcFilterArea)+npcFilterRow('STATUS','state',npcFilterState);
+  const filters=npcFilterSection();
   const note=`${filtered.length} of ${npcList.length} NPC${npcList.length===1?'':'s'}`;
   bodyEl().innerHTML=
     filters+
@@ -443,6 +460,8 @@ function onBodyClick(e: MouseEvent): void {
       npcPage=0;renderNpcsPage();
       break;
     }
+    case'npcfilttoggle': npcFiltersOpen=!npcFiltersOpen; renderNpcsPage(); break; // show/hide the filter chips
+
     case'map':                                        // leave the pause, open the full-map overlay
       refs.togglePause?.();                           // resume first (clears state.paused + closes this menu)
       refs.openFullMap?.();                           // then open the existing fullscreen map
