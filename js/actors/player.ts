@@ -175,7 +175,10 @@ function spawnTractor(x:number,z:number,heading:number):Vehicle{
 spawnTractor(398,40,Math.PI/2);
 spawnTractor(630,-12,0);  // a second one parked by the rural village (Pine Hollow), clear of the town sign
 
-export function playerPos():THREE.Vector3{return state.mode==='car'?cur!.g.position:player.g.position;}
+// Null-safe: there is a transient window (e.g. explodePlayerCar / getWasted) where the
+// car is gone (cur=null) but state.mode is still 'car' for the rest of the frame. Falling
+// back to the player ped's position avoids a crash on `cur.g` until the mode flips.
+export function playerPos():THREE.Vector3{return state.mode==='car'&&cur?cur.g.position:player.g.position;}
 
 // ===== Dano progressivo do carro do jogador: bate -> amassa feio; bate de novo
 // -> solta fumaça; bate mais -> explode. Tudo barato: o contador/timer mora no
@@ -237,6 +240,8 @@ function explodePlayerCar():boolean{
   scene.remove(g);
   resetCarDamage(g);
   g.userData.driver=null;
+  player.g.position.copy(pos); // put the ped where the car blew up: getWasted reads
+                               // playerPos() (now ped-based, cur is gone) for the death spot
   cur=null;            // wastedCut não devolve o destroço pra idleCars
   state.shake=1;
   getWasted();         // dentro de veículo -> corte WASTED direto
