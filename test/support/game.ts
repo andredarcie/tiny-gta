@@ -32,24 +32,21 @@ export class GameDriver {
   }
 
   // ---- boot ---------------------------------------------------------------
-  // Faithful start: load the page, click PLAY, type a nickname, click PLAY again
-  // (the same path a player takes), then wait until the game reports started.
-  async boot(nick = 'BOT') {
+  // Start the game. On localhost it AUTO-STARTS with a fixed nickname (the dev shortcut
+  // in js/core/input.ts), so there is NO title/login UI to drive — we just wait until the
+  // running game reports `started`. (Do NOT drive the old title → nickname → #nick-play
+  // flow: the login modal is now guest/login/register, so #nick-play no longer exists and
+  // clicking it would hang the boot — this was the long-standing "boot always fails" trap.)
+  // `_nick` is accepted for back-compat but ignored (the auto-start picks the nickname).
+  async boot(_nick = 'BOT') {
     const page = this.page;
-    page.on('pageerror', (e) => console.error('[pageerror]', e.message));
+    // Benign: the auto-start requests Pointer Lock before any user click — ignore that one.
+    page.on('pageerror', (e) => { if (!/Pointer Lock/i.test(e.message)) console.error('[pageerror]', e.message); });
     await page.goto('/', { waitUntil: 'load' });
-    await page.waitForSelector('#play', { timeout: 30_000 });
-    // The title button pulses (animated) — Playwright sees it as unstable, so click via DOM.
-    await page.evaluate(() => document.getElementById('play')!.click());
-    await page.waitForSelector('#nick-input', { state: 'visible', timeout: 10_000 });
-    await page.evaluate((n) => { (document.getElementById('nick-input') as HTMLInputElement).value = n; }, nick);
-    await page.evaluate(() => document.getElementById('nick-play')!.click());
     await page.waitForFunction(
       () => !!(window as any).render_game_to_text && JSON.parse((window as any).render_game_to_text()).started === true,
-      null, { timeout: 20_000 });
-    // The nickname <input> keeps focus after confirm; the game ignores key events
-    // whose target is an INPUT, so blur it and give focus to the game canvas —
-    // otherwise E/W/A/S/D would be swallowed.
+      null, { timeout: 60_000 });
+    // Give the game canvas keyboard focus (otherwise E/W/A/S/D could be swallowed).
     await page.evaluate(() => { const a = document.activeElement as HTMLElement | null; if (a && a.blur) a.blur(); });
     await page.locator('#game').click({ position: { x: 8, y: 8 }, force: true }).catch(() => {});
     await sleep(400); // settle a few frames
