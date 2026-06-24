@@ -57,19 +57,21 @@ const offColors=[0x2e6f3a,0xc9a227,0x8a3b2b]; // verde-mato, mostarda e barro (c
 // passa por baixo. Fica na estrada de terra (z≈0) logo a leste da ponte, fácil de
 // alcançar atravessando o estreito de carro.
 const start={x:308,z:0};
-// Circuito em loop pela pradaria a leste da ponte (oval vertical: retas norte-sul
-// no pasto, curvas abrindo pro pasto aberto). O ÚLTIMO ponto volta pra perto do
-// pórtico — cruzar ele é a linha de chegada. Tudo a oeste das roças (x≥342) e a
-// leste da água do estreito (x≤294); árvores/cercas não colidem.
+// Circuito em loop pela pradaria a leste da ponte. Um OVAL LARGO e fluido (não mais
+// um corredor estreito em ziguezague): as duas retas usam toda a largura segura do
+// pasto — reta OESTE em x≈300, reta LESTE em x≈336 — e as curvas norte/sul abrem bem
+// nos topos (z=±99). Mais espaço pra correr lado a lado e ultrapassar. O ÚLTIMO ponto
+// volta pra perto do pórtico (cruzá-lo é a chegada). Tudo a oeste das roças de
+// Drycreek (x≥342) e a leste da água do estreito (x≤294); árvores/cercas não colidem.
 const CPS: RoutePoint[]=[
-  {x:302,z: 62}, // sobe a reta oeste
-  {x:322,z: 99}, // curva norte
-  {x:332,z: 84}, // abre pro pasto norte
-  {x:322,z:-30}, // desce a reta leste
-  {x:335,z:-94}, // abre pro pasto sul
-  {x:308,z:-99}, // curva sul
-  {x:300,z:-46}, // volta pela reta oeste
-  {x:305,z: -6}, // chegada, de volta ao pórtico
+  {x:301,z: 58}, // sobe a reta OESTE (rumo ao norte)
+  {x:309,z: 95}, // entra na curva norte, abrindo pro topo
+  {x:326,z: 99}, // ápice NORTE — bem aberto no alto do pasto
+  {x:336,z: 62}, // sai da curva pra reta LESTE
+  {x:336,z:-66}, // desce a reta LESTE (rumo ao sul)
+  {x:324,z:-99}, // ápice SUL — bem aberto embaixo
+  {x:304,z:-90}, // sai da curva sul de volta pro lado oeste
+  {x:300,z: -8}, // sobe a reta oeste até a chegada (pórtico)
 ];
 
 const gate=makeOffroadGate(ORANGE); // make* NÃO adiciona à cena

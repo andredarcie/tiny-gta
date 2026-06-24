@@ -29,6 +29,7 @@ interface Cop{
   driver?:THREE.Object3D;
   dentT?:number;
   name?:string;                 // the named officer driving this cruiser (npcs.json)
+  sex?:'M'|'F';                 // the officer's gender (npcs.json) — kept so the foot officer matches the driver
   patrolTgt?:THREE.Vector3|null; // current patrol destination (wandered when clean)
   isSheriff?:boolean;           // the one SHERIFF (radio dispatcher, distinct uniform)
   uniform?:number;              // shirt colour (sheriff tan vs. patrol blue)
@@ -150,7 +151,7 @@ export function spawnCop(){
   const isSheriff=!!def?.sheriff;
   const uniform=isSheriff?SHERIFF_TAN:COP_BLUE;
   const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null,patrolTgt:null,
-    isSheriff,uniform,name:def?.name};
+    isSheriff,uniform,name:def?.name,sex:def?.sex};
   c.driver=seatDriver(c.g,uniform,isSheriff?SHERIFF_BROWN:0x1a2440);
   c.g.position.set(nx,0,nz);
   // tag the driver as a named police NPC so it shows in the census (and
@@ -313,7 +314,7 @@ function deployOfficers(c:Cop){
     g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     const o=new Officer(g,{
       kind:'officer',hp:1,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
-      punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name, // the cruiser's named cop, on foot
+      punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name,gender:c.sex, // the cruiser's named cop, on foot — same identity as the driver
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
     o.rocket=Math.floor(state.wanted)>=5;

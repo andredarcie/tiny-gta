@@ -275,6 +275,7 @@ export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   const pp=player.g.position;
   const traffic:Vehicle[]=refs.traffic||[];
   const cops:Vehicle[]=refs.cops||[];
+  const rural:Vehicle[]=refs.ruralTraffic||[]; // country cars on the dirt road
   for(const c of idleCars){
     const d=pp.distanceTo(c.g.position);if(d<bd){bd=d;best=c;kind='idle';}
   }
@@ -283,6 +284,9 @@ export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   }
   for(const c of cops){
     const d=pp.distanceTo(c.g.position);if(d<bd){bd=d;best=c;kind='cop';}
+  }
+  for(const r of rural){
+    const d=pp.distanceTo(r.g.position);if(d<bd){bd=d;best=r;kind='rural';}
   }
   return best?{c:best,kind:kind!}:null;
 }
@@ -356,7 +360,7 @@ export function enterCar(){
   const door=doors?(side>0?doors[1]:doors[0]):cg.userData.door||null;
   entering={f,door,side,t:0,phase:0};
   state.controlsLocked=true;
-  if(f.kind==='traffic')f.c.brakeT=1.8; // carro do tráfego espera parado
+  if(f.kind==='traffic'||f.kind==='rural')f.c.brakeT=1.8; // city/country car waits while you walk to the door
   blip([220],.06,'square',.1); // clique da maçaneta
 }
 
@@ -403,6 +407,14 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     cur={g:c.g,heading:Math.atan2(p.dx,p.dz),speed:0,name:c.name,police:false};
     refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
     addWanted(1,'STOLEN CAR!','vehicle_theft');refs.spawnTraffic?.();
+  }else if(kind==='rural'){
+    // a country car cruising the dirt road — its own pool (rural-traffic.ts). Pull it
+    // out of that pool, take it over like a traffic car (eject the driver, +1 star).
+    const rural:Vehicle[]=refs.ruralTraffic||[];
+    const ri=rural.indexOf(c);if(ri>=0)rural.splice(ri,1);
+    cur={g:c.g,heading:c.heading,speed:0,name:c.name,police:false};
+    refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
+    addWanted(1,'STOLEN CAR!','vehicle_theft');
   }else{
     cops.splice(cops.indexOf(c),1);
     cur={g:c.g,heading:c.heading,speed:0,name:'CRUISER 47',police:true};

@@ -705,10 +705,16 @@ function dealToPed(ped: Ped): void{
 
 // The grow-op itself stays OFF the map (you find the walls). But while a delivery run
 // is on, the BUYERS show on the radar/map so you know where to take the stash.
-(refs.miniBlips||(refs.miniBlips=[])).push(()=>delivering
-  ? buyers.filter(b=>!b.served).map(b=>({x:b.x,z:b.z,icon:'person',
-      color:b.city?'#19e3ff':'#9dff2e',label:'BUYER'}))
-  : []);
+(refs.miniBlips||(refs.miniBlips=[])).push(()=>{
+  if(!delivering)return[];
+  const out=buyers.filter(b=>!b.served).map(b=>({x:b.x,z:b.z,icon:'person',
+    color:b.city?'#19e3ff':'#9dff2e',label:'BUYER'}));
+  // street peds who like weed and are actively flagging you down also show as buyers,
+  // so the "they only wave" deals aren't invisible — you can see who wants to buy.
+  for(const ped of peds)if(ped.aiState==='weed')
+    out.push({x:ped.g.position.x,z:ped.g.position.z,icon:'person',color:'#9dff2e',label:'BUYER'});
+  return out;
+});
 
 refs.getWeedFarmState=()=>{
   let planted=0,ripe=0;

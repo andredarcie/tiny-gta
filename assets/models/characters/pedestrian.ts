@@ -262,12 +262,13 @@ export function addFemaleLook(g: THREE.Object3D): void{
   const hairColor=(g.userData.hairColor as number)??0x2a1911;
   const shirt=(g.userData.clothing?.shirt as number)??0xc23b4e;
   const parts: THREE.BufferGeometry[]=[];
-  // BIG HAIR: a full crown sitting over the egg head (front kept clear of the eyes),
-  // a long mane falling well down the back, and a thick lock framing each side.
-  parts.push(tinted(femHairCapG,partM([0,1.72,-.05],null,[1.18,1.12,1.28]),hairColor));        // voluminous crown
-  parts.push(tinted(femHairBackG,partM([0,1.30,-.13],null,[1.34,3.1,.6]),hairColor));          // long mane down the back
+  // HAIR: a neat crown hugging the egg head (front kept clear of the eyes), a
+  // shoulder-length mane down the back, and a soft lock framing each side. Scales kept
+  // proportionate so it reads clearly as female without ballooning over the head.
+  parts.push(tinted(femHairCapG,partM([0,1.70,-.04],null,[.96,.95,1.04]),hairColor));          // crown, close to the head
+  parts.push(tinted(femHairBackG,partM([0,1.34,-.11],null,[1.08,1.7,.55]),hairColor));         // shoulder-length mane
   for(const sx of[-1,1]){
-    parts.push(tinted(femLockG,partM([sx*.185,1.46,.03],null,[.7,2.5,1.0]),hairColor));         // thick side lock to the shoulder
+    parts.push(tinted(femLockG,partM([sx*.17,1.46,.03],null,[.62,1.5,.92]),hairColor));         // side lock framing the face
     parts.push(tinted(femBustG,partM([sx*.07,1.255,.085],null,[1,.85,.95]),shirt));             // subtle bust
   }
   const merged=mergeGeometries(parts,false);
