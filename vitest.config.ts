@@ -11,5 +11,13 @@ export default defineConfig({
     environment: 'node',                       // pure logic; no DOM/WebGL here
     include: ['test/unit/**/*.test.ts'],
     exclude: ['node_modules/**', 'dist/**', 'test/**/*.spec.ts'],
+    // Coverage is scoped to the police WANTED-STAR rules (the single source of truth in
+    // js/core/wanted.ts) and held at 100% — run with `npm run test:unit:coverage`.
+    coverage: {
+      provider: 'v8',
+      include: ['js/core/wanted.ts'],
+      reporter: ['text', 'text-summary'],
+      thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
+    },
   },
 });

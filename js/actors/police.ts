@@ -10,6 +10,7 @@ import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
 import {collideStatics,hasLineOfSight} from '@/core/physics.ts';
 import {COP_VIEW_RANGE,COP_VIEW_COS,COP_NEAR,OFF_VIEW_RANGE,OFF_VIEW_COS,OFF_NEAR,inCone} from '@/actors/vision.ts';
+import {ARMY_AT,HELI_AT,ROCKET_AT,LETHAL_AT,starResponse,coolWanted} from '@/core/wanted.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted,player} from '@/actors/player.ts';
 import {radioMessage} from '@/ui/hud.ts';
@@ -66,11 +67,10 @@ export let heli:THREE.Group|null=null;
 const COP_BLUE=0x2a3f6e;
 const SHERIFF_TAN=0x8a7a44;   // the sheriff wears a tan/khaki uniform (distinct from patrol blue)
 const SHERIFF_BROWN=0x46381f; // sheriff trousers
-const SIX_STAR_HOLD=30;
-const ARMY_AT=6;              // the wanted star at which the sheriff calls in the army
 const BUST_TIME=5;            // seconds of officer contact before the player is booked
-const WANTED_GRACE=24;        // seconds after losing the police before the star starts to cool
-const WANTED_COOL=10;         // seconds to shed one star once it finally starts cooling
+// Star thresholds (ARMY_AT/HELI_AT/ROCKET_AT/LETHAL_AT) and the cooldown live in
+// js/core/wanted.ts — the single source of truth shared with addWanted() and the unit
+// tests. coolWanted()/starResponse() (imported above) drive the decay + escalation below.
 let lastShout=-99;
 let radioCd=0;                // throttle between radio dispatches (one per few seconds)
 let carRadioCd=0;             // throttle for generic (non-police) vehicle-explosion calls
@@ -319,7 +319,7 @@ function deployOfficers(c:Cop){
       punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name, // the cruiser's named cop, on foot
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
-    o.rocket=Math.floor(state.wanted)>=5;
+    o.rocket=Math.floor(state.wanted)>=ROCKET_AT;
     // Officers fall flat on their back instantly — no ragdoll tumble.
     o.onDeath=()=>{
       o.grounded=true;o.vel.set(0,0,0);
@@ -474,13 +474,13 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
   collideStatics(p,.5);
   o.shootT-=dt;
   if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.rocket?44:26)&&hasLineOfSight(p.x,p.z,pp.x,pp.z)){
-    if(o.rocket&&Math.floor(state.wanted)>=5)officerRocket(o,pp); // only rocket while still ★5+
+    if(o.rocket&&Math.floor(state.wanted)>=ROCKET_AT)officerRocket(o,pp); // only rocket while still ★5+
     else officerShoot(o,pp,distP);
   }
 }
 
 export function updateHeli(dt:number){
-  const need=Math.floor(state.wanted)>=4;
+  const need=Math.floor(state.wanted)>=HELI_AT;
   if(need&&!heli){
     heli=makeHeli();
     heli.position.copy(playerPos()).add(new THREE.Vector3(60,45,60));
@@ -541,7 +541,7 @@ export function updateCops(dt:number){
   // suspect resisting (firing a weapon AFTER officers got out) latches them lethal.
   if(want===0)resisted=false;
   if(!resisted&&officers.length>0&&(state.shotT??-99)>lastDeployT+.4)resisted=true;
-  policeLethal=want>=2||resisted;
+  policeLethal=want>=LETHAL_AT||resisted;
   // RADIO escalation: each new star, the sheriff speaks once (more units, then the
   // army at the top). Resets as the wanted level falls so it speaks again next time.
   if(want>lastRadioStar){lastRadioStar=want;radioEscalate(want);}
@@ -553,7 +553,7 @@ export function updateCops(dt:number){
   if(cops.length<POOL&&respawnT<=0){spawnCop();respawnT=.8;radioReturn(cops[cops.length-1]?.name);}
   // How many cruisers actively CHASE scales with the stars: none when clean, none at
   // ★6 (the army takes over). The rest keep patrolling the streets.
-  const chasers=(want>0&&want<6)?Math.min(POOL,want):0;
+  const chasers=starResponse(state.wanted,POOL).chasers;
   const pp=playerPos();
   let ci=0;
   for(const c of cops){
@@ -631,19 +631,27 @@ export function updateCops(dt:number){
       if(ad<6){p.x=pp.x+ax/ad*6;p.z=pp.z+az/ad*6;c.speed*=.3;}
     }
     if(collideStatics(p,1.3)){c.speed*=.3;c.stuckT+=dt*3;}
-    // "stuck" only counts while still FAR and meant to be driving. Near the suspect,
-    // stopping is ON PURPOSE (about to deploy) — without this the braked cruiser reads as
-    // jammed, reverses, and never gets out (the same fix the army truck carries).
-    if(dist>14){
+    // "stuck" only counts while still FAR and meant to be driving. Near an on-foot suspect,
+    // stopping is ON PURPOSE (about to deploy), so widen the no-reverse zone there: a cruiser
+    // boxed in by traffic or by the other units converging ~15-20m out must NOT keep backing
+    // away, or it loops back and forth forever and never gets out to make the arrest (which
+    // reads in-game as "the cars just stop and wait, nothing happens").
+    const holdNearFoot=state.mode==='foot'&&dist<22;
+    if(dist>14&&!holdNearFoot){
       if(Math.abs(c.speed)<2.5)c.stuckT+=dt;else c.stuckT=Math.max(0,c.stuckT-dt*2);
       if(c.stuckT>1.2){c.backT=.9;c.stuckT=0;}
     }else c.stuckT=0;
     c.g.rotation.y=c.heading;
     spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
-    // If the player is ON FOOT, stop and get out as soon as the cruiser is near (~13m),
-    // rather than nosing right up to them. In a car chase, pull alongside first.
-    if(pp.y<6&&!c.backT&&
-      (state.mode==='foot'?dist<13:dist<13&&Math.abs(cur?.speed||0)<4)){
+    // Deploy as soon as a chasing cruiser has pulled up to an on-foot suspect: dist<13 is
+    // the clean "arrived" case, and the slow-and-near fallback (effectively stopped within
+    // ~20m) covers a cruiser boxed in by traffic or geometry that can't squeeze all the way
+    // in — so a standoff resolves into officers on foot instead of the car idling forever.
+    // In a car chase it still pulls alongside (player's car nearly stopped) first.
+    const pulledUp=state.mode==='foot'
+      ? (dist<13||(dist<20&&Math.abs(c.speed)<2.5))
+      : (dist<13&&Math.abs(cur?.speed||0)<4);
+    if(pp.y<6&&!c.backT&&pulledUp){
       deployOfficers(c);
       if(state.time-lastShout>6){lastShout=state.time;message('POLICE! FREEZE!','var(--blue)');}
       continue;
@@ -725,7 +733,13 @@ export function updateCops(dt:number){
   // stars while spotted and blinks them the moment you break their line of sight.
   state.spotted=seen&&state.wanted>0;
   if(seen&&state.wanted>0)state.lastCrime=state.time; // on you → heat stays maxed
-  const sixHold=state.wanted>=6&&state.time-state.sixStarT<SIX_STAR_HOLD;
-  if(!sixHold&&state.wanted>0&&!seen&&state.time-state.lastCrime>WANTED_GRACE&&(refs.armyDist?.()??1e9)>90)
-    state.wanted=Math.max(0,state.wanted-dt/WANTED_COOL);
+  // Star cooldown — shared rule in js/core/wanted.ts (held while seen / within the grace
+  // window / during the ★6 hold / while the army is on top of you, else sheds a star over
+  // WANTED_COOL seconds).
+  state.wanted=coolWanted(state.wanted,dt,{
+    seen,
+    sinceCrime:state.time-state.lastCrime,
+    sinceSixStar:state.time-state.sixStarT,
+    armyDist:refs.armyDist?.()??1e9,
+  });
 }
