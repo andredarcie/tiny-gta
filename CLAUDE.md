@@ -70,10 +70,11 @@ There are **two separately-deployed pieces**:
 
 ## Testing (browser end-to-end)
 
-> **🚫 DO NOT RUN BROWSER/GAME TESTS YOURSELF. THE USER TESTS. 🚫**
-> This is an absolute, non-negotiable rule. **Claude must NEVER launch Playwright, Chromium, a headless browser, `npm test`, `npx playwright`, or any other in-browser/runtime test of the game.** Do not write throwaway `.spec.ts` files to "just check" something, and do not take in-game screenshots to verify your own work. The user is the only one who runs the game and verifies it visually.
-> Your validation stops at static checks: `node --check <file>` on the files you touched and `npm run build`. After that, describe what you changed and hand it to the user to test. If you believe something needs runtime/visual verification, **say so and ask the user to test it** — never do it yourself.
-> (The harness below still exists for the user's own use / CI; the rest of this section documents it for that purpose only. It is **not** an invitation for Claude to run it.)
+> **▶ RUNNING THE GAME LOCALLY — HEADED (VISIBLE) ONLY. THIS IS MANDATORY.**
+> When the user asks you to test/run the game locally (or to verify a change in the real game), you **MUST** drive it through the Playwright harness in a **VISIBLE (headed) window the user can watch in real time — NEVER headless, never `HEADLESS=1`.** The user has to be able to see the game being played; this is non-negotiable. Follow **[`test/AGENT_LOCAL_TESTING.md`](test/AGENT_LOCAL_TESTING.md)** step by step — it documents the boot trap, the `window` hooks, and ready-made recipes, so testing stops being a fight every time.
+> - **Headed is obligatory.** Run `npx playwright test <spec>` with **no** `HEADLESS` env var. Headless is forbidden here (the user can't watch it) *and* unreliable (it throttles `requestAnimationFrame`, so boot stalls and driving wanders).
+> - **Don't run the game unprompted.** Static checks stay your default on every change: `npm run typecheck`, `npm run build`, and `npm run test:unit` (safe pure-logic suite). Only launch the real game when the user asks you to test locally — then do it headed, per the guide.
+> - **Visual-only judgments still belong to the user.** Run it headed, watch it, and report what you saw — but the final call on how models/animations/camera *look* and *feel* is the user's. Add new gameplay coverage as `test/*.spec.ts` on the shared harness (never one-off browser scripts).
 
 Gameplay is tested by driving the **real game in a real Chromium** (real Three.js/WebGL, real game loop, real input pipeline) via Playwright — there is no headless-stub/mock layer. This is the one sanctioned way to test the game; do not invent per-test browser scripts.
 
@@ -86,7 +87,7 @@ npm test -- test/race.spec.ts     # run one spec
 
 - **Config:** `playwright.config.ts` auto-starts `npm run dev` and points tests at it. Headed by default (set `HEADLESS=1` to hide the window). Real-time *driving* tests (races, chases) should run **headed** — headless Chromium throttles `requestAnimationFrame`, starving the control loop (a race autopilot wanders and loses); `HEADLESS=1` is best for boot/state assertions, not live driving.
 - **Driver:** `test/support/game.ts` exports a Playwright `test`/`expect` where every spec gets a booted `game` (a `GameDriver`). Write specs as `test/*.spec.ts` and `import { test, expect } from './support/game.ts'`. Key driver methods:
-  - `boot(nick)` — title → nickname → play (auto-run by the fixture).
+  - `boot()` — auto-starts the game (localhost dev shortcut: no title/login UI to drive) and waits for `started`; auto-run by the fixture. See `test/AGENT_LOCAL_TESTING.md` for why the old title→nickname flow is gone.
   - `snapshot()` — parsed `render_game_to_text()` (mode, money, vehicle, per-minigame state, …).
   - `enterCar()` / `placeVehicle(x,z,faceX,faceZ)` — get in a car / set up at an activity's start.
   - `startRaceByKey(stateKey)` — press **E** to start a race and pass the leaderboard briefing.

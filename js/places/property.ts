@@ -2,6 +2,7 @@ import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {playerPos,idleCars} from '@/actors/player.ts';
 import {makeCar,makeMotorcycle} from '@/core/entities.ts';
+import {setRims,setSpoiler,setHood,setNeon} from '../../assets/models/vehicles/car-customs.ts';
 import {message} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {Interior} from '@/world/interior.ts';
@@ -24,9 +25,43 @@ const BUY_RANGE=2.6;
 const FOOD_RANGE=2.0;
 const PARK_RANGE=3.4;
 
-// car: {type:'car'|'bike', color, name}
-interface SavedCar{type:'car'|'bike';color:number;name:string;}
+// car: {type:'car'|'bike', color, name} + any MOD-GARAGE customs (cars only). The mods
+// are stored so a tuned car keeps its look/engine when respawned from the garage — only
+// non-stock values are saved (omitted = stock). Read from car-customs userData.mods.
+interface SavedCar{
+  type:'car'|'bike';color:number;name:string;
+  rims?:number;        // wheel hub colour (setRims), omitted when stock
+  spoiler?:string;     // 'lip'|'wing'|'gt', omitted when 'none'
+  hood?:string;        // 'scoop'|'vents', omitted when 'stock'
+  neon?:number;        // underglow colour, omitted when off
+  speedMul?:number;    // engine tuning multiplier, omitted when stock (1.0)
+}
 interface SavedProperty{owned:boolean;car:SavedCar|null;}
+
+// allow-lists so a tampered/old backend payload can't install a garbage part
+const SPOILER_TYPES=['lip','wing','gt'];
+const HOOD_TYPES=['scoop','vents'];
+
+// the installed customs read straight off a live car group (car-customs writes them to
+// userData.mods; the engine multiplier lives on userData.speedMul). Bikes have none.
+function readCarMods(g:any):Partial<SavedCar>{
+  const m=g.userData.mods||{},out:Partial<SavedCar>={};
+  if(typeof m.rims==='number')out.rims=m.rims;
+  if(typeof m.spoiler==='string'&&m.spoiler!=='none')out.spoiler=m.spoiler;
+  if(typeof m.hood==='string'&&m.hood!=='stock')out.hood=m.hood;
+  if(typeof m.neon==='number')out.neon=m.neon;
+  if(typeof g.userData.speedMul==='number'&&g.userData.speedMul!==1)out.speedMul=g.userData.speedMul;
+  return out;
+}
+// reapply the saved customs to a freshly built garage car (paint is already baked in by
+// makeCar(color), so the body-coloured spoiler picks up the right hue).
+function applyCarMods(g:THREE.Object3D,d:SavedCar):void{
+  if(typeof d.rims==='number')setRims(g,d.rims);
+  if(d.spoiler&&SPOILER_TYPES.includes(d.spoiler))setSpoiler(g,d.spoiler);
+  if(d.hood&&HOOD_TYPES.includes(d.hood))setHood(g,d.hood);
+  if(typeof d.neon==='number')setNeon(g,d.neon);
+  if(typeof d.speedMul==='number')g.userData.speedMul=d.speedMul;
+}
 
 // veículo parado (idleCar) — wrapper recriado pra garagem
 interface GarageVehicle{
@@ -138,6 +173,7 @@ function spawnGarageCar():void{
   const color=Number.isFinite(d.color)?d.color:(type==='bike'?0xd11f3a:0xff2e88);
   const name=d.name||(type==='bike'?'GARAGE BIKE':'GARAGE CAR');
   const g=type==='bike'?makeMotorcycle(color):makeCar(color,false);
+  if(type==='car')applyCarMods(g,d); // re-install the saved spoiler/rims/neon/hood/engine
   const heading=Math.PI; // nariz (+z) virado pro norte: pronto pra sair da garagem
   g.position.set(GARAGE_PAD.x,0,GARAGE_PAD.z);g.rotation.y=heading;
   const v:GarageVehicle={g,heading,speed:0,name,police:false};
@@ -175,7 +211,8 @@ export function houseGaragePark():boolean{
   replaceGarageVehicle(c);
   const type:'car'|'bike'=c.bike?'bike':'car';
   saved.car={type,color:c.g.userData.color??(type==='bike'?0xd11f3a:0xff2e88),
-    name:c.name||(type==='bike'?'GARAGE BIKE':'GARAGE CAR')};
+    name:c.name||(type==='bike'?'GARAGE BIKE':'GARAGE CAR'),
+    ...(type==='car'?readCarMods(c.g):{})}; // keep its installed customs
   persist();
   message('CAR SAVED TO YOUR GARAGE','var(--gold)');
   blip([330,440,587],.08,'triangle',.14);
@@ -204,7 +241,15 @@ function sanitizeCar(c:any):SavedCar|null{
   const type=c.type==='bike'?'bike':'car';
   const color=Number.isFinite(c.color)?c.color:(type==='bike'?0xd11f3a:0xff2e88);
   const name=(typeof c.name==='string'&&c.name)?c.name.slice(0,20):(type==='bike'?'GARAGE BIKE':'GARAGE CAR');
-  return{type,color,name};
+  const out:SavedCar={type,color,name};
+  if(type==='car'){ // carry the customs through, validated so junk can't install a part
+    if(Number.isFinite(c.rims))out.rims=c.rims;
+    if(typeof c.spoiler==='string'&&SPOILER_TYPES.includes(c.spoiler))out.spoiler=c.spoiler;
+    if(typeof c.hood==='string'&&HOOD_TYPES.includes(c.hood))out.hood=c.hood;
+    if(Number.isFinite(c.neon))out.neon=c.neon;
+    if(Number.isFinite(c.speedMul))out.speedMul=c.speedMul;
+  }
+  return out;
 }
 refs.getPropertySave=()=>({owned:!!saved.owned,car:saved.car||null});
 refs.restoreProperty=(s:any)=>{

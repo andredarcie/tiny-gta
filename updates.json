@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-06-24-polish-and-fixes",
+    "date": "2026-06-24",
+    "title": "A big round of fixes and polish",
+    "description": "Lots of little things put right. You can now hot-wire the country cars cruising the dirt roads, not just the parked ones. Your saved garage car finally keeps everything you bolted onto it — spoiler, rims, neon, hood and engine — instead of forgetting it all on the next visit. Story characters show their names above their heads like everyone else, and the officer who steps out of the cruiser now matches the driver. People who want to buy your weed wave you over with a clear 'come here' and show up on the radar. We tamed the wild hair on some characters, widened the off-road rally so it flows better, and stopped the hidden country cash from paying out forever if you just walk in circles. The NPC list in the pause menu got a show/hide button for its filters so it's no longer so tall. The leaderboard now matches the money you actually have in your wallet. And blowing up your own car no longer crashes the game."
+  },
+  {
     "id": "2026-06-23-npc-ai-fixes",
     "date": "2026-06-23",
     "title": "Take cover — and survive a fender-bender",

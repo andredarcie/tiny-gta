@@ -175,7 +175,10 @@ function spawnTractor(x:number,z:number,heading:number):Vehicle{
 spawnTractor(398,40,Math.PI/2);
 spawnTractor(630,-12,0);  // a second one parked by the rural village (Pine Hollow), clear of the town sign
 
-export function playerPos():THREE.Vector3{return state.mode==='car'?cur!.g.position:player.g.position;}
+// Null-safe: there is a transient window (e.g. explodePlayerCar / getWasted) where the
+// car is gone (cur=null) but state.mode is still 'car' for the rest of the frame. Falling
+// back to the player ped's position avoids a crash on `cur.g` until the mode flips.
+export function playerPos():THREE.Vector3{return state.mode==='car'&&cur?cur.g.position:player.g.position;}
 
 // ===== Dano progressivo do carro do jogador: bate -> amassa feio; bate de novo
 // -> solta fumaça; bate mais -> explode. Tudo barato: o contador/timer mora no
@@ -237,6 +240,8 @@ function explodePlayerCar():boolean{
   scene.remove(g);
   resetCarDamage(g);
   g.userData.driver=null;
+  player.g.position.copy(pos); // put the ped where the car blew up: getWasted reads
+                               // playerPos() (now ped-based, cur is gone) for the death spot
   cur=null;            // wastedCut não devolve o destroço pra idleCars
   state.shake=1;
   getWasted();         // dentro de veículo -> corte WASTED direto
@@ -275,6 +280,7 @@ export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   const pp=player.g.position;
   const traffic:Vehicle[]=refs.traffic||[];
   const cops:Vehicle[]=refs.cops||[];
+  const rural:Vehicle[]=refs.ruralTraffic||[]; // country cars on the dirt road
   for(const c of idleCars){
     const d=pp.distanceTo(c.g.position);if(d<bd){bd=d;best=c;kind='idle';}
   }
@@ -283,6 +289,9 @@ export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   }
   for(const c of cops){
     const d=pp.distanceTo(c.g.position);if(d<bd){bd=d;best=c;kind='cop';}
+  }
+  for(const r of rural){
+    const d=pp.distanceTo(r.g.position);if(d<bd){bd=d;best=r;kind='rural';}
   }
   return best?{c:best,kind:kind!}:null;
 }
@@ -356,7 +365,7 @@ export function enterCar(){
   const door=doors?(side>0?doors[1]:doors[0]):cg.userData.door||null;
   entering={f,door,side,t:0,phase:0};
   state.controlsLocked=true;
-  if(f.kind==='traffic')f.c.brakeT=1.8; // carro do tráfego espera parado
+  if(f.kind==='traffic'||f.kind==='rural')f.c.brakeT=1.8; // city/country car waits while you walk to the door
   blip([220],.06,'square',.1); // clique da maçaneta
 }
 
@@ -403,6 +412,14 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     cur={g:c.g,heading:Math.atan2(p.dx,p.dz),speed:0,name:c.name,police:false};
     refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
     addWanted(1,'STOLEN CAR!','vehicle_theft');refs.spawnTraffic?.();
+  }else if(kind==='rural'){
+    // a country car cruising the dirt road — its own pool (rural-traffic.ts). Pull it
+    // out of that pool, take it over like a traffic car (eject the driver, +1 star).
+    const rural:Vehicle[]=refs.ruralTraffic||[];
+    const ri=rural.indexOf(c);if(ri>=0)rural.splice(ri,1);
+    cur={g:c.g,heading:c.heading,speed:0,name:c.name,police:false};
+    refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
+    addWanted(1,'STOLEN CAR!','vehicle_theft');
   }else{
     cops.splice(cops.indexOf(c),1);
     cur={g:c.g,heading:c.heading,speed:0,name:'CRUISER 47',police:true};
