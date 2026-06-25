@@ -83,6 +83,21 @@ function poseWavePed(g:THREE.Object3D,phase:number){
   l.leftCalf?.rotation.set(0,0,0);l.rightCalf?.rotation.set(0,0,0);
 }
 
+// Beckon pose for a weed-liking ped flagging you down for a DEAL — deliberately DISTINCT
+// from the friendly one-arm greeting wave above: both arms reach forward and the hands
+// curl inward in a "come over here" beckon, so a buyer reads clearly as a buyer (and not
+// as a random passer-by saying hi).
+function poseWeedBeckon(g:THREE.Object3D,phase:number){
+  const l=g.userData.limbs;if(!l)return;
+  const b=Math.sin(phase*5);
+  l.rightArm.rotation.set(-1.45,0,-.18);
+  l.rightForearm?.rotation.set(-1.0-Math.max(0,b)*.8,0,0);
+  l.leftArm.rotation.set(-1.45,0,.18);
+  l.leftForearm?.rotation.set(-1.0-Math.max(0,-b)*.8,0,0);
+  l.leftLeg.rotation.set(0,0,0);l.rightLeg.rotation.set(0,0,0);
+  l.leftCalf?.rotation.set(0,0,0);l.rightCalf?.rotation.set(0,0,0);
+}
+
 // Turn a ped to face the player (module-level so the hot loop allocates no closures).
 function pedFace(p:Ped,pp:THREE.Vector3){
   p.g.rotation.y=Math.atan2(pp.x-p.g.position.x,pp.z-p.g.position.z);
@@ -223,7 +238,7 @@ export function updatePeds(dt:number){
       p.g.rotation.y=Math.atan2(pp.x-p.g.position.x,pp.z-p.g.position.z);
       p.t+=dt*4;
       p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
-      poseWavePed(p.g,p.t);
+      poseWeedBeckon(p.g,p.t); // distinct "come deal" beckon, not the plain greeting wave
       continue;
     }
     if(p.aiState==='panic'){

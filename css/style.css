@@ -1063,6 +1063,10 @@ body.admin-open #touch-controls{display:none!important}
   padding:3px 10px;cursor:pointer}
 .pause-chip:hover{background:rgba(255,255,255,.14)}
 .pause-chip.on{background:var(--gold);color:#1a1410;border-color:var(--gold);font-weight:700}
+/* NPC roster: collapsible filter bar — a SHOW/HIDE toggle + active-filter summary. */
+.pause-filter-bar{display:flex;align-items:center;gap:10px;margin:0 0 8px}
+.npc-filter-toggle.on{background:var(--gold);color:#1a1410} /* gold when a filter is active */
+.npc-filter-active{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:var(--gold)}
 
 /* Full-map "Show NPCs" toggle button (sits in the map header next to close). */
 #fm-npcs{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--cream);

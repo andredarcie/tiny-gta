@@ -13,7 +13,7 @@ import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collec
 import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
 import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
 import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
-import {updateRuralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
+import {updateRuralTraffic,ruralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach,solids} from '@/world/world.ts';
 import {cops,officers,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
 import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
@@ -109,6 +109,7 @@ refs.getRadarHeading=()=>cameraRig.yaw;
 refs.traffic=traffic;
 refs.cops=cops;
 refs.officers=officers; // hud draws each foot officer's vision cone on the minimap
+refs.ruralTraffic=ruralTraffic; // country cars on the dirt road — stealable like city traffic
 refs.trafficPos=trafficPos;
 refs.spawnTraffic=spawnTraffic;
 refs.ejectDriver=ejectDriver;

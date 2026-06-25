@@ -55,7 +55,7 @@ class Actor extends Npc {
   mat: THREE.MeshBasicMaterial;
   phase: number;
   constructor(ped: THREE.Object3D, marker: THREE.Object3D, mat: THREE.MeshBasicMaterial, def: StoryNpcDef, gender: 'M'|'F'){
-    super(ped,{kind:'story',hp:1,register:false,name:def.name,area:'Story mission',gender});
+    super(ped,{kind:'story',hp:1,register:false,name:def.name,area:'Story mission',gender,showLabel:true});
     this.marker=marker;this.mat=mat;this.phase=rand(0,6);
   }
   get ped(): THREE.Object3D {return this.g;}

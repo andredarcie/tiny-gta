@@ -24,6 +24,8 @@ See `CLAUDE.md` for the full architecture notes and conventions.
 
 Gameplay is tested by driving the **real game in a real Chromium** (real WebGL, real game loop, real input) with [Playwright](https://playwright.dev/) — there is no headless-stub layer, so tests are as faithful as possible. The harness is the single, shared way to test the game; build new tests on it rather than writing one-off browser scripts.
 
+> **🤖 AI agents — read [`test/AGENT_LOCAL_TESTING.md`](test/AGENT_LOCAL_TESTING.md) before running the game.** When the human asks you to test/run it locally, follow that guide, and **always run HEADED (a visible window the human can watch) — never headless.** It documents the boot trap, the `window` hooks, and ready-made recipes so local testing stops being a fight every time.
+
 ```bash
 npx playwright install chromium   # one-time: download the browser
 npm test                          # run test/*.spec.js HEADED — a window opens and you watch the AI play

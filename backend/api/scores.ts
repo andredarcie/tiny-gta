@@ -128,21 +128,28 @@ async function submit(req: VercelRequest, res: VercelResponse): Promise<void> {
     }
   }
 
-  // 7) gate do RANKING (não afeta o ledger/save acima): partida curta demais NÃO
-  //    publica score (anti-forja de sessão recém-criada). Retorna 200 ranked:false
-  //    (NÃO 403): o save/ledger já foram gravados, então não é um erro — só "ainda
-  //    não rankeado". Antes era 403 e o cliente flushava a cada 3s nos primeiros 20s,
-  //    enchendo o console de 403 a cada sessão/reload. Quando o jogador ganha algo
-  //    depois dos 20s, a mudança de saldo dispara um novo flush que enfim rankeia.
-  if (seconds < C.MIN_RUN_SECONDS)
-    return void res.status(200).json({ ok: true, ranked: false, reason: 'run_too_short' });
-
-  // 8) leaderboard = SALDO ATUAL do jogador (somado do ledger, não o valor cru do
-  //    cliente). CRAVADO no teto duro; o teto por tempo só morde no caminho sem pid
-  //    (com pid o saldo já foi clampado a maxAllowed acima).
+  // 7-8) leaderboard = SALDO ATUAL do jogador, lido do LEDGER (não o valor cru do
+  //    cliente), cravado só no teto duro. Os gates por TEMPO (min-run + plausibilidade)
+  //    valem APENAS para o caminho legado SEM pid, em que `bal` veio do `money` do
+  //    cliente e precisa do freio anti-forja.
+  //
+  //    COM pid, `bal` é a SOMA do ledger no servidor, e cada crédito já passou por
+  //    payoutWithinCap + LEDGER_TX_CAP quando foi aplicado (passo 5) — então é um valor
+  //    confiável e é publicado COMO ESTÁ. Isso mantém o ranking == saldo in-game: antes,
+  //    os gates por tempo PULAVAM o zadd num ganho legítimo (poça de sangue, presente do
+  //    dono, ou payout nos primeiros 20s), deixando o ranking TRAVADO abaixo do saldo
+  //    real do jogador. O ledger nunca foi clampado (passo 5), então o ranking precisa
+  //    refletir o mesmo número pra os dois casarem.
   const lbMoney = Math.min(bal, C.MONEY_HARD_CAP);
-  if (lbMoney > maxAllowed)
-    return void res.status(422).json({ error: 'implausible_score', maxAllowed: Math.floor(maxAllowed) });
+  if (!pid) {
+    // partida curta demais NÃO publica (anti-forja de sessão recém-criada): 200
+    // ranked:false (NÃO 403), pois save/ledger já foram gravados — só "ainda não rankeado".
+    if (seconds < C.MIN_RUN_SECONDS)
+      return void res.status(200).json({ ok: true, ranked: false, reason: 'run_too_short' });
+    // teto por tempo: dinheiro do cliente não passa do plausível pela duração + base.
+    if (lbMoney > maxAllowed)
+      return void res.status(422).json({ error: 'implausible_score', maxAllowed: Math.floor(maxAllowed) });
+  }
   await redis.zadd(C.LEADERBOARD_KEY, { score: lbMoney, member: name });
   const rank = await redis.zrevrank(C.LEADERBOARD_KEY, name);
   res.status(200).json({ ok: true, name, money: lbMoney, rank: rank == null ? null : rank + 1 });

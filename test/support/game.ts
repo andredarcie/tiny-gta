@@ -32,35 +32,21 @@ export class GameDriver {
   }
 
   // ---- boot ---------------------------------------------------------------
-  // Faithful start: load the page, click PLAY, type a nickname, click PLAY again
-  // (the same path a player takes), then wait until the game reports started.
-  async boot(nick = 'BOT') {
+  // Start the game. On localhost it AUTO-STARTS with a fixed nickname (the dev shortcut
+  // in js/core/input.ts), so there is NO title/login UI to drive — we just wait until the
+  // running game reports `started`. (Do NOT drive the old title → nickname → #nick-play
+  // flow: the login modal is now guest/login/register, so #nick-play no longer exists and
+  // clicking it would hang the boot — this was the long-standing "boot always fails" trap.)
+  // `_nick` is accepted for back-compat but ignored (the auto-start picks the nickname).
+  async boot(_nick = 'BOT') {
     const page = this.page;
-    page.on('pageerror', (e) => console.error('[pageerror]', e.message));
+    // Benign: the auto-start requests Pointer Lock before any user click — ignore that one.
+    page.on('pageerror', (e) => { if (!/Pointer Lock/i.test(e.message)) console.error('[pageerror]', e.message); });
     await page.goto('/', { waitUntil: 'load' });
-    // On localhost the title screen AUTO-STARTS the game (a dev-shortcut in js/core/input.ts
-    // calls beginRun() on a macrotask), so just waiting for state.started is the faithful path.
-    // If it hasn't started shortly (non-localhost, or the shortcut is disabled), fall back to
-    // the real title flow — which is now PLAY → nickname modal → "Play as guest" (#nick-guest),
-    // not the old #nick-play button.
-    await page.waitForFunction(() => !!(window as any).render_game_to_text, null, { timeout: 30_000 });
-    const started = () => page.evaluate(
-      () => { try { return JSON.parse((window as any).render_game_to_text()).started === true; } catch { return false; } });
-    const autostarted = await page.waitForFunction(
-      () => { try { return JSON.parse((window as any).render_game_to_text()).started === true; } catch { return false; } },
-      null, { timeout: 4_000 }).then(() => true).catch(() => false);
-    if (!autostarted && !(await started())) {
-      await page.evaluate(() => document.getElementById('play')?.click());          // open the nickname modal
-      await page.waitForSelector('#nick-input', { state: 'visible', timeout: 8_000 }).catch(() => {});
-      await page.evaluate((n) => { const i = document.getElementById('nick-input') as HTMLInputElement | null; if (i) i.value = n; }, nick);
-      await page.evaluate(() => (document.getElementById('nick-guest') || document.getElementById('nick-play'))?.click());
-    }
     await page.waitForFunction(
       () => !!(window as any).render_game_to_text && JSON.parse((window as any).render_game_to_text()).started === true,
-      null, { timeout: 20_000 });
-    // The nickname <input> keeps focus after confirm; the game ignores key events
-    // whose target is an INPUT, so blur it and give focus to the game canvas —
-    // otherwise E/W/A/S/D would be swallowed.
+      null, { timeout: 60_000 });
+    // Give the game canvas keyboard focus (otherwise E/W/A/S/D could be swallowed).
     await page.evaluate(() => { const a = document.activeElement as HTMLElement | null; if (a && a.blur) a.blur(); });
     await page.locator('#game').click({ position: { x: 8, y: 8 }, force: true }).catch(() => {});
     await sleep(400); // settle a few frames
