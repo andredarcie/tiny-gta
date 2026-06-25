@@ -224,9 +224,12 @@ export class Npc{
     return this.dialogues.length?this.dialogues[Math.floor(Math.random()*this.dialogues.length)]:null;
   }
 
-  takeDamage(dir?:THREE.Vector3,dmg=1){
+  takeDamage(dir?:THREE.Vector3,dmg=1,at?:THREE.Vector3){
     if(this.dead)return;
     this.hp-=dmg;
+    // Blood on EVERY hit, at the impact point when known (gunfire passes it) or the chest.
+    const bx=at?at.x:this.g.position.x,by=at?at.y:this.g.position.y+1.2,bz=at?at.z:this.g.position.z;
+    refs.spawnBlood?.(bx,by,bz,dir,10);
     if(this.hp<=0)this.kill(dir);
     else this.onHurt?.(dir);
   }
@@ -238,6 +241,7 @@ export class Npc{
     const d=dir||new THREE.Vector3();
     this.vel.set(d.x,0,d.z).multiplyScalar(9).add(new THREE.Vector3(rand(-1.5,1.5),rand(5,7),rand(-1.5,1.5)));
     if(!this.bloodDropped){this.bloodDropped=true;refs.addBloodPuddle?.(this.g.position.x,this.g.position.z);}
+    refs.spawnBlood?.(this.g.position.x,this.g.position.y+1.1,this.g.position.z,d,16); // death burst
     if(this.drop)spawnDrop(this.g.position.x,this.g.position.z,irand(this.drop[0],this.drop[1]));
     if(this.wanted)addWanted(this.wanted,this.wantedMsg,this.crime);
     this.onDeath?.(dir);
@@ -272,6 +276,24 @@ export class Npc{
     this.g.position.set(x,groundHeight(x,z),z);
     this.g.rotation.set(0,rand(-Math.PI,Math.PI),0);
     setOpacity(this.g,1);
+    this.restoreLimbs(); // re-grow any head/arm torn off by the gore layer
+  }
+
+  // Undo dismemberment (js/combat/gore.ts) so a revived NPC isn't permanently maimed:
+  // restore the collapsed bones to full scale and re-show the head extras.
+  restoreLimbs(){
+    const ud=this.g.userData,limbs=ud.limbs;
+    if(ud.headless){
+      limbs?.head?.scale.setScalar(1);
+      if(ud.mouth)(ud.mouth as {visible:boolean}).visible=true;
+      if(ud.femaleHairMesh)(ud.femaleHairMesh as {visible:boolean}).visible=true;
+      ud.headless=false;
+    }
+    if(ud.lostArm){
+      if(ud.lostArm.L){limbs?.leftArm?.scale.setScalar(1);limbs?.leftForearm?.scale.setScalar(1);}
+      if(ud.lostArm.R){limbs?.rightArm?.scale.setScalar(1);limbs?.rightForearm?.scale.setScalar(1);}
+      ud.lostArm={};
+    }
   }
 
   despawn(){

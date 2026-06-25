@@ -12,6 +12,7 @@ import {settings} from '@/core/settings.ts';
 import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.ts';
 import {traffic,spawnTraffic} from '@/world/traffic.ts';
 import {cops} from '@/actors/police.ts';
+import {updateGore} from '@/combat/gore.ts';
 import {npcs} from '@/actors/npc.ts'; // unified NPC registry — ALL NPC types
 import {dentCar,poseAiming,disposeGeometries} from '@/core/entities.ts';
 import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
@@ -1016,7 +1017,19 @@ function makeBullet(origin: THREE.Vector3,dir: THREE.Vector3,{speed=86,range=52,
 
 function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,damage=1){
   addImpact(pos,hit);
-  if(hit.kind==='npc')hit.target.takeDamage(dir);
+  if(hit.kind==='npc'){
+    // Hit LOCATION from the 3D impact point: high = head (decapitate), upper + off-centre =
+    // an arm (tear it off). The doll's head sits ~1.66 above the feet, shoulders ~1.44, arms
+    // at local ±0.22. Dismember BEFORE the killing hit so the body ragdolls already maimed.
+    const npc=hit.target, fy=npc.g.position.y, relY=pos.y-fy;
+    if(relY>1.45)refs.severHead?.(npc,dir);
+    else if(relY>1.0){
+      const ry=npc.g.rotation.y;
+      const localX=(pos.x-npc.g.position.x)*Math.cos(ry)-(pos.z-npc.g.position.z)*Math.sin(ry);
+      if(Math.abs(localX)>0.16)refs.severArm?.(npc,localX<0?'L':'R',dir);
+    }
+    npc.takeDamage(dir,damage,pos);
+  }
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
@@ -1277,6 +1290,7 @@ function updateAimAssist(dt: number){
 }
 
 export function updateWeapons(dt: number){
+  updateGore(dt); // animate blood droplets + flying head/arm gibs (gore.ts)
   // nadando o jogador guarda a arma: nada de modelo na mão, pose de mira ou tiro
   // (a pose do nado controla os membros — ver player.js animateSwim)
   const swimming=state.swimming;

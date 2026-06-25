@@ -198,8 +198,10 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
   g.add(mouth);
   g.userData.mouth=mouth;
 
-  // rig API: limbs are BONES (Object3D with .rotation) under the same names
+  // rig API: limbs are BONES (Object3D with .rotation) under the same names. `head` is
+  // exposed too so the gore layer can collapse it on a decapitation (js/combat/gore.ts).
   g.userData.limbs={
+    head,
     leftArm:uaL,rightArm:uaR,leftForearm:laL,rightForearm:laR,
     leftLeg:ulL,rightLeg:ulR,leftCalf:llL,rightCalf:llR,
   };
@@ -275,6 +277,9 @@ export function addFemaleLook(g: THREE.Object3D): void{
   const mesh=new THREE.Mesh(merged,mat);
   mesh.castShadow=true;
   g.add(mesh);
+  // the long hair is a SEPARATE (non-skinned) mesh, so a decapitation must hide it by
+  // hand — expose it for the gore layer (js/combat/gore.ts severHead).
+  g.userData.femaleHairMesh=mesh;
   // fade with the body on death (setOpacity drives userData.fadeMats)
   (g.userData.fadeMats as THREE.Material[]|undefined)?.push(mat);
   // bright LIPSTICK — the mouth is its own mesh; recolour it and widen it a touch so

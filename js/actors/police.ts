@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {N,CELL,HALF,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {N,CELL,HALF,BOUND,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND,
+  RIVER_CX,RIVER_HW,BRIDGE_X0,BRIDGE_X1,BRIDGE_DECK_HW} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
@@ -42,6 +43,9 @@ interface Cop{
   pathI?:number;                // current waypoint index
   repathT?:number;              // countdown to recompute the route
   goalI?:number;goalJ?:number;  // the player's node the current path targets (recompute when it moves)
+  lastX?:number;lastZ?:number;  // previous-frame position, to measure actual displacement (stall detect)
+  stoppedT?:number;             // seconds spent near the suspect but barely moving (→ deploy on foot)
+  anchorX?:number;anchorZ?:number;anchorT?:number; // sliding-window net-displacement anchor (strict 4s anti-idle)
 }
 type GridNode=[number,number];
 
@@ -54,6 +58,9 @@ export class Officer extends Npc{
   mode!:string; // 'hunt'|'return'
   rocket!:boolean;
   sees=false;   // vision-cone has the player this frame (see policeSeesPlayer / the radar wedge)
+  // Road-grid route to the player (A*), used ONLY when far + a building blocks the straight
+  // line, so a deployed officer rounds the corner instead of wedging against a wall.
+  path?:GridNode[];pathI?:number;repathT?:number;goalI?:number;goalJ?:number;
   override aliveState():string{return this.mode==='return'?'Returning to car':'In pursuit';}
 }
 
@@ -68,6 +75,13 @@ const COP_BLUE=0x2a3f6e;
 const SHERIFF_TAN=0x8a7a44;   // the sheriff wears a tan/khaki uniform (distinct from patrol blue)
 const SHERIFF_BROWN=0x46381f; // sheriff trousers
 const BUST_TIME=5;            // seconds of officer contact before the player is booked
+// How close a chasing cruiser must be to an on-foot/stopped suspect before — if it has STOPPED
+// MOVING (blocked by buildings/traffic) — it debuses its officer and continues on foot. Generous
+// because the road grid is 44m-spaced (CELL): a suspect mid-block or behind a building can sit
+// ~20-30m from the nearest point a cruiser can reach, so a tighter reach left the car idling in
+// the street, never getting out. The deploy is gated on "barely moving", so a normal fast drive-in
+// through this band never debuses early — only a genuinely stuck/stopped cruiser does.
+const DEPLOY_REACH=34;
 // Star thresholds (ARMY_AT/HELI_AT/ROCKET_AT/LETHAL_AT) and the cooldown live in
 // js/core/wanted.ts — the single source of truth shared with addWanted() and the unit
 // tests. coolWanted()/starResponse() (imported above) drive the decay + escalation below.
@@ -402,6 +416,7 @@ function officerShoot(o:Officer,pp:THREE.Vector3,dist:number){
   if(hit){
     state.health-=state.mode==='car'?irand(2,4):irand(4,9);
     state.shake=Math.max(state.shake,.12);
+    refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,new THREE.Vector3(to.x-from.x,to.y-from.y,to.z-from.z).normalize(),7);
     if(state.health<=0){state.health=100;getWasted();}
   }
 }
@@ -419,6 +434,44 @@ function officerRocket(o:Officer,pp:THREE.Vector3){
   scene.add(g);
   copMissiles.push({g,dir,left:Math.min(dist,46)});
   thud(6);
+}
+
+// Walk a deployed officer toward the suspect. Normally a straight beeline, BUT when the
+// officer is still far AND a building blocks the straight line (city only — the rural plain
+// is open), follow the road grid (same A* the cruisers use) so it rounds the corner instead
+// of grinding into a wall and stalling there forever. Always faces the player so it can aim.
+// Returns the real distance to the player (used for the firing / surrender-bark logic).
+function officerStep(o:Officer,dt:number,pp:THREE.Vector3,stop:number):number{
+  const p=o.g.position;
+  const dx=pp.x-p.x,dz=pp.z-p.z,distP=Math.hypot(dx,dz);
+  if(distP>stop+1){
+    let tx=pp.x,tz=pp.z; // default: straight at the suspect
+    // route around buildings only when far, occluded, and inside the gridded city
+    if(distP>9&&pp.x<HALF&&Math.abs(pp.z)<HALF&&!hasLineOfSight(p.x,p.z,pp.x,pp.z)){
+      const goal=nearestNode(pp.x,pp.z);
+      o.repathT=(o.repathT??0)-dt;
+      if(!o.path||o.repathT<=0||o.goalI!==goal[0]||o.goalJ!==goal[1]){
+        o.path=gridPath(nearestNode(p.x,p.z),goal);
+        o.pathI=Math.min(1,o.path.length-1);o.repathT=.7;o.goalI=goal[0];o.goalJ=goal[1];
+      }
+      while((o.pathI??0)<o.path.length-1){
+        const w=o.path[o.pathI!];
+        if(Math.hypot(p.x-nodeX(w[0]),p.z-nodeX(w[1]))<6)o.pathI!++;else break;
+      }
+      const w=o.path[Math.min(o.pathI??0,o.path.length-1)];
+      tx=nodeX(w[0]);tz=nodeX(w[1]);
+    }else o.path=undefined; // clear sight / close: drop any stale route
+    const td=Math.hypot(tx-p.x,tz-p.z)||1;
+    p.x+=(tx-p.x)/td*6.4*dt;p.z+=(tz-p.z)/td*6.4*dt;
+    o.bob+=dt*11;animatePed(o.g,o.bob,1);
+  }else animatePed(o.g,o.bob,0);
+  o.g.rotation.y=Math.atan2(dx,dz); // always face the suspect (to aim/shoot)
+  // Ride the rural terrain / BRIDGE DECK and use the rural world bound (same as the cruiser), so
+  // a deployed officer can WALK ACROSS the bridge to a suspect on the far bank instead of being
+  // pinned at y=0 (blocked by the deck structure) or clamped at the city beach (BOUND).
+  if(p.x>HALF)p.y=groundHeight(p.x,p.z);
+  collideStatics(p,.5,p.x>HALF?SWIM_BOUND:BOUND);
+  return distP;
 }
 
 function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
@@ -445,33 +498,21 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
     p.x+=dx/d*7*dt;p.z+=dz/d*7*dt;
     o.g.rotation.y=Math.atan2(dx,dz);
     o.bob+=dt*12;animatePed(o.g,o.bob,1);
-    collideStatics(p,.5);
+    if(p.x>HALF)p.y=groundHeight(p.x,p.z); // ride the deck/terrain on the way back too
+    collideStatics(p,.5,p.x>HALF?SWIM_BOUND:BOUND);
     return;
   }
-  const dx=pp.x-p.x,dz=pp.z-p.z,distP=Math.hypot(dx,dz);
   if(!policeLethal){
     // ★1 SURRENDER: close right in to make the arrest, gun drawn but NEVER fired, and
     // bark a surrender order. They only turn lethal if the suspect resists (see updateCops).
-    const stop=1.4;
-    if(distP>stop){
-      p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
-      o.bob+=dt*11;animatePed(o.g,o.bob,1);
-    }else animatePed(o.g,o.bob,0);
+    const distP=officerStep(o,dt,pp,1.4);
     poseAiming(o.g);
-    o.g.rotation.y=Math.atan2(dx,dz);
-    collideStatics(p,.5);
     if(surrenderBarkT<=0&&distP<18){surrenderBarkT=3.4;say(o.g,pick(SURRENDER_LINES),{life:3.2,yOff:2.4});}
     return;
   }
   // ★2+ (or the suspect resisted): approach to firing range and open fire.
-  const stop=o.rocket?16:9;
-  if(distP>stop){
-    p.x+=dx/distP*6.4*dt;p.z+=dz/distP*6.4*dt;
-    o.bob+=dt*11;animatePed(o.g,o.bob,1);
-  }else animatePed(o.g,o.bob,0);
+  const distP=officerStep(o,dt,pp,o.rocket?16:9);
   poseAiming(o.g);
-  o.g.rotation.y=Math.atan2(dx,dz);
-  collideStatics(p,.5);
   o.shootT-=dt;
   if(o.shootT<=0&&pp.y-p.y<3&&distP<(o.rocket?44:26)&&hasLineOfSight(p.x,p.z,pp.x,pp.z)){
     if(o.rocket&&Math.floor(state.wanted)>=ROCKET_AT)officerRocket(o,pp); // only rocket while still ★5+
@@ -555,7 +596,17 @@ export function updateCops(dt:number){
   // ★6 (the army takes over). The rest keep patrolling the streets.
   const chasers=starResponse(state.wanted,POOL).chasers;
   const pp=playerPos();
-  let ci=0;
+  // Which cruisers actively CHASE: the NEAREST `chasers` units to the suspect — NOT a fixed
+  // first-N-by-array-order, which let a cruiser parked right next to you keep calmly patrolling
+  // while two cars across the map were nominated to respond (reads as "the cops ignore me").
+  // Distance changes slowly, so this set is stable frame to frame.
+  const chaseSet=new Set<Cop>();
+  if(chasers>0){
+    const byDist=[...cops].sort((a,b)=>
+      Math.hypot(a.g.position.x-pp.x,a.g.position.z-pp.z)-
+      Math.hypot(b.g.position.x-pp.x,b.g.position.z-pp.z));
+    for(let k=0;k<Math.min(chasers,byDist.length);k++)chaseSet.add(byDist[k]);
+  }
   for(const c of cops){
     const p=c.g.position;
     const dx=pp.x-p.x,dz=pp.z-p.z,dist=Math.hypot(dx,dz);
@@ -563,11 +614,11 @@ export function updateCops(dt:number){
     // looks genuinely EMPTY (no fake third cop still sitting inside); shown again on re-board.
     if(c.driver)c.driver.visible=!(c.officers&&c.officers.length);
     if(c.dispatchT&&c.dispatchT>0)c.dispatchT-=dt;
-    // chases if its slot is responding to the star, OR it was radio-dispatched, OR it
-    // already has officers out (a cruiser COMMITS to its arrest — it is never yanked back
-    // to patrol while its men are on foot next to you, which used to abort the bust).
+    // chases if it's one of the nearest responders, OR it was radio-dispatched, OR it already
+    // has officers out (a cruiser COMMITS to its arrest — it is never yanked back to patrol
+    // while its men are on foot next to you, which used to abort the bust).
     const hasMen=!!(c.officers&&c.officers.length);
-    if(ci++>=chasers&&!(c.dispatchT&&c.dispatchT>0)&&!hasMen){ // not responding → patrol
+    if(!chaseSet.has(c)&&!(c.dispatchT&&c.dispatchT>0)&&!hasMen){ // not responding → patrol
       if(c.siren){c.patrolTgt=null;c.path=undefined;} // just stopped chasing → re-plan a patrol route
       c.siren=false; // patrolling: lights & siren off
       patrolCop(c,dt);
@@ -603,6 +654,22 @@ export function updateCops(dt:number){
       const w=c.path[Math.min(c.pathI??0,c.path.length-1)];
       tx=nodeX(w[0]);tz=nodeX(w[1]);
     }
+    // VESPER STRAIT: cruisers can't ford the channel — if the suspect is on the FAR bank,
+    // route over the bridge (dry deck at z≈0) instead of driving into the water and stalling
+    // at the shore. Only once the cop is out of the city (p.x>HALF); inside the city the grid
+    // route above carries it to the east edge first. It lines up on the NEAR bridge foot (z≈0),
+    // drives straight across to the far foot, and once on the suspect's side the normal chase
+    // resumes and closes in to deploy. The road grid (≤176m) can't represent the bridge, so
+    // this is an explicit override rather than extra graph nodes.
+    let bridging=false;
+    if(p.x>HALF&&Math.abs(pp.x-RIVER_CX)>RIVER_HW&&(p.x<RIVER_CX)!==(pp.x<RIVER_CX)){
+      bridging=true;
+      const west=p.x<RIVER_CX;
+      const centred=Math.abs(p.z)<BRIDGE_DECK_HW-1;          // already on the deck corridor (z≈0)
+      const atFoot=west?p.x>BRIDGE_X0-3:p.x<BRIDGE_X1+3;     // reached my side's ramp foot
+      if(centred&&atFoot){tx=west?BRIDGE_X1+4:BRIDGE_X0-4;tz=0;} // cross to the far foot
+      else{tx=west?BRIDGE_X0-3:BRIDGE_X1+3;tz=0;}                // line up on the near foot first
+    }
     const desired=Math.atan2(tx-p.x,tz-p.z),diff=wrapA(desired-c.heading);
     if(c.backT>0){
       c.backT-=dt;c.speed+=(-8-c.speed)*3*dt;
@@ -630,28 +697,67 @@ export function updateCops(dt:number){
       const ax=p.x-pp.x,az=p.z-pp.z,ad=Math.hypot(ax,az)||1;
       if(ad<6){p.x=pp.x+ax/ad*6;p.z=pp.z+az/ad*6;c.speed*=.3;}
     }
-    if(collideStatics(p,1.3)){c.speed*=.3;c.stuckT+=dt*3;}
+    // In the RURAL peninsula a cruiser rides the actual ground (hills) and the BRIDGE DECK —
+    // without this it stays at y=0, so on the rising ramp the deck solids block it and it can
+    // never cross. City cops keep y=0 (flat streets) as before. Setting y before collideStatics
+    // lets the height test (p.y>solid.h) pass the cruiser OVER the low deck guards.
+    if(p.x>HALF)p.y=groundHeight(p.x,p.z);
+    // Rural-aware world bound: the default BOUND (216) clamps NPCs at the city beach — WEST of
+    // the strait — so cops could never reach the far bank. Pass the larger bound (same peninsula
+    // extension the player gets) ONLY while in rural, so a cruiser can chase across the bridge
+    // and down the peninsula; the city clamp is unchanged.
+    if(collideStatics(p,1.3,p.x>HALF?SWIM_BOUND:BOUND)){c.speed*=.3;c.stuckT+=dt*3;}
     // "stuck" only counts while still FAR and meant to be driving. Near an on-foot suspect,
     // stopping is ON PURPOSE (about to deploy), so widen the no-reverse zone there: a cruiser
     // boxed in by traffic or by the other units converging ~15-20m out must NOT keep backing
     // away, or it loops back and forth forever and never gets out to make the arrest (which
     // reads in-game as "the cars just stop and wait, nothing happens").
-    const holdNearFoot=state.mode==='foot'&&dist<22;
-    if(dist>14&&!holdNearFoot){
+    // No-reverse zone near an on-foot suspect: once the cruiser is anywhere within DEPLOY_REACH
+    // of you, stopping is ON PURPOSE (it's about to debus), so it must NOT keep backing away —
+    // or it loops back and forth forever and never gets out. This must match the deploy reach
+    // below, otherwise a cruiser stalled in the 22-28m band would reverse instead of deploying.
+    // (while bridging, slowing to line up on the ramp is ON PURPOSE — don't treat it as stuck)
+    const holdNearFoot=state.mode==='foot'&&dist<DEPLOY_REACH;
+    if(dist>14&&!holdNearFoot&&!bridging){
       if(Math.abs(c.speed)<2.5)c.stuckT+=dt;else c.stuckT=Math.max(0,c.stuckT-dt*2);
       if(c.stuckT>1.2){c.backT=.9;c.stuckT=0;}
     }else c.stuckT=0;
     c.g.rotation.y=c.heading;
     spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
-    // Deploy as soon as a chasing cruiser has pulled up to an on-foot suspect: dist<13 is
-    // the clean "arrived" case, and the slow-and-near fallback (effectively stopped within
-    // ~20m) covers a cruiser boxed in by traffic or geometry that can't squeeze all the way
-    // in — so a standoff resolves into officers on foot instead of the car idling forever.
-    // In a car chase it still pulls alongside (player's car nearly stopped) first.
-    const pulledUp=state.mode==='foot'
-      ? (dist<13||(dist<20&&Math.abs(c.speed)<2.5))
-      : (dist<13&&Math.abs(cur?.speed||0)<4);
-    if(pp.y<6&&!c.backT&&pulledUp){
+    // DEPLOY. A chasing cruiser gets its officer out the moment it has pulled up to the suspect:
+    //   • dist<13 — the clean "arrived right next to you" case (anti-runover parks it ~6m off).
+    //   • stalled-within-reach — the suspect is OFF the 44m road grid (mid-block, behind a wall,
+    //     on a sidewalk/plaza), so the cruiser physically can't close the last stretch; it grinds
+    //     into a building and parks 20-28m out. Once it has sat effectively STOPPED near them for
+    //     a beat, it debuses anyway and the officer covers the rest on foot. Without this the car
+    //     idles in the street forever and nobody gets out — the "I had 2 stars and the cops just
+    //     parked and did nothing" report. The dwell timer means a normal fast drive-in (speed≈10+
+    //     through this band) never deploys early; only a genuinely blocked, stopped cruiser does.
+    // In a car chase the same applies but the player's car must also be near-stopped first.
+    // "STOPPED MOVING" is measured by ACTUAL displacement this frame, not c.speed — a cruiser
+    // grinding against a building/traffic keeps a small non-zero speed while going nowhere, and
+    // that case (near you, not advancing) is exactly when it must debus and continue on foot.
+    const moved=Math.hypot(p.x-(c.lastX??p.x),p.z-(c.lastZ??p.z));
+    c.lastX=p.x;c.lastZ=p.z;
+    const playerStill=state.mode==='foot'||Math.abs(cur?.speed||0)<4;
+    const near=dist<DEPLOY_REACH&&playerStill;
+    const stoppedNear=near&&moved<dt*3.5; // near + barely moving this frame (<3.5 m/s)
+    c.stoppedT=stoppedNear?(c.stoppedT??0)+dt:0;
+    // STRICT anti-idle (sliding 4s window on NET position): re-anchor whenever the cruiser
+    // actually travels ≥6m, otherwise count the time at the anchor. If it hasn't moved ≥6m in
+    // 4s while near you, it has clearly given up — even if it JITTERS in place (reverse/forward,
+    // shoved by traffic) so the per-frame "stopped" test above never latches. This is the ★1
+    // "the car just sits there parked and nobody gets out" case. It FORCES a debus (bypasses the
+    // reverse gate below), so a stuck cruiser can never idle next to the suspect forever.
+    const fromAnchor=Math.hypot(p.x-(c.anchorX??p.x),p.z-(c.anchorZ??p.z));
+    if(c.anchorX===undefined||fromAnchor>6){c.anchorX=p.x;c.anchorZ=p.z;c.anchorT=0;}
+    else c.anchorT=(c.anchorT??0)+dt;
+    const stuck4s=near&&(c.anchorT??0)>=4;
+    const arrived=!c.backT&&((dist<13&&playerStill)||(c.stoppedT??0)>.6);
+    // Never debus mid-crossing: while bridging, the cruiser is still on the wrong bank / on the
+    // ramp, and officers dropped there would be stuck on the span. It deploys once it has crossed
+    // to the suspect's side (bridging clears), so the men get out next to you, not on the bridge.
+    if(pp.y<6&&!bridging&&(arrived||stuck4s)){
       deployOfficers(c);
       if(state.time-lastShout>6){lastShout=state.time;message('POLICE! FREEZE!','var(--blue)');}
       continue;

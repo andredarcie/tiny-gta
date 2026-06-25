@@ -248,6 +248,7 @@ function fireRound(o:Soldier,pp:THREE.Vector3,dist:number){
       const dmg=state.mode==='car'?w.dmgCar:w.dmgFoot; // the car shields the player
       state.health-=irand(dmg[0],dmg[1]);
       state.shake=Math.max(state.shake,.1);
+      refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,new THREE.Vector3(to.x-from.x,to.y-from.y,to.z-from.z).normalize(),7);
       if(state.health<=0){state.health=100;getWasted();break;}
     }
   }

@@ -55,7 +55,7 @@ export const KNOWN = new Set<string>([
   'miniBlips','zoneActions','carEnterLabels',
   // main.ts core late-binding
   'playerPos','getCur','getPlayerHeading','getRadarHeading','traffic','cops',
-  'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','gangs','setGangsHidden',
+  'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','spawnBlood','severHead','severArm','gangs','setGangsHidden',
   'interiorBlips','getDelivery','storyNear','storyBlips','storyTargets','rickNear',
   'rickInteract','getRickState','getBusted','getWasted','getHeli','nearestCar',
   'canPickWeapon','isWeaponHeld','canAttack','switchWeapon','selectWeaponSlot',

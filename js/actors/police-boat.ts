@@ -99,6 +99,7 @@ function boatShoot(b:PoliceBoat,pp:THREE.Vector3,dist:number){
   if(hit){
     state.health-=state.mode==='car'?irand(2,4):irand(3,7); // de lancha a lataria protege um pouco
     state.shake=Math.max(state.shake,.1);
+    refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,new THREE.Vector3(to.x-from.x,to.y-from.y,to.z-from.z).normalize(),7);
     if(state.health<=0){state.health=100;getWasted();}
   }
 }
