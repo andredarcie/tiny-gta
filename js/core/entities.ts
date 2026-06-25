@@ -6,6 +6,7 @@ export {makeFiatUno} from '../../assets/models/vehicles/fiat-uno.ts';
 export {makeMotorcycle} from '../../assets/models/vehicles/motorcycle.ts';
 export {makeBoat} from '../../assets/models/vehicles/boat.ts';
 import {makePed,makePlayerPed,shirtColors,addFemaleLook} from '../../assets/models/characters/pedestrian.ts';
+import {setNpcGlbSeated,USE_GLB_NPCS} from '../../assets/models/characters/npc-glb.ts';
 export {makePed,makePlayerPed,shirtColors,addFemaleLook};
 export {makePlane} from '../../assets/models/aircraft/plane.ts';
 import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
@@ -39,6 +40,9 @@ export function attachHandGun(ped:THREE.Object3D,kind='pistol'){
 }
 
 export function poseAiming(ped:THREE.Object3D,kick=0){
+  // GLB NPC: it has no procedural limbs — instead stamp the aim time so npc-glb's
+  // updateNpcGlb overlays the shared gun-hold posture (AIM_POSE) on its arms this frame.
+  if(ped.userData.glbNpc){(ped.userData as Record<string,unknown>).npcAimT=state.time;return;}
   const l=ped.userData.limbs;if(!l)return;
   l.rightArm.rotation.x=-Math.PI/2+kick*1.2;
   l.rightArm.rotation.y=-.04;
@@ -154,6 +158,7 @@ export const vehicleOccupants:THREE.Object3D[]=[];
 // coxas pra frente e pés no piso (mesma pose do jogador dirigindo)
 export function seatDriver(carG:THREE.Object3D,color?:number,pants?:number){
   const d=makePed(color!,pants);
+  setNpcGlbSeated(d); // if it becomes a GLB NPC, ride in the 'sit' clip (not idle/run)
   vehicleOccupants.push(d); // tagged as a named NPC by the runtime reconcile pass
   d.traverse((o:any)=>{if(o.isMesh)o.castShadow=false;});
   const l=d.userData.limbs;
@@ -167,7 +172,7 @@ export function seatDriver(carG:THREE.Object3D,color?:number,pants?:number){
     l.leftForearm?.rotation.set(-.78,0,0);
     l.rightForearm?.rotation.set(-.78,0,0);
   }
-  d.position.set(-.38,-.52,-.15);
+  d.position.set(-.38,USE_GLB_NPCS?-.157:-.52,USE_GLB_NPCS?-.031:-.15); // GLB sits higher
   carG.add(d);
   carG.userData.driver=d; // spinWheels anima os braços de quem está aqui
   return d;

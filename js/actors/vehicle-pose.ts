@@ -14,6 +14,14 @@ import type * as THREE from 'three';
 // driver's upper arms onto the wheel every frame, so the car can't be posed once
 // and left alone the way these three can.
 
+// Per-vehicle seat offsets for the rigged GLB hero (different proportions than the
+// procedural ped), tuned in /studio. Used when the GLB avatar is active; any kind
+// not listed here falls back to SEAT_OFFSET below. Only POSITION matters — the GLB's
+// own "sit" clip supplies the seated limb pose (so no poseRider limb angles here).
+export const GLB_SEAT_OFFSET: Record<string, [number, number, number]>={
+  bike:[0.001,0.333,0.031],
+};
+
 export const SEAT_OFFSET: Record<string, [number, number, number]>={
   // Cruiser seat top ≈.85, foot pegs ≈.34, raised grips ≈1.15 (see motorcycle.js).
   bike:[0,-.10,-.18],

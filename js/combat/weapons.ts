@@ -9,7 +9,8 @@ import {blip,thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
 import {settings} from '@/core/settings.ts';
-import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.ts';
+import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson,triggerGlbPunch,hasPlayerGlb} from '@/actors/player.ts';
+import {glbGunHand} from '../../assets/models/characters/player-glb.ts';
 import {traffic,spawnTraffic} from '@/world/traffic.ts';
 import {cops} from '@/actors/police.ts';
 import {updateGore} from '@/combat/gore.ts';
@@ -537,7 +538,27 @@ function getMuzzleWorldPosition(out: THREE.Vector3): THREE.Vector3{
     .setY(pp.y+1.12);
 }
 
+// GLB hero: a held weapon has no procedural arm to ride, so anchor heldHolder on the
+// rigged right-hand bone (it follows the gun-hold posture + walk cycle), barrel forward
+// (the pistol's bore is +Z = the body's facing). Offsets seat the grip in the palm;
+// tune these if it drifts. heldHolder is a child of player.g (normal scale), so the
+// weapon renders at its own hold.scale — no bone-scale compensation needed.
+const GLB_GUN_OFF: [number, number, number] = [0.02, -0.03, 0.10];
+const GLB_GUN_ROT_AIM: [number, number, number] = [0, 0, 0];
+const GLB_GUN_ROT_CARRY: [number, number, number] = [0.45, 0, 0];
+function placeGlbHeldGun(aiming: boolean){
+  const hand=glbGunHand();if(!hand)return;
+  player.g.updateWorldMatrix(true,true);
+  _hand.setFromMatrixPosition(hand.matrixWorld);
+  player.g.worldToLocal(_hand);
+  heldHolder.position.set(_hand.x+GLB_GUN_OFF[0],_hand.y+GLB_GUN_OFF[1],_hand.z+GLB_GUN_OFF[2]-(aiming?gunKick*.75:0));
+  const r=aiming?GLB_GUN_ROT_AIM:GLB_GUN_ROT_CARRY;
+  heldHolder.rotation.set(r[0]-(aiming?gunKick*.9:0),r[1],r[2]);
+  heldHolder.scale.setScalar(heldBaseScale);
+}
+
 function posePlayerWithGun(){
+  if(hasPlayerGlb()){placeGlbHeldGun(true);return;}   // GLB hero: anchor on the rigged hand
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
   poseAiming(player.g,gunKick); // base aiming pose (shared with NPCs/police)
@@ -627,6 +648,7 @@ function applyGripPose(grip: string|undefined,l: any){
 // Porte parado (arma melee não erguida): segura a arma baixa junto ao corpo e
 // NÃO mexe nos braços, pra animação de andar continuar normal.
 function carryPose(){
+  if(hasPlayerGlb()){placeGlbHeldGun(false);return;}   // GLB hero: anchor on the rigged hand
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
   const h: Hold=curWeapon.hold||{};
@@ -756,6 +778,7 @@ function startMeleeAnimation(range: number|undefined,knock: number|undefined,let
     lethal:lethal!==false
   };
   spawnMeleeTrail(curWeapon.id!,side);
+  triggerGlbPunch();   // 3rd-person hero plays the 'punch' clip in sync with the swing
 }
 
 // Non-lethal melee (FISTS): a punch only staggers + knocks back; it takes several

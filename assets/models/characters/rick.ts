@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {buildToonPlayer} from './pedestrian.ts';
+import {USE_GLB_NPCS,requestNpcGlb} from './npc-glb.ts';
 
 // Rick, the forest hippie hermit (secret mission — see js/story/rick.ts). Reuses the
 // rigged skinned doll (buildToonPlayer: has userData.limbs and userData.mouth, so
@@ -45,6 +46,9 @@ function addManeAndBeard(g: THREE.Group): void{
 }
 
 export function buildRick(): THREE.Group{
+  // Rick rides the same rigged GLB as everyone (forest-green clothes kept; the
+  // procedural hippie mane/beard/headband are dropped). Kill-switch off → old look.
+  if(USE_GLB_NPCS){const g=new THREE.Group();requestNpcGlb(g,SHIRT,PANTS);return g;}
   const g=buildToonPlayer({color:SHIRT,pantsColor:PANTS});
   addManeAndBeard(g);
   return g;

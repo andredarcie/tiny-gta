@@ -5,6 +5,16 @@ import { fileURLToPath } from 'node:url';
 // subpastas (ex.: GitHub Pages em user.github.io/tiny-gta/).
 export default defineConfig({
   base: './',
+  // Pretty dev URLs for the tooling pages: /studio -> /studio.html (dev only).
+  plugins: [{
+    name: 'pretty-dev-pages',
+    configureServer(server) {
+      server.middlewares.use((req, _res, next) => {
+        if (req.url === '/studio' || req.url === '/studio/') req.url = '/studio.html';
+        next();
+      });
+    },
+  }],
   // `@/` -> js/  (so imports are stable regardless of a file's folder depth)
   resolve: { alias: { '@': fileURLToPath(new URL('./js', import.meta.url)) } },
   server: {

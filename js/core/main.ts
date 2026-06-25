@@ -4,7 +4,7 @@ import {economy} from '@/core/economy.ts'; // money ledger — imported here so 
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
 import {updateAudio} from '@/audio/audio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx,updatePlayerAnim,hasPlayerGlb} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
@@ -40,6 +40,8 @@ import {updateBloodstains} from '@/loot/bloodstains.ts';       // Multiplayer as
 import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
 import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
 import {blinkBar} from '@/core/entities.ts';
+import {preloadNpcModels,updateNpcGlb} from '../../assets/models/characters/npc-glb.ts';
+preloadNpcModels(); // start loading the rigged NPC models ASAP; NPCs swap from the procedural ped when ready
 import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/core/input.ts';
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
@@ -238,6 +240,7 @@ function step(dt: number){
     if(state.cutT<=0){hideBig();const fn=state.cutFn;state.cutFn=null;fn&&fn();}
   }else if(state.mode==='car')updateCar(dt);
   else updateFoot(dt);
+  updatePlayerAnim(dt); // advance the rigged-glTF avatar mixer + pick the clip from state
   P.end();
 
   P.begin('traffic');updateTraffic(dt);P.end();
@@ -249,6 +252,7 @@ function step(dt: number){
   const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
   P.begin('cops');if(combatOn){updateCops(dt);updatePoliceBoats(dt);}P.end();
   P.begin('army');if(combatOn)updateArmy(dt);P.end(); // ★6: the army
+  P.begin('npc-glb');updateNpcGlb(dt,camera);P.end(); // rigged-NPC mixers/clips: off-cull frozen, off-frustum skipped, distant LOD-throttled
   P.begin('misc');
   updateHeli(dt);
   updatePickups(dt);
@@ -403,6 +407,7 @@ window.render_game_to_text=()=>{
     ledger:economy.debugLedger(), // {balance,checkpoint,window,pending,last[]} — money as a tx ledger
     wanted:state.wanted,
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},
+    avatar:hasPlayerGlb()?'glb':'proc', // which player model is live (rigged glTF vs procedural fallback)
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,

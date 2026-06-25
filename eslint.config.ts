@@ -12,6 +12,7 @@ export default tseslint.config(
     ignores: [
       'dist/**', 'node_modules/**', 'android/**', 'backend/**', 'public/**',
       'fp-preview/**', 'comparacoes/**', 'output/**', '.playwright-mcp/**', '.claude/**',
+      'studio.tsx', 'studio-pose.ts', 'player-inspect.ts', // dev-only tooling pages (CDN React / throwaway)
     ],
   },
   js.configs.recommended,

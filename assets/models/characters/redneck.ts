@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {buildToonPlayer} from './pedestrian.ts';
+import {buildToonPlayer,makePed} from './pedestrian.ts';
+import {USE_GLB_NPCS} from './npc-glb.ts';
 import {scene} from '@/core/engine.ts';
 
 // Rural NPC ("redneck"): the SAME smooth skinned doll as the player / street peds
@@ -49,4 +50,9 @@ export function buildRedneck(opts: {color?: number; pants?: number}={}): THREE.G
 
 export default {category:'Characters',label:'Redneck',build:buildRedneck};
 
-export function makeRedneck(opts?: {color?: number; pants?: number}): THREE.Group{const g=buildRedneck(opts);scene.add(g);return g;}
+export function makeRedneck(opts?: {color?: number; pants?: number}): THREE.Group{
+  // country folk become rigged GLB NPCs too (flannel/denim colours kept; the procedural
+  // hat is dropped — the pack has no cowboy hat). Kill-switch off → procedural redneck.
+  if(USE_GLB_NPCS)return makePed(opts?.color??pick(flannelColors),opts?.pants??pick(denimColors));
+  const g=buildRedneck(opts);scene.add(g);return g;
+}

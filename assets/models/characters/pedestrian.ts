@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
+import {USE_GLB_NPCS,requestNpcGlb} from './npc-glb.ts';
 
 // Character dolls. The player and every NPC are the SAME smooth skinned doll
 // (buildToonPlayer): one continuous surface deformed by a small bone skeleton, so
@@ -243,11 +244,22 @@ export default {category:'Characters',label:'Pedestrian',build:buildToonPlayer};
 // Jogador e NPCs usam a MESMA base skinada (buildToonPlayer), variando só a cor de
 // roupa/pele.
 export function makePed(color: number,pantsColor?: number): THREE.Group{
-  const g=buildToonPlayer({color,pantsColor});scene.add(g);return g;
+  // 100% of NPCs are rigged "Animated Men/Women" GLB clones. The group starts EMPTY
+  // and the tinted clone (gender-correct) swaps in on the next frame / once the models
+  // load — the old procedural ped is no longer used for NPCs (see npc-glb.ts).
+  if(USE_GLB_NPCS){
+    const g=new THREE.Group();scene.add(g);
+    requestNpcGlb(g,color,pantsColor);
+    return g;
+  }
+  const g=buildToonPlayer({color,pantsColor});scene.add(g);return g; // kill-switch fallback
 }
 
-// Player-only helper: the smooth Schedule I skinned figure (see buildToonPlayer).
+// Player container: an EMPTY group — the rigged hero (player.fbx, the smooth model)
+// is loaded by loadPlayerGlb and parented in (player.ts). No procedural placeholder
+// when the GLB avatar is on. (Kill-switch off → procedural hero.)
 export function makePlayerPed(color: number): THREE.Group{
+  if(USE_GLB_NPCS){const g=new THREE.Group();scene.add(g);return g;}
   const g=buildToonPlayer({color});scene.add(g);return g;
 }
 
@@ -259,6 +271,8 @@ export function makePlayerPed(color: number): THREE.Group{
 // for every female NPC. Idempotent guard via userData.femaleLook so it never doubles.
 const LIPSTICK=0xe23a64; // vivid red lipstick
 export function addFemaleLook(g: THREE.Object3D): void{
+  g.userData.npcFemale=true;                  // route the GLB swap to a women-pack model
+  if(USE_GLB_NPCS||g.userData.glbNpc)return;  // GLB female NPCs get a real female model, not this layer
   if(g.userData.femaleLook)return;
   g.userData.femaleLook=true;
   const hairColor=(g.userData.hairColor as number)??0x2a1911;

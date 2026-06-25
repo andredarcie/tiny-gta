@@ -6,13 +6,14 @@ import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
 import {makeHat,makeGlasses} from '../../assets/models/characters/accessories.ts';
+import {loadPlayerGlb,solveLegIK,applyVehiclePose,applyGunPose,applyGymArms,type PlayerGlbHandle} from '../../assets/models/characters/player-glb.ts';
 import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
 import {makeRcController} from '../../assets/models/props/rc-controller.ts';
 import {buildCarInteriorFp} from '../../assets/models/vehicles/car-interior-fp.ts';
 import {makeTractor} from '../../assets/models/vehicles/tractor.ts';
-import {SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
+import {SEAT_OFFSET,GLB_SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
 import {thud,blip,splash} from '@/audio/audio.ts';
 import {radioOn,radioOff,radioEnter} from '@/ui/radio.ts';
 import {collideStatics,addWanted} from '@/core/physics.ts';
@@ -30,6 +31,8 @@ interface Player{
   stroke:number;
   cadence:number;
   lastHalf:number;
+  locoAmt:number;   // 0..1 on-foot locomotion this frame (drives walk/run clip blend)
+  locoRun:boolean;  // sprinting this frame
 }
 
 // The orbit/first-person camera rig (yaw/pitch + look tuning).
@@ -72,9 +75,31 @@ export function updateDrivenShadow(){
 // Campos de nado (ver updateSwim): velocidade própria com inércia, mistura de
 // pose boiando↔crawl, fase/cadência da braçada e marcador da última braçada.
 export const player:Player={g:makePlayerPed(0x19e3ff),heading:0,bob:0,
-  swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0};
+  swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0,locoAmt:0,locoRun:false};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
 noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
+
+// ---- Hero avatar: swap the procedural doll for the rigged glTF humanoid -------
+// The procedural ped (player.g's children) stays in place as an instant, always-
+// working fallback and as the home for the clothing/accessory API. The GLB loads
+// async; when it arrives we hide the procedural meshes, parent the skinned model
+// under player.g (so every position/rotation/visibility/reparent path keeps
+// working unchanged) and drive its AnimationMixer from updatePlayerAnim().
+let glb:PlayerGlbHandle|null=null;
+let procVisual:THREE.Object3D[]=[];          // original children of player.g (doll mesh + mouth)
+let glbClip='';                              // currently playing clip key
+let glbDeathDone=false;                      // death one-shot guard
+let glbPunchT=0;                             // >0 while the one-shot 'punch' clip plays
+let glbDead=false;                           // dead → hold 'death' through the WASTED cut
+loadPlayerGlb().then(h=>{
+  if(!h)return;                              // load failed: keep the procedural doll
+  glb=h;
+  procVisual=player.g.children.slice();      // the skinned doll + mouth built by makePlayerPed
+  for(const o of procVisual)o.visible=false;
+  player.g.add(h.root);
+  noShadow(player.g);                        // re-assert: the new meshes never cast a shadow
+});
+export function hasPlayerGlb():boolean{return !!glb;}
 
 // Player outfit (clothing store): push state.clothing colours into the player model's
 // in-place recolour (see assets/models/characters/pedestrian.ts setClothing). Defaults
@@ -388,6 +413,7 @@ function updateEntering(dt:number){
     player.g.position.x+=(wx-player.g.position.x)*Math.min(1,10*dt);
     player.g.position.z+=(wz-player.g.position.z)*Math.min(1,10*dt);
     player.bob+=dt*8;Entities.animatePed?.(player.g,player.bob,.7);
+    player.locoAmt=.7;player.locoRun=false; // GLB: walk to the door
     if(e.t>=.45){completeEnter(e.f);e.phase=1;e.t=0;}
   }else{ // sentado: porta fechando
     const k=Math.min(1,e.t/.35);
@@ -457,12 +483,16 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     // avião pode receber driver (não tem rodas esterçadas, então é inócuo).
     const kind=cur.bike?'bike':cur.boat?'boat':cur.plane?'plane':'tractor';
     if(cur.plane)cur.g.userData.driver=player.g;
-    player.g.position.fromArray(SEAT_OFFSET[kind]);
+    // GLB hero uses its own per-vehicle seat offset (its sit clip poses the limbs);
+    // the procedural fallback keeps the SEAT_OFFSET tuned to its body.
+    player.g.position.fromArray((hasPlayerGlb()&&GLB_SEAT_OFFSET[kind])||SEAT_OFFSET[kind]);
     player.g.rotation.set(0,0,0);
     poseRider(player.g.userData.limbs,kind);
   }else{
     cur.g.userData.driver=player.g; // braços seguem o volante via spinWheels
-    player.g.position.set(-.38,-.52,-.15); // sentado no banco do motorista
+    // sentado no banco do motorista (GLB tem seu próprio offset; pose vem de applyVehiclePose)
+    if(hasPlayerGlb())player.g.position.set(-0.380,-0.157,-0.031);
+    else player.g.position.set(-.38,-.52,-.15);
     player.g.rotation.set(0,0,0);
     setDrivePose(true);
   }
@@ -557,6 +587,7 @@ export function getBusted(){
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
     player.g.visible=true;
+    glbDead=false;                 // recovered (hospital/jail) → leave the death pose
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // Busted while carrying the weed delivery backpack: a crooked cop drives you
     // out to the woods and shakes you down for a bribe instead of booking you
@@ -585,6 +616,7 @@ function wastedCut(){
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
     unseatPlayer();
     player.g.visible=true;
+    glbDead=false;                 // recovered (hospital/jail) → leave the death pose
     state.weaponHeld=!!state.hasGun;
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // acorda DENTRO do hospital (teleporta pra sala fora do mapa); tem que sair
@@ -611,6 +643,7 @@ export function getWasted(){
   cancelEntering();
   if(state.mode==='car'||cur)return wastedCut(); // dentro de veículo: corte direto
   dying={t:0,puddle:false};
+  glbDead=true;                   // keep the 'death' pose held until respawn (not 'sit')
   state.controlsLocked=true;
   state.weaponHeld=false;
   Entities.animatePed?.(player.g,0,0); // relaxa os membros antes de cair
@@ -623,8 +656,10 @@ function updateDying(dt:number){
   // morrendo no telhado o corpo tomba na laje, não no asfalto lá embaixo
   const gh=state.onRoof?state.onRoof.y
     :groundHeight(player.g.position.x,player.g.position.z);
-  player.g.rotation.x=-Math.PI/2*k; // mesma pose dos NPCs mortos
-  player.g.position.y=gh+.35*k;
+  // With the GLB the 'death' clip performs the collapse itself, so keep the body
+  // upright/grounded; the procedural doll instead tips flat like the dead NPCs.
+  if(glb){player.g.rotation.x=0;player.g.position.y=gh;}
+  else{player.g.rotation.x=-Math.PI/2*k;player.g.position.y=gh+.35*k;}
   if(k>=1&&!d.puddle){
     d.puddle=true;
     if(!state.onRoof)refs.addBloodPuddle?.(player.g.position.x,player.g.position.z);
@@ -1129,6 +1164,7 @@ function animateSwim(g:THREE.Object3D,sp:number,pose:number){
 }
 
 export function updateFoot(dt:number){
+  player.locoAmt=0;player.locoRun=false; // reset each frame; the moving block below sets it
   if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
   if(dying)return updateDying(dt);
   if(roofFall)return updateRoofFall(dt);
@@ -1169,6 +1205,7 @@ export function updateFoot(dt:number){
     player.g.position.addScaledVector(mv,spd*dt);
     player.heading=Math.atan2(mv.x,mv.z);
     player.bob+=dt*spd*1.8;
+    player.locoAmt=analog;player.locoRun=input.run&&!state.aiming; // GLB clip selection
   }
   {
     const r=state.onRoof,p=player.g.position;
@@ -1217,6 +1254,74 @@ export function updateFoot(dt:number){
     player.heading=cameraRig.yaw;
     player.g.rotation.y=cameraRig.yaw;
   }else player.g.rotation.y=player.heading;
+}
+
+// ---- GLB avatar animation ---------------------------------------------------
+// Pick a clip from the live game state, crossfade to it, and advance the mixer.
+// Called once per frame from main.ts in EVERY mode (foot/car/cut). No-op until the
+// GLB has loaded — until then the procedural doll animates itself via animatePed.
+function chooseClip():string{
+  if(dying||glbDead)return 'death';                // dead: hold the collapse through the WASTED cut
+  if(state.mode==='car'||state.mode==='cut')return 'sit';
+  if(glbPunchT>0)return 'punch';                   // melee swing in progress (triggerGlbPunch)
+  if(state.swimming)return 'idle';                 // no swim clip; idle is the least-odd fit (rare)
+  if(player.locoAmt>0.06)return player.locoRun?'run':'walk';
+  return 'idle';
+}
+function fadeToClip(name:string,dur=0.18):void{
+  if(!glb||name===glbClip)return;
+  const next=glb.actions[name];if(!next)return;
+  if(name==='death'){if(glbDeathDone)return;glbDeathDone=true;}
+  const prev=glb.actions[glbClip];
+  next.reset();next.enabled=true;next.setEffectiveWeight(1);next.fadeIn(dur);next.play();
+  if(prev&&prev!==next)prev.fadeOut(dur);
+  glbClip=name;
+}
+// Play the one-shot 'punch' clip when the player throws a melee swing (called from
+// weapons.ts startMeleeAnimation). Forces a replay so rapid punches restart the swing,
+// and stretches/squashes the clip to a snappy window that matches the fist's timing.
+const PUNCH_DUR=0.42;
+export function triggerGlbPunch():void{
+  if(!glb)return;
+  const a=glb.actions['punch'];if(!a)return;
+  const clipDur=a.getClip().duration||PUNCH_DUR;
+  glbPunchT=PUNCH_DUR;
+  a.reset();a.enabled=true;a.setEffectiveWeight(1);a.setEffectiveTimeScale(clipDur/PUNCH_DUR);a.play();
+  const prev=glb.actions[glbClip];if(prev&&prev!==a)prev.fadeOut(0.08);
+  glbClip='punch';
+}
+// The walk/run clips are IN-PLACE: at timeScale 1 the planted foot moves backward at
+// the clip's natural speed (measured from the FBX: walk 1.38 u/s, run 2.45 u/s). To
+// stop the feet skating, the clip must play at timeScale = actualGroundSpeed/natural —
+// otherwise the body (≈5.2 walk / 9 run u/s) outruns the feet ~2.7x and they slide.
+const WALK_NAT=1.38,RUN_NAT=2.45;
+// The body moves fast relative to the clips' natural stride, so matching ground speed
+// EXACTLY makes the legs whirl ("muito acelerada"). Damp the playback a bit — the user
+// prefers a calmer cadence over perfectly skate-free feet (a little foot slide returns).
+const LOCO_ANIM_SCALE=0.72;
+let _animPrevX=player.g.position.x,_animPrevZ=player.g.position.z;
+export function updatePlayerAnim(dt:number):void{
+  if(!glb)return;
+  if(!dying&&!glbDead)glbDeathDone=false;           // re-arm the death one-shot only after respawn
+  if(glbPunchT>0)glbPunchT-=dt;                      // count down the melee-swing window
+  fadeToClip(chooseClip());
+  // measure the real horizontal ground speed this frame (covers walk/run/aim/analog)
+  const gx=player.g.position.x,gz=player.g.position.z;
+  const groundSpeed=dt>1e-4?Math.hypot(gx-_animPrevX,gz-_animPrevZ)/dt:0;
+  _animPrevX=gx;_animPrevZ=gz;
+  const loco=glb.actions[glbClip];
+  if(glbClip==='walk')loco?.setEffectiveTimeScale(clamp(groundSpeed/WALK_NAT*LOCO_ANIM_SCALE,0.4,4.5));
+  else if(glbClip==='run')loco?.setEffectiveTimeScale(clamp(groundSpeed/RUN_NAT*LOCO_ANIM_SCALE,0.4,4.5));
+  glb.mixer.update(dt);
+  applyGymArms(state.armScale);      // gym muscles: re-thicken the arms (clip scale tracks reset them)
+  glb.root.updateMatrixWorld(true); // commit the mixer pose to world matrices…
+  // on a vehicle with a custom seated pose (bike straddle / car driver), drive that
+  // pose; else bend the knees so the shins reach the keyed feet (no ankle stretch).
+  const vk=cur?(cur.bike?'bike':(cur.boat||cur.plane||cur.tractor?'':'car')):'';
+  if(!(state.mode==='car'&&applyVehiclePose(glb.root,vk)))solveLegIK();
+  // on foot with a gun raised: overlay the two-handed gun-hold posture (upper body only,
+  // so the legs keep walking/running). Not while punching/dead.
+  if(state.mode==='foot'&&state.weaponHeld&&glbPunchT<=0&&!dying&&!glbDead)applyGunPose(glb.root);
 }
 
 // First-person view is a *mode of the same camera*, toggled by C. It only takes
@@ -1274,7 +1379,7 @@ export function updateCamera(dt:number){
   }else{
     tgt=player.g.position;heading=player.heading;
     // nadando, a câmera baixa e chega mais perto, rente à água
-    if(state.swimming){dist=5.6;baseH=1.0;}else{dist=6.2;baseH=1.25;} // aim mode uses its own camera (updateCameraAim)
+    if(state.swimming){dist=5.6;baseH=1.0;}else{dist=5.0;baseH=1.2;} // closer 3rd-person on foot; aim mode uses its own camera (updateCameraAim)
   }
   if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked){
     // Positive lookX means "turn right". In this engine yaw increases to the LEFT

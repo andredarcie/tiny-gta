@@ -180,6 +180,7 @@ export class Npc{
     this.gender=g2;
     if(g2==='F'&&femaleLook)addFemaleLook(g); // women get the female appearance
     this.name=name??pickName(g2);
+    g.userData.npcName=this.name; // seeds the GLB look so it's the same every play (npc-glb)
     this.homeX=g.position.x;
     this.homeZ=g.position.z;
     this.hospitalT=0;
