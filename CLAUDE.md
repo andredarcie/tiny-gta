@@ -75,16 +75,18 @@ There are **two separately-deployed pieces**:
 > Your validation stops at static checks: `node --check <file>` on the files you touched and `npm run build`. After that, describe what you changed and hand it to the user to test. If you believe something needs runtime/visual verification, **say so and ask the user to test it** — never do it yourself.
 > (The harness below still exists for the user's own use / CI; the rest of this section documents it for that purpose only. It is **not** an invitation for Claude to run it.)
 
+> **🖥️ HEADLESS IS FORBIDDEN — ALWAYS RUN HEADED (VISIBLE).** If the game/harness is run at all (e.g. when the user explicitly authorizes it), it **MUST** open a real visible window. **Never pass `HEADLESS=1`, and never launch a headless browser for this game.** Reasons: (1) the user must be able to *watch* the run; (2) headless Chromium throttles `requestAnimationFrame`, so chases / driving / police AI behave differently from the real game and produce false results. If there is no display available, do **not** fall back to headless — stop and tell the user. When you do run it (authorized + headed), prefer **real-time** observation (let the real loop drive) over `advanceTime` fast-stepping whenever the point is to *see* the behaviour.
+
 Gameplay is tested by driving the **real game in a real Chromium** (real Three.js/WebGL, real game loop, real input pipeline) via Playwright — there is no headless-stub/mock layer. This is the one sanctioned way to test the game; do not invent per-test browser scripts.
 
 ```bash
 npx playwright install chromium   # one-time: download the browser
 npm test                          # runs test/*.spec.ts HEADED (a window opens; you watch it play)
-HEADLESS=1 npm test               # no window (CI / agents on a machine with no display)
+# HEADLESS=1 is FORBIDDEN for this game — always run headed/visible (see the rule above).
 npm test -- test/race.spec.ts     # run one spec
 ```
 
-- **Config:** `playwright.config.ts` auto-starts `npm run dev` and points tests at it. Headed by default (set `HEADLESS=1` to hide the window). Real-time *driving* tests (races, chases) should run **headed** — headless Chromium throttles `requestAnimationFrame`, starving the control loop (a race autopilot wanders and loses); `HEADLESS=1` is best for boot/state assertions, not live driving.
+- **Config:** `playwright.config.ts` auto-starts `npm run dev` and points tests at it. **Always headed (visible) — `HEADLESS=1` is forbidden (see the rule above).** Headless Chromium throttles `requestAnimationFrame`, starving the control loop (a race autopilot wanders and loses) and making chases / police AI misbehave, so it gives false results even for "just" boot/state assertions.
 - **Driver:** `test/support/game.ts` exports a Playwright `test`/`expect` where every spec gets a booted `game` (a `GameDriver`). Write specs as `test/*.spec.ts` and `import { test, expect } from './support/game.ts'`. Key driver methods:
   - `boot(nick)` — title → nickname → play (auto-run by the fixture).
   - `snapshot()` — parsed `render_game_to_text()` (mode, money, vehicle, per-minigame state, …).

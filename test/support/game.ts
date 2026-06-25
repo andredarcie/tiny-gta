@@ -38,12 +38,23 @@ export class GameDriver {
     const page = this.page;
     page.on('pageerror', (e) => console.error('[pageerror]', e.message));
     await page.goto('/', { waitUntil: 'load' });
-    await page.waitForSelector('#play', { timeout: 30_000 });
-    // The title button pulses (animated) — Playwright sees it as unstable, so click via DOM.
-    await page.evaluate(() => document.getElementById('play')!.click());
-    await page.waitForSelector('#nick-input', { state: 'visible', timeout: 10_000 });
-    await page.evaluate((n) => { (document.getElementById('nick-input') as HTMLInputElement).value = n; }, nick);
-    await page.evaluate(() => document.getElementById('nick-play')!.click());
+    // On localhost the title screen AUTO-STARTS the game (a dev-shortcut in js/core/input.ts
+    // calls beginRun() on a macrotask), so just waiting for state.started is the faithful path.
+    // If it hasn't started shortly (non-localhost, or the shortcut is disabled), fall back to
+    // the real title flow — which is now PLAY → nickname modal → "Play as guest" (#nick-guest),
+    // not the old #nick-play button.
+    await page.waitForFunction(() => !!(window as any).render_game_to_text, null, { timeout: 30_000 });
+    const started = () => page.evaluate(
+      () => { try { return JSON.parse((window as any).render_game_to_text()).started === true; } catch { return false; } });
+    const autostarted = await page.waitForFunction(
+      () => { try { return JSON.parse((window as any).render_game_to_text()).started === true; } catch { return false; } },
+      null, { timeout: 4_000 }).then(() => true).catch(() => false);
+    if (!autostarted && !(await started())) {
+      await page.evaluate(() => document.getElementById('play')?.click());          // open the nickname modal
+      await page.waitForSelector('#nick-input', { state: 'visible', timeout: 8_000 }).catch(() => {});
+      await page.evaluate((n) => { const i = document.getElementById('nick-input') as HTMLInputElement | null; if (i) i.value = n; }, nick);
+      await page.evaluate(() => (document.getElementById('nick-guest') || document.getElementById('nick-play'))?.click());
+    }
     await page.waitForFunction(
       () => !!(window as any).render_game_to_text && JSON.parse((window as any).render_game_to_text()).started === true,
       null, { timeout: 20_000 });
