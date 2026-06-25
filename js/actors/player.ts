@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
-  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z,RIVER_CX,RIVER_HW,BRIDGE_DECK_HW} from '@/core/constants.ts';
+  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z,RIVER_CX,RIVER_HW,BRIDGE_DECK_HW,bridgeDeckH} from '@/core/constants.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
@@ -748,7 +748,7 @@ export function updateCar(dt:number){
   // is treated as a wall — see the shoreline guard at the move step below.
   if(cur!.remote){
     cur!.sinkT=0;
-  }else if(inWater(cur!.g.position)){
+  }else if(inWater(cur!.g.position)||carUnderDeck(cur!.g.position)){
     // No mar o carro perde tração, afunda aos poucos e o jogador escapa nadando
     const p=cur!.g.position;
     if(!cur!.sinkT){cur!.sinkT=1e-6;message('YOUR CAR IS SINKING!','var(--pink)');thud(8);}
@@ -836,7 +836,14 @@ export function updateCar(dt:number){
   cur!.g.rotation.z=THREE.MathUtils.lerp(cur!.g.rotation.z,leanT,bike?6*dt:10*dt);
   // Terreno: o carro acompanha a altura (dá pra subir a montanha) e inclina no morro.
   // Segue a altura rápido o bastante pra não enterrar o nariz na rampa em alta.
-  const gh=groundHeight(p.x,p.z);
+  let gh=groundHeight(p.x,p.z);
+  // Anti-teleport at the bridge: groundHeight returns the DECK height for ANY x,z under the
+  // deck footprint, so driving/being shoved INTO that footprint from below (off the side of the
+  // bridge, against a tower/pier) used to snap the car instantly UP onto the deck. If the ground
+  // is a big step ABOVE the car (an elevated deck overhead — not a drivable slope, whose per-frame
+  // rise stays well under this), bounce off and DON'T climb it: you can't drive up through the
+  // underside of the bridge. Normal ramps/hills (gradual) never hit this.
+  if(gh-p.y>2.5){p.x=px0;p.z=pz0;cur!.speed*=-.25;gh=groundHeight(p.x,p.z);}
   p.y+=(gh-p.y)*Math.min(1,12*dt);
   if(p.y<gh)p.y=gh;                       // nunca afunda no terreno
   const fx=Math.sin(cur!.heading),fz=Math.cos(cur!.heading);
@@ -889,6 +896,11 @@ const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.ts)
 // underBridge devolve a água ali: a lancha boia na linha d'água e cruza por baixo.
 const underBridge=(x:number,z:number):boolean=>
   Math.abs(x-RIVER_CX)<RIVER_HW&&Math.abs(z)<=BRIDGE_DECK_HW;
+// A CAR (not a boat) that has fallen BELOW the deck over the water channel: treat it as in the
+// water so it SINKS, exactly like the boat slips under the span — instead of letting
+// groundHeight (= deck height there) snap it instantly UP onto the bridge ("teleported up").
+const carUnderDeck=(p:THREE.Vector3):boolean=>
+  underBridge(p.x,p.z)&&p.y<bridgeDeckH(p.x,p.z)-1;
 function updateBoat(dt:number){
   const c=cur!,p=c.g.position;
   const onWater=inWater(p)||underBridge(p.x,p.z);

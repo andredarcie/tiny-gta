@@ -62,14 +62,13 @@ const LAST=PATH.length-1;
 const CUM:number[]=[0];
 for(const s of PATH)CUM.push(CUM[CUM.length-1]+s.len);
 const TOTAL=CUM[CUM.length-1];
-// Keep country cars EAST of the off-road race circuit (which lives at x<=320, |z|<=84
-// and is intentionally kept clear of obstacles — see offroad.js). U_MIN is the road
-// distance at the farm-hamlet edge (~x 340); cars turn around there instead of
-// driving the quiet approach straight back to the city, so the race pasture stays
-// empty. Everything they roam (fields, mountain bypass, Pine Hollow) is east of it.
-const EAST_GUARD=340;
-let U_MIN=0;
-for(let i=0;i<=LAST;i++){if(PATH[i].ax>=EAST_GUARD){U_MIN=CUM[i];break;}}
+// Country cars now drive the FULL road, from the city edge all the way to Pine Hollow —
+// crucially OVER the Vesper Bridge (the road's z=0 corridor crosses the strait at RIVER_CX).
+// They ride the bridge deck just like the player: each frame y is reseated to groundHeight,
+// which returns the deck height over the span, and the deck has no rails, so a car on the
+// centreline crosses cleanly. (Previously they were penned east of x≈340 to keep the off-road
+// race pasture empty; the bridge sits west of that, so they could never reach it.)
+const U_MIN=0;
 
 // map u -> segment index (linear scan; ~45 segments × 5 cars = negligible)
 function locate(u:number):number{let i=0;while(i<LAST&&u>CUM[i+1])i++;return i;}
