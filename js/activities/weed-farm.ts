@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
-import {playerPos,player,idleCars,cameraRig,cur,getBusted} from '@/actors/player.ts';
+import {playerPos,player,idleCars,cameraRig,cur,getBusted,setPlayerArmOverlay} from '@/actors/player.ts';
+import {WEED_POUR,WEED_DEAL} from '../../assets/models/characters/glb-poses.ts';
 import {economy} from '@/core/economy.ts';
 import {addWanted} from '@/core/physics.ts';
 import {groundHeight,TOWN_CX,RURAL_GAP} from '@/core/constants.ts';
@@ -214,6 +215,7 @@ const WEED_BUYER_LINES=[
 
 let bucketObj: THREE.Object3D|null=null;       // the 3D bucket parented to the player's hand while carrying
 let pourT=0;              // pour-animation timer (>0 while tipping the bucket)
+let armPosed=false;       // true while the GLB hero's arm is overlaid (pour/deal) — so we only clear our own slot
 let pourSlot: Slot|null=null;        // the slot being watered during the pour
 let pourApplied=false;    // whether the water has landed (hyd set) this pour
 // live particles (water droplets + harvest bud burst)
@@ -442,10 +444,11 @@ function faceForDeal(b: Buyer): void{
 function dealCutscene(b: Buyer,pay: number,after: ()=>void): void{
   faceForDeal(b);
   const l=playerLimbs();
-  if(l){l.rightArm.rotation.set(-1.25,0,-.2);l.rightForearm?.rotation.set(-.5,0,0);} // reach out
+  if(l){l.rightArm.rotation.set(-1.25,0,-.2);l.rightForearm?.rotation.set(-.5,0,0);} // reach out (procedural)
+  setPlayerArmOverlay(WEED_DEAL);armPosed=true;                                       // rigged hero: reach out
   bigText(`+$${pay}`,'var(--gold)');
   state.mode='cut';state.cutT=1.8;
-  state.cutFn=()=>{state.mode='foot';after();};
+  state.cutFn=()=>{state.mode='foot';setPlayerArmOverlay(null);armPosed=false;after();};
 }
 
 function deliverTo(b: Buyer): void{
@@ -768,6 +771,7 @@ export function updateWeedFarm(dt: number): void{
     if(state.mode==='foot'){
       const l=playerLimbs();
       if(l){l.rightArm.rotation.set(-1.45,0,-.25);l.rightForearm?.rotation.set(-.55,0,0);}
+      setPlayerArmOverlay(WEED_POUR);armPosed=true;        // rigged hero: tip-the-bucket arm pose
       if(bucketObj)bucketObj.rotation.z=Math.min(2.1,(POUR_TIME-pourT)*4.5);
     }
     if(!pourApplied&&pourT<=POUR_TIME*.55){
@@ -778,6 +782,9 @@ export function updateWeedFarm(dt: number): void{
     }
     if(pourT<=0){pourT=0;waterCharges=Math.max(0,waterCharges-1);pourSlot=null;if(waterCharges<=0)detachBucket();}
   }
+  // pour finished (or got interrupted out of foot mode): drop the GLB arm overlay so the
+  // hero goes back to the normal walk/idle. The deal-reach clears itself in its cutFn.
+  if(armPosed&&pourT<=0&&state.mode==='foot'){setPlayerArmOverlay(null);armPosed=false;}
   updateFx(dt);
 
   // Carry the water only AT the plot: wander off (or hop on a vehicle) and a filled

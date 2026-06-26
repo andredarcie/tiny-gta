@@ -4,6 +4,7 @@ import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makePed} from '@/core/entities.ts';
+import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import {AC,master,blip,thud} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {parks} from '@/world/world.ts';
@@ -350,12 +351,14 @@ function endCutscene(){
   }
   const mouth=cine.actor?.ped.userData.mouth;
   if(mouth)mouth.scale.y=1;
+  if(cine.actor)setNpcGlbGesture(cine.actor.ped,null);   // rigged actor: stop the talk gesture
   const fn=cine.onDone;cine.onDone=null;fn&&fn();
 }
 
 // Boca abrindo/fechando e mãos gesticulando enquanto o NPC fala
 function setTalkPose(actor: CineActor | null,t: number,talking: boolean){
   if(!actor)return;
+  setNpcGlbGesture(actor.ped,'talk',talking);   // rigged actor: gesticulate while speaking
   const l=actor.ped.userData.limbs;
   if(l){
     if(talking){
