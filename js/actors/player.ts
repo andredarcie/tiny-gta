@@ -7,6 +7,7 @@ import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
 import {makeHat,makeGlasses} from '../../assets/models/characters/accessories.ts';
 import {loadPlayerGlb,solveLegIK,applyVehiclePose,applyGunPose,applyGymArms,type PlayerGlbHandle} from '../../assets/models/characters/player-glb.ts';
+import {applyPose,applyBench,applyDance,applySwim,applyRagdoll,REMOTE_POSE,type Pose} from '../../assets/models/characters/glb-poses.ts';
 import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
@@ -1262,7 +1263,10 @@ export function updateFoot(dt:number){
 // GLB has loaded — until then the procedural doll animates itself via animatePed.
 function chooseClip():string{
   if(dying||glbDead)return 'death';                // dead: hold the collapse through the WASTED cut
-  if(state.mode==='car'||state.mode==='cut')return 'sit';
+  if(state.mode==='car')return 'sit';
+  // cut-scenes: seated only if it's a vehicle cut (cur present); on-foot cuts (a drug deal,
+  // a BUSTED arrest, a story beat) stay standing — a settable overlay can still gesture.
+  if(state.mode==='cut')return cur?'sit':'idle';
   if(glbPunchT>0)return 'punch';                   // melee swing in progress (triggerGlbPunch)
   if(state.swimming)return 'idle';                 // no swim clip; idle is the least-odd fit (rare)
   if(player.locoAmt>0.06)return player.locoRun?'run':'walk';
@@ -1315,14 +1319,43 @@ export function updatePlayerAnim(dt:number):void{
   glb.mixer.update(dt);
   applyGymArms(state.armScale);      // gym muscles: re-thicken the arms (clip scale tracks reset them)
   glb.root.updateMatrixWorld(true); // commit the mixer pose to world matrices…
-  // on a vehicle with a custom seated pose (bike straddle / car driver), drive that
-  // pose; else bend the knees so the shins reach the keyed feet (no ankle stretch).
-  const vk=cur?(cur.bike?'bike':(cur.boat||cur.plane||cur.tractor?'':'car')):'';
-  if(!(state.mode==='car'&&applyVehiclePose(glb.root,vk)))solveLegIK();
-  // on foot with a gun raised: overlay the two-handed gun-hold posture (upper body only,
-  // so the legs keep walking/running). Not while punching/dead.
-  if(state.mode==='foot'&&state.weaponHeld&&glbPunchT<=0&&!dying&&!glbDead)applyGunPose(glb.root);
+  // ----- full-body special poses (own the whole rig, override the clip) -----
+  // These read the live state and replace the clip pose entirely; none of the
+  // clip/IK/overlay logic below runs while one is active.
+  if(!dying&&!glbDead){
+    if(state.swimming){applySwim(glb.root,player.swimPose,player.stroke);return;}
+    if(roofFall){applyRagdoll(glb.root,state.time);return;}
+    if(cur?.remote){applyPose(glb.root,REMOTE_POSE,{feet:true});return;} // RC operator stands holding the remote
+  }
+  // on a vehicle with a custom seated pose, drive that pose; else bend the knees so
+  // the shins reach the keyed feet (no ankle stretch). bike → MOTO_POSE; everything
+  // else with a driver seat — car AND the open boat/plane/tractor — → the seated CAR_POSE
+  // (knees bent, hands forward on the controls). On foot: just the knee IK.
+  let posed=false;
+  if(state.mode==='car'&&cur)posed=applyVehiclePose(glb.root,cur.bike?'bike':'car');
+  if(!posed)solveLegIK();
+  // ----- upper-body overlays (keep the locomotion clip on the legs) -----
+  // weed-farm hand work (carry/pour/deal) wins over the gun pose; otherwise a raised
+  // weapon gets the two-handed gun-hold posture. Not while punching/dead/in a vehicle.
+  if(state.mode!=='car'&&!dying&&!glbDead){
+    if(armOverlay)applyPose(glb.root,armOverlay,{only:ARM_OVERLAY_BONES});
+    else if(state.mode==='foot'&&state.weaponHeld&&glbPunchT<=0)applyGunPose(glb.root);
+  }
 }
+
+// ----- activity pose hooks ---------------------------------------------------
+// Upper-body overlay slot for on-foot hand work (weed-farm bucket/pour/deal). Set a
+// pose (RIGHT-arm bones) to overlay it on the walk/idle clip; null clears it.
+const ARM_OVERLAY_BONES=['UpperArmR','LowerArmR'] as const;
+let armOverlay:Pose|null=null;
+export function setPlayerArmOverlay(p:Pose|null):void{armOverlay=p;}
+// Drive the GLB hero into the bench-press lift (p: 1=lockout, 0=bar at chest). Called
+// every frame by the gym mini-game, which freezes the world (so updatePlayerAnim, and
+// thus the mixer, is paused — we pose the rig directly here). No-op without the GLB.
+export function posePlayerGlbBench(p:number):void{if(glb)applyBench(glb.root,p);}
+// Drive the GLB hero into a dance pose (lane 0..3, amt 0..1 toward the hit). Same
+// frozen-world path as the bench press. No-op without the GLB.
+export function posePlayerGlbDance(lane:number,amt:number):void{if(glb)applyDance(glb.root,lane,amt);}
 
 // First-person view is a *mode of the same camera*, toggled by C. It only takes
 // over while the player has normal control on foot or in a vehicle — every special

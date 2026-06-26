@@ -6,6 +6,7 @@ import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.ts';
 import {Npc} from '@/actors/npc.ts';
+import {setNpcGlbSeated,setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
 import {parks} from '@/world/world.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
@@ -210,7 +211,9 @@ function boardFare(){
   clearMarker();
   const ped=fare!.ped;
   ped.rotation.set(0,0,0);
-  seatPassengerPose(ped);
+  seatPassengerPose(ped);                 // procedural fallback pose (no-op for a GLB fare)
+  setNpcGlbGesture(ped,null);             // stop the hail wave
+  setNpcGlbSeated(ped);                   // rigged fare rides in the 'sit' clip (not "running" in the seat)
   ped.position.set(.38,-.52,-.15); // banco do carona, ao lado do jogador
   taxi.g.add(ped); // reparenta da cena pro carro: anda junto, visível pelo vidro
   const[dx,dz]=pickSpot(80,fare!.x,fare!.z);
@@ -325,7 +328,8 @@ export function updateTaxi(dt: number){
     const ped=fare!.ped;
     // acenando pro táxi (braço pra cima balançando)
     const l=ped.userData.limbs;
-    if(l){l.rightArm.rotation.x=-2.7;l.rightArm.rotation.z=Math.sin(state.time*7)*.18;}
+    if(l){l.rightArm.rotation.x=-2.7;l.rightArm.rotation.z=Math.sin(state.time*7)*.18;} // procedural fallback
+    setNpcGlbGesture(ped,'wave');         // rigged fare: raised swinging arm to hail the cab
     const d=Math.hypot(taxi.g.position.x-fare!.x,taxi.g.position.z-fare!.z);
     if(d<26)ped.rotation.y=Math.atan2(taxi.g.position.x-fare!.x,taxi.g.position.z-fare!.z);
     if(d<3.4&&Math.abs(taxi.speed)<1.5)boardFare(); // parou do lado: embarca

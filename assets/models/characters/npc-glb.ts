@@ -15,6 +15,7 @@ import {scene} from '@/core/engine.ts';
 import {makeRng} from '@/core/rng.ts';
 import {state} from '@/core/state.ts';
 import {AIM_POSE} from './player-glb.ts';   // shared gun-hold posture (same HumanArmature rig)
+import {applyWave,applyTalk} from './glb-poses.ts';   // overlaid NPC gestures (taxi hail / cutscene talk)
 interface GunBone{b:THREE.Bone;r:[number,number,number];}
 
 export const USE_GLB_NPCS=true;   // flip to false to put every NPC back on the procedural ped
@@ -297,5 +298,17 @@ export function updateNpcGlb(dt:number,camera?:THREE.PerspectiveCamera):void{
     // posture on the arms/head, overriding the clip — same AIM_POSE as the hero.
     if(h.gun.length&&state.time-((h.group.userData.npcAimT as number)??-9)<0.25)
       for(const gb of h.gun)gb.b.rotation.set(gb.r[0],gb.r[1],gb.r[2]);
+    // scripted gesture overlay (taxi hail / cutscene talk) — set via setNpcGlbGesture
+    const gest=h.group.userData.glbGesture as string|undefined;
+    if(gest==='wave')applyWave(h.group,state.time);
+    else if(gest==='talk')applyTalk(h.group,state.time,!!h.group.userData.glbTalking);
   }
+}
+
+// Overlay a scripted gesture on a GLB NPC's clip: 'wave' (taxi hail — raised swinging
+// arm), 'talk' (cutscene gesticulation; pass `talking` to animate vs settle), or null to
+// clear. No-op visual for procedural NPCs (only updateNpcGlb reads these flags).
+export function setNpcGlbGesture(g:THREE.Object3D,gesture:'wave'|'talk'|null,talking=false):void{
+  g.userData.glbGesture=gesture??undefined;
+  g.userData.glbTalking=talking;
 }

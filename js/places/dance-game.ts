@@ -1,6 +1,6 @@
 import {state,input,keys} from '@/core/state.ts';
 import {camera} from '@/core/engine.ts';
-import {player,cameraRig} from '@/actors/player.ts';
+import {player,cameraRig,posePlayerGlbDance} from '@/actors/player.ts';
 import {blip} from '@/audio/audio.ts';
 import {animatePed} from '@/core/entities.ts';
 import {clubFx} from '../../assets/models/city/nightclub.ts';
@@ -312,8 +312,11 @@ function poseFor(lane:number){
 }
 
 function applyDancePose(){
-  const l=player.g.userData.limbs;if(!l)return;
   const g=player.g;
+  // rigged hero: blend the neutral groove toward the hit pose for the current lane (the
+  // body bob/tilt below rides on the root group, so it applies to the GLB too).
+  posePlayerGlbDance(moveLane,moveT>0?Math.sin((1-moveT/MOVE_DUR)*Math.PI)*(moveStray?.5:1):0);
+  const l=player.g.userData.limbs;if(!l)return;
   // embalo base no ritmo da música (sway de quadril + braços + bob)
   const ph=songTime/BEAT*Math.PI; // avança PI por tempo
   const sway=Math.sin(ph*.5);
