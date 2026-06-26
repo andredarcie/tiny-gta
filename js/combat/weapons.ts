@@ -10,7 +10,7 @@ import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
 import {settings} from '@/core/settings.ts';
 import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson,triggerGlbPunch,hasPlayerGlb} from '@/actors/player.ts';
-import {glbGunHand} from '../../assets/models/characters/player-glb.ts';
+import {glbGunHand} from '../../assets/models/characters/mixamo-rig.ts';
 import {traffic,spawnTraffic} from '@/world/traffic.ts';
 import {cops} from '@/actors/police.ts';
 import {updateGore} from '@/combat/gore.ts';

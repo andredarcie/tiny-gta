@@ -6,8 +6,8 @@ import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
 import {makeHat,makeGlasses} from '../../assets/models/characters/accessories.ts';
-import {loadPlayerGlb,solveLegIK,applyVehiclePose,applyGunPose,applyGymArms,type PlayerGlbHandle} from '../../assets/models/characters/player-glb.ts';
-import {applyPose,applyBench,applyDance,applySwim,applyRagdoll,REMOTE_POSE,type Pose} from '../../assets/models/characters/glb-poses.ts';
+import {preloadRig,makeCharacter,PLAYER_LOOK,MIXAMO_LOCO_NAT,MIXAMO_WALK_NAT,setGunHandBone,type MixamoChar} from '../../assets/models/characters/mixamo-rig.ts';
+import {AnimationStateMachine,AnimState,MIXAMO_TABLE} from '@/actors/anim-fsm.ts';
 import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
@@ -86,19 +86,31 @@ noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
 // async; when it arrives we hide the procedural meshes, parent the skinned model
 // under player.g (so every position/rotation/visibility/reparent path keeps
 // working unchanged) and drive its AnimationMixer from updatePlayerAnim().
-let glb:PlayerGlbHandle|null=null;
+let glb:MixamoChar|null=null;
+let playerAnim:AnimationStateMachine|null=null; // the hero's animation state machine (the only clip/pose driver)
 let procVisual:THREE.Object3D[]=[];          // original children of player.g (doll mesh + mouth)
-let glbClip='';                              // currently playing clip key
-let glbDeathDone=false;                      // death one-shot guard
 let glbPunchT=0;                             // >0 while the one-shot 'punch' clip plays
 let glbDead=false;                           // dead → hold 'death' through the WASTED cut
-loadPlayerGlb().then(h=>{
-  if(!h)return;                              // load failed: keep the procedural doll
-  glb=h;
-  procVisual=player.g.children.slice();      // the skinned doll + mouth built by makePlayerPed
+// The hero — and every NPC — is one clone of the shared mixamorig base (mixamo-rig.ts): real
+// clips, no IK/foot-weld hacks. Falls back to the procedural doll only if the base fails to load.
+function installHero(h:MixamoChar,anim:AnimationStateMachine):void{
+  glb=h; playerAnim=anim;
+  procVisual=player.g.children.slice();       // the skinned doll + mouth built by makePlayerPed
   for(const o of procVisual)o.visible=false;
   player.g.add(h.root);
-  noShadow(player.g);                        // re-assert: the new meshes never cast a shadow
+  noShadow(player.g);                          // re-assert: the new meshes never cast a shadow
+}
+function findBone(root:THREE.Object3D,name:string):THREE.Bone|null{
+  let b:THREE.Bone|null=null;root.traverse(o=>{if(!b&&(o as THREE.Bone).isBone&&o.name===name)b=o as THREE.Bone;});return b;
+}
+preloadRig().then(()=>{
+  const ch=makeCharacter(PLAYER_LOOK);
+  if(!ch)return;
+  setGunHandBone(findBone(ch.root,'mixamorigRightHand'));   // held weapon anchors on the rigged hand
+  // Mixamo rig is properly baked: no knee IK, no gym-arm rescale. Timescale uses the clip's
+  // measured natural speed (4.4) damped by locoScale 0.6 — the game runs ~9u/s (arcade-fast),
+  // so without damping the legs whirl ~2x; 0.6 lands a realistic cadence (slight skate).
+  installHero(ch,new AnimationStateMachine(ch.root,ch.mixer,ch.actions,{solveLegs:()=>{},locoScale:0.6,walkNat:MIXAMO_WALK_NAT,runNat:MIXAMO_LOCO_NAT},MIXAMO_TABLE));
 });
 export function hasPlayerGlb():boolean{return !!glb;}
 
@@ -1098,7 +1110,10 @@ function updateSwim(dt:number){
   p.y+=(depthTgt-p.y)*Math.min(1,6*dt);
   // ----- postura do corpo (ordem YXZ: guinada → inclina à frente → rola) -----
   player.g.rotation.order='YXZ';
-  const pitch=pose*1.12;            // deita até ~64° na superfície
+  // The Mixamo 'swim' CLIP already lays the body prone (head fwd, legs slightly down); adding
+  // the old 64° pitch on top tipped it past flat → legs in the air. So with the GLB only a tiny
+  // lean; the procedural doll fallback still needs the full tilt.
+  const pitch=pose*(glb?0.2:1.12);
   const roll=pose*Math.sin(sp)*.13; // rola de leve a cada braçada (respiração)
   player.g.rotation.set(pitch,player.heading,roll);
   animateSwim(player.g,sp,pose);
@@ -1258,104 +1273,70 @@ export function updateFoot(dt:number){
 }
 
 // ---- GLB avatar animation ---------------------------------------------------
-// Pick a clip from the live game state, crossfade to it, and advance the mixer.
-// Called once per frame from main.ts in EVERY mode (foot/car/cut). No-op until the
-// GLB has loaded — until then the procedural doll animates itself via animatePed.
-function chooseClip():string{
-  if(dying||glbDead)return 'death';                // dead: hold the collapse through the WASTED cut
-  if(state.mode==='car')return 'sit';
-  // cut-scenes: seated only if it's a vehicle cut (cur present); on-foot cuts (a drug deal,
-  // a BUSTED arrest, a story beat) stay standing — a settable overlay can still gesture.
-  if(state.mode==='cut')return cur?'sit':'idle';
-  if(glbPunchT>0)return 'punch';                   // melee swing in progress (triggerGlbPunch)
-  if(state.swimming)return 'idle';                 // no swim clip; idle is the least-odd fit (rare)
-  if(player.locoAmt>0.06)return player.locoRun?'run':'walk';
-  return 'idle';
-}
-function fadeToClip(name:string,dur=0.18):void{
-  if(!glb||name===glbClip)return;
-  const next=glb.actions[name];if(!next)return;
-  if(name==='death'){if(glbDeathDone)return;glbDeathDone=true;}
-  const prev=glb.actions[glbClip];
-  next.reset();next.enabled=true;next.setEffectiveWeight(1);next.fadeIn(dur);next.play();
-  if(prev&&prev!==next)prev.fadeOut(dur);
-  glbClip=name;
-}
-// Play the one-shot 'punch' clip when the player throws a melee swing (called from
-// weapons.ts startMeleeAnimation). Forces a replay so rapid punches restart the swing,
-// and stretches/squashes the clip to a snappy window that matches the fist's timing.
+// Every clip/pose the hero shows goes through ONE animation state machine (anim-fsm.ts).
+// updatePlayerAnim derives the desired AnimState from live game state and lets the FSM
+// render it; nothing here plays a clip or applies a pose directly. No-op until the GLB
+// loads — until then the procedural doll animates itself via animatePed.
 const PUNCH_DUR=0.42;
-export function triggerGlbPunch():void{
-  if(!glb)return;
-  const a=glb.actions['punch'];if(!a)return;
-  const clipDur=a.getClip().duration||PUNCH_DUR;
-  glbPunchT=PUNCH_DUR;
-  a.reset();a.enabled=true;a.setEffectiveWeight(1);a.setEffectiveTimeScale(clipDur/PUNCH_DUR);a.play();
-  const prev=glb.actions[glbClip];if(prev&&prev!==a)prev.fadeOut(0.08);
-  glbClip='punch';
+// The character is actively pointing the gun (so the gun-hold pose applies). Just HOLDING
+// a weapon while walking is NOT aiming — that stays in idle/walk. Mirrors weapons.ts.
+function aimingNow():boolean{return state.aiming||input.shootHeld||!!refs.getRampageState?.()?.active;}
+let weedOverlay:AnimState|null=null;             // weed-farm hand-work overlay (WeedPour/WeedDeal), or null
+// Resolve the hero's animation state from the live game state. `loco` is the current
+// locomotion (Idle/Walk/Run), used directly and as the base under any overlay state.
+function playerAnimState(loco:AnimState):AnimState{
+  if(dying||glbDead)return AnimState.Death;                 // dead: hold the collapse through WASTED
+  if(state.swimming)return AnimState.Swim;
+  if(roofFall)return AnimState.Ragdoll;
+  if(cur?.remote)return AnimState.RcOperate;                // RC operator stands holding the remote
+  if(state.mode==='car'&&cur)return cur.bike?AnimState.DriveBike:AnimState.DriveCar;
+  if(glbPunchT>0)return AnimState.Punch;                    // melee swing in progress
+  if(weedOverlay!==null)return weedOverlay;                 // weed-farm pour/deal (overlay on loco)
+  if(state.mode==='cut')return cur?AnimState.Sit:loco;      // vehicle cut → sit; on-foot cut → stand
+  if(state.mode==='foot'&&state.weaponHeld&&aimingNow())return AnimState.Aim; // gun-hold ONLY while aiming
+  return loco;
 }
-// The walk/run clips are IN-PLACE: at timeScale 1 the planted foot moves backward at
-// the clip's natural speed (measured from the FBX: walk 1.38 u/s, run 2.45 u/s). To
-// stop the feet skating, the clip must play at timeScale = actualGroundSpeed/natural —
-// otherwise the body (≈5.2 walk / 9 run u/s) outruns the feet ~2.7x and they slide.
-const WALK_NAT=1.38,RUN_NAT=2.45;
-// The body moves fast relative to the clips' natural stride, so matching ground speed
-// EXACTLY makes the legs whirl ("muito acelerada"). Damp the playback a bit — the user
-// prefers a calmer cadence over perfectly skate-free feet (a little foot slide returns).
-const LOCO_ANIM_SCALE=0.72;
 let _animPrevX=player.g.position.x,_animPrevZ=player.g.position.z;
 export function updatePlayerAnim(dt:number):void{
-  if(!glb)return;
-  if(!dying&&!glbDead)glbDeathDone=false;           // re-arm the death one-shot only after respawn
-  if(glbPunchT>0)glbPunchT-=dt;                      // count down the melee-swing window
-  fadeToClip(chooseClip());
-  // measure the real horizontal ground speed this frame (covers walk/run/aim/analog)
+  if(!playerAnim)return;
+  if(glbPunchT>0)glbPunchT-=dt;                              // count down the melee-swing window
+  // real horizontal ground speed this frame → walk/run clip timescale (covers analog/aim)
   const gx=player.g.position.x,gz=player.g.position.z;
   const groundSpeed=dt>1e-4?Math.hypot(gx-_animPrevX,gz-_animPrevZ)/dt:0;
   _animPrevX=gx;_animPrevZ=gz;
-  const loco=glb.actions[glbClip];
-  if(glbClip==='walk')loco?.setEffectiveTimeScale(clamp(groundSpeed/WALK_NAT*LOCO_ANIM_SCALE,0.4,4.5));
-  else if(glbClip==='run')loco?.setEffectiveTimeScale(clamp(groundSpeed/RUN_NAT*LOCO_ANIM_SCALE,0.4,4.5));
-  glb.mixer.update(dt);
-  applyGymArms(state.armScale);      // gym muscles: re-thicken the arms (clip scale tracks reset them)
-  glb.root.updateMatrixWorld(true); // commit the mixer pose to world matrices…
-  // ----- full-body special poses (own the whole rig, override the clip) -----
-  // These read the live state and replace the clip pose entirely; none of the
-  // clip/IK/overlay logic below runs while one is active.
-  if(!dying&&!glbDead){
-    if(state.swimming){applySwim(glb.root,player.swimPose,player.stroke);return;}
-    if(roofFall){applyRagdoll(glb.root,state.time);return;}
-    if(cur?.remote){applyPose(glb.root,REMOTE_POSE,{feet:true});return;} // RC operator stands holding the remote
-  }
-  // on a vehicle with a custom seated pose, drive that pose; else bend the knees so
-  // the shins reach the keyed feet (no ankle stretch). bike → MOTO_POSE; everything
-  // else with a driver seat — car AND the open boat/plane/tractor — → the seated CAR_POSE
-  // (knees bent, hands forward on the controls). On foot: just the knee IK.
-  let posed=false;
-  if(state.mode==='car'&&cur)posed=applyVehiclePose(glb.root,cur.bike?'bike':'car');
-  if(!posed)solveLegIK();
-  // ----- upper-body overlays (keep the locomotion clip on the legs) -----
-  // weed-farm hand work (carry/pour/deal) wins over the gun pose; otherwise a raised
-  // weapon gets the two-handed gun-hold posture. Not while punching/dead/in a vehicle.
-  if(state.mode!=='car'&&!dying&&!glbDead){
-    if(armOverlay)applyPose(glb.root,armOverlay,{only:ARM_OVERLAY_BONES});
-    else if(state.mode==='foot'&&state.weaponHeld&&glbPunchT<=0)applyGunPose(glb.root);
-  }
+  const loco=player.locoAmt>0.06?(player.locoRun?AnimState.Run:AnimState.Walk):AnimState.Idle;
+  playerAnim.request(playerAnimState(loco));
+  playerAnim.update(dt,{speed:groundSpeed,loco,t:state.time,swimMoving:player.swimPose,swimPhase:player.stroke,aimPitch:cameraRig.pitch});
 }
 
-// ----- activity pose hooks ---------------------------------------------------
-// Upper-body overlay slot for on-foot hand work (weed-farm bucket/pour/deal). Set a
-// pose (RIGHT-arm bones) to overlay it on the walk/idle clip; null clears it.
-const ARM_OVERLAY_BONES=['UpperArmR','LowerArmR'] as const;
-let armOverlay:Pose|null=null;
-export function setPlayerArmOverlay(p:Pose|null):void{armOverlay=p;}
-// Drive the GLB hero into the bench-press lift (p: 1=lockout, 0=bar at chest). Called
-// every frame by the gym mini-game, which freezes the world (so updatePlayerAnim, and
-// thus the mixer, is paused — we pose the rig directly here). No-op without the GLB.
-export function posePlayerGlbBench(p:number):void{if(glb)applyBench(glb.root,p);}
-// Drive the GLB hero into a dance pose (lane 0..3, amt 0..1 toward the hit). Same
-// frozen-world path as the bench press. No-op without the GLB.
-export function posePlayerGlbDance(lane:number,amt:number):void{if(glb)applyDance(glb.root,lane,amt);}
+// Play the one-shot 'punch' clip when the player throws a melee swing (called from
+// weapons.ts). Forces a replay so rapid punches restart the swing, stretched to a snappy
+// window; the FSM holds the Punch state while glbPunchT counts down in updatePlayerAnim.
+export function triggerGlbPunch():void{
+  if(!playerAnim)return;
+  const clipDur=glb?.actions['punch']?.getClip().duration||PUNCH_DUR;
+  glbPunchT=PUNCH_DUR;
+  playerAnim.trigger(AnimState.Punch,clipDur/PUNCH_DUR);
+}
+
+// ----- activity animation hooks (everything routes through the FSM) -----------
+// Weed-farm hand work: overlay WeedPour/WeedDeal on the locomotion clip (or null to clear).
+export function setPlayerAnimOverlay(s:AnimState|null):void{weedOverlay=s;}
+// Drive the GLB hero into the bench-press lift (p: 1=lockout, 0=bar at chest). Called every
+// frame by the gym mini-game, which FREEZES the world (updatePlayerAnim is not called), so
+// we request the state and tick the FSM with dt=0. No-op without the GLB.
+export function posePlayerGlbBench(p:number):void{
+  if(!playerAnim)return;
+  playerAnim.request(AnimState.Bench);
+  playerAnim.update(0,{benchP:p});
+}
+// Drive the GLB hero into a dance pose (lane 0..3, amt 0..1 toward the hit). Same frozen-
+// world path as the bench press.
+export function posePlayerGlbDance(lane:number,amt:number):void{
+  if(!playerAnim)return;
+  playerAnim.request(AnimState.Dance);
+  playerAnim.update(0,{danceLane:lane,danceAmt:amt});
+}
 
 // First-person view is a *mode of the same camera*, toggled by C. It only takes
 // over while the player has normal control on foot or in a vehicle — every special

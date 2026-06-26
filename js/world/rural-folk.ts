@@ -5,6 +5,7 @@ import {collideStatics} from '@/core/physics.ts';
 import {state} from '@/core/state.ts';
 import {playerPos,cur} from '@/actors/player.ts';
 import {Npc,NPC_SEED} from '@/actors/npc.ts';
+import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import {makeRng} from '@/core/rng.ts';
 import {npcDefsByKind} from '@/core/npc-defs.ts';
 import type * as THREE from 'three';
@@ -174,6 +175,7 @@ export function updateRuralFolk(dt:number){
     if(dx*dx+dz*dz>CULL2){f.g.visible=false;continue;}
     f.g.visible=true;
     f.bob+=dt*1.6;
+    setNpcGlbGesture(f.g,null);   // clear last frame's gesture; the work/wave branches re-set it
 
     // Reactive: a fast car coming close scatters everyone (no matter what they were
     // doing). Triggered once; the flee state then plays out on its own timer.
@@ -223,6 +225,7 @@ export function updateRuralFolk(dt:number){
       turnTo(f,f.face,3,dt);
       f.phase+=dt*4.5;
       poseWork(f.g,f.phase);
+      setNpcGlbGesture(f.g,'work');   // rigged folk: the farm-chop (procedural pose is invisible on GLB)
       f.g.position.y=groundHeight(f.g.position.x,f.g.position.z);
       if(f.stateT<=0)startIdle(f);
       continue;
@@ -232,6 +235,7 @@ export function updateRuralFolk(dt:number){
       turnTo(f,Math.atan2(pp.x-f.g.position.x,pp.z-f.g.position.z),8,dt);
       f.phase+=dt;
       poseWave(f.g,f.phase);
+      setNpcGlbGesture(f.g,'wave');   // rigged folk: greeting wave
       f.g.position.y=groundHeight(f.g.position.x,f.g.position.z)+Math.abs(Math.sin(f.bob))*.012;
       if(f.stateT<=0)startIdle(f);
       continue;

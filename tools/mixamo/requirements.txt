@@ -1,0 +1,2 @@
+# Dependência do mixamo_cli.py. Instale com:  pip install -r requirements.txt
+requests>=2.28

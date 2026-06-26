@@ -5,6 +5,7 @@ import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
+import {setNpcGlbLying} from '../../assets/models/characters/npc-glb.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
 import {Beacon} from '@/core/beacon.ts';
@@ -113,6 +114,7 @@ function spawnPatients(){
     g.position.set(x,.35,z);             // caído como os mortos do jogo
     g.rotation.x=-Math.PI/2;
     g.rotation.y=Math.random()*Math.PI*2;
+    setNpcGlbLying(g,true);              // rigged collapsed patient lies (not standing-idle)
     scene.add(g);
     const mk=spawnMarker(0x5eff8a,x,z);
     patients.push(new Patient(g,x,z,mk.ring,mk.beacon));

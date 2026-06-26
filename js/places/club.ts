@@ -11,6 +11,7 @@ import {MiniGameId} from '@/activities/minigame.ts';
 import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
   from '../../assets/models/city/nightclub.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
+import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 
 // Boate "THE FLAMINGO": estende a classe base de interiores (js/world/interior.ts),
 // que já cuida de porta/teleporte/limite do mundo/câmera/saída de emergência.
@@ -54,9 +55,10 @@ export const club=new ClubInterior({
   mapIcon:{id:'club',label:'THE FLAMINGO',icon:'club',color:'#ff2e88'},
 });
 
-// Give every clubber a name (and the women the female look). They keep being
-// animated by updateFx above; this only attaches identity + a name tag.
-for(const d of clubFx.dancers)nameInteriorNpc(d.g,'dancer','The Flamingo');
+// Give every clubber a name (and the women the female look), and mark them DANCING so the
+// rigged GLB plays the club-dance overlay (the procedural animatePed in updateFx is a no-op
+// on the GLB; the body bob/sway there still rides on the group). They dance for good.
+for(const d of clubFx.dancers){nameInteriorNpc(d.g,'dancer','The Flamingo');setNpcGlbGesture(d.g,'clubdance');}
 
 // jogador no meio da pista, dentro da boate (HUD/interact usam isto)
 function clubDanceNear(){

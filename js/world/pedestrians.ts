@@ -3,6 +3,7 @@ import {nodeX,irand,rand,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
+import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import * as Entities from '@/core/entities.ts';
 import {collideStatics,addWanted} from '@/core/physics.ts';
 import {thud} from '@/audio/audio.ts';
@@ -207,6 +208,7 @@ export function updatePeds(dt:number){
     const lx=p.g.position.x-pp.x,lz=p.g.position.z-pp.z;
     if(lx*lx+lz*lz>PED_CULL2){p.g.visible=false;continue;}
     p.g.visible=true;
+    setNpcGlbGesture(p.g,null);   // clear last frame's gesture; the action branches below re-set it
     // Hit-and-run: ped is close to a fast car — launch without the standard `kill()`
     // path (different wanted message + combo multiplier).
     if(danger&&p.g.position.distanceTo(activeCur.g.position)<2.0){
@@ -239,6 +241,7 @@ export function updatePeds(dt:number){
       p.t+=dt*4;
       p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
       poseWeedBeckon(p.g,p.t); // distinct "come deal" beckon, not the plain greeting wave
+      setNpcGlbGesture(p.g,'beckon');   // rigged ped: the come-here beckon (procedural pose is invisible on GLB)
       continue;
     }
     if(p.aiState==='panic'){
@@ -258,7 +261,7 @@ export function updatePeds(dt:number){
       const distP=state.mode==='foot'?p.g.position.distanceTo(pp):1e9;
       if(p.personality==='friendly'&&distP<6){          // greet + wave
         pedFace(p,pp);p.t+=dt*4;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
-        poseWavePed(p.g,p.t);continue;
+        poseWavePed(p.g,p.t);setNpcGlbGesture(p.g,'wave');continue; // rigged ped: friendly greeting wave
       }
       if(p.personality==='brave'&&distP<4){pedStandFacing(p,pp,dt,.05);continue;} // stare you down
       const confront=p.personality==='hostile',beg=p.personality==='greedy';

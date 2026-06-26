@@ -1,0 +1,11 @@
+# Seu config real tem o access_token privado — nunca versionar.
+mixamo_config.json
+
+# artefatos do Python
+__pycache__/
+*.pyc
+
+# FBX baixados do Mixamo (binários grandes, brutos). Os que forem integrados ao jogo
+# vão processados para public/models/ — estes aqui ficam fora do git.
+fbx/
+*.fbx

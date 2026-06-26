@@ -1,0 +1,5 @@
+{
+  "_comment": "Copie para mixamo_config.json e preencha. NUNCA commite o real (tem seu token).",
+  "access_token": "COLE_AQUI_o_localStorage.access_token_do_mixamo.com",
+  "character_id": ""
+}
