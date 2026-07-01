@@ -1,8 +1,8 @@
-# Privacy Policy — Tiny Crime
+# Privacy Policy — Tiny Theft Auto
 
 _Last updated: 2026-06-16_
 
-Tiny Crime ("the game", "we") is a single-player browser/Android game. This policy
+Tiny Theft Auto ("the game", "we") is a single-player browser/Android game. This policy
 explains what data the game handles. **Google Play requires a publicly hosted
 privacy policy URL** for any app that collects personal data — publish this file at
 a stable URL (e.g. GitHub Pages) and paste that URL into the Play Console listing
@@ -45,7 +45,7 @@ Families").
 
 ## Your choices / deletion
 
-You can clear local data any time via Android: **Settings → Apps → Tiny Crime → Storage
+You can clear local data any time via Android: **Settings → Apps → Tiny Theft Auto → Storage
 → Clear data**. To request deletion of your leaderboard entry from our backend,
 contact us (see below) with your nickname.
 

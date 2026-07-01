@@ -1,6 +1,6 @@
-# Android build (Tiny Crime)
+# Android build (Tiny Theft Auto)
 
-Tiny Crime ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
+Tiny Theft Auto ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
 bundles the production web build (`dist/`) straight into a native APK, so the game
 runs **fully offline** inside an Android System WebView — no server to host, no
 PWA hosting, no Digital Asset Links. Online extras (the global leaderboard, web
@@ -118,7 +118,7 @@ What this repo already satisfies:
 
 What you must do **in the Play Console / before going public** (can't live in the repo):
 
-- ✅ **Trademark / IP — addressed.** The app ships as **"Tiny Crime"** (`app_name`/
+- ✅ **Trademark / IP — addressed.** The app ships as **"Tiny Theft Auto"** (`app_name`/
   `title_activity_main` in `strings.xml`, the title-screen logo, the page `<title>`,
   and `appName` in `capacitor.config.json`) and carries no third-party game branding,
   so it doesn't lean on any existing open-world franchise's trademark that Play's IP
@@ -130,7 +130,7 @@ What you must do **in the Play Console / before going public** (can't live in th
   [`PRIVACY.md`](./PRIVACY.md) at a public URL and link it in the listing.
 - 📋 **Data Safety form** — fill it using the table at the bottom of `PRIVACY.md`.
 - 📋 **Content rating (IARC questionnaire)** — declare cartoon/action violence;
-  Tiny Crime is **not** a "Designed for Families" title.
+  Tiny Theft Auto is **not** a "Designed for Families" title.
 - 📋 **Target audience & content** — set Teen/Mature, not directed at children.
 - 📋 **Store listing assets** — 512×512 hi-res icon, 1024×500 feature graphic, and
   at least 2 landscape screenshots.

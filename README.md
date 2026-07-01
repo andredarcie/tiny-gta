@@ -1,4 +1,4 @@
-# Tiny Crime
+# Tiny Theft Auto
 
 A browser open-world action game built with vanilla JavaScript ES modules and [Three.js](https://threejs.org/), bundled by [Vite](https://vitejs.dev/). No framework, no TypeScript. The whole world — city, terrain, characters, vehicles, effects — is generated **procedurally in code**: there are no image/model binary assets, textures are drawn to `<canvas>`, and geometry is built from Three.js primitives.
 

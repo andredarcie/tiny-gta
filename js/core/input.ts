@@ -166,13 +166,7 @@ export function performInteract(): void {
   }
 }
 
-// Development is PAUSED: the public build shows a "DEVELOPMENT PAUSED" title and cannot be
-// played — every path into gameplay is blocked here. The localhost dev shortcut still starts
-// (so the Playwright harness + local testing keep working). Flip DEV_PAUSED to false to resume.
-const ON_LOCALHOST=typeof location!=='undefined'&&['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
-const DEV_PAUSED=true;
 export function startGameFromUserGesture(opts: {mobile?: boolean}={}): void {
-  if(DEV_PAUSED&&!ON_LOCALHOST)return;   // public build is paused — no path enters the game
   if(state.started)return;
   const mobile=!!opts.mobile;
   if(mobile){

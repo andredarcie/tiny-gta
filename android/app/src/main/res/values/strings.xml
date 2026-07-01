@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Tiny Crime</string>
-    <string name="title_activity_main">Tiny Crime</string>
+    <string name="app_name">Tiny Theft Auto</string>
+    <string name="title_activity_main">Tiny Theft Auto</string>
     <string name="package_name">com.andredarcie.tinygta</string>
     <string name="custom_url_scheme">com.andredarcie.tinygta</string>
 </resources>
