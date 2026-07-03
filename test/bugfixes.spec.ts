@@ -60,31 +60,6 @@ test('NPC roster filter is collapsed behind a SHOW/HIDE toggle', async ({page}) 
   expect(errors, 'runtime errors: ' + errors.join(' | ')).toEqual([]);
 });
 
-test('rural hidden-cash stash pays out on foot', async ({page}) => {
-  const errors: string[] = [];
-  const game = await bootGame(page, errors);
-  await game.enterCar();
-  // Teleport onto a known rural cash stash (rural-loot.ts CASH[0] = {590,-44}) and hop out,
-  // ALL IN ONE synchronous step. Headed runs physics live, so any await gap here would let
-  // the car roll off the sloped pasture before we exit — and the on-foot pickup would miss.
-  const r = await game.inPage(() => {
-    const t = (window as any).__test, snap = () => JSON.parse((window as any).render_game_to_text());
-    const moneyBefore = snap().money;
-    (window as any).advanceTime(1200);  // FLUSH the enter animation: game.enterCar() returns at
-                                        // mode==='car' but `entering` is still set (door closing),
-                                        // and exitCar() no-ops while entering is pending.
-    t.placeVehicle(590, -44, 600, -44); // car onto the stash, stopped (fresh teleport)
-    t.exitCar();                        // entering is clear now → starts the exit
-    (window as any).advanceTime(1200);  // finish exit (player lands ~2m beside the car, on the
-                                        // stash's pickup radius) + updateRuralLoot collects
-    const s = snap();
-    return {moneyBefore, moneyAfter: s.money, mode: s.mode};
-  });
-  expect(r.mode, 'player should be on foot after exiting').toBe('foot');
-  expect(r.moneyAfter, 'on-foot stash should add hidden cash').toBeGreaterThan(r.moneyBefore);
-  expect(errors, 'runtime errors: ' + errors.join(' | ')).toEqual([]);
-});
-
 test('garaged car keeps its MOD-GARAGE customs across a reload', async ({page}) => {
   const errors: string[] = [];
   // seed a modded, owned garage car BEFORE any game script runs, so initProperty()

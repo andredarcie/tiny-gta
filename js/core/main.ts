@@ -34,7 +34,6 @@ import {updateImportExport} from '@/activities/import-export.ts';     // Open-wo
 import {updateBombShop} from '@/activities/bomb-shop.ts';             // Open-world: o artificeiro arma o carro-bomba
 import {updateRcToyz} from '@/activities/rc-toyz.ts';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: as 12 armas escondidas pelo mapa
-import {updateRuralLoot} from '@/loot/rural-loot.ts';  // armas + dinheiro escondidos em volta da cidade rural
 import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
 import {updateBloodstains} from '@/loot/bloodstains.ts';       // Multiplayer assíncrono: poças de morte (estilo Souls)
 import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
@@ -275,7 +274,6 @@ function step(dt: number){
   updateRcToyz(dt);
   updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
   updateWeaponPickups(dt);
-  updateRuralLoot(dt);   // hidden weapons + cash around the rural village
   updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
   updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   P.end();

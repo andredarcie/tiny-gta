@@ -105,8 +105,9 @@ function buildBridge():THREE.Group{
       // chapéu da perna
       g.add(box(1.9,.7,1.9,STEEL,TX,TOWER_TOP+.2,LZ));
     }
-    // travessas (uma acima da pista, uma perto do topo) — visual icônico
-    g.add(box(1.2,1.0,DECKW+3,STEEL,TX,BRIDGE_H+3.2,0));
+    // travessa perto do topo — visual icônico. A travessa mais baixa (logo acima da
+    // pista, y=BRIDGE_H+3.2) foi removida: cruzava a pista rente ao teto dos carros ao
+    // subir a rampa. É só visual (o tabuleiro/cabos não têm colisão), então sai sem mexer na física.
     g.add(box(1.2,1.2,DECKW+3,STEEL,TX,TOWER_TOP-2.2,0));
   }
 
