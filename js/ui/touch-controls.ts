@@ -73,6 +73,24 @@ function bindStick(el: HTMLElement | null,onMove: (v: StickValue)=>void,onEnd: (
   el?.addEventListener('pointercancel',end);
 }
 
+// Vehicle pedal/steer button state. On mobile, driving does not use the analog
+// sticks: GAS/BRAKE drive the throttle axis (moveY) and the two steer buttons drive
+// the steering axis (moveX). moveX sign matches the keyboard (A=+1 left, D=-1 right).
+const drive={left:false,right:false,gas:false,brake:false};
+function applyDrive(): void {
+  const any=drive.left||drive.right||drive.gas||drive.brake;
+  input.moveX=(drive.left?1:0)-(drive.right?1:0);
+  input.moveY=(drive.gas?1:0)-(drive.brake?1:0);
+  input.moveActive=any; // keeps updateKeyboardInput from clearing the axes each frame
+  if(any)input.lastInput='touch';
+}
+function bindDriveButton(el: HTMLElement | null,set: (on: boolean)=>void): void {
+  bindButton(el,()=>{
+    if(state.orientationBlocked||state.paused||state.dlgActive||state.mode!=='car')return;
+    set(true);applyDrive();
+  },()=>{set(false);applyDrive();});
+}
+
 function bindButton(el: HTMLElement | null,onDown?: ()=>void,onUp?: ()=>void): void {
   let pointer: number | null=null;
   el?.addEventListener('pointerdown',e=>{
@@ -124,7 +142,19 @@ export function updateTouchControls(): void {
   $('btn-aim')?.classList.toggle('show',canAimNow);
   $('btn-aim')?.classList.toggle('on',state.aiming);
   $('btn-wpn')?.classList.toggle('show',onFoot&&state.hasGun&&!state.swimming); // troca de arma (só com arsenal; nadando guarda)
+  // Driving uses button pedals + steer buttons (no analog sticks): the move/look
+  // sticks are swapped for GAS/BRAKE (right) and steer left/right (left).
   $('btn-brake')?.classList.toggle('show',driving);
+  $('btn-gas')?.classList.toggle('show',driving);
+  $('btn-steer-left')?.classList.toggle('show',driving);
+  $('btn-steer-right')?.classList.toggle('show',driving);
+  $('touch-controls')?.classList.toggle('driving',driving);
+  // If we leave the vehicle while a pedal/steer is still held, drop the stale hold so
+  // its axis value doesn't carry into on-foot movement.
+  if(!driving&&(drive.left||drive.right||drive.gas||drive.brake)){
+    drive.left=drive.right=drive.gas=drive.brake=false;
+    input.moveX=0;input.moveY=0;input.moveActive=false;
+  }
   $('btn-radio')?.classList.toggle('show',radioAllowed);
   $('touch-controls')?.classList.toggle('in-dialog',state.dlgActive||tv);
 }
@@ -171,13 +201,11 @@ export function setupTouchControls(): void {
   bindButton($('btn-aim'),()=>refs.toggleAim?.()); // AIM toggles aim mode (closer cam + reticle + precision)
   // WPN abre a roda de seleção; a própria roda (overlay) trata o toque no setor.
   bindButton($('btn-wpn'),()=>{state.wheelOpen?closeWheel(false):openWheel();});
-  bindButton($('btn-brake'),()=>{
-    input.brake=true;
-    input.brakeActive=true;
-  },()=>{
-    input.brake=false;
-    input.brakeActive=false;
-  });
+  // Driving pedals + steering (mobile): buttons replace the analog sticks.
+  bindDriveButton($('btn-gas'),on=>{drive.gas=on;});
+  bindDriveButton($('btn-brake'),on=>{drive.brake=on;}); // brake to a stop, then reverse
+  bindDriveButton($('btn-steer-left'),on=>{drive.left=on;});
+  bindDriveButton($('btn-steer-right'),on=>{drive.right=on;});
   bindButton($('btn-radio'),()=>performRadioSwitch());
   bindButton($('btn-pause'),()=>performPauseToggle());
 
