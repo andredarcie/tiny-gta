@@ -13,9 +13,8 @@ import {MiniGame} from '@/activities/minigame.ts';
 
 // HIDDEN ISLAND LOOT — a secret cache of heavy weapons and fat cash stashes salted
 // across the paradise island far to the west (ISLAND_CX/CZ). No map/radar blip: you
-// only find it by sailing/flying out there and exploring on foot. Bigger payouts
-// than the rural stashes (js/loot/rural-loot.ts) because reaching the island is the cost.
-// Same spin/bob/cull/respawn idea as rural-loot.js / weapon-pickups.js.
+// only find it by sailing/flying out there and exploring on foot. Fat payouts, since
+// reaching the island is the cost. Same spin/bob/cull/respawn idea as weapon-pickups.ts.
 
 const PICK_R=2.8;          // collection radius (on foot)
 const RESPAWN_CD=90;       // seconds before a collected stash reappears (longer: it's a trek)

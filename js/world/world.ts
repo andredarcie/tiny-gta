@@ -195,12 +195,13 @@ export {buildingMats}; // daynight.js controla emissiveIntensity (janelas acesas
 // central, bancos virados pra ela, postes nos cantos e árvores/arbustos nos
 // quadrantes — em vez das 7 palmeiras soltas de antes. Os 4 braços do caminho
 // (eixos x=cx e z=cz) ficam livres: tudo é colocado nos quadrantes (diagonais).
-function addCityPark(x0:number,z0:number,inner:number){
+function addCityPark(x0:number,z0:number,inner:number,memorial=false){
   const cx=x0+inner/2,cz=z0+inner/2; // centre = where the two paths cross
-  // Rich "pracinha" build (assets/models/city/park.ts): fountain, corner + path lamps,
-  // benches, a clipped hedge border, a paved plaza ring + stone path edging, raised flower
-  // beds and planters bursting with colour, and denser trees/bushes — all baked.
-  buildPark(cx,cz,inner,solids);
+  // Rich "pracinha" build (assets/models/city/park.ts): fountain (or the DIGUIFI memorial
+  // statue on the one memorial plaza), corner + path lamps, benches, a clipped hedge border,
+  // a paved plaza ring + stone path edging, raised flower beds and planters bursting with
+  // colour, and denser trees/bushes — all baked.
+  buildPark(cx,cz,inner,solids,memorial);
   // Extra baked vegetation (trees/palms/bushes per quadrant) still comes from world.json
   // via plantSmall in the loop below.
 }
@@ -216,9 +217,13 @@ function plantSmall(t:string,x:number,z:number){
   else if(t==='log')addFallenLog(x,z);
   else addTree(x,z); // 'tree'
 }
+// The FIRST park block (lowest i,j) becomes the memorial plaza: its centrepiece is the
+// DIGUIFI tribute statue instead of a fountain. Deterministic, so it never moves.
+let memorialDone=false;
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
   if(!isPark(i,j))continue;
-  addCityPark(nodeX(i)+ROAD/2+SIDE,nodeX(j)+ROAD/2+SIDE,BLOCK-2*SIDE);
+  const memorial=!memorialDone;memorialDone=true;
+  addCityPark(nodeX(i)+ROAD/2+SIDE,nodeX(j)+ROAD/2+SIDE,BLOCK-2*SIDE,memorial);
 }
 for(const v of worldData.cityParkVeg)plantSmall(v.t,v.x,v.z);
 for(const lot of cityLots){

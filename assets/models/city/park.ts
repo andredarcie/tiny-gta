@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {bakeProp} from '../props/prop-merge.ts';
 import {addFountain} from '../props/fountain.ts';
+import {addStatue} from './statue.ts';
 import {addParkBench} from '../props/park-bench.ts';
 import {addStreetLamp} from '../props/street-lamp.ts';
 import {addTree} from '../props/tree.ts';
@@ -98,8 +99,10 @@ function flatPlane(g:THREE.Group, geo:THREE.BufferGeometry, mat:THREE.Material, 
   m.receiveShadow = true; g.add(m);
 }
 
-// Build everything for one park centred at (cx,cz) with playable side `inner`.
-export function buildPark(cx:number, cz:number, inner:number, solids:Solid[]):void {
+// Build everything for one park centred at (cx,cz) with playable side `inner`. When
+// `memorial` is set, the centrepiece is the DIGUIFI tribute statue instead of the
+// fountain (the title-screen #1-of-the-month prize) — exactly one plaza gets it.
+export function buildPark(cx:number, cz:number, inner:number, solids:Solid[], memorial=false):void {
   const h = inner / 2, gy = groundHeight(cx, cz);
   const g = new THREE.Group(); g.position.set(cx, gy, cz);   // all bespoke decor, baked once
 
@@ -160,7 +163,7 @@ export function buildPark(cx:number, cz:number, inner:number, solids:Solid[]):vo
   bakeProp(g); // merge ALL of the above into the shared prop chunks
 
   // --- world-space props with their own add*/collision/bake ---
-  solids.push(addFountain(cx, cz));
+  solids.push(memorial ? addStatue(cx, cz) : addFountain(cx, cz));
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     addStreetLamp(cx + sx * (h - 1.4), cz + sz * (h - 1.4));            // corner lamps
     solids.push(addParkBench(cx + sx * 3.7, cz + sz * 3.7, Math.atan2(-sx, -sz))); // benches face the fountain
