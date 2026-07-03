@@ -433,12 +433,6 @@ export function setupInput(): void {
   if(onLocalhost){
     setTimeout(()=>{ if(!state.started){ setNickname('localhost'); beginRun(); } },0);
   }
-  // Top-center button: opens/closes the in-game pause menu (only shown while playing).
-  document.getElementById('btn-fullscreen')?.addEventListener('pointerdown',(e: PointerEvent)=>{
-    e.preventDefault();
-    e.stopPropagation();
-    performPauseToggle();
-  });
   // Resume / fullscreen are driven from inside the pause menu (js/ui/pause-menu.ts) via
   // late-bound refs, so it never has to import this module (which imports it).
   refs.togglePause=performPauseToggle;
