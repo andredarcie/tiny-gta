@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
+import {SHIRT_COLORS} from '@/core/palette.ts';
 import {USE_GLB_NPCS,requestNpcGlb} from './npc-glb.ts';
 
 // Character dolls. The player and every NPC are the SAME smooth skinned doll
@@ -47,7 +48,8 @@ const skinColors=[0xf0c08b,0xd9a06b,0xb8754c,0x8f5637,0x6f3e2a];
 const pantsColors=[0x202435,0x263454,0x2e2a24,0x3d3f46,0x18191f];
 const shoeColors=[0x111117,0x33251e,0xe8e3d2,0x1f2733];
 const facialHairColors=[0x17100c,0x2a1911,0x4a2b18,0x6b5137,0x0d0d12];
-export const shirtColors=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x3aa06b,0xd96fae,0xe8e3d2,0x7a4f9e,0x40c8c0];
+// Shared wardrobe vocabulary — lives in the central palette (js/core/palette.ts).
+export const shirtColors=SHIRT_COLORS;
 
 const SCLERA_COLOR=0xece6da,PUPIL_COLOR=0x15101e;
 
