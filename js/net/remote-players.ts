@@ -3,10 +3,13 @@
 // ~INTERP_DELAY_MS in the past. updateNpcGlb() (main loop) picks idle/walk/run
 // from the group's own movement, so animation is automatic here.
 import * as THREE from 'three';
-import { refs } from '@/core/state.ts';
+import { refs, carColors } from '@/core/state.ts';
 import { scene } from '@/core/engine.ts';
 import { makeRemoteAvatar, makeNameTag } from '../../assets/models/characters/remote-player.ts';
 import { disposeNpcGlb, setNpcGlbSeated } from '../../assets/models/characters/npc-glb.ts';
+import { makeCar, makeMotorcycle, makeBoat, makePlane } from '@/core/entities.ts';
+import { makeTractor } from '../../assets/models/vehicles/tractor.ts';
+import { SEAT_OFFSET, GLB_SEAT_OFFSET } from '@/actors/vehicle-pose.ts';
 import { INTERP_DELAY_MS, wrapAngle, type MoveMode, type PlayerPub, type SnapRow } from '../../shared/net/protocol.ts';
 
 interface Sample { t: number; x: number; y: number; z: number; h: number }
@@ -19,6 +22,10 @@ interface Remote {
   m: MoveMode;
   interior: boolean;
   seated: boolean;
+  /** vehicle kind currently rendered (protocol vk; 0 = on foot) */
+  vk: number;
+  /** the vehicle model; when set, the avatar rides as its CHILD at the seat */
+  veh: THREE.Object3D | null;
 }
 
 const remotes = new Map<number, Remote>();
@@ -53,7 +60,7 @@ export function handleSnap(ts: number, rows: SnapRow[]): void {
     let r = remotes.get(id);
     if (!r) {
       // seen before its 'add' (e.g. right after the DO woke from hibernation)
-      addRemote({ id, nick: 'Player ' + id, x: row[1], y: row[2], z: row[3], h: row[4], m: (row[5] | 0) as MoveMode, i: row[6] ? 1 : 0 }, ts);
+      addRemote({ id, nick: 'Player ' + id, x: row[1], y: row[2], z: row[3], h: row[4], m: (row[5] | 0) as MoveMode, i: row[6] ? 1 : 0, vk: row[7] | 0 }, ts);
       r = remotes.get(id);
       if (!r) continue;
     }
@@ -61,6 +68,7 @@ export function handleSnap(ts: number, rows: SnapRow[]): void {
     if (r.buf.length > 20) r.buf.splice(0, r.buf.length - 20);
     if (r.m !== ((row[5] | 0) as MoveMode)) applyMode(r, (row[5] | 0) as MoveMode);
     r.interior = !!row[6];
+    applyVehicle(r, row[7] | 0); // column absent on a v1 server → 0 (on foot)
   }
 }
 
@@ -72,9 +80,10 @@ function addRemote(p: PlayerPub, t: number): void {
   g.position.set(p.x, p.y, p.z);
   g.rotation.y = p.h;
   tag.position.set(p.x, p.y + TAG_Y, p.z);
-  const r: Remote = { id: p.id, nick: p.nick, g, tag, buf: [{ t, x: p.x, y: p.y, z: p.z, h: p.h }], m: 0, interior: !!p.i, seated: false };
+  const r: Remote = { id: p.id, nick: p.nick, g, tag, buf: [{ t, x: p.x, y: p.y, z: p.z, h: p.h }], m: 0, interior: !!p.i, seated: false, vk: 0, veh: null };
   remotes.set(p.id, r);
   applyMode(r, p.m);
+  applyVehicle(r, p.vk | 0); // undefined from a v1 server → 0
 }
 
 function applyMode(r: Remote, m: MoveMode): void {
@@ -90,12 +99,74 @@ function applyMode(r: Remote, m: MoveMode): void {
   }
 }
 
+// ---- remote vehicles ---------------------------------------------------------
+// Vehicles are still client-local entities, so only the KIND is synced (protocol
+// vk); the body colour is a stable palette pick per player id — every viewer sees
+// the same colour, just not necessarily the one the driver stole. The avatar
+// rides as a CHILD of the vehicle model at the same seat offsets the real game
+// uses to seat the hero (vehicle-pose.ts / player.ts).
+const CAR_SEAT_GLB: [number, number, number] = [-0.380, -0.157, -0.031]; // player.ts GLB car seat
+const _wp = new THREE.Vector3();
+
+function seatFor(vk: number): [number, number, number] {
+  if (vk === 2) return GLB_SEAT_OFFSET.bike;
+  if (vk === 3) return SEAT_OFFSET.boat;
+  if (vk === 4) return SEAT_OFFSET.plane;
+  if (vk === 5) return SEAT_OFFSET.tractor;
+  return CAR_SEAT_GLB; // 1 car, 6 police, 7 taxi
+}
+
+function buildVehicle(vk: number, id: number): THREE.Object3D {
+  const color = carColors[Math.abs(id) % carColors.length];
+  switch (vk) {
+    case 2: return makeMotorcycle(color);
+    case 3: return makeBoat(color, false);
+    case 4: return makePlane();
+    case 5: return makeTractor();
+    case 6: return makeCar(0xe8e8ee, true);   // police cruiser livery
+    case 7: return makeCar(0xffd24a, false);  // cab yellow
+    default: return makeCar(color, false);
+  }
+}
+
+function applyVehicle(r: Remote, vk: number): void {
+  if (r.vk === vk) return;
+  r.vk = vk;
+  if (r.veh) {
+    // step out: back to the scene at the vehicle's world position (no 1-frame
+    // flicker at the origin — the next updateRemotes() places it exactly)
+    r.veh.getWorldPosition(_wp);
+    scene.add(r.g);
+    r.g.position.copy(_wp);
+    r.g.rotation.set(0, r.veh.rotation.y, 0);
+    scene.remove(r.veh);
+    disposeGeoms(r.veh);
+    r.veh = null;
+  }
+  if (vk > 0) {
+    const v = buildVehicle(vk, r.id);          // factories scene.add() themselves
+    v.position.copy(r.g.position);             // spawn where the avatar already is
+    v.rotation.y = r.g.rotation.y;
+    v.add(r.g);                                // ride as a child...
+    r.g.position.fromArray(seatFor(vk));       // ...at the seat (vehicle-local)
+    r.g.rotation.set(0, 0, 0);
+    r.veh = v;
+  }
+}
+
+// Only geometries: several vehicle materials are shared module-level singletons
+// (e.g. the police beam material), so materials/textures must NOT be disposed.
+function disposeGeoms(o: THREE.Object3D): void {
+  o.traverse(c => { (c as THREE.Mesh).geometry?.dispose?.(); });
+}
+
 function removeRemote(id: number): void {
   const r = remotes.get(id);
   if (!r) return;
   remotes.delete(id);
   disposeNpcGlb(r.g);
   r.g.parent?.remove(r.g);
+  if (r.veh) { scene.remove(r.veh); disposeGeoms(r.veh); r.veh = null; }
   r.tag.parent?.remove(r.tag);
   r.tag.material.map?.dispose();
   r.tag.material.dispose();
@@ -134,8 +205,14 @@ export function updateRemotes(): void {
         h = s0.h + wrapAngle(s1.h - s0.h) * a;
       }
     }
-    r.g.position.set(x, y, z);
-    r.g.rotation.y = h;
+    if (r.veh) {
+      // driving: the pose is the VEHICLE's origin; the avatar rides as a child
+      r.veh.position.set(x, y, z);
+      r.veh.rotation.y = h;
+    } else {
+      r.g.position.set(x, y, z);
+      r.g.rotation.y = h;
+    }
     r.tag.position.set(x, y + TAG_Y, z);
     let vis = !r.interior;
     if (vis && pp) {
@@ -144,5 +221,6 @@ export function updateRemotes(): void {
       r.tag.visible = vis && d2 < TAG_DIST2;
     } else r.tag.visible = false;
     r.g.visible = vis;
+    if (r.veh) r.veh.visible = vis;
   }
 }
