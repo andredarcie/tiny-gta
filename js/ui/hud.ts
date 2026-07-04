@@ -58,6 +58,10 @@ let _region: string | null=null,_regionT=0;
 // Medidor de FPS: conta frames reais e só toca no DOM 2x por segundo —
 // atualizar texto todo frame custaria mais que aquilo que o medidor mede
 const hudFps=$('fps')!;
+// Linhas do modo online, logo abaixo do FPS e no MESMO estilo: quantos jogadores
+// estão no mundo compartilhado (você incluso) e o ping até o servidor. Dados via
+// refs.getOnlineState (js/net/online.ts); atualizadas no mesmo throttle de 2x/s.
+const hudOnline=$('online-players')!,hudPing=$('online-ping')!;
 let fpsFrames=0,fpsLast=performance.now();
 export function tickFps(): void {
   fpsFrames++;
@@ -67,6 +71,20 @@ export function tickFps(): void {
   hudFps.textContent=fps+' FPS';
   hudFps.style.color=fps>=50?'#41ce62':fps>=30?'#ffd24a':'#ff2e88';
   fpsFrames=0;fpsLast=now;
+  const os=refs.getOnlineState?.() as {players?:number;ping?:number|null}|undefined;
+  if(!os)return;
+  const n=os.players||0;
+  if(n>0){
+    hudOnline.textContent=n+(n===1?' PLAYER ONLINE':' PLAYERS ONLINE');
+    hudOnline.style.color='#41ce62';
+    const p=os.ping;
+    hudPing.textContent=(p==null?'--':Math.round(p)+'ms')+' PING';
+    hudPing.style.color=p==null?'#9fb0bb':p<100?'#41ce62':p<200?'#ffd24a':'#ff2e88';
+  }else{
+    hudOnline.textContent='OFFLINE';
+    hudOnline.style.color='#9fb0bb';
+    hudPing.textContent='';
+  }
 }
 
 export function message(t: string,col?: string): void {

@@ -8,7 +8,7 @@
 import { state, refs } from '@/core/state.ts';
 import { getNickname, getPlayerId } from '@/ui/leaderboard.ts';
 import { SEND_HZ, type MoveMode, type RemotePose } from '../../shared/net/protocol.ts';
-import { isJoined, netMaintain, netSendPos, netStatus, type NetHandlers } from './net-client.ts';
+import { isJoined, netMaintain, netPing, netSendPos, netStatus, type NetHandlers } from './net-client.ts';
 import { clearRemotes, handleAdd, handleDel, handleSnap, handleWelcome, remoteCount, updateRemotes } from './remote-players.ts';
 
 const PROD_WS = 'wss://tiny-gta-mp.andredarcie.workers.dev/ws';
@@ -27,7 +27,15 @@ const handlers: NetHandlers = {
 
 export function initOnline(): void {
   enabled = resolveEnabled();
-  refs.getOnlineState = () => ({ enabled, ...netStatus(), remotes: remoteCount() });
+  // Consumed by the HUD (players/ping lines under the FPS meter) and by the
+  // render_game_to_text debug snapshot.
+  refs.getOnlineState = () => ({
+    enabled,
+    ...netStatus(),
+    remotes: remoteCount(),
+    players: isJoined() ? remoteCount() + 1 : 0, // world population, me included
+    ping: netPing(),
+  });
 }
 
 function resolveEnabled(): boolean {
@@ -49,8 +57,23 @@ function wsUrl(): string {
 
 const SEND_INTERVAL = 1 / SEND_HZ;
 
+// Fail-open insurance: the presence layer must NEVER be able to break the
+// game. Any unexpected exception here is caught; after 3 strikes the whole
+// online mode disables itself for the session (single-player unaffected).
+let errStrikes = 0;
+
 export function updateOnline(dt: number): void {
   if (!enabled) return;
+  try { updateOnlineInner(dt); } catch (e) {
+    if (++errStrikes >= 3) {
+      enabled = false;
+      try { clearRemotes(); } catch (e2) {}
+      console.warn('[online] disabled after repeated errors:', e);
+    }
+  }
+}
+
+function updateOnlineInner(dt: number): void {
   updateRemotes();
   if (!state.started) return;
   acc += dt;
