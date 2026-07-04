@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 import {SHIRT_COLORS} from '@/core/palette.ts';
-import {USE_GLB_NPCS,requestNpcGlb} from './npc-glb.ts';
+import {USE_GLB_NPCS,requestNpcGlb,npcGlbReady} from './npc-glb.ts';
 
 // Character dolls. The player and every NPC are the SAME smooth skinned doll
 // (buildToonPlayer): one continuous surface deformed by a small bone skeleton, so
@@ -246,22 +246,29 @@ export default {category:'Characters',label:'Pedestrian',build:buildToonPlayer};
 // Jogador e NPCs usam a MESMA base skinada (buildToonPlayer), variando só a cor de
 // roupa/pele.
 export function makePed(color: number,pantsColor?: number): THREE.Group{
-  // 100% of NPCs are rigged "Animated Men/Women" GLB clones. The group starts EMPTY
-  // and the tinted clone (gender-correct) swaps in on the next frame / once the models
-  // load — the old procedural ped is no longer used for NPCs (see npc-glb.ts).
+  // 100% of NPCs are rigged "Animated Men/Women" GLB clones. Once the shared rig
+  // is loaded, the group starts EMPTY and the tinted clone (gender-correct) swaps
+  // in on the next frame. While the rig is STILL DOWNLOADING (~6MB on a cold
+  // cache) the group gets the procedural doll as an instant placeholder instead —
+  // an empty group meant seconds of invisible people at boot. swapToGlb disposes
+  // the placeholder children on swap (that path was designed for exactly this).
   if(USE_GLB_NPCS){
-    const g=new THREE.Group();scene.add(g);
+    const g=npcGlbReady()?new THREE.Group():buildToonPlayer({color,pantsColor});
+    scene.add(g);
     requestNpcGlb(g,color,pantsColor);
     return g;
   }
   const g=buildToonPlayer({color,pantsColor});scene.add(g);return g; // kill-switch fallback
 }
 
-// Player container: an EMPTY group — the rigged hero (player.fbx, the smooth model)
-// is loaded by loadPlayerGlb and parented in (player.ts). No procedural placeholder
-// when the GLB avatar is on. (Kill-switch off → procedural hero.)
+// Player container. The hero must NEVER be invisible: the procedural doll is
+// built as an INSTANT placeholder even with the GLB pipeline on — the shared
+// rig is a ~6MB async download (mesh + clips), and on a cold cache the player
+// used to be an empty group (= invisible character) until it landed. installHero
+// (player.ts) hides the doll the moment the rigged hero installs (it already
+// expects it via procVisual), and animatePed drives it while it waits. This is
+// also the documented fallback if the rig fails to load entirely.
 export function makePlayerPed(color: number): THREE.Group{
-  if(USE_GLB_NPCS){const g=new THREE.Group();scene.add(g);return g;}
   const g=buildToonPlayer({color});scene.add(g);return g;
 }
 
