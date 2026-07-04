@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-04-online-combat",
+    "date": "2026-07-04",
+    "title": "Online shootouts are ON",
+    "description": "The shared city just got dangerous. You now see and hear other players' gunfire — tracers, bangs, even the crowd scattering — and bullets HURT: get caught in another player's line of fire and you lose health, drop, and wake up at the hospital like any other bad day. Who hit whom is judged by the server (with a little lag forgiveness), so what you aim at is what counts. Staying safe? Cars and interiors are cover for now — drivers and folks indoors can't be shot in this first version. Grenades, molotovs and melee stay local for the moment."
+  },
+  {
     "id": "2026-07-04-online-vehicles",
     "date": "2026-07-04",
     "title": "You can see what other players are driving",

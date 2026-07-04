@@ -3,14 +3,16 @@
 // ~INTERP_DELAY_MS in the past. updateNpcGlb() (main loop) picks idle/walk/run
 // from the group's own movement, so animation is automatic here.
 import * as THREE from 'three';
-import { refs, carColors } from '@/core/state.ts';
+import { state, refs, carColors } from '@/core/state.ts';
 import { scene } from '@/core/engine.ts';
+import { gunshot } from '@/audio/audio.ts';
 import { makeRemoteAvatar, makeNameTag } from '../../assets/models/characters/remote-player.ts';
+import { makeWeaponTracerLine } from '../../assets/models/effects/weapon-tracer.ts';
 import { disposeNpcGlb, setNpcGlbSeated } from '../../assets/models/characters/npc-glb.ts';
-import { makeCar, makeMotorcycle, makeBoat, makePlane } from '@/core/entities.ts';
+import { makeCar, makeMotorcycle, makeBoat, makePlane, disposeGeometries } from '@/core/entities.ts';
 import { makeTractor } from '../../assets/models/vehicles/tractor.ts';
 import { SEAT_OFFSET, GLB_SEAT_OFFSET } from '@/actors/vehicle-pose.ts';
-import { INTERP_DELAY_MS, wrapAngle, type MoveMode, type PlayerPub, type SnapRow } from '../../shared/net/protocol.ts';
+import { INTERP_DELAY_MS, wrapAngle, type MoveMode, type PlayerPub, type SnapRow, type Vec3 } from '../../shared/net/protocol.ts';
 
 interface Sample { t: number; x: number; y: number; z: number; h: number }
 interface Remote {
@@ -39,6 +41,38 @@ const SNAP_JUMP = 9;           // >9 m between samples = legit teleport (hospita
 const TAG_Y = 2.55;
 
 export const remoteCount = (): number => remotes.size;
+export const getMyOnlineId = (): number => myId;
+
+// ---- combat v1 fx: tracers + gunshot audio + death pose for remote shots ----
+const shotFx: { line: THREE.Line; at: number }[] = [];
+const _sv0 = new THREE.Vector3(), _sv1 = new THREE.Vector3();
+
+/** A bullet fired by another player: tracer + distance-faded bang + brief aim
+ * pose on the shooter — and the local ambient (NPC scatter) reacts exactly as
+ * it does to your own gunfire. No-op for your own echoes. */
+export function remoteShotFx(by: number, o: Vec3, d: Vec3): void {
+  if (by === myId) return;                        // my own shot echoed back
+  const r = remotes.get(by);
+  if (r) r.g.userData.npcAimT = state.time;       // shooter strikes the aim pose
+  const pp = refs.playerPos?.();
+  const dist = pp ? Math.hypot(o[0] - pp.x, o[2] - pp.z) : 999;
+  if (dist > 180) return;                         // past the fog and out of earshot
+  _sv0.set(o[0], o[1], o[2]);
+  _sv1.set(o[0] + d[0] * 3.2, o[1] + d[1] * 3.2, o[2] + d[2] * 3.2);
+  const line = makeWeaponTracerLine(_sv0, _sv1);
+  scene.add(line);
+  shotFx.push({ line, at: performance.now() });
+  gunshot(Math.max(0.12, 1 - dist / 160));
+  state.shotT = state.time; state.shotX = o[0]; state.shotZ = o[2]; // NPCs scatter
+}
+
+/** Server-declared PvP death/respawn: lie down / get back up. */
+export function setRemoteDead(id: number, dead: boolean): void {
+  const r = remotes.get(id);
+  if (!r) return;
+  r.g.userData.npcDead = dead || undefined;
+  r.g.userData.npcGrounded = dead || undefined;   // settle straight into the Lie clip
+}
 
 export function handleWelcome(id: number, players: PlayerPub[]): void {
   myId = id;
@@ -174,10 +208,27 @@ function removeRemote(id: number): void {
 
 export function clearRemotes(): void {
   for (const id of [...remotes.keys()]) removeRemote(id);
+  for (const fx of shotFx) {
+    disposeGeometries(fx.line);
+    (fx.line.material as THREE.Material).dispose();
+    fx.line.parent?.remove(fx.line);
+  }
+  shotFx.length = 0;
 }
 
 /** Per-frame: place every remote at the interpolated pose. Cheap when empty. */
 export function updateRemotes(): void {
+  if (shotFx.length) {                            // fade remote tracers (mirrors weapons.ts, ~140ms)
+    const nowMs = performance.now();
+    for (let i = shotFx.length - 1; i >= 0; i--) {
+      if (nowMs - shotFx[i].at < 140) continue;
+      const l = shotFx[i].line;
+      disposeGeometries(l);
+      (l.material as THREE.Material).dispose();   // makeWeaponTracerLine clones its material
+      l.parent?.remove(l);
+      shotFx.splice(i, 1);
+    }
+  }
   if (!remotes.size) return;
   const now = performance.now();
   const rt = clockOffset === null ? null : now + clockOffset - INTERP_DELAY_MS;

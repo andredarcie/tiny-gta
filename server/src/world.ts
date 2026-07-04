@@ -11,8 +11,10 @@
 import {
   DEFAULT_MAX_PLAYERS, KEEPALIVE_PING, KEEPALIVE_PONG, MAX_MSG_BYTES,
   SNAP_INTERVAL_MS, WS_CLOSE_FULL, WS_CLOSE_PROTOCOL,
-  parseClientMsg,
-  type PlayerPub, type RemotePose, type ServerMsg, type SnapRow,
+  HIT_CHEST_Y, HIT_RADIUS, PVP_HP_MAX, PVP_REGEN_PER_S, PVP_RESPAWN_MS,
+  SHOT_BUCKET_CAP, SHOT_BUCKET_REFILL_PER_S, SHOT_DMG_HP, SHOT_REWIND_MS,
+  parseClientMsg, raySphereT,
+  type PlayerPub, type RemotePose, type ServerMsg, type ShotMsg, type SnapRow,
 } from '../../shared/net/protocol.ts';
 
 export interface Env {
@@ -21,6 +23,7 @@ export interface Env {
 }
 
 interface Att { id: number; nick: string; pid: string }
+interface HistSample { t: number; x: number; y: number; z: number }
 interface Session extends Att {
   ws: WebSocket;
   pose: RemotePose | null;
@@ -29,7 +32,19 @@ interface Session extends Att {
   announced: boolean;
   msgs: number;
   msgWindow: number;
+  // ---- combat v1 (all decided HERE, never by clients) ----
+  hp: number;
+  hpAt: number;          // last regen timestamp
+  deadUntil: number;     // >now while waiting to respawn (shots in/out ignored)
+  shotTokens: number;    // rate budget (burst = one full shotgun blast)
+  shotRefillAt: number;
+  hist: HistSample[];    // short pose history for the lag-comp rewind
 }
+
+const freshCombat = () => ({
+  hp: PVP_HP_MAX, hpAt: 0, deadUntil: 0,
+  shotTokens: SHOT_BUCKET_CAP, shotRefillAt: 0, hist: [] as HistSample[],
+});
 
 /** Stop the broadcast interval (and allow hibernation) after this many
  * consecutive empty ticks — 30 s of nobody moving. */
@@ -53,7 +68,7 @@ export class WorldDO {
     for (const ws of ctx.getWebSockets()) {
       const a = ws.deserializeAttachment() as Att | null;
       if (!a) continue;
-      this.sessions.set(ws, { ...a, ws, pose: null, dirty: false, announced: true, msgs: 0, msgWindow: 0 });
+      this.sessions.set(ws, { ...a, ws, pose: null, dirty: false, announced: true, msgs: 0, msgWindow: 0, ...freshCombat() });
       if (a.id >= this.nextId) this.nextId = a.id + 1;
     }
     if (this.sessions.size) {
@@ -105,10 +120,14 @@ export class WorldDO {
     const m = parseClientMsg(raw);
     if (!m) return; // malformed: silent drop, never crash
     if (m.t === 'join') { this.onJoin(ws, m.nick, m.pid); return; }
-    // pos
     const s = this.sessions.get(ws);
     if (!s) { ws.close(WS_CLOSE_PROTOCOL, 'join first'); return; }
+    if (m.t === 'shot') { this.onShot(s, m); return; }
+    // pos
     s.pose = { x: m.x, y: m.y, z: m.z, h: m.h, m: m.m, i: m.i, vk: m.vk };
+    const now = Date.now();
+    s.hist.push({ t: now, x: m.x, y: m.y, z: m.z });
+    if (s.hist.length > 8) s.hist.shift();
     s.dirty = true;
     if (!s.announced) {
       s.announced = true;
@@ -126,7 +145,7 @@ export class WorldDO {
       return;
     }
     const id = this.nextId++;
-    const s: Session = { id, nick, pid, ws, pose: null, dirty: false, announced: false, msgs: 0, msgWindow: 0 };
+    const s: Session = { id, nick, pid, ws, pose: null, dirty: false, announced: false, msgs: 0, msgWindow: 0, ...freshCombat() };
     this.sessions.set(ws, s);
     ws.serializeAttachment({ id, nick, pid } satisfies Att);
     const players: PlayerPub[] = [];
@@ -137,6 +156,56 @@ export class WorldDO {
   private pub(s: Session): PlayerPub {
     const p = s.pose!;
     return { id: s.id, nick: s.nick, x: p.x, y: p.y, z: p.z, h: p.h, m: p.m, i: p.i, vk: p.vk };
+  }
+
+  // ---- combat v1: every hit is decided HERE (ray vs rewound chest spheres) ----
+
+  /** Target pose ~SHOT_REWIND_MS ago — roughly what the shooter's screen showed. */
+  private rewound(s: Session, t: number): HistSample | null {
+    const h = s.hist;
+    if (!h.length) return s.pose ? { t, x: s.pose.x, y: s.pose.y, z: s.pose.z } : null;
+    for (let i = h.length - 1; i >= 0; i--) if (h[i].t <= t) return h[i];
+    return h[0];
+  }
+
+  private onShot(s: Session, m: ShotMsg): void {
+    const now = Date.now();
+    if (s.deadUntil > now || !s.pose) return;       // the dead fire no bullets
+    // rate: token bucket sized so one shotgun blast of pellets fits as a burst
+    if (s.shotRefillAt === 0) s.shotRefillAt = now;
+    s.shotTokens = Math.min(SHOT_BUCKET_CAP, s.shotTokens + (now - s.shotRefillAt) / 1000 * SHOT_BUCKET_REFILL_PER_S);
+    s.shotRefillAt = now;
+    if (s.shotTokens < 1) return;
+    s.shotTokens -= 1;
+    // the muzzle must be roughly where the shooter's pose is
+    const mx = m.o[0] - s.pose.x, mz = m.o[2] - s.pose.z;
+    if (mx * mx + mz * mz > 36) return;
+    const rt = now - SHOT_REWIND_MS;
+    let best: Session | null = null, bestT = Infinity;
+    for (const o of this.sessions.values()) {
+      if (o === s || !o.pose || o.deadUntil > now) continue;
+      if (o.pose.i || (o.pose.m >= 1 && o.pose.m <= 3)) continue; // interior/vehicle: PvP-immune in v1
+      const p = this.rewound(o, rt);
+      if (!p) continue;
+      const t = raySphereT(m.o[0], m.o[1], m.o[2], m.d[0], m.d[1], m.d[2],
+        p.x, p.y + HIT_CHEST_Y, p.z, HIT_RADIUS, m.rg);
+      if (t !== null && t < bestT) { bestT = t; best = o; }
+    }
+    const ev: Extract<ServerMsg, { t: 'shot' }> = { t: 'shot', by: s.id, o: m.o, d: m.d };
+    if (best) {
+      // lazy regen up to now, then apply the damage table
+      if (best.hpAt) best.hp = Math.min(PVP_HP_MAX, best.hp + (now - best.hpAt) / 1000 * PVP_REGEN_PER_S);
+      best.hpAt = now;
+      best.hp -= SHOT_DMG_HP[m.dm];
+      ev.hit = best.id;
+      ev.hp = Math.max(0, Math.round(best.hp));
+    }
+    this.broadcast(ev);
+    if (best && best.hp <= 0) {
+      best.deadUntil = now + PVP_RESPAWN_MS;
+      this.broadcast({ t: 'death', id: best.id, by: s.id });
+      this.ensureTicking();                         // the respawn timer lives in tick()
+    }
   }
 
   webSocketClose(ws: WebSocket): void { this.drop(ws); }
@@ -177,6 +246,15 @@ export class WorldDO {
   }
 
   private tick(): void {
+    const now = Date.now();
+    let pendingDead = false;
+    for (const s of this.sessions.values()) {
+      if (!s.deadUntil) continue;
+      if (now >= s.deadUntil) {
+        s.deadUntil = 0; s.hp = PVP_HP_MAX; s.hpAt = now;
+        this.broadcast({ t: 'spawn', id: s.id });
+      } else pendingDead = true;
+    }
     const rows: SnapRow[] = [];
     for (const s of this.sessions.values()) {
       if (!s.dirty || !s.pose) continue;
@@ -185,7 +263,7 @@ export class WorldDO {
       rows.push([s.id, p.x, p.y, p.z, p.h, p.m, p.i, p.vk | 0]);
     }
     if (rows.length === 0) {
-      if (++this.quiet >= QUIET_TICKS) this.stopTicking();
+      if (!pendingDead && ++this.quiet >= QUIET_TICKS) this.stopTicking();
       return;
     }
     this.quiet = 0;
