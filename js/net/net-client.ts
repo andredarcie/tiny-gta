@@ -4,7 +4,7 @@
 // (design: a full world means this player simply keeps playing offline).
 // Sampling/what-to-send lives in online.ts; rendering in remote-players.ts.
 import {
-  KEEPALIVE_MS, KEEPALIVE_PING, KEEPALIVE_PONG, PROTOCOL_VERSION,
+  KEEPALIVE_PING, KEEPALIVE_PONG, PING_INTERVAL_MS, PROTOCOL_VERSION,
   type PlayerPub, type RemotePose, type SnapRow,
 } from '../../shared/net/protocol.ts';
 
@@ -22,8 +22,13 @@ let nextTryAt = 0;
 let backoff = 5_000;              // 5s → 10s → ... → 60s on plain failures
 let fullUntil = 0;                // world full: retry only after 5 minutes
 let pingTimer: ReturnType<typeof setInterval> | null = null;
+let pingSentAt = 0;               // performance.now() of the ping in flight (0 = none)
+let rttMs: number | null = null;  // smoothed round-trip time, for the HUD PING line
 
 export const isJoined = (): boolean => phase === 'joined';
+
+/** Smoothed WS round-trip time in ms; null while offline/unmeasured. */
+export const netPing = (): number | null => (phase === 'joined' ? rttMs : null);
 
 export function netStatus(): Record<string, unknown> {
   return {
@@ -56,7 +61,15 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
     try { sock.send(JSON.stringify({ t: 'join', v: PROTOCOL_VERSION, nick, pid })); } catch (e) {}
   };
   sock.onmessage = (ev: MessageEvent) => {
-    if (typeof ev.data !== 'string' || ev.data === KEEPALIVE_PONG) return;
+    if (typeof ev.data !== 'string') return;
+    if (ev.data === KEEPALIVE_PONG) {  // auto-response echo: close the RTT sample
+      if (pingSentAt) {
+        const r = performance.now() - pingSentAt;
+        rttMs = rttMs === null ? r : rttMs * 0.7 + r * 0.3;
+        pingSentAt = 0;
+      }
+      return;
+    }
     let m: Record<string, unknown> | null = null;
     try { m = JSON.parse(ev.data) as Record<string, unknown>; } catch (e) { return; }
     if (!m || typeof m.t !== 'string') return;
@@ -81,6 +94,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
     const nw = performance.now();
     if (gotFull) fullUntil = nw + 5 * 60_000;
     else { nextTryAt = nw + backoff; backoff = Math.min(backoff * 2, 60_000); }
+    rttMs = null; pingSentAt = 0;
     if (wasJoined) h.onDropped();
   };
   sock.onclose = drop;
@@ -89,9 +103,12 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
 
 function startPing(sock: WebSocket): void {
   stopPing();
-  // Keepalive outside the rAF loop on purpose: it must run while the game is
-  // paused/minimized. The server answers via auto-response (free, no DO wake).
-  pingTimer = setInterval(() => { try { sock.send(KEEPALIVE_PING); } catch (e) {} }, KEEPALIVE_MS);
+  // Keepalive + RTT probe, outside the rAF loop on purpose: it must run while
+  // the game is paused/minimized. The server answers via auto-response (free,
+  // no DO wake), and the 'o' echo closes the RTT sample for the HUD PING line.
+  pingTimer = setInterval(() => {
+    try { pingSentAt = performance.now(); sock.send(KEEPALIVE_PING); } catch (e) {}
+  }, PING_INTERVAL_MS);
 }
 function stopPing(): void {
   if (pingTimer !== null) { clearInterval(pingTimer); pingTimer = null; }
