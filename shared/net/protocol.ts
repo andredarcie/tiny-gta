@@ -68,17 +68,64 @@ export interface PlayerPub extends RemotePose {
  * backward-compatible in both directions. */
 export type SnapRow = [number, number, number, number, number, number, number, number];
 
+export type Vec3 = [number, number, number];
+
+/** One fired hitscan bullet (shotgun = one message per pellet). `dm` is the
+ * game's local damage unit (1..3); the SERVER maps it to PvP HP via SHOT_DMG_HP
+ * and decides the hit — the client never claims "I hit X". */
+export interface ShotMsg { t: 'shot'; o: Vec3; d: Vec3; dm: number; rg: number }
+
 export type ClientMsg =
   | { t: 'join'; v: number; nick: string; pid: string }
-  | ({ t: 'pos' } & RemotePose);
+  | ({ t: 'pos' } & RemotePose)
+  | ShotMsg;
 
 export type ServerMsg =
   | { t: 'welcome'; id: number; max: number; players: PlayerPub[] }
   | { t: 'add'; p: PlayerPub }
   | { t: 'del'; id: number }
   | { t: 'snap'; ts: number; p: SnapRow[] }
+  | { t: 'shot'; by: number; o: Vec3; d: Vec3; hit?: number; hp?: number }
+  | { t: 'death'; id: number; by: number }
+  | { t: 'spawn'; id: number }
   | { t: 'full' }
   | { t: 'bye'; reason: string };
+
+// ---- combat v1 (PvP hits decided server-side; see server/src/world.ts) ------
+/** Local damage units (1..3) → PvP HP damage. Index 0 unused. */
+export const SHOT_DMG_HP = [0, 12, 18, 26] as const;
+export const SHOT_RANGE_MAX = 80;
+/** Shot-rate token bucket: burst covers a full shotgun blast of pellets. */
+export const SHOT_BUCKET_CAP = 12;
+export const SHOT_BUCKET_REFILL_PER_S = 12;
+/** Hits test each target's pose ~this far in the past (what the shooter saw). */
+export const SHOT_REWIND_MS = 200;
+export const PVP_HP_MAX = 100;
+/** Slow server-side regen — stands in for local healing (food/hospital), which
+ * is not synced yet; negligible during an actual firefight. */
+export const PVP_REGEN_PER_S = 2;
+export const PVP_RESPAWN_MS = 5000;
+/** Target = sphere around the chest (pose y is at the feet). */
+export const HIT_RADIUS = 0.9;
+export const HIT_CHEST_Y = 1.0;
+
+/** Ray/sphere intersection: distance t along the (normalized) ray, or null.
+ * Pure — shared so the server logic is unit-tested in Node. */
+export function raySphereT(
+  ox: number, oy: number, oz: number,
+  dx: number, dy: number, dz: number,
+  cx: number, cy: number, cz: number,
+  r: number, maxT: number,
+): number | null {
+  const lx = cx - ox, ly = cy - oy, lz = cz - oz;
+  const tca = lx * dx + ly * dy + lz * dz;      // closest approach along the ray
+  if (tca < 0 || tca > maxT + r) return null;
+  const d2 = lx * lx + ly * ly + lz * lz - tca * tca;
+  const r2 = r * r;
+  if (d2 > r2) return null;
+  const t = tca - Math.sqrt(r2 - d2);
+  return t >= 0 && t <= maxT ? t : null;
+}
 
 export const clampNum = (v: number, a: number, b: number): number =>
   v < a ? a : v > b ? b : v;
@@ -132,5 +179,26 @@ export function parseClientMsg(raw: string): ClientMsg | null {
       vk,
     };
   }
+  if (m.t === 'shot') {
+    const o = vec3(m.o), d = vec3(m.d);
+    if (!o || !d) return null;
+    const len = Math.hypot(d[0], d[1], d[2]);
+    if (len < 1e-4) return null;
+    d[0] /= len; d[1] /= len; d[2] /= len;      // server only ever sees unit rays
+    o[0] = clampNum(o[0], -POS_LIMIT_XZ, POS_LIMIT_XZ);
+    o[1] = clampNum(o[1], POS_MIN_Y, POS_MAX_Y);
+    o[2] = clampNum(o[2], -POS_LIMIT_XZ, POS_LIMIT_XZ);
+    let dm = typeof m.dm === 'number' ? m.dm | 0 : 1;
+    if (dm < 1) dm = 1; else if (dm > 3) dm = 3;
+    let rg = typeof m.rg === 'number' ? m.rg | 0 : SHOT_RANGE_MAX;
+    if (rg < 1) rg = 1; else if (rg > SHOT_RANGE_MAX) rg = SHOT_RANGE_MAX;
+    return { t: 'shot', o, d, dm, rg };
+  }
   return null;
+}
+
+function vec3(v: unknown): Vec3 | null {
+  if (!Array.isArray(v) || v.length !== 3) return null;
+  const a = num(v[0]), b = num(v[1]), c = num(v[2]);
+  return a === null || b === null || c === null ? null : [a, b, c];
 }

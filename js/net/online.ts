@@ -8,8 +8,11 @@
 import { state, refs } from '@/core/state.ts';
 import { getNickname, getPlayerId } from '@/ui/leaderboard.ts';
 import { SEND_HZ, type MoveMode, type RemotePose } from '../../shared/net/protocol.ts';
-import { isJoined, netMaintain, netPing, netSendPos, netStatus, type NetHandlers } from './net-client.ts';
-import { clearRemotes, handleAdd, handleDel, handleSnap, handleWelcome, remoteCount, updateRemotes } from './remote-players.ts';
+import { isJoined, netMaintain, netPing, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
+import {
+  clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome,
+  remoteCount, remoteShotFx, setRemoteDead, updateRemotes,
+} from './remote-players.ts';
 
 const PROD_WS = 'wss://tiny-gta-mp.andredarcie.workers.dev/ws';
 
@@ -22,6 +25,18 @@ const handlers: NetHandlers = {
   onAdd: handleAdd,
   onDel: handleDel,
   onSnap: handleSnap,
+  onShot: (by, o, d, hit, hp) => {
+    remoteShotFx(by, o, d);                       // tracer/bang/aim pose (no-op for own echo)
+    if (hit && hit === getMyOnlineId() && hp >= 0) {
+      // The server decided I was hit. Its PvP hp is an authoritative CEILING on
+      // my local health — damage lands through the normal pipeline, so the
+      // existing wasted/hospital flow handles death and respawn untouched.
+      if (state.health > hp) state.health = hp;
+      state.shake = Math.max(state.shake, .3);
+    }
+  },
+  onDeath: (id) => setRemoteDead(id, true),       // own id: the shot already zeroed health
+  onSpawn: (id) => setRemoteDead(id, false),
   onDropped: () => { clearRemotes(); last = null; },
 };
 
@@ -36,6 +51,20 @@ export function initOnline(): void {
     players: isJoined() ? remoteCount() + 1 : 0, // world population, me included
     ping: netPing(),
   });
+  // Called by weapons.ts for every hitscan bullet it fires (after spread).
+  // The client only says "I fired from O toward D" — the SERVER decides hits.
+  refs.onlineShot = (origin, dir, damage, range) => {
+    if (!enabled || !isJoined()) return;
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    const r3 = (v: number) => Math.round(v * 1000) / 1000;
+    netSendShot({
+      t: 'shot',
+      o: [r2(origin.x), r2(origin.y), r2(origin.z)],
+      d: [r3(dir.x), r3(dir.y), r3(dir.z)],
+      dm: damage | 0,
+      rg: Math.round(range),
+    });
+  };
 }
 
 function resolveEnabled(): boolean {

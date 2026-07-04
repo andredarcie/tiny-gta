@@ -1111,6 +1111,9 @@ function fireOneBullet({range=52,speed=86,damage=1,spread=0}: {range?: number;sp
   if(s>0){dir.applyAxisAngle(_up,(Math.random()*2-1)*s);dir.normalize();}
   makeBullet(origin,dir,{speed,range,damage});
   addTracer(origin,origin.clone().addScaledVector(dir,3.2));
+  // Online: share this bullet — any PvP hit is decided by the SERVER, never
+  // here (js/net/online.ts). Practice-range shots stay local.
+  if(!refs.inGunShopRange?.())refs.onlineShot?.(origin,dir,damage,range);
 }
 
 // Golpe corpo a corpo: acerta o alvo mais próximo logo à frente.
