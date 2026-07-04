@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-04-performance-boost",
+    "date": "2026-07-04",
+    "title": "A big smoothness boost",
+    "description": "The game just got a lot smoother. Behind the scenes we cut the rendering work roughly in half — in the city and out in the country — so the frame rate stays high and steady. You might notice the distant haze sits a little closer and the traffic is a touch lighter; that's on purpose, to keep things fast. We also fixed the far side of the map bleeding through: things past the haze, like the island and its lighthouse, no longer draw all the way across the world."
+  },
+  {
     "id": "2026-07-03-diguifi-statue",
     "date": "2026-07-03",
     "title": "A statue for the first champion",
