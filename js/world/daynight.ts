@@ -120,6 +120,18 @@ const {sprite:glowSpr,material:glowMat}=makeHorizonGlow();skyLayer.add(glowSpr);
 // --- Estrelas (hemisfério de pontos com brilho variado) ---
 const {points:starPoints,material:starMat}=makeStarField();skyLayer.add(starPoints);
 
+// Perf (REGRA MESTRA: só desenha o que o jogador VÊ). O céu é a única coisa "no
+// infinito" que o jogador enxerga, então ele vira um BACKDROP pequeno que segue a
+// câmera e é encolhido uniformemente (dome 900→~144, sol/lua/estrelas junto). Escala
+// uniforme + câmera no centro = transformação de similaridade → a imagem projetada é
+// IDÊNTICA (mesmos ângulos; sizeAttenuation mantém o tamanho aparente dos sprites; as
+// estrelas são pixels de tela fixos). Assim tudo do céu cabe dentro de um camera.far
+// APERTADO (ver updateDayNight), e o frustum culling NATIVO do Three passa a cortar de
+// graça todo objeto 100% imerso na névoa — que, por definição, o jogador NÃO vê.
+for(const c of clouds)skyLayer.add(c); // nuvens entram no backdrop (seguem+escalam junto)
+const SKY_SCALE=0.16;
+skyLayer.scale.setScalar(SKY_SCALE);
+
 for(const c of clouds)c.userData.op0=(c.material as THREE.SpriteMaterial).opacity;
 
 const SUNSET_TINT=new THREE.Color(0xff5a28);
@@ -197,12 +209,18 @@ export function updateDayNight(dt:number){
   (scene.fog as THREE.Fog).near=100-ruralF*32;
   const fogFar=Math.min(200-ruralF*50+(ppos?Math.max(0,ppos.y)*15:0),430);
   (scene.fog as THREE.Fog).far=fogFar;
-  // Perf (visual-neutro): o plano FAR da câmera acompanha a névoa. Tudo além de `fogFar`
-  // já é 100% opaco de névoa (invisível), então deixar o frustum culling NATIVO do Three
-  // cortar esses objetos não muda um pixel — mas economiza os draws de marcos/veículos/
-  // efeitos distantes que antes eram submetidos mesmo somados ao haze (camera.far era 2000).
+  // REGRA MESTRA (só desenha o que o jogador VÊ): o plano FAR da câmera acompanha a
+  // névoa. Tudo além de `fogFar` já é 100% opaco de neblina — invisível —, então deixar
+  // o frustum culling NATIVO do Three descartar esses objetos é visual-neutro E de graça:
+  // corta os draws de marcos/veículos/efeitos distantes que antes eram submetidos mesmo
+  // somados ao haze (camera.far era 2000). O céu é a exceção que o jogador VÊ — vira um
+  // backdrop encolhido (≤ ~156u) que segue a câmera, então cabe folgado sob o piso de 175.
   // No mirante a névoa abre com a altitude e o far cresce junto, preservando o horizonte.
-  // (camera.far tracking temporariamente desligado p/ medir o ganho — ver sky fix)
+  const camFar=Math.max(fogFar+18,175);
+  if(Math.abs(camera.far-camFar)>4){camera.far=camFar;camera.updateProjectionMatrix();}
+  // backdrop do céu centrado na câmera (segue só a POSIÇÃO — sem rotação, pra o gradiente
+  // vertical + sol/lua manterem a direção de mundo certa conforme a hora do dia)
+  skyLayer.position.copy(camera.position);
   renderer.toneMappingExposure=cur.exp*REAL_EXP;
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;
