@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-04-instant-character",
+    "date": "2026-07-04",
+    "title": "Your character shows up instantly",
+    "description": "Fixed those first moments after loading where your character (and sometimes the whole crowd) could be invisible until the character models finished downloading. Now your classic toon self appears the very instant the game starts and seamlessly hands over to the detailed model once it's ready — no more haunted empty streets on slow connections."
+  },
+  {
     "id": "2026-07-04-online-players",
     "date": "2026-07-04",
     "title": "Other players are in your city now!",

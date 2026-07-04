@@ -92,7 +92,17 @@ async function load(): Promise<Base | null> {
   if (!clips.walk && clips.run) clips.walk = clips.run;   // Walking pending re-download
   return (baseSync = { root, clips, region });
 }
-export function preloadRig(): Promise<Base | null> { if (!pending) pending = load().catch(() => null); return pending; }
+export function preloadRig(): Promise<Base | null> {
+  if (!pending) {
+    // Timing evidence for "invisible characters" reports: until this resolves,
+    // every character rides its placeholder (hero) or is pending its swap (NPCs).
+    const t0 = performance.now();
+    pending = load()
+      .then(b => { console.log(`[rig] shared base + clips ready in ${Math.round(performance.now() - t0)}ms`); return b; })
+      .catch(() => null);
+  }
+  return pending;
+}
 export function rigReady(): boolean { return !!baseSync; }
 
 // ---- held-weapon anchor -----------------------------------------------------
