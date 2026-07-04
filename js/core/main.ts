@@ -8,11 +8,11 @@ import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
-import {updatePeds,ejectDriver,addBloodPuddle} from '@/world/pedestrians.ts';
+import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts';
 import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collects dead NPCs → hospital
-import {updateGangs,gangs,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
+import {updateGangs,gangs,gangPeds,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
 import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
-import {updateRuralFolk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
+import {updateRuralFolk,folk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic,ruralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach,solids} from '@/world/world.ts';
 import {cops,officers,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
@@ -71,9 +71,9 @@ import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState}
 import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.ts';
 import {updateDoors} from '@/world/doors.ts';
 import {updateDoorArrows} from '../../assets/models/city/door-arrow.ts';
-import {updateCityCulling} from '../../assets/models/city/building.ts';
-import {updatePropCulling} from '../../assets/models/props/prop-merge.ts';
-import {updateLotCulling} from '../../assets/models/city/abandoned-lot.ts';
+import {updateCityCulling,cityChunks} from '../../assets/models/city/building.ts';
+import {updatePropCulling,propChunks} from '../../assets/models/props/prop-merge.ts';
+import {updateLotCulling,lotChunks} from '../../assets/models/city/abandoned-lot.ts';
 import {updateRuralCulling} from '@/world/rural-cull.ts'; // grandes marcos rurais (rancho/celeiro): corte por névoa
 import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
 import {warmupShaders} from '@/core/warmup.ts'; // pré-compila shaders no boot (anti-hitch)
@@ -101,6 +101,114 @@ declare global {
 // Diagnóstico de hitches: anexa posição/modo/interior do jogador a cada queda de FPS.
 P.setContext(()=>{const p=playerPos();return(state.interior?'INT:'+state.interior.constructor.name
   :state.mode)+' '+Math.round(p.x)+','+Math.round(p.z);});
+
+// Contagem barata de entidades VISÍVEIS por categoria pro overlay do profiler.
+// Só é chamada no refresh do overlay (~5fps), nunca por frame. Diz direto onde
+// estão os draw calls dinâmicos (carros = ~16-24 draws cada; NPCs = ~1-2).
+const _visCount=(arr:Array<{g?:{visible?:boolean}}>)=>{
+  let n=0;for(const e of arr){if(e?.g?.visible!==false)n++;}return n;};
+P.setCounts(()=>({
+  cars:_visCount(traffic)+_visCount(idleCars)+_visCount(ruralTraffic),
+  peds:_visCount(peds),
+  gang:_visCount(gangPeds),
+  cops:_visCount(cops)+_visCount(officers),
+  rural:_visCount(folk),
+}));
+
+// Censo de draw calls por subsistema: esconde cada grupo de entidades, faz um
+// render sob demanda com a sombra DESLIGADA (senão o shadow pass corrompe os
+// deltas) e mede a queda em renderer.info.render.calls/triangles. É a atribuição
+// definitiva de "de onde vêm os ~N draws". Custa alguns renders — só chamar via
+// window.profilerCensus() no console/harness, nunca no loop. Ver perf-profiling.
+(window as any).profilerCensus=()=>{
+  const wasShadow=renderer.shadowMap.enabled;
+  renderer.shadowMap.enabled=false;
+  const measure=()=>{renderer.render(scene,camera);
+    return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles};};
+  const base=measure();
+  const groups:Record<string,Array<{g?:THREE.Object3D}>>={
+    traffic,idleCars,peds,gangPeds,cops,officers,ruralTraffic,ruralFolk:folk,
+  };
+  const out:Record<string,{draws:number;tris:number}>={};
+  (out as any).__total={draws:base.calls,tris:base.tris};
+  for(const[name,arr]of Object.entries(groups)){
+    const saved=arr.map(e=>e?.g?.visible);
+    for(const e of arr)if(e?.g)e.g.visible=false;
+    const after=measure();
+    arr.forEach((e,i)=>{if(e?.g)e.g.visible=saved[i]!==false;});
+    out[name]={draws:base.calls-after.calls,tris:base.tris-after.tris};
+  }
+  measure(); // restaura a cena visível
+  renderer.shadowMap.enabled=wasShadow;
+  renderer.shadowMap.needsUpdate=true;
+  return JSON.stringify(out,null,2);
+};
+
+// Censo do MUNDO ESTÁTICO: atribui os draws entre chunks de prédio, props e lotes
+// (os grandes grupos merge-por-chunk). O resto (chão/estradas/mar/céu) sai como
+// "misc" = total − (buildings+props+lots+dynâmicos). Mesma técnica do censo acima.
+(window as any).profilerCensusStatic=()=>{
+  const wasShadow=renderer.shadowMap.enabled;
+  renderer.shadowMap.enabled=false;
+  const measure=()=>{renderer.render(scene,camera);
+    return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles};};
+  const base=measure();
+  const groups:Record<string,THREE.Object3D[]>={buildings:cityChunks,props:propChunks,lots:lotChunks};
+  const out:Record<string,{draws:number;tris:number}>={};
+  (out as any).__total={draws:base.calls,tris:base.tris};
+  for(const[name,arr]of Object.entries(groups)){
+    const saved=arr.map(o=>o.visible);
+    for(const o of arr)o.visible=false;
+    const after=measure();
+    arr.forEach((o,i)=>{o.visible=saved[i];});
+    out[name]={draws:base.calls-after.calls,tris:base.tris-after.tris};
+  }
+  measure();
+  renderer.shadowMap.enabled=wasShadow;
+  renderer.shadowMap.needsUpdate=true;
+  return JSON.stringify(out,null,2);
+};
+
+// Quebra da cena por objeto de TOPO: pra cada filho direto de scene, conta quantos
+// meshes renderáveis VISÍVEIS ele tem (aprox. de draws) e a soma de triângulos.
+// Acha os grandes geradores de draw que não estão no sistema de chunks.
+const _bdFrustum=new THREE.Frustum(),_bdMat=new THREE.Matrix4(),_bdSphere=new THREE.Sphere();
+(window as any).profilerSceneBreakdown=()=>{
+  camera.updateMatrixWorld();
+  _bdMat.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+  _bdFrustum.setFromProjectionMatrix(_bdMat);
+  const rows:Array<{label:string;draws:number;tris:number}>=[];
+  const renderable=new Set(['Mesh','SkinnedMesh','Line','LineSegments','Points','Sprite']);
+  const inArr=(o:THREE.Object3D,arr:THREE.Object3D[])=>arr.indexOf(o)>=0;
+  let total=0;
+  for(const child of scene.children){
+    let draws=0,tris=0;
+    child.traverseVisible((o:THREE.Object3D)=>{
+      if(!renderable.has(o.type))return;
+      const m=o as THREE.Mesh;const g=m.geometry as THREE.BufferGeometry|undefined;
+      if(!g)return;
+      // frustum-aware: só conta o que a câmera realmente desenharia (bounding sphere)
+      if(!g.boundingSphere)g.computeBoundingSphere();
+      _bdSphere.copy(g.boundingSphere!).applyMatrix4(m.matrixWorld);
+      if(!_bdFrustum.intersectsSphere(_bdSphere))return;
+      draws++;
+      const idx=g.index;const pos=g.attributes?.position;
+      tris+=idx?idx.count/3:(pos?pos.count/3:0);
+    });
+    if(draws>0){
+      total+=draws;
+      const ud=Object.keys(child.userData||{}).join(',');
+      const tag=inArr(child,cityChunks)?'CHUNK':inArr(child,propChunks)?'PROP':inArr(child,lotChunks)?'LOT':'?';
+      // dica de identidade: nome do 1º descendente nomeado + posição no mundo
+      let hint='';child.traverse(o=>{if(!hint&&o.name&&o!==child)hint=o.name;});
+      const px=Math.round(child.position.x),pz=Math.round(child.position.z);
+      const label=`${child.name||child.type}[${tag}]${ud?' ud:'+ud:''}${hint?' >'+hint:''} @${px},${pz}`;
+      rows.push({label,draws,tris:Math.round(tris)});
+    }
+  }
+  rows.sort((a,b)=>b.draws-a.draws);
+  return JSON.stringify({total,groups:rows.length,rows:rows.slice(0,26)},null,2);
+};
 
 // Populate late-binding refs so cross-module code can access these without circular imports
 refs.playerPos=playerPos;
@@ -185,7 +293,7 @@ applySettings();
 
 const clock=new THREE.Clock();
 let shadowTick=0;
-const SHADOW_EVERY=12; // re-renderiza o shadow map 1 a cada N frames (~5fps @60)
+const SHADOW_EVERY=20; // re-renderiza o shadow map 1 a cada N frames (a luz é fixa; sombras móveis ficam levemente atrasadas — trade-off aceito por perf)
 // Minimapa: canvas2D pesado (drawImage com resample + dezenas de blips/arcos).
 // Redesenhar todo frame era puro custo de CPU na main thread; a 22fps o radar
 // fica visualmente idêntico e libera o orçamento do frame.
@@ -199,7 +307,7 @@ function step(dt: number){
   // o shadow pass (2º render da cena inteira) roda raramente. Sombras de coisas
   // que se movem (jogador/NPC) ficam mais "atrasadas" — trade-off aceito. Antes
   // de qualquer render abaixo.
-  if(shadowTick++%SHADOW_EVERY===0)renderer.shadowMap.needsUpdate=true;
+  if(shadowTick++%SHADOW_EVERY===0){renderer.shadowMap.needsUpdate=true;P.markShadow();}
   if(updateHouseTv()){renderer.render(scene,camera);return;}
   if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
@@ -318,7 +426,10 @@ function step(dt: number){
   // não desenha os que estão ALÉM da névoa — lá já são invisíveis, então é
   // visual-neutro. O corte acompanha a névoa (que abre na altitude). O carro
   // dirigido não está em idleCars; os parados voltam a aparecer ao se aproximar.
-  {const vf=scene.fog?(scene.fog as THREE.Fog).far:430,v2=vf*vf;
+  // Perf: veículos especiais parados (avião/barco/bombeiro/ambulância ~30-45 draws cada)
+  // cortados em min(névoa,160) — mais apertado que a névoa pura, pois são caros em draws
+  // e o haze já os cobre bem antes disso. O carro dirigido não está em idleCars.
+  {const vf=Math.min(scene.fog?(scene.fog as THREE.Fog).far:430,160),v2=vf*vf;
    for(const c of idleCars){if(!c.g)continue;
      const dx=c.g.position.x-pp.x,dz=c.g.position.z-pp.z;
      c.g.visible=dx*dx+dz*dz<v2;}}

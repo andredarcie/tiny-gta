@@ -151,7 +151,13 @@ export function makeCharacter(look: Look): MixamoChar | null {
   geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
   mesh.geometry = geo;
   mesh.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
-  mesh.frustumCulled = false; mesh.castShadow = false;
+  // Perf: LIGA o frustum culling (era false → o renderer fazia skinning+draw de TODO
+  // personagem visível mesmo ATRÁS da câmera; cada um tem ~7930 tris skinned). Com a
+  // bounding sphere inflada ~1.7× (cobre braços erguidos/mira/corrida) não há pop-out
+  // nas bordas da tela. Isto corta o custo de GPU dos dezenas de NPCs fora de vista.
+  geo.computeBoundingSphere();
+  if (geo.boundingSphere) geo.boundingSphere.radius *= 1.7;
+  mesh.frustumCulled = true; mesh.castShadow = false;
   const mixer = new THREE.AnimationMixer(root);
   const actions: Record<string, THREE.AnimationAction> = {};
   for (const [key, clip] of Object.entries(b.clips)) actions[key] = mixer.clipAction(clip);

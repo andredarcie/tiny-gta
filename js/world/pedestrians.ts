@@ -61,7 +61,7 @@ export function pedCorner(p:Ped):[number,number]{
 }
 
 export const peds:Ped[]=[];
-const PED_CULL2=130*130;
+const PED_CULL2=105*105; // perf: 130→105. Cada ped é um SkinnedMesh de ~7930 tris; cortar distantes economiza vértices/skinning (dots minúsculos além disso)
 const bloodPuddles:THREE.Object3D[]=[];
 const _tgt=new THREE.Vector3();
 const _d=new THREE.Vector3();

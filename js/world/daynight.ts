@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {clamp,RURAL_X0} from '@/core/constants.ts';
-import {scene,renderer,hemi,dlight,sunDir,clouds} from '@/core/engine.ts';
+import {scene,renderer,hemi,dlight,sunDir,clouds,camera} from '@/core/engine.ts';
 import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
 import {state,refs} from '@/core/state.ts';
 import {beamMat} from '@/core/entities.ts';
@@ -190,8 +190,19 @@ export function updateDayNight(dt:number){
   // "pop-in" do carregamento. far rural ~155 (< culling) + near antecipado deixam
   // o objeto totalmente no haze quando é cortado. Cap em 430 e o termo de altitude
   // mantêm o mirante: do alto da montanha o horizonte reabre.
-  (scene.fog as THREE.Fog).near=120-ruralF*48;
-  (scene.fog as THREE.Fog).far=Math.min(300-ruralF*145+(ppos?Math.max(0,ppos.y)*14:0),430);
+  // Perf: névoa da cidade puxada de 300→205 (a cidade é o pior caso de FPS — como ela
+  // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
+  // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
+  // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
+  (scene.fog as THREE.Fog).near=100-ruralF*32;
+  const fogFar=Math.min(200-ruralF*50+(ppos?Math.max(0,ppos.y)*15:0),430);
+  (scene.fog as THREE.Fog).far=fogFar;
+  // Perf (visual-neutro): o plano FAR da câmera acompanha a névoa. Tudo além de `fogFar`
+  // já é 100% opaco de névoa (invisível), então deixar o frustum culling NATIVO do Three
+  // cortar esses objetos não muda um pixel — mas economiza os draws de marcos/veículos/
+  // efeitos distantes que antes eram submetidos mesmo somados ao haze (camera.far era 2000).
+  // No mirante a névoa abre com a altitude e o far cresce junto, preservando o horizonte.
+  // (camera.far tracking temporariamente desligado p/ medir o ganho — ver sky fix)
   renderer.toneMappingExposure=cur.exp*REAL_EXP;
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;

@@ -86,11 +86,13 @@ export const sunDir=new THREE.Vector3(-.45,.9,-.55).normalize();
 export const dlight=new THREE.DirectionalLight(0xfff1d6,2.2);
 dlight.castShadow=true;
 // Resolução reduzida do shadow map (era 1024/2048): sombra mais "blocky", mais barata.
-dlight.shadow.mapSize.set(isMobileLike()?512:1024,isMobileLike()?512:1024);
-// Frustum mais apertado (era ±95): foca a sombra perto do jogador, melhora a
-// densidade de texel e reduz a área rasterizada no shadow pass.
-dlight.shadow.camera.left=-80;dlight.shadow.camera.right=80;
-dlight.shadow.camera.top=80;dlight.shadow.camera.bottom=-80;
+// Perf: desktop 1024→768 (menos depth-fill no shadow pass; com o frustum apertado a
+// densidade de texel se mantém boa).
+dlight.shadow.mapSize.set(isMobileLike()?512:768,isMobileLike()?512:768);
+// Frustum mais apertado (era ±95→±80→±66): foca a sombra perto do jogador, melhora a
+// densidade de texel e reduz a área rasterizada + casters incluídos no shadow pass.
+dlight.shadow.camera.left=-66;dlight.shadow.camera.right=66;
+dlight.shadow.camera.top=66;dlight.shadow.camera.bottom=-66;
 dlight.shadow.camera.far=420;dlight.shadow.bias=-.0015;
 scene.add(dlight);scene.add(dlight.target);
 
