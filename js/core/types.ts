@@ -216,6 +216,7 @@ export interface Refs {
   playerPos?: () => THREE.Vector3;
   getCur?: () => Vehicle | null;
   getPlayerHeading?: () => number | undefined;
+  getOnlineState?: () => Record<string, unknown>; // shared-world presence debug snapshot (js/net/online.ts)
   getRadarHeading?: () => number;
   nearestCar?: (maxDist: number) => { c: Vehicle; kind: string } | null;
 

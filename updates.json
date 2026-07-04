@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-04-online-players",
+    "date": "2026-07-04",
+    "title": "Other players are in your city now!",
+    "description": "Tiny Crime just went online. From now on, everyone playing at the same time shares the same city: other real players walk, run, drive and sail around your world, each with their name floating over their head. No setup needed — just play, and if someone else is online you'll bump into them. This first version is about seeing each other move; more shared action (and shared trouble) is on the way. If the world ever fills up, the game simply runs in classic solo mode for whoever arrives late."
+  },
+  {
     "id": "2026-07-04-performance-boost",
     "date": "2026-07-04",
     "title": "A big smoothness boost",
