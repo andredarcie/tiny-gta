@@ -25,6 +25,10 @@ describe('checkMove', () => {
   it('never judges a zero/negative dt', () => {
     expect(checkMove(0, 0, 500, 0, 0, 0, 0)).toBe('ok');
   });
+  it('uses the more permissive cap across a mode transition (car -> foot bail-out)', () => {
+    expect(checkMove(0, 0, 4, 0, 100, 0, 1000)).toBe('reject');     // 40 m/s on foot: no
+    expect(checkMove(0, 0, 4, 0, 100, 0, 1000, 1)).toBe('ok');      // ...but fine when you JUST left a car
+  });
 });
 
 describe('clampPoseY', () => {
@@ -43,7 +47,8 @@ describe('clampPoseY', () => {
   });
   it('caps altitude by mode: rooftops fine on foot, orbit only denied', () => {
     expect(clampPoseY(10, 40, 10, 0)).toBe(40);                 // rooftop / falling
-    expect(clampPoseY(10, 5000, 10, 0)).toBeCloseTo(groundHeight(10, 10) + 90, 10);
+    expect(clampPoseY(10, 5000, 10, 0)).toBeCloseTo(groundHeight(10, 10) + 140, 10);
+    expect(clampPoseY(10, 130, 10, 0)).toBe(130);           // bailing out of the plane at its ceiling
     expect(clampPoseY(10, 5000, 10, 3)).toBe(780);              // plane ceiling
     expect(clampPoseY(10, 50, 10, 2)).toBe(8);                  // boats stay on the water
   });

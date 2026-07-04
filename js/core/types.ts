@@ -45,6 +45,10 @@ export interface GameState {
   shotT?: number;
   shotX?: number;
   shotZ?: number;
+  /** my OWN last gunshot. Police resist-arrest keys on THIS — state.shotT is
+   * also set by REMOTE players' shots (online), which must never mark you as
+   * resisting. */
+  myShotT?: number;
   crosshairKick: number;
   crosshairTarget: boolean;
   mobile: boolean;

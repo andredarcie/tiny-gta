@@ -582,7 +582,9 @@ export function updateCops(dt:number){
   // Arrest model: ★1 = surrender chance (officers hold fire); ★2+ = lethal. At ★1 the
   // suspect resisting (firing a weapon AFTER officers got out) latches them lethal.
   if(want===0)resisted=false;
-  if(!resisted&&officers.length>0&&(state.shotT??-99)>lastDeployT+.4)resisted=true;
+  // MY shots only (state.myShotT): remote players' gunfire also stamps state.shotT
+  // for NPC scatter, and firing 100m away must not make YOU "resist arrest".
+  if(!resisted&&officers.length>0&&(state.myShotT??-99)>lastDeployT+.4)resisted=true;
   policeLethal=want>=LETHAL_AT||resisted;
   // RADIO escalation: each new star, the sheriff speaks once (more units, then the
   // army at the top). Resets as the wanted level falls so it speaks again next time.

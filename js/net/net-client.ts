@@ -89,6 +89,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
     let m: Record<string, unknown> | null = null;
     try { m = JSON.parse(ev.data) as Record<string, unknown>; } catch (e) { return; }
     if (!m || typeof m.t !== 'string') return;
+    try { // fail-open: a broken handler must not take the connection down with it
     switch (m.t) {
       case 'welcome':
         phase = 'joined'; backoff = 5_000;
@@ -106,6 +107,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
       case 'spawn': h.onSpawn((m.id as number) | 0); break;
       case 'full': gotFull = true; break;
     }
+    } catch (e) { console.warn('[online] message handler error:', e); }
   };
   const drop = () => {
     if (ws !== sock) return;
