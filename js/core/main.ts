@@ -45,6 +45,7 @@ import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/cor
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
+import {initOnline,updateOnline} from '@/net/online.ts'; // shared-world presence (other players' avatars)
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud} from '@/combat/weapons.ts';
@@ -290,6 +291,7 @@ setupWheel(); // roda de seleção de armas (overlay próprio; ver js/combat/wea
 // Apply saved graphics/FPS settings at boot (audio is re-applied after initAudio,
 // from startGameFromUserGesture); the audio setters no-op until the graph exists.
 applySettings();
+initOnline(); // shared-world presence: connects after the run starts; offline fallback if full/down
 
 const clock=new THREE.Clock();
 let shadowTick=0;
@@ -357,6 +359,7 @@ function step(dt: number){
   P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
+  P.begin('online');updateOnline(dt);P.end(); // shared world: send my pose, interpolate remote players
   // While the full map is open (even with live NPCs shown) the player is input-locked,
   // so the police/army must NOT chase, shoot or arrest them — freeze those threats.
   const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
@@ -558,6 +561,7 @@ window.render_game_to_text=()=>{
     generalStore:refs.getGeneralStoreState?.()||null,
     overkill:refs.getOverkillState?.()||null,
     bloodstains:refs.getBloodstainsState?.()||null, // poças de morte ativas no mundo (multiplayer)
+    online:refs.getOnlineState?.()||null, // shared-world presence: phase/remotes (js/net/online.ts)
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],

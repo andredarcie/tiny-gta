@@ -1,6 +1,30 @@
 # TINY GTA ONLINE — Plano de Arquitetura do Servidor Multiplayer
 
-> **Status:** planejamento (nada implementado). Branch `feat/online-multiplayer-plan`.
+> ## ⚠️ REVISÃO 2 (2026-07-04) — decisões novas do usuário + primeiro incremento NO AR
+>
+> 1. **MUNDO ÚNICO, sem salas.** Decisão fundamental: todos os jogadores compartilham UM
+>    mundo (um único `WorldDO`, nome `world`). Não existe LobbyDO/matchmaking. Quando o
+>    mundo lota (`MAX_PLAYERS`, hoje 32), quem chegar depois recebe `{t:'full'}` e joga
+>    **offline normalmente** (fallback silencioso). As seções deste documento que falam em
+>    "salas/shards/matchmaking" ficam como referência histórica/futura — o modelo vigente é
+>    mundo único até segunda ordem.
+> 2. **Incremento 1 — "bonecos se movendo" (IMPLEMENTADO, `server/` + `js/net/` +
+>    `shared/net/protocol.ts`):** presença compartilhada — cada cliente reporta a própria
+>    pose (posição/heading/modo, ≤10 msg/s e só quando muda); o servidor é dono do roster
+>    (ids, nicks, join/leave), valida/clampa cada mensagem e retransmite snapshots a 10 Hz;
+>    remotos renderizam com o rig GLB dos NPCs + nome flutuante, interpolando 150 ms no
+>    passado. Keepalive por auto-resposta (grátis), DO hiberna com o mundo parado.
+> 3. **Autoridade: estadiada, não abandonada.** Neste incremento a posição é reportada pelo
+>    cliente (validada por bounds/estrutura/rate no servidor) porque veículos/NPCs ainda são
+>    entidades locais de cada cliente — simular o movimento no servidor sem eles seria
+>    incoerente. NADA de valor (dinheiro/vida/item) trafega ainda. A migração para o modelo
+>    100% autoritativo das seções abaixo acontece por partes, sistema a sistema, nos
+>    próximos incrementos ("aí vêm as outras partes").
+>
+> **Status:** incremento 1 implementado nesta branch. O restante do documento é o plano de
+> longo prazo original (revisá-lo a cada incremento).
+
+> **Status original:** planejamento. Branch `feat/online-multiplayer-plan`.
 > **Data:** 2026-07-04. Limites de free tier conferidos nessa data na documentação da Cloudflare
 > (links na seção 4) — revalidar antes de cada fase, planos mudam.
 > **Escopo:** servidor multiplayer em tempo real, **100% autoritativo**, custo **zero** (Cloudflare

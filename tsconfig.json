@@ -26,6 +26,6 @@
     "skipLibCheck": true,
     "paths": { "@/*": ["./js/*"] }
   },
-  "include": ["js", "assets", "vite-env.d.ts"],
+  "include": ["js", "assets", "shared", "vite-env.d.ts"],
   "exclude": ["node_modules", "dist", "backend", "android", "public", "fp-preview", "comparacoes", "output", "test", "tools", "scripts"]
 }
