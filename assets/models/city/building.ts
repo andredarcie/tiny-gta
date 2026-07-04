@@ -326,7 +326,10 @@ export function updateCityCulling(px:number,pz:number):void{
   // cidade inteira era desenhada de lá. Margem de ~meio chunk (não +CHUNK
   // inteiro, que deixava a borda leste da cidade renderizar da zona rural).
   const ff=Math.min(scene.fog?(scene.fog as THREE.Fog).far:430,330);
-  const far=ff+70,f2=far*far;
+  // Margem reduzida (+70→+40): chunks além da névoa (far) já estão 100% opacos, então
+  // desenhar meio-chunk a mais era custo puro atrás da parede de névoa. Perf: corta o
+  // anel externo de chunks invisíveis (praticamente visual-neutro).
+  const far=ff+40,f2=far*far;
   for(const g of cityChunks){
     const dx=g.userData.cx-px,dz=g.userData.cz-pz;
     g.visible=dx*dx+dz*dz<f2;

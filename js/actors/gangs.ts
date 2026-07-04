@@ -82,7 +82,7 @@ export function inGangTerritory(x:number,z:number,margin=0):boolean{
 export const gangPeds:GangMember[]=[];
 
 const _gdir=new THREE.Vector3();
-const GANG_CULL2=130*130;
+const GANG_CULL2=105*105; // perf: 130→105 (consistente com peds; membros distantes são SkinnedMesh de ~7930 tris)
 
 let gangsHidden=false;
 let gangsPaused=false;

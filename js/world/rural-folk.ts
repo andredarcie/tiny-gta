@@ -64,8 +64,8 @@ class RuralFolk extends Npc{
   }
 }
 
-const folk:RuralFolk[]=[];
-const CULL2=150*150;
+export const folk:RuralFolk[]=[];
+const CULL2=120*120; // perf: 150→120 (rednecks distantes são SkinnedMesh de ~7930 tris; névoa rural ~150 os cobre)
 
 // Home anchors [x,z,role]. Each folk wanders a patch around its anchor. 'farm' folk
 // also tend the fields; 'town' folk loiter the Pine Hollow square (cx 650). The

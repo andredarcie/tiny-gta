@@ -92,9 +92,13 @@ export function getOverkillState(){
 }
 
 export function updateOverkill(dt: number): void{
-  // anima a caveira sempre
+  // anima a caveira quando por perto; longe, some (perf: ~16-21 draws de marcador,
+  // radar já mostra a posição — só desenha dentro de ~115m, some no haze bem antes)
   if(totem){
-    const ic=totem.userData.icon;
+    const pp=playerPos();
+    const near=(pp.x-TOTEM.x)*(pp.x-TOTEM.x)+(pp.z-TOTEM.z)*(pp.z-TOTEM.z)<115*115;
+    if(totem.visible!==near)totem.visible=near;
+    const ic=near?totem.userData.icon:null;
     if(ic){
       const baseY=ic.userData.baseY??1.45;
       ic.rotation.y+=dt*(ok.active?5:1.6);

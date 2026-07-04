@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 import {beamMat} from './car.ts'; // mesma luz de farol do carro (daynight liga à noite)
 import {applyVehicleEnv} from './vehicle-env.ts';
@@ -49,6 +50,31 @@ const tlGeo=new THREE.BoxGeometry(.12,.07,.05);
 const standG=new THREE.BoxGeometry(.04,.34,.04);
 const beamGeo=new THREE.PlaneGeometry(3.2,5.0); // facho do farol (menor que o do carro)
 
+// Perf: a moto tinha ~33 meshes soltos (33 draws) — NUNCA fundida como o carro, e ela
+// fica na tela 100% do tempo enquanto pilotada. Aqui as partes ESTÁTICAS são fundidas por
+// material UMA vez (geometria compartilhada entre instâncias; só a tinta muda por cor),
+// caindo pra ~16 draws com pixels IDÊNTICOS. O que gira fica solto: as 2 rodas e o garfo.
+if(wheelG.groups.length===3){const gr=wheelG.groups; // funde as 2 tampas do pneu (3→2 draws/roda)
+  wheelG.groups=[gr[0],{start:gr[1].start,count:gr[1].count+gr[2].count,materialIndex:1}];}
+// clona a geometria já posicionada em coords locais (mesmo padrão do car.ts placed())
+function placed(geo:THREE.BufferGeometry,x:number,y:number,z:number,rx=0,ry=0,rz=0):THREE.BufferGeometry{
+  const g=geo.clone();if(rx)g.rotateX(rx);if(ry)g.rotateY(ry);if(rz)g.rotateZ(rz);g.translate(x,y,z);return g;}
+// --- QUADRO (no grupo raiz, que não gira): fundido por material ---
+const frameMatteGeo=mergeGeometries([placed(swingG,0,.36,-.5),placed(engineG,0,.46,-.04),
+  placed(pegG,-.24,.34,-.02),placed(pegG,.24,.34,-.02),
+  placed(tipG,-.17,.32,-.9,Math.PI/2),placed(tipG,.17,.32,-.9,Math.PI/2),
+  placed(standG,-.3,.18,-.05,0,0,.5)]);
+const frameChromeGeo=mergeGeometries([placed(downTubeG,0,.5,.34,.7),
+  placed(exhaustG,-.17,.32,-.42,Math.PI/2),placed(exhaustG,.17,.32,-.42,Math.PI/2)]);
+const framePaintGeo=mergeGeometries([placed(fenderRG,0,.66,-.95),placed(tankG,0,.74,.14),placed(cowlG,0,.82,-.66)]);
+// --- GARFO (esterça em bloco): fundido por material, em coords locais do garfo ---
+const forkChromeGeo=mergeGeometries([placed(forkLegG,-.09,-.13,.18,-.945),placed(forkLegG,.09,-.13,.18,-.945),
+  placed(stanchG,-.09,.12,.04),placed(stanchG,.09,.12,.04)]);
+const forkMatteGeo=mergeGeometries([placed(yokeG,0,.05,.05),placed(riserG,0,.3,-.065,-.3),placed(barG,0,.55,-.14),
+  placed(mirrorStemG,-.24,.65,-.14),placed(mirrorStemG,.24,.65,-.14),
+  placed(mirrorG,-.26,.73,-.14),placed(mirrorG,.26,.73,-.14)]);
+const forkSeatGeo=mergeGeometries([placed(gripG,-.27,.55,-.14,0,0,Math.PI/2),placed(gripG,.27,.55,-.14,0,0,Math.PI/2)]);
+
 const paintCache=new Map<number,THREE.MeshStandardMaterial>();
 function paintFor(color: number): THREE.MeshStandardMaterial{
   if(!paintCache.has(color))
@@ -59,7 +85,7 @@ function paintFor(color: number): THREE.MeshStandardMaterial{
 // roda com pneu + disco/cubo cromado, eixo ao longo de X (gira em rotation.x do grupo)
 function makeWheel(): THREE.Group{
   const wg=new THREE.Group();
-  const tire=new THREE.Mesh(wheelG,[tireM,hubM,hubM]);
+  const tire=new THREE.Mesh(wheelG,[tireM,hubM]); // tampas fundidas → 2 draws (pneu + cubo)
   tire.rotation.z=Math.PI/2;tire.castShadow=true;wg.add(tire);
   const disc=new THREE.Mesh(discG,chromeM);
   disc.rotation.z=Math.PI/2;wg.add(disc);
@@ -71,74 +97,26 @@ function buildMotorcycle({color=0xd11f3a}: {color?: number}={}): THREE.Group{
   const paint=paintFor(color);
   g.userData.color=color; // a garagem rural lê isto pra recriar a moto salva
 
-  // ---- roda traseira + balança + escapamentos ----
+  // ---- QUADRO fundido (roda traseira solta, gira) ----
   const rw=makeWheel();
   rw.position.set(0,.34,-.95);g.add(rw);
-  const swing=new THREE.Mesh(swingG,matteM);
-  swing.position.set(0,.36,-.5);g.add(swing);
-  const fenderR=new THREE.Mesh(fenderRG,paint);
-  fenderR.position.set(0,.66,-.95);g.add(fenderR);
+  const frameMatte=new THREE.Mesh(frameMatteGeo,matteM);frameMatte.castShadow=true;g.add(frameMatte);
+  const frameChrome=new THREE.Mesh(frameChromeGeo,chromeM);g.add(frameChrome);
+  const framePaint=new THREE.Mesh(framePaintGeo,paint);framePaint.castShadow=true;g.add(framePaint);
+  const seat=new THREE.Mesh(seatGeo,seatM);seat.position.set(0,.79,-.34);g.add(seat);
+  const tail=new THREE.Mesh(tlGeo,tlM);tail.position.set(0,.74,-.98);g.add(tail);
 
-  // ---- motor + quadro + tanque + banco ----
-  const engine=new THREE.Mesh(engineG,matteM);
-  engine.position.set(0,.46,-.04);engine.castShadow=true;g.add(engine);
-  const downTube=new THREE.Mesh(downTubeG,chromeM);
-  downTube.position.set(0,.5,.34);downTube.rotation.x=.7;g.add(downTube);
-  const tank=new THREE.Mesh(tankG,paint);
-  tank.position.set(0,.74,.14);tank.castShadow=true;g.add(tank);
-  const seat=new THREE.Mesh(seatGeo,seatM);
-  seat.position.set(0,.79,-.34);g.add(seat);
-  const cowl=new THREE.Mesh(cowlG,paint);
-  cowl.position.set(0,.82,-.66);g.add(cowl);
-  // pedaleiras e escapamentos cromados saindo pra trás
-  for(const sx of[-1,1]){
-    const peg=new THREE.Mesh(pegG,matteM);
-    peg.position.set(sx*.24,.34,-.02);g.add(peg);
-    const ex=new THREE.Mesh(exhaustG,chromeM);
-    ex.rotation.x=Math.PI/2;ex.position.set(sx*.17,.32,-.42);g.add(ex);
-    const tip=new THREE.Mesh(tipG,matteM);
-    tip.rotation.x=Math.PI/2;tip.position.set(sx*.17,.32,-.9);g.add(tip);
-  }
-  // descanso lateral (kickstand)
-  const stand=new THREE.Mesh(standG,matteM);
-  stand.position.set(-.3,.18,-.05);stand.rotation.z=.5;g.add(stand);
-  // lanterna traseira
-  const tail=new THREE.Mesh(tlGeo,tlM);
-  tail.position.set(0,.74,-.98);g.add(tail);
-
-  // ---- garfo dianteiro (esterça): roda, garfo, guidão, farol ----
+  // ---- GARFO dianteiro (esterça em bloco): roda solta + estáticos fundidos ----
   const fork=new THREE.Group();
   fork.position.set(0,.6,.56); // cabeça de direção
   const fw=makeWheel();
   fw.position.set(0,-.26,.36); // → mundo (0,.34,.92): eixo dianteiro
   fork.add(fw);
-  for(const sx of[-1,1]){ // duas pernas do garfo descendo até a roda
-    const leg=new THREE.Mesh(forkLegG,chromeM);
-    leg.position.set(sx*.09,-.13,.18);leg.rotation.x=-.945;fork.add(leg);
-    // tubo curto do garfo subindo acima da mesa (continuidade visual)
-    const stanch=new THREE.Mesh(stanchG,chromeM);
-    stanch.position.set(sx*.09,.12,.04);fork.add(stanch);
-  }
-  const fenderF=new THREE.Mesh(fenderFG,paint);
+  fork.add(new THREE.Mesh(forkChromeGeo,chromeM)); // pernas + tubos do garfo
+  fork.add(new THREE.Mesh(forkMatteGeo,matteM));   // mesa/haste/guidão/espelhos
+  fork.add(new THREE.Mesh(forkSeatGeo,seatM));     // manoplas
+  const fenderF=new THREE.Mesh(fenderFG,paint);    // paralama dianteiro (tinta: por instância)
   fenderF.position.set(0,-.05,.3);fenderF.rotation.x=-.4;fork.add(fenderF);
-  // mesa superior + haste ligam o garfo ao guidão erguido (sem isso ele flutua)
-  const yoke=new THREE.Mesh(yokeG,matteM);
-  yoke.position.set(0,.05,.05);fork.add(yoke);
-  const riser=new THREE.Mesh(riserG,matteM);
-  riser.position.set(0,.3,-.065);riser.rotation.x=-.3;fork.add(riser);
-  // guidão erguido e recuado (cruiser): encontra as mãos do piloto montado.
-  // Mundo ≈ (±.27, 1.15, .42), no alcance da palma a partir do ombro (~.62)
-  const bar=new THREE.Mesh(barG,matteM);
-  bar.position.set(0,.55,-.14);fork.add(bar);
-  for(const sx of[-1,1]){
-    const grip=new THREE.Mesh(gripG,seatM);
-    grip.rotation.z=Math.PI/2;grip.position.set(sx*.27,.55,-.14);fork.add(grip);
-    // espelhos retrovisores
-    const stem=new THREE.Mesh(mirrorStemG,matteM);
-    stem.position.set(sx*.24,.65,-.14);fork.add(stem);
-    const mir=new THREE.Mesh(mirrorG,matteM);
-    mir.position.set(sx*.26,.73,-.14);fork.add(mir);
-  }
   const head=new THREE.Mesh(headG,hlM);
   head.rotation.x=Math.PI/2;head.position.set(0,.18,.16);fork.add(head);
   g.add(fork);

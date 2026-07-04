@@ -163,12 +163,20 @@ export function getRickState(){
 }
 
 export function updateRick(dt: number){
-  // fogueira sempre tremulando + poça de luz pulsando
-  for(const f of flames){
-    const k=.7+Math.random()*.6;
-    f.scale.set(k,.8+Math.random()*.5,k);
+  // Perf: a fogueira do acampamento (~29 draws) fica no extremo leste (x=474). Da
+  // cidade ela estava sendo desenhada a 300m+ atrás da névoa. Só desenha/anima
+  // dentro de ~155m — é o acampamento SECRETO do Rick, então não custa visual.
+  const pFire=playerPos();
+  const nearCamp=(pFire.x-CAMP.x)*(pFire.x-CAMP.x)+(pFire.z-CAMP.z)*(pFire.z-CAMP.z)<155*155;
+  if(fire.visible!==nearCamp)fire.visible=nearCamp;
+  if(nearCamp){
+    // fogueira tremulando + poça de luz pulsando
+    for(const f of flames){
+      const k=.7+Math.random()*.6;
+      f.scale.set(k,.8+Math.random()*.5,k);
+    }
+    if(fireGlow)(fireGlow.material as THREE.Material).opacity=.14+Math.random()*.12;
   }
-  if(fireGlow)(fireGlow.material as THREE.Material).opacity=.14+Math.random()*.12;
 
   if(phase!=='hunting'&&phase!=='returning')return;
   const pp=playerPos();

@@ -611,9 +611,16 @@ export function updateCops(dt:number){
   for(const c of cops){
     const p=c.g.position;
     const dx=pp.x-p.x,dz=pp.z-p.z,dist=Math.hypot(dx,dz);
+    // Perf: são ~5 viaturas de patrulha SEMPRE no mundo (cada ~23 draws + motorista GLB).
+    // Uma viatura de patrulha distante (>135m, sem perseguir) não é desenhada — a
+    // perseguição fecha em cima de você, então o que importa fica visível. Fora dessa
+    // faixa já está no haze. c.siren=perseguindo; c.officers=policiais desembarcados.
+    c.g.visible = dist<130 || c.siren || !!(c.officers&&c.officers.length);
     // The seated driver is hidden while his officers are out, so a deployed cruiser
     // looks genuinely EMPTY (no fake third cop still sitting inside); shown again on re-board.
-    if(c.driver)c.driver.visible=!(c.officers&&c.officers.length);
+    // Perf (visual-neutro): também esconde o motorista GLB (~7930 tris) quando a viatura
+    // está a >48m — invisível dentro do carro a essa distância.
+    if(c.driver)c.driver.visible=!(c.officers&&c.officers.length)&&dist<48;
     if(c.dispatchT&&c.dispatchT>0)c.dispatchT-=dt;
     // chases if it's one of the nearest responders, OR it was radio-dispatched, OR it already
     // has officers out (a cruiser COMMITS to its arrest — it is never yanked back to patrol
