@@ -5,7 +5,7 @@
 // Sampling/what-to-send lives in online.ts; rendering in remote-players.ts.
 import {
   KEEPALIVE_PING, KEEPALIVE_PONG, PING_INTERVAL_MS, PROTOCOL_VERSION,
-  type PlayerPub, type RemotePose, type SnapRow,
+  type PlayerPub, type RemotePose, type ShotMsg, type SnapRow, type Vec3,
 } from '../../shared/net/protocol.ts';
 
 export interface NetHandlers {
@@ -13,6 +13,10 @@ export interface NetHandlers {
   onAdd(p: PlayerPub): void;
   onDel(id: number): void;
   onSnap(ts: number, rows: SnapRow[]): void;
+  /** a bullet fired somewhere in the world; hit/hp present when it connected */
+  onShot(by: number, o: Vec3, d: Vec3, hit: number, hp: number): void;
+  onDeath(id: number, by: number): void;
+  onSpawn(id: number): void;
   onDropped(): void;
 }
 
@@ -41,6 +45,11 @@ export function netStatus(): Record<string, unknown> {
 export function netSendPos(p: RemotePose): void {
   if (phase !== 'joined' || !ws) return;
   try { ws.send(JSON.stringify({ t: 'pos', ...p })); } catch (e) { /* drop; close handler reconnects */ }
+}
+
+export function netSendShot(m: ShotMsg): void {
+  if (phase !== 'joined' || !ws) return;
+  try { ws.send(JSON.stringify(m)); } catch (e) {}
 }
 
 /** Call periodically (the online glue calls it every send tick): opens/reopens
@@ -82,6 +91,12 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
       case 'add': if (m.p) h.onAdd(m.p as PlayerPub); break;
       case 'del': h.onDel((m.id as number) | 0); break;
       case 'snap': if (Array.isArray(m.p)) h.onSnap(Number(m.ts) || 0, m.p as SnapRow[]); break;
+      case 'shot':
+        if (Array.isArray(m.o) && Array.isArray(m.d))
+          h.onShot((m.by as number) | 0, m.o as Vec3, m.d as Vec3, (m.hit as number) | 0, typeof m.hp === 'number' ? m.hp : -1);
+        break;
+      case 'death': h.onDeath((m.id as number) | 0, (m.by as number) | 0); break;
+      case 'spawn': h.onSpawn((m.id as number) | 0); break;
       case 'full': gotFull = true; break;
     }
   };

@@ -217,6 +217,7 @@ export interface Refs {
   getCur?: () => Vehicle | null;
   getPlayerHeading?: () => number | undefined;
   getOnlineState?: () => Record<string, unknown>; // shared-world presence debug snapshot (js/net/online.ts)
+  onlineShot?: (origin: THREE.Vector3, dir: THREE.Vector3, damage: number, range: number) => void; // combat v1: weapons.ts reports each fired bullet; the server decides hits
   getRadarHeading?: () => number;
   nearestCar?: (maxDist: number) => { c: Vehicle; kind: string } | null;
 
