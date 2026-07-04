@@ -300,6 +300,9 @@ const SHADOW_EVERY=20; // re-renderiza o shadow map 1 a cada N frames (a luz é 
 let mmAccum=0;
 const MM_INTERVAL=1/22;
 let fullMapAccum=0; // throttle the live full-map "Show NPCs" redraw (~20fps, like the radar)
+// Scratch p/ o corte de veículos por frustum (REGRA MESTRA: não desenha o que o
+// jogador não vê). Reusados por frame, sem alocação.
+const _vFrustum=new THREE.Frustum(),_vProj=new THREE.Matrix4(),_vSphere=new THREE.Sphere();
 function step(dt: number){
   updateKeyboardInput();
   updateTouchControls();
@@ -433,6 +436,22 @@ function step(dt: number){
    for(const c of idleCars){if(!c.g)continue;
      const dx=c.g.position.x-pp.x,dz=c.g.position.z-pp.z;
      c.g.visible=dx*dx+dz*dz<v2;}}
+  // REGRA MESTRA: um veículo FORA do campo de visão não precisa ser desenhado — só a
+  // posição/AI seguem (nos update loops acima). O carro da polícia atrás de você continua
+  // existindo/perseguindo, mas não gasta draw nem entra no shadow pass. Corte no nível do
+  // GRUPO (1 teste por carro em vez de o Three testar os ~20 meshes). Câmera já atualizada
+  // (updateCamera rodou), então o frustum é o do frame atual. Raio 8 mantém carros na
+  // borda cuja sombra rasa poderia entrar em cena. Só ESCONDE quem o cull de distância já
+  // deixou visível — nunca revela um carro distante.
+  camera.updateMatrixWorld();
+  _vProj.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);
+  _vFrustum.setFromProjectionMatrix(_vProj);
+  for(const t of traffic)
+    if(t.g.visible&&!_vFrustum.intersectsSphere(_vSphere.set(t.g.position as THREE.Vector3,8)))t.g.visible=false;
+  for(const c of cops)
+    if(c.g.visible&&!_vFrustum.intersectsSphere(_vSphere.set(c.g.position,8)))c.g.visible=false;
+  for(const c of idleCars)
+    if(c.g&&c.g.visible&&!_vFrustum.intersectsSphere(_vSphere.set(c.g.position,8)))c.g.visible=false;
   P.end();
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
