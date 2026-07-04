@@ -126,6 +126,7 @@ export function updateNpcGlb(dt:number,camera?:THREE.PerspectiveCamera):void{
     if(h.seated)st=AnimState.Sit;                                   // vehicle occupant rides seated
     else if(ud.npcDead)st=ud.npcGrounded?AnimState.Lie:AnimState.Ragdoll; // dead: tumble in air, settle on the ground
     else if(ud.npcLying)st=AnimState.Lie;                           // hospital patient on a bed
+    else if(ud.npcSwim)st=AnimState.Swim;                           // online remote player swimming
     else{
       _np.copy(h.group.position);
       speed=dt>1e-4?_np.distanceTo(h.prev)/dt:0;h.prev.copy(_np);   // ground speed → walk/run by speed

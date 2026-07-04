@@ -7,11 +7,12 @@
 // the server (used by the local wrangler dev loop and tests).
 import { state, refs } from '@/core/state.ts';
 import { getNickname, getPlayerId } from '@/ui/leaderboard.ts';
+import { thud } from '@/audio/audio.ts';
 import { SEND_HZ, type MoveMode, type RemotePose } from '../../shared/net/protocol.ts';
 import { isJoined, netMaintain, netPing, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
 import {
   clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome,
-  remoteCount, remoteShotFx, setRemoteDead, updateRemotes,
+  remoteCount, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
 } from './remote-players.ts';
 
 const PROD_WS = 'wss://tiny-gta-mp.andredarcie.workers.dev/ws';
@@ -27,7 +28,13 @@ const handlers: NetHandlers = {
   onSnap: handleSnap,
   onShot: (by, o, d, hit, hp) => {
     remoteShotFx(by, o, d);                       // tracer/bang/aim pose (no-op for own echo)
-    if (hit && hit === getMyOnlineId() && hp >= 0) {
+    const me = getMyOnlineId();
+    if (hit && by === me) {
+      // hitmarker: the server confirmed MY bullet connected
+      thud(3);
+      state.crosshairKick = Math.max(state.crosshairKick, .6);
+    }
+    if (hit && hit === me && hp >= 0) {
       // The server decided I was hit. Its PvP hp is an authoritative CEILING on
       // my local health — damage lands through the normal pipeline, so the
       // existing wasted/hospital flow handles death and respawn untouched.
@@ -35,7 +42,15 @@ const handlers: NetHandlers = {
       state.shake = Math.max(state.shake, .3);
     }
   },
-  onDeath: (id) => setRemoteDead(id, true),       // own id: the shot already zeroed health
+  onDeath: (id, by) => {
+    setRemoteDead(id, true);                      // own id: the shot already zeroed health
+    const me = getMyOnlineId();
+    if (id === me) refs.radioMessage?.(`<b>${remoteNick(by)}</b> took you down.`, 6000);
+    else if (by === me) {
+      refs.message?.('YOU TOOK DOWN ' + remoteNick(id), '#ff2e88');
+      refs.radioMessage?.(`You took down <b>${remoteNick(id)}</b>.`, 5000);
+    } else refs.radioMessage?.(`<b>${remoteNick(by)}</b> took down <b>${remoteNick(id)}</b>.`, 5000);
+  },
   onSpawn: (id) => setRemoteDead(id, false),
   onDropped: () => { clearRemotes(); last = null; },
 };

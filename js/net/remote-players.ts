@@ -120,8 +120,15 @@ function addRemote(p: PlayerPub, t: number): void {
   applyVehicle(r, p.vk | 0); // undefined from a v1 server → 0
 }
 
+/** Display name for kill feeds etc.; safe for innerHTML (nicks are sanitized
+ * server-side to a strict charset with no angle brackets). */
+export function remoteNick(id: number): string {
+  return remotes.get(id)?.nick ?? 'Player ' + id;
+}
+
 function applyMode(r: Remote, m: MoveMode): void {
   r.m = m;
+  r.g.userData.npcSwim = m === 4 || undefined;  // swim clip via updateNpcGlb
   const seated = m === 1 || m === 2 || m === 3; // in a vehicle: ride the 'sit' clip
   if (seated === r.seated) return;
   r.seated = seated;
