@@ -11,7 +11,7 @@
 import {
   DEFAULT_MAX_PLAYERS, KEEPALIVE_PING, KEEPALIVE_PONG, MAX_MSG_BYTES,
   SNAP_INTERVAL_MS, WS_CLOSE_FULL, WS_CLOSE_PROTOCOL,
-  HIT_CHEST_Y, HIT_RADIUS, PVP_HP_MAX, PVP_REGEN_PER_S, PVP_RESPAWN_MS,
+  HIT_CHEST_Y, HIT_RADIUS, MELEE_DMG_HP, PVP_HP_MAX, PVP_REGEN_PER_S, PVP_RESPAWN_MS,
   SHOT_BUCKET_CAP, SHOT_BUCKET_REFILL_PER_S, SHOT_DMG_HP, SHOT_REWIND_MS,
   parseClientMsg, raySphereT,
   type PlayerPub, type RemotePose, type ServerMsg, type ShotMsg, type SnapRow,
@@ -85,7 +85,7 @@ export class WorldDO {
         const parked = await ctx.storage.get<Record<string, RemotePose>>('poses');
         if (parked) for (const s of this.sessions.values()) {
           const p = parked[String(s.id)];
-          if (p) s.pose = { ...p, vk: p.vk | 0 }; // blobs parked by v1 lack vk
+          if (p) s.pose = { ...p, vk: p.vk | 0, d: (p.d | 0) as 0 | 1 }; // older parked blobs lack vk/d
         }
       });
     }
@@ -154,7 +154,7 @@ export class WorldDO {
       if (v === 'teleport') s.tpAt = now;
     }
     s.posAt = now;
-    s.pose = { x: m.x, y: clampPoseY(m.x, m.y, m.z, m.m), z: m.z, h: m.h, m: m.m, i: m.i, vk: m.vk };
+    s.pose = { x: m.x, y: clampPoseY(m.x, m.y, m.z, m.m), z: m.z, h: m.h, m: m.m, i: m.i, vk: m.vk, d: m.d };
     s.hist.push({ t: now, x: m.x, y: s.pose.y, z: m.z });
     if (s.hist.length > 8) s.hist.shift();
     s.dirty = true;
@@ -184,7 +184,7 @@ export class WorldDO {
 
   private pub(s: Session): PlayerPub {
     const p = s.pose!;
-    return { id: s.id, nick: s.nick, x: p.x, y: p.y, z: p.z, h: p.h, m: p.m, i: p.i, vk: p.vk };
+    return { id: s.id, nick: s.nick, x: p.x, y: p.y, z: p.z, h: p.h, m: p.m, i: p.i, vk: p.vk, d: p.d };
   }
 
   // ---- combat v1: every hit is decided HERE (ray vs rewound chest spheres) ----
@@ -199,7 +199,7 @@ export class WorldDO {
 
   private onShot(s: Session, m: ShotMsg): void {
     const now = Date.now();
-    if (s.deadUntil > now || !s.pose) return;       // the dead fire no bullets
+    if (s.deadUntil > now || !s.pose || s.pose.d) return; // the dead fire no bullets (PvP OR local death)
     // rate: token bucket sized so one shotgun blast of pellets fits as a burst
     if (s.shotRefillAt === 0) s.shotRefillAt = now;
     s.shotTokens = Math.min(SHOT_BUCKET_CAP, s.shotTokens + (now - s.shotRefillAt) / 1000 * SHOT_BUCKET_REFILL_PER_S);
@@ -213,19 +213,19 @@ export class WorldDO {
     let best: Session | null = null, bestT = Infinity;
     for (const o of this.sessions.values()) {
       if (o === s || !o.pose || o.deadUntil > now) continue;
-      if (o.pose.i || (o.pose.m >= 1 && o.pose.m <= 3)) continue; // interior/vehicle: PvP-immune in v1
+      if (o.pose.i || o.pose.d || (o.pose.m >= 1 && o.pose.m <= 3)) continue; // interior/vehicle/already-dead: PvP-immune in v1
       const p = this.rewound(o, rt);
       if (!p) continue;
       const t = raySphereT(m.o[0], m.o[1], m.o[2], m.d[0], m.d[1], m.d[2],
         p.x, p.y + HIT_CHEST_Y, p.z, HIT_RADIUS, m.rg);
       if (t !== null && t < bestT) { bestT = t; best = o; }
     }
-    const ev: Extract<ServerMsg, { t: 'shot' }> = { t: 'shot', by: s.id, o: m.o, d: m.d };
+    const ev: Extract<ServerMsg, { t: 'shot' }> = { t: 'shot', by: s.id, o: m.o, d: m.d, k: m.k };
     if (best) {
       // lazy regen up to now, then apply the damage table
       if (best.hpAt) best.hp = Math.min(PVP_HP_MAX, best.hp + (now - best.hpAt) / 1000 * PVP_REGEN_PER_S);
       best.hpAt = now;
-      best.hp -= SHOT_DMG_HP[m.dm];
+      best.hp -= (m.k ? MELEE_DMG_HP : SHOT_DMG_HP)[m.dm];
       ev.hit = best.id;
       ev.hp = Math.max(0, Math.round(best.hp));
     }
@@ -289,7 +289,7 @@ export class WorldDO {
       if (!s.dirty || !s.pose) continue;
       s.dirty = false;
       const p = s.pose;
-      rows.push([s.id, p.x, p.y, p.z, p.h, p.m, p.i, p.vk | 0]);
+      rows.push([s.id, p.x, p.y, p.z, p.h, p.m, p.i, p.vk | 0, p.d | 0]);
     }
     if (rows.length === 0) {
       if (!pendingDead && ++this.quiet >= QUIET_TICKS) this.stopTicking();
