@@ -149,7 +149,7 @@ export class WorldDO {
     // into the plausible band (no under-the-map, no orbit).
     const now = Date.now();
     if (s.pose) {
-      const v = checkMove(s.pose.x, s.pose.z, m.x, m.z, now - s.posAt, m.m, now - s.tpAt);
+      const v = checkMove(s.pose.x, s.pose.z, m.x, m.z, now - s.posAt, m.m, now - s.tpAt, s.pose.m);
       if (v === 'reject') return;
       if (v === 'teleport') s.tpAt = now;
     }

@@ -57,7 +57,10 @@ export function requestNpcGlb(g:THREE.Group,color?:number,pantsColor?:number):vo
 }
 function flushSwaps():void{
   if(!rigReady())return;                 // wait on the shared base before swapping
-  for(const s of pendingSwaps)swapToGlb(s.g,s.color,s.pants);
+  for(const s of pendingSwaps){
+    if(!s.g.parent)continue;             // owner despawned before the swap (e.g. an online player left): skip — a swap would leak a registry entry animating a detached group forever
+    swapToGlb(s.g,s.color,s.pants);
+  }
   if(pendingSwaps.length)console.log(`[npc-glb] swapped ${pendingSwaps.length} NPCs to the Mixamo base`);
   pendingSwaps.length=0;
 }
