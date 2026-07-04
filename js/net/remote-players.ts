@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { state, refs, carColors } from '@/core/state.ts';
 import { scene } from '@/core/engine.ts';
-import { gunshot } from '@/audio/audio.ts';
+import { gunshot, thud } from '@/audio/audio.ts';
 import { makeRemoteAvatar, makeNameTag } from '../../assets/models/characters/remote-player.ts';
 import { makeWeaponTracerLine } from '../../assets/models/effects/weapon-tracer.ts';
 import { disposeNpcGlb, setNpcGlbSeated } from '../../assets/models/characters/npc-glb.ts';
@@ -28,6 +28,11 @@ interface Remote {
   vk: number;
   /** the vehicle model; when set, the avatar rides as its CHILD at the seat */
   veh: THREE.Object3D | null;
+  /** dead as reported in the pose (ANY local cause: falls, cops, PvP...) */
+  poseDead: boolean;
+  /** dead as declared by a server PvP death event (until its spawn event) */
+  pvpDead: boolean;
+  puddleAt: number;
 }
 
 const remotes = new Map<number, Remote>();
@@ -66,12 +71,52 @@ export function remoteShotFx(by: number, o: Vec3, d: Vec3): void {
   state.shotT = state.time; state.shotX = o[0]; state.shotZ = o[2]; // NPCs scatter
 }
 
+/** A melee swing by another player: punch clip + a close-range whoosh. */
+export function remoteMeleeFx(by: number): void {
+  if (by === myId) return;
+  const r = remotes.get(by);
+  if (!r) return;
+  r.g.userData.npcPunchT = state.time;            // npc-glb triggers/holds the punch clip
+  const pp = refs.playerPos?.();
+  if (pp && !r.veh) {
+    const dx = r.g.position.x - pp.x, dz = r.g.position.z - pp.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < 900) thud(Math.max(1, 5 * (1 - Math.sqrt(d2) / 30)));
+  }
+}
+
+// Death is visual-OR of two sources: the pose's dead flag (ANY local cause —
+// roof falls, cops, drowning — reported by the dying client) and the server's
+// PvP death event (instant, before the next snapshot lands).
+function applyDeadVisual(r: Remote): void {
+  const dead = r.poseDead || r.pvpDead;
+  r.g.userData.npcDead = dead || undefined;
+  r.g.userData.npcGrounded = dead || undefined;   // settle straight into the Lie clip
+}
+
+function dropPuddle(r: Remote, x: number, z: number): void {
+  const now = performance.now();
+  if (now - r.puddleAt < 2000) return;            // one puddle per death, not per source
+  r.puddleAt = now;
+  refs.addBloodPuddle?.(x, z);
+}
+
+function applyPoseDead(r: Remote, dead: boolean, x: number, z: number): void {
+  if (r.poseDead === dead) return;
+  r.poseDead = dead;
+  const was = !!r.g.userData.npcDead;
+  applyDeadVisual(r);
+  if (dead && !was) dropPuddle(r, x, z);
+}
+
 /** Server-declared PvP death/respawn: lie down / get back up. */
 export function setRemoteDead(id: number, dead: boolean): void {
   const r = remotes.get(id);
   if (!r) return;
-  r.g.userData.npcDead = dead || undefined;
-  r.g.userData.npcGrounded = dead || undefined;   // settle straight into the Lie clip
+  r.pvpDead = dead;
+  const was = !!r.g.userData.npcDead;
+  applyDeadVisual(r);
+  if (dead && !was) dropPuddle(r, r.g.position.x, r.g.position.z);
 }
 
 export function handleWelcome(id: number, players: PlayerPub[]): void {
@@ -94,7 +139,7 @@ export function handleSnap(ts: number, rows: SnapRow[]): void {
     let r = remotes.get(id);
     if (!r) {
       // seen before its 'add' (e.g. right after the DO woke from hibernation)
-      addRemote({ id, nick: 'Player ' + id, x: row[1], y: row[2], z: row[3], h: row[4], m: (row[5] | 0) as MoveMode, i: row[6] ? 1 : 0, vk: row[7] | 0 }, ts);
+      addRemote({ id, nick: 'Player ' + id, x: row[1], y: row[2], z: row[3], h: row[4], m: (row[5] | 0) as MoveMode, i: row[6] ? 1 : 0, vk: row[7] | 0, d: row[8] ? 1 : 0 }, ts);
       r = remotes.get(id);
       if (!r) continue;
     }
@@ -103,6 +148,7 @@ export function handleSnap(ts: number, rows: SnapRow[]): void {
     if (r.m !== ((row[5] | 0) as MoveMode)) applyMode(r, (row[5] | 0) as MoveMode);
     r.interior = !!row[6];
     applyVehicle(r, row[7] | 0); // column absent on a v1 server → 0 (on foot)
+    applyPoseDead(r, !!row[8], row[1], row[3]);
   }
 }
 
@@ -114,10 +160,11 @@ function addRemote(p: PlayerPub, t: number): void {
   g.position.set(p.x, p.y, p.z);
   g.rotation.y = p.h;
   tag.position.set(p.x, p.y + TAG_Y, p.z);
-  const r: Remote = { id: p.id, nick: p.nick, g, tag, buf: [{ t, x: p.x, y: p.y, z: p.z, h: p.h }], m: 0, interior: !!p.i, seated: false, vk: 0, veh: null };
+  const r: Remote = { id: p.id, nick: p.nick, g, tag, buf: [{ t, x: p.x, y: p.y, z: p.z, h: p.h }], m: 0, interior: !!p.i, seated: false, vk: 0, veh: null, poseDead: false, pvpDead: false, puddleAt: 0 };
   remotes.set(p.id, r);
   applyMode(r, p.m);
   applyVehicle(r, p.vk | 0); // undefined from a v1 server → 0
+  if (p.d) applyPoseDead(r, true, p.x, p.z); // joined while they lie dead
 }
 
 /** Display name for kill feeds etc.; safe for innerHTML (nicks are sanitized

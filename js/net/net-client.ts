@@ -13,8 +13,9 @@ export interface NetHandlers {
   onAdd(p: PlayerPub): void;
   onDel(id: number): void;
   onSnap(ts: number, rows: SnapRow[]): void;
-  /** a bullet fired somewhere in the world; hit/hp present when it connected */
-  onShot(by: number, o: Vec3, d: Vec3, hit: number, hp: number): void;
+  /** an attack somewhere in the world (k=0 bullet, k=1 melee swing); hit/hp
+   * present when it connected */
+  onShot(by: number, o: Vec3, d: Vec3, hit: number, hp: number, k: number): void;
   onDeath(id: number, by: number): void;
   onSpawn(id: number): void;
   onDropped(): void;
@@ -99,7 +100,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
       case 'snap': if (Array.isArray(m.p)) h.onSnap(Number(m.ts) || 0, m.p as SnapRow[]); break;
       case 'shot':
         if (Array.isArray(m.o) && Array.isArray(m.d))
-          h.onShot((m.by as number) | 0, m.o as Vec3, m.d as Vec3, (m.hit as number) | 0, typeof m.hp === 'number' ? m.hp : -1);
+          h.onShot((m.by as number) | 0, m.o as Vec3, m.d as Vec3, (m.hit as number) | 0, typeof m.hp === 'number' ? m.hp : -1, (m.k as number) | 0);
         break;
       case 'death': h.onDeath((m.id as number) | 0, (m.by as number) | 0); break;
       case 'spawn': h.onSpawn((m.id as number) | 0); break;

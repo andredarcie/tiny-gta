@@ -1120,6 +1120,8 @@ function fireOneBullet({range=52,speed=86,damage=1,spread=0}: {range?: number;sp
 function meleeAttack(range: number,knock: number,lethal: boolean){
   startMeleeAnimation(range,knock,lethal);
   state.crosshairKick=1;
+  // Online: share the swing — any PvP hit is decided by the SERVER (~2m reach).
+  if(!refs.inGunShopRange?.())refs.onlineMelee?.(range,lethal);
 }
 
 // Jato do lança-chamas: efeito de cone + dano de curto alcance.
