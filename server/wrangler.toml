@@ -1,0 +1,20 @@
+# Tiny GTA multiplayer server — Cloudflare Worker + ONE Durable Object ("world").
+# Deploys with `npm run deploy` (wrangler) — completely separate from the game's
+# itch.io pipeline. Free plan: the DO class MUST be SQLite-backed
+# (new_sqlite_classes below), KV-backed DO classes are paid-only.
+name = "tiny-gta-mp"
+main = "src/index.ts"
+compatibility_date = "2026-06-01"
+
+[[durable_objects.bindings]]
+name = "WORLD"
+class_name = "WorldDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["WorldDO"]
+
+[vars]
+# World capacity: beyond this, joiners get {t:'full'} and the game stays offline
+# for them (graceful fallback). Tune without code changes.
+MAX_PLAYERS = "32"
