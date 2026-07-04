@@ -26,7 +26,9 @@ export const POS_MAX_Y = 800;
  * (WebSocket auto-response) — free on the Cloudflare side, keeps NATs open. */
 export const KEEPALIVE_PING = 'p';
 export const KEEPALIVE_PONG = 'o';
-export const KEEPALIVE_MS = 25_000;
+/** Ping cadence: doubles as keepalive AND live RTT for the HUD "PING" line.
+ * Auto-response pairs are not billed and never wake the DO, so 3 s is free. */
+export const PING_INTERVAL_MS = 3_000;
 /** Remote entities render this far in the past so two snapshots bracket the
  * render time and interpolation stays smooth across network jitter. */
 export const INTERP_DELAY_MS = 150;
