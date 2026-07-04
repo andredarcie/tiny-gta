@@ -12,7 +12,7 @@ import { SEND_HZ, type MoveMode, type RemotePose } from '../../shared/net/protoc
 import { isJoined, netMaintain, netPing, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
 import {
   clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome,
-  remoteCount, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
+  remoteCount, remoteMeleeFx, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
 } from './remote-players.ts';
 
 const PROD_WS = 'wss://tiny-gta-mp.andredarcie.workers.dev/ws';
@@ -26,8 +26,9 @@ const handlers: NetHandlers = {
   onAdd: handleAdd,
   onDel: handleDel,
   onSnap: handleSnap,
-  onShot: (by, o, d, hit, hp) => {
-    remoteShotFx(by, o, d);                       // tracer/bang/aim pose (no-op for own echo)
+  onShot: (by, o, d, hit, hp, k) => {
+    if (k === 1) remoteMeleeFx(by);               // punch swing on the remote avatar
+    else remoteShotFx(by, o, d);                  // tracer/bang/aim pose (no-op for own echo)
     const me = getMyOnlineId();
     if (hit && by === me) {
       // hitmarker: the server confirmed MY bullet connected
@@ -78,6 +79,25 @@ export function initOnline(): void {
       d: [r3(dir.x), r3(dir.y), r3(dir.z)],
       dm: damage | 0,
       rg: Math.round(range),
+      k: 0,
+    });
+  };
+  // Called by weapons.ts for every melee swing: same server-decided hit
+  // pipeline with a ~2m reach; remotes see the punch clip instead of a tracer.
+  refs.onlineMelee = (range: number, lethal: boolean) => {
+    if (!enabled || !isJoined()) return;
+    const pp = refs.playerPos?.();
+    if (!pp) return;
+    let h = refs.getPlayerHeading?.() ?? 0;
+    if (!Number.isFinite(h)) h = 0;
+    const r2 = (v: number) => Math.round(v * 100) / 100;
+    netSendShot({
+      t: 'shot',
+      o: [r2(pp.x), r2(pp.y + 1.2), r2(pp.z)],
+      d: [Math.round(Math.sin(h) * 1000) / 1000, 0, Math.round(Math.cos(h) * 1000) / 1000],
+      dm: lethal ? 2 : 1,
+      rg: Math.max(1, Math.min(3, Math.round(range))),
+      k: 1,
     });
   };
 }
@@ -147,10 +167,13 @@ function samplePose(): RemotePose | null {
   let h = refs.getPlayerHeading?.() ?? 0;
   if (!Number.isFinite(h)) h = 0;
   const r = (v: number) => Math.round(v * 100) / 100;
-  return { x: r(px), y: r(py), z: r(pz), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0, vk };
+  // dead from ANY local cause (roof fall, cops, drowning, PvP): remotes lie the
+  // avatar down + blood puddle until the hospital respawn flips this back
+  const dead = state.health <= 0 || !!refs.getWasted?.() ? 1 : 0;
+  return { x: r(px), y: r(py), z: r(pz), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0, vk, d: dead as 0 | 1 };
 }
 
 function poseChanged(a: RemotePose, b: RemotePose): boolean {
   return Math.abs(a.x - b.x) > 0.02 || Math.abs(a.z - b.z) > 0.02 || Math.abs(a.y - b.y) > 0.05
-    || Math.abs(a.h - b.h) > 0.01 || a.m !== b.m || a.i !== b.i || a.vk !== b.vk;
+    || Math.abs(a.h - b.h) > 0.01 || a.m !== b.m || a.i !== b.i || a.vk !== b.vk || a.d !== b.d;
 }

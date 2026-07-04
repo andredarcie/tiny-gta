@@ -56,6 +56,9 @@ export interface RemotePose {
   /** vehicle kind being driven (see VK_MAX doc); 0 on foot. While driving, the
    * pose is the VEHICLE's origin — the avatar rides at the seat offset. */
   vk: number;
+  /** 1 while DEAD from any local cause (falls, cops, drowning, PvP): remotes
+   * lie the avatar down (+ blood puddle) until the hospital respawn flips it. */
+  d: 0 | 1;
 }
 
 export interface PlayerPub extends RemotePose {
@@ -63,17 +66,19 @@ export interface PlayerPub extends RemotePose {
   nick: string;
 }
 
-/** Compact snapshot row: [id, x, y, z, h, m, i, vk]. Columns are append-only —
+/** Compact snapshot row: [id, x, y, z, h, m, i, vk, d]. Columns are append-only —
  * older clients destructure by index and ignore the tail, so adding here is
  * backward-compatible in both directions. */
-export type SnapRow = [number, number, number, number, number, number, number, number];
+export type SnapRow = [number, number, number, number, number, number, number, number, number];
 
 export type Vec3 = [number, number, number];
 
-/** One fired hitscan bullet (shotgun = one message per pellet). `dm` is the
- * game's local damage unit (1..3); the SERVER maps it to PvP HP via SHOT_DMG_HP
- * and decides the hit — the client never claims "I hit X". */
-export interface ShotMsg { t: 'shot'; o: Vec3; d: Vec3; dm: number; rg: number }
+/** One attack. k=0: a hitscan bullet (shotgun = one message per pellet).
+ * k=1: a MELEE swing — same server-side hit pipeline with a ~2m reach and its
+ * own damage table; remotes play the punch clip instead of a tracer. `dm` is
+ * the game's local damage unit (1..3); the SERVER maps it to PvP HP and
+ * decides the hit — the client never claims "I hit X". */
+export interface ShotMsg { t: 'shot'; o: Vec3; d: Vec3; dm: number; rg: number; k: 0 | 1 }
 
 export type ClientMsg =
   | { t: 'join'; v: number; nick: string; pid: string }
@@ -85,7 +90,7 @@ export type ServerMsg =
   | { t: 'add'; p: PlayerPub }
   | { t: 'del'; id: number }
   | { t: 'snap'; ts: number; p: SnapRow[] }
-  | { t: 'shot'; by: number; o: Vec3; d: Vec3; hit?: number; hp?: number }
+  | { t: 'shot'; by: number; o: Vec3; d: Vec3; k: 0 | 1; hit?: number; hp?: number }
   | { t: 'death'; id: number; by: number }
   | { t: 'spawn'; id: number }
   | { t: 'full' }
@@ -94,7 +99,10 @@ export type ServerMsg =
 // ---- combat v1 (PvP hits decided server-side; see server/src/world.ts) ------
 /** Local damage units (1..3) → PvP HP damage. Index 0 unused. */
 export const SHOT_DMG_HP = [0, 12, 18, 26] as const;
+/** Melee damage: dm 1 = fists, dm 2+ = lethal blade/club. */
+export const MELEE_DMG_HP = [0, 10, 18, 18] as const;
 export const SHOT_RANGE_MAX = 80;
+export const MELEE_RANGE_MAX = 3;
 /** Shot-rate token bucket: burst covers a full shotgun blast of pellets. */
 export const SHOT_BUCKET_CAP = 12;
 export const SHOT_BUCKET_REFILL_PER_S = 12;
@@ -180,6 +188,7 @@ export function parseClientMsg(raw: string): ClientMsg | null {
       m: mode as MoveMode,
       i: m.i ? 1 : 0,
       vk,
+      d: m.d ? 1 : 0,
     };
   }
   if (m.t === 'shot') {
@@ -193,9 +202,11 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     o[2] = clampNum(o[2], -POS_LIMIT_XZ, POS_LIMIT_XZ);
     let dm = typeof m.dm === 'number' ? m.dm | 0 : 1;
     if (dm < 1) dm = 1; else if (dm > 3) dm = 3;
-    let rg = typeof m.rg === 'number' ? m.rg | 0 : SHOT_RANGE_MAX;
-    if (rg < 1) rg = 1; else if (rg > SHOT_RANGE_MAX) rg = SHOT_RANGE_MAX;
-    return { t: 'shot', o, d, dm, rg };
+    const k = m.k === 1 ? 1 : 0;                // melee swing vs bullet
+    const rgMax = k ? MELEE_RANGE_MAX : SHOT_RANGE_MAX;
+    let rg = typeof m.rg === 'number' ? m.rg | 0 : rgMax;
+    if (rg < 1) rg = 1; else if (rg > rgMax) rg = rgMax;
+    return { t: 'shot', o, d, dm, rg, k };
   }
   return null;
 }

@@ -23,7 +23,7 @@ function mixamoLook(g:THREE.Object3D,color?:number,pants?:number):Look{
 }
 
 // Per-NPC handle in the central registry; each carries its own AnimationStateMachine.
-interface NpcGlbHandle{group:THREE.Group;prev:THREE.Vector3;seated:boolean;accum:number;fsm:AnimationStateMachine;}
+interface NpcGlbHandle{group:THREE.Group;prev:THREE.Vector3;seated:boolean;accum:number;fsm:AnimationStateMachine;punchShown?:number;}
 const registry:NpcGlbHandle[]=[];
 const npcFsm=(g:THREE.Object3D,ch:{mixer:THREE.AnimationMixer;actions:Record<string,THREE.AnimationAction>})=>
   new AnimationStateMachine(g,ch.mixer,ch.actions,{solveLegs:()=>{},locoScale:0.6,walkNat:MIXAMO_WALK_NAT,runNat:MIXAMO_LOCO_NAT},MIXAMO_TABLE);
@@ -121,12 +121,18 @@ export function updateNpcGlb(dt:number,camera?:THREE.PerspectiveCamera):void{
     if(cam&&!h.seated&&!_frustum.intersectsSphere(_sphere.set(h.group.position,1.6))){h.prev.copy(h.group.position);continue;}
     const far=cam?h.group.position.distanceToSquared(_camPos)>FAR2:false;
     const ud=h.group.userData;
+    // remote-player melee: one trigger per swing timestamp (trigger() restarts
+    // the one-shot clip, so rapid swings re-punch instead of holding a frame)
+    if(ud.npcPunchT!==undefined&&ud.npcPunchT!==h.punchShown&&!h.seated&&!ud.npcDead){
+      h.punchShown=ud.npcPunchT as number;h.fsm.trigger(AnimState.Punch);
+    }
     // ----- decide this NPC's AnimState (the FSM renders it) -----
     let speed=0,loco=AnimState.Idle,st:AnimState;
     if(h.seated)st=AnimState.Sit;                                   // vehicle occupant rides seated
     else if(ud.npcDead)st=ud.npcGrounded?AnimState.Lie:AnimState.Ragdoll; // dead: tumble in air, settle on the ground
     else if(ud.npcLying)st=AnimState.Lie;                           // hospital patient on a bed
     else if(ud.npcSwim)st=AnimState.Swim;                           // online remote player swimming
+    else if(state.time-((ud.npcPunchT as number)??-9)<0.5)st=AnimState.Punch; // online remote melee swing
     else{
       _np.copy(h.group.position);
       speed=dt>1e-4?_np.distanceTo(h.prev)/dt:0;h.prev.copy(_np);   // ground speed → walk/run by speed

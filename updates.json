@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-04-online-fists-and-bodies",
+    "date": "2026-07-04",
+    "title": "Fists work online — and the fallen stay fallen",
+    "description": "Two things you told us were missing, fixed. First: punches now exist online — other players SEE you swing, and a well-placed fist (or blade) actually hurts them, judged by the server just like bullets. Second: when a player dies — shot, run over, or after an unwise leap off a rooftop — everyone nearby now sees them drop where they fell, blood puddle and all, until the hospital scoops them up. No more ghosts quietly standing around."
+  },
+  {
     "id": "2026-07-04-online-combat",
     "date": "2026-07-04",
     "title": "Online shootouts are ON",
