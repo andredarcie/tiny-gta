@@ -12,7 +12,7 @@ import {scene} from '@/core/engine.ts';
 // estilo open-world: objeto pequeno NÃO deve ser desenhado de longe (some perto), ao
 // contrário dos prédios (grandes), que aparecem de bem longe.
 const PROP_CHUNK=90;  // lado do super-bloco de props (m)
-const PROP_CULL=160;  // props além disso (do centro do chunk) não são desenhados
+const PROP_CULL=108;  // perf: 160→108. Props (árvores/postes/placas) são ~30 draws/chunk; cortar cedo economiza draws (a névoa a ~200 já os esconde)
 interface PropBucket{geos:THREE.BufferGeometry[];cast:boolean;receive:boolean;order:number;}
 const chunks=new Map<string,Map<THREE.Material,PropBucket>>(); // chunkKey -> Map(material -> {geos,cast,receive,order})
 const _wp=new THREE.Vector3();

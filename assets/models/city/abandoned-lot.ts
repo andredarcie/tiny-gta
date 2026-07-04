@@ -15,7 +15,7 @@ const weedM=new THREE.MeshLambertMaterial({color:0x5f8a48});
 
 // Chunking espacial (LOD por tamanho, igual aos props): entulho é objeto
 // pequeno/médio → distância de corte curta. updateLotCulling esconde os longe.
-const LOT_CHUNK=90, LOT_CULL=200;
+const LOT_CHUNK=90, LOT_CULL=150; // perf: cull 200→150 (entulho de lote some antes; névoa a ~205 cobre)
 type LotBuckets={concrete:THREE.BufferGeometry[],tire:THREE.BufferGeometry[],bin:THREE.BufferGeometry[],weed:THREE.BufferGeometry[]};
 const newBuckets=():LotBuckets=>({concrete:[],tire:[],bin:[],weed:[]});
 const chunks=new Map<string,LotBuckets>();

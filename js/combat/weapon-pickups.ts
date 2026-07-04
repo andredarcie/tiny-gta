@@ -84,6 +84,10 @@ export function updateWeaponPickups(dt: number){
       continue;
     }
     const dx=pp.x-p.x,dz=pp.z-p.z,d2=dx*dx+dz*dz;
+    // perf: cada pickup de arma é ~16-21 draws (halo+ícone+glow); só desenha dentro
+    // de ~95m — some no haze antes disso e o radar já marca a posição.
+    const vis=d2<80*80;
+    if(p.g.visible!==vis)p.g.visible=vis;
     if(d2>ANIM2)continue;          // too far: no animation, no collection
     // spin + bob to make it readable once you are close
     p.g.rotation.y+=1.8*dt;

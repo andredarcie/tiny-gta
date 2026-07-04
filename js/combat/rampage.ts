@@ -138,8 +138,15 @@ function finishRampage(success: boolean,silent=false){
 export function updateRampage(dt: number){
   // anima as caveiras vivas (gira + flutua + halo pulsando + olhos brilhando) e
   // toca o cooldown das escondidas pra devolvê-las (jogo rejogável).
+  const pRp=playerPos();
   for(const p of pads){
     if(p.alive){
+      // perf: a caveira (~21 draws: halo+ícone+olhos) só é desenhada/animada dentro
+      // de ~115m — é um marcador de atividade e o radar já mostra a posição. Longe,
+      // some (visual-leve; some no haze bem antes disso de qualquer jeito).
+      const near=(pRp.x-p.x)*(pRp.x-p.x)+(pRp.z-p.z)*(pRp.z-p.z)<115*115;
+      if(p.g.visible!==near)p.g.visible=near;
+      if(!near)continue;
       const g=p.g;
       const ic=g.userData.icon;
       if(ic){

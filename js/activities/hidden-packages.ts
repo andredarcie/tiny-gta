@@ -155,11 +155,16 @@ export function updateHiddenPackages(dt: number): void{
   const pp=playerPos();
   const r2=PICK_R*PICK_R;
   const ANIM2=70*70; // longe: nem anima (não cabe na tela) nem checa coleta
+  const VIS2=78*78;  // perf: cada pacote é ~18 draws; só desenha dentro de ~78m (some no haze; reforça o "escondido")
   for(let k=0;k<packs.length;k++){
     const p=packs[k];
     if(p.taken)continue;
     // distância 2D ao quadrado, calculada uma vez (sem sqrt no hot loop).
     const dx=pp.x-p.x,dz=pp.z-p.z,d2=dx*dx+dz*dz;
+    // corte de VISIBILIDADE: pacote distante não é desenhado (era ~18 draws cada, e
+    // são 24 espalhados). Também reforça o "escondido" — só aparece de perto.
+    const vis=d2<VIS2;
+    if(p.g.visible!==vis)p.g.visible=vis;
     if(d2>ANIM2)continue; // pacote distante: pula animação cosmética E coleta
     // gira, balança e pulsa o halo pra chamar atenção
     p.g.rotation.y+=2.2*dt;

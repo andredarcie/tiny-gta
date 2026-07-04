@@ -25,7 +25,7 @@ interface TrafficCar{
 }
 
 export const traffic:TrafficCar[]=[];
-const CAR_CULL2=170*170; // LOD: carro de trânsito além disso não é desenhado
+const CAR_CULL2=140*140; // perf: LOD 170→140 (carro de trânsito ~25 draws; some antes, já no haze)
 // Vector3 de rascunho reaproveitados na colisão carro-vs-carro do jogador.
 const _push=new THREE.Vector3();
 const _mid=new THREE.Vector3();
@@ -106,7 +106,7 @@ export function trafficPos(t:TrafficCar):LanePoint{
   return lanePoint(t.A,t.B,t.t);
 }
 
-for(let k=0;k<14;k++)spawnTraffic();
+for(let k=0;k<5;k++)spawnTraffic(); // perf: 14→5 (cada carro ~25-36 draws — o maior sink; ruas mantêm movimento com os cops de patrulha + carros parados)
 
 export function updateTraffic(dt:number){
   const pp=playerPos();
@@ -155,9 +155,13 @@ export function updateTraffic(dt:number){
     t.g.rotation.y=t.heading;
     // LOD: carro longe não é desenhado nem anima rodas/motorista; a posição
     // segue atualizando (acima) pra o trânsito fluir quando reaparece.
-    const cdx=np.x-pp.x,cdz=np.z-pp.z;
-    if(cdx*cdx+cdz*cdz>=CAR_CULL2){t.g.visible=false;continue;}
+    const cdx=np.x-pp.x,cdz=np.z-pp.z,cd2=cdx*cdx+cdz*cdz;
+    if(cd2>=CAR_CULL2){t.g.visible=false;continue;}
     t.g.visible=true;
+    // Perf (visual-neutro): o motorista GLB (~7930 tris + skinning) some quando o carro
+    // está a >48m — não dá pra ver alguém dentro do carro através do para-brisa a essa
+    // distância, então é 1 draw + o skinning economizados por carro médio/distante.
+    if(t.driver)t.driver.visible=cd2<48*48;
     spinWheels(t.g,t.speed,dt,clamp(dh*2,-1,1)); // steer anima volante e braços
     const activeCur=cur;
     if(state.mode==='car'&&activeCur){

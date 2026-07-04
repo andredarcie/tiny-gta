@@ -59,8 +59,25 @@ let fpsCount=0,fpsWindowT=performance.now(),fps=0,fpsMin=999;
 let fpsMinReset=performance.now();
 let lastUi=0;
 
+// ---- Custo do shadow pass (2º render da cena inteira) ----
+// O shadow map só é redesenhado 1 a cada N frames (main.ts liga needsUpdate).
+// Nesses frames o custo salta. Separamos a média dos frames COM shadow pass dos
+// SEM, pra quantificar quanto a sombra custa (ms e draw calls extras) — dado que
+// decide se mexer em tamanho/frequência da sombra vale a pena.
+let shadowFrame=false;
+let shadowMs=0,colorMs=0,shadowCalls=0,colorCalls=0;
+export function markShadow(){shadowFrame=true;}
+
+// ---- Contagem de entidades visíveis por categoria ----
+// main.ts injeta uma fn barata que varre as arrays (traffic/peds/gangs/...) e conta
+// os `.visible`. Só é chamada no refresh do overlay (~5fps), nunca por frame, então
+// não pesa no orçamento. Diz DIRETO onde estão os draw calls (o que cortar).
+let countsFn:(()=>Record<string,number|string>)|null=null;
+export function setCounts(fn:()=>Record<string,number|string>){countsFn=fn;}
+
 export function frameStart(){
   frameT0=performance.now();
+  shadowFrame=false;
   if(on)acc.clear();
 }
 
@@ -96,6 +113,9 @@ export function frameEnd(){
       dCalls:ri.calls-_pCalls,calls:ri.calls,ctx});
     if(hitches.length>300)hitches.shift();
   }
+  // separa a média dos frames COM shadow pass dos SEM (ver acima)
+  if(shadowFrame){shadowMs=shadowMs?shadowMs*.8+frameMs*.2:frameMs;shadowCalls=ri.calls;}
+  else{colorMs=colorMs?colorMs*.8+frameMs*.2:frameMs;colorCalls=ri.calls;}
   _pProg=prog;_pGeo=mi.geometries;_pTex=mi.textures;_pCalls=ri.calls;
   if(now-lastUi>=200){renderOverlay();lastUi=now;}
 }
@@ -136,6 +156,20 @@ function renderOverlay(){
   html+=`<span style="color:${color(r.calls,400,900)}">draws ${r.calls}</span>`
        +`  tris ${(r.triangles/1000).toFixed(0)}k\n`;
   html+=`geo ${m.geometries}  tex ${m.textures}  prog ${programs}\n`;
+  // custo do shadow pass: quanto os frames com sombra passam dos sem (ms e draws)
+  const dShadowMs=shadowMs&&colorMs?shadowMs-colorMs:0;
+  const dShadowCalls=shadowCalls&&colorCalls?Math.max(0,shadowCalls-colorCalls):0;
+  html+=`<span style="color:${color(dShadowMs,2,5)}">shadow +${dShadowMs.toFixed(1)}ms`
+       +`  +${dShadowCalls} draws</span>\n`;
+  // contagem de entidades visíveis por categoria (o que está desenhando)
+  if(countsFn){
+    let cnt:Record<string,number|string>|null=null;
+    try{cnt=countsFn();}catch(e){}
+    if(cnt){
+      const parts=Object.entries(cnt).map(([k,v])=>`${k} ${v}`).join('  ');
+      html+=`<span style="color:#9fe0ff;opacity:.85">${parts}</span>\n`;
+    }
+  }
   html+=`<span style="opacity:.7">renderScale ${getRenderScale().toFixed(2)}</span>\n`;
   html+=`<span style="opacity:.55">── CPU ms / system ──</span>\n`;
   for(const[k,v]of rows.slice(0,16)){
@@ -176,12 +210,18 @@ addEventListener('keydown',(e:KeyboardEvent)=>{
 (window as any).profilerClear=()=>{hitches.length=0;peak.clear();framePeak=0;};
 (window as any).profilerReport=()=>{
   const r=renderer.info.render,m=renderer.info.memory;
+  let counts:Record<string,number|string>|null=null;
+  try{counts=countsFn?countsFn():null;}catch(e){}
   return JSON.stringify({
     fps,fpsMin,frameMs:+frameEma.toFixed(2),framePeakMs:+framePeak.toFixed(2),
     drawCalls:r.calls,triangles:r.triangles,
     geometries:m.geometries,textures:m.textures,
     programs:renderer.info.programs?renderer.info.programs.length:0,
     renderScale:+getRenderScale().toFixed(2),
+    // custo do shadow pass isolado: frames com sombra vs sem (ms + draws extras)
+    shadow:{withMs:+shadowMs.toFixed(2),withoutMs:+colorMs.toFixed(2),
+      deltaMs:+(shadowMs-colorMs).toFixed(2),deltaDraws:Math.max(0,shadowCalls-colorCalls)},
+    counts,
     systemsMs:Object.fromEntries([...ema.entries()].map(([k,v]):[string,number]=>[k,+v.toFixed(3)])
       .sort((a,b)=>b[1]-a[1]))
   },null,2);

@@ -2,16 +2,16 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 import {rand,irand,pick,clamp} from '@/core/constants.ts';
+import {FACADES,AWNINGS} from '@/core/palette.ts';
 import {addDoorArrow} from './door-arrow.ts';
 
 // Portas funcionais: encostar nelas leva o jogador ao telhado do prédio
 // (js/world/doors.ts cuida do gatilho e do teleporte; js/actors/player.ts da queda)
 export const buildingDoors:any[]=[];
 
-// Paleta Miami, porém puxada pro realista: estuque desbotado pelo sol em vez de
-// pastéis saturados de desenho. Areia, off-white quente, coral/salmão suave,
-// verde-água esmaecido, aqua-cinza e terracota poeirento.
-const facadePalette=['#e7d8c2','#d8c5a6','#e3b6a6','#bcd4cd','#ccd6d0','#e0cbb1','#c7b69e','#d8bdac'];
+// Miami palette pulled realistic: sun-faded stucco instead of saturated cartoon
+// pastels. Values live in the central palette (js/core/palette.ts FACADES).
+const facadePalette=FACADES;
 // Altura do térreo (faixa sólida sem janela): janelas só do 1º andar pra cima.
 const BASE_H=3.2;
 
@@ -86,8 +86,7 @@ const roofEquipMat=new THREE.MeshLambertMaterial({color:0x9aa0a8});
 const tankMat=new THREE.MeshLambertMaterial({color:0x8a705a});
 const doorMat=new THREE.MeshLambertMaterial({color:0x2a2230});
 const antennaTipMat=new THREE.MeshBasicMaterial({color:0xff3030});
-const awningMats=[0xc85d77,0x3f9a96,0xd7af4f,0xc7783c,0x90699e]
-  .map(c=>new THREE.MeshLambertMaterial({color:c}));
+const awningMats=AWNINGS.map(c=>new THREE.MeshLambertMaterial({color:c}));
 // Paredes lisas (faces sem janela): cor sólida da fachada, SEM textura — bem
 // mais barato de desenhar que a face com mapa de janelas (map+emissiveMap).
 const plainMats=facadePalette.map(c=>new THREE.MeshLambertMaterial({color:c}));
@@ -327,7 +326,10 @@ export function updateCityCulling(px:number,pz:number):void{
   // cidade inteira era desenhada de lá. Margem de ~meio chunk (não +CHUNK
   // inteiro, que deixava a borda leste da cidade renderizar da zona rural).
   const ff=Math.min(scene.fog?(scene.fog as THREE.Fog).far:430,330);
-  const far=ff+70,f2=far*far;
+  // Margem reduzida (+70→+40): chunks além da névoa (far) já estão 100% opacos, então
+  // desenhar meio-chunk a mais era custo puro atrás da parede de névoa. Perf: corta o
+  // anel externo de chunks invisíveis (praticamente visual-neutro).
+  const far=ff+40,f2=far*far;
   for(const g of cityChunks){
     const dx=g.userData.cx-px,dz=g.userData.cz-pz;
     g.visible=dx*dx+dz*dz<f2;

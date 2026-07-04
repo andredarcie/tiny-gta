@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import { clone as cloneSkinned } from 'three/addons/utils/SkeletonUtils.js';
+import { SKIN_TONES, HAIR_COLORS, SHIRT_COLORS, PANTS_COLORS } from '@/core/palette.ts';
 
 const BASE_URL = import.meta.env.BASE_URL;
 const MODELS = BASE_URL + 'models/mixamo/';
@@ -43,10 +44,12 @@ export type Region = typeof REGIONS[number];
 export type Look = Record<Region, number>;
 
 // ---- per-instance look generation (seeded so a named NPC always looks the same) ----
-const SKINS = [0xeec2a0, 0xd9a06b, 0xb8754c, 0x8f5637, 0x6f3e2a, 0xf0c8a0];
-const HAIRS = [0x2e2018, 0x14100c, 0x4a2b18, 0x6b5137, 0x0d0d12, 0x7a5a3a, 0x9a9a9a];
-const SHIRTS = [0xc23b4e, 0x3b7ac2, 0xcf9a3a, 0x3aa06b, 0xd96fae, 0xe8e3d2, 0x7a4f9e, 0x40c8c0, 0x2f9fd6, 0x444a55];
-const PANTSC = [0x202435, 0x263454, 0x2e2a24, 0x3d3f46, 0x18191f, 0xe7dec9, 0x4a3b2a];
+// Base vocabularies live in the central palette (js/core/palette.ts); the shirt
+// pool adds the hero blue + a muted grey on top of the shared FLEET family.
+const SKINS = SKIN_TONES;
+const HAIRS = HAIR_COLORS;
+const SHIRTS = [...SHIRT_COLORS, 0x2f9fd6, 0x444a55];
+const PANTSC = PANTS_COLORS;
 // the hero's fixed "Vice City" look.
 export const PLAYER_LOOK: Look = { Skin: 0xeec2a0, Hair: 0x2e2018, Eyes: 0x141414, Shirt: 0x2f9fd6, Pants: 0xe7dec9, Socks: 0xf0f0f0 };
 function hash(s: string): number { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return (h >>> 0) || 1; }
@@ -148,7 +151,13 @@ export function makeCharacter(look: Look): MixamoChar | null {
   geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
   mesh.geometry = geo;
   mesh.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
-  mesh.frustumCulled = false; mesh.castShadow = false;
+  // Perf: LIGA o frustum culling (era false → o renderer fazia skinning+draw de TODO
+  // personagem visível mesmo ATRÁS da câmera; cada um tem ~7930 tris skinned). Com a
+  // bounding sphere inflada ~1.7× (cobre braços erguidos/mira/corrida) não há pop-out
+  // nas bordas da tela. Isto corta o custo de GPU dos dezenas de NPCs fora de vista.
+  geo.computeBoundingSphere();
+  if (geo.boundingSphere) geo.boundingSphere.radius *= 1.7;
+  mesh.frustumCulled = true; mesh.castShadow = false;
   const mixer = new THREE.AnimationMixer(root);
   const actions: Record<string, THREE.AnimationAction> = {};
   for (const [key, clip] of Object.entries(b.clips)) actions[key] = mixer.clipAction(clip);

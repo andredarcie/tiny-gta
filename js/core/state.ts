@@ -1,4 +1,5 @@
 import type { GameState, InputState, BestScore, Refs } from '@/core/types.ts';
+import { CAR_COLORS } from '@/core/palette.ts';
 
 // Saldo inicial de uma run nova — FONTE ÚNICA (js/core/save.ts importa daqui pra medir
 // o que o jogador ganhou antes do restore async chegar). Mudou aqui, muda lá.
@@ -58,7 +59,8 @@ export function saveBest(){
 
 export const keys: Record<string, boolean> = {};
 export const carNames=['TUNED BUG','COMPANY SEDAN','RUSTY PICKUP','SLOW TURBO','BLUE SHARK','GRANDPA COUPE','BUDGET ROCKET','GOLDEN BOAT'];
-export const carColors=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x5b5f6b,0x7a4f9e,0x3aa06b,0xd96fae,0xc4c8cf];
+// Paint vocabulary lives in the central palette; indexed in lockstep with carNames.
+export const carColors=CAR_COLORS;
 
 // Late-binding cross-module refs populated by main.js after all modules initialize.
 // Used only where direct imports would create circular dependencies.

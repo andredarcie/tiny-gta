@@ -100,6 +100,7 @@ npm test -- test/race.spec.ts     # run one spec
 
 ## Conventions & gotchas
 
+- **Art direction is codified — read `ART_DIRECTION.md` before any visual change.** The game's look is "Vice em Miniatura": a miniature/diorama world (muted sun-faded base, saturation only where there is gameplay meaning, Vice-style neon at night, **no photo textures ever**). The world's color vocabulary lives in `js/core/palette.ts` — new/edited models take colors from there instead of inventing hex literals.
 - **No manual cache-busting.** Vite handles asset hashing. The old `?v=BUILD` import-map convention is gone — do not reintroduce import maps or version query strings. Adding a new module just means a normal `import`; nothing in `index.html` needs editing. (`three/addons/` resolves via three's package `exports`.) The `BUILD NN` badge on the title screen is now cosmetic.
 - **Camera yaw sign is settled** (`js/actors/player.ts` `updateCamera`): `cameraRig.yaw -= input.lookX*dt` with `input.lookX = v.x*YAW_SPEED`. Yaw increases to the left in this engine. Do not flip these signs based on a single phone test — history shows repeated wrong "still inverted" reports caused by stale mobile cache; hard-refresh/cache-bust before judging.
 - **Code comments must always be in English**, as is player-facing game text. (Many existing modules still carry Portuguese comments from earlier work — write new/edited comments in English, and translate Portuguese ones you touch.)
