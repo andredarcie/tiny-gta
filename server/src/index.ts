@@ -5,7 +5,16 @@ import { WorldDO, type Env } from './world.ts';
 
 export { WorldDO };
 
-const world = (env: Env) => env.WORLD.get(env.WORLD.idFromName('world'));
+// The world's HOME decides everyone's ping: a DO is placed once, on first
+// access, and stays there forever. WORLD_NAME rotates to a fresh object (live
+// poses rebuild in under a second — nothing durable is lost) and locationHint
+// asks for a region. Reality check (2026-07): DOs do not run in South America,
+// so 'sam' lands in ENAM (~180ms RTT from BR — today's floor). The hint is
+// kept for the day Cloudflare opens SAM; /health's worldColo tells the truth.
+const world = (env: Env) => env.WORLD.get(
+  env.WORLD.idFromName(env.WORLD_NAME ?? 'world'),
+  { locationHint: (env.WORLD_HINT ?? 'sam') as DurableObjectLocationHint },
+);
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
@@ -18,9 +27,11 @@ export default {
     }
     if (url.pathname === '/health' || url.pathname === '/api/health') {
       const r = await world(env).fetch(new Request(new URL('/health', req.url)));
-      return new Response(await r.text(), {
+      const j = await r.json<Record<string, unknown>>().catch(() => ({}) as Record<string, unknown>);
+      j.edgeColo = (req.cf as { colo?: string } | undefined)?.colo ?? '?';
+      return Response.json(j, {
         status: r.status,
-        headers: { 'content-type': 'application/json', 'access-control-allow-origin': '*' },
+        headers: { 'access-control-allow-origin': '*' },
       });
     }
     return new Response('tiny-gta multiplayer server', { status: 404 });

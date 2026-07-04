@@ -27,11 +27,15 @@ let backoff = 5_000;              // 5s → 10s → ... → 60s on plain failure
 let fullUntil = 0;                // world full: retry only after 5 minutes
 let pingTimer: ReturnType<typeof setInterval> | null = null;
 let pingSentAt = 0;               // performance.now() of the ping in flight (0 = none)
-let rttMs: number | null = null;  // smoothed round-trip time, for the HUD PING line
+// HUD PING = the MINIMUM of the recent samples, not an average: the pong is
+// processed on the main thread, so any render jank inflates individual samples
+// — the window minimum shows the true network RTT instead of frame hiccups.
+let rttSamples: number[] = [];
+let rttMs: number | null = null;
 
 export const isJoined = (): boolean => phase === 'joined';
 
-/** Smoothed WS round-trip time in ms; null while offline/unmeasured. */
+/** Network RTT in ms (min of the recent probe window); null while offline. */
 export const netPing = (): number | null => (phase === 'joined' ? rttMs : null);
 
 export function netStatus(): Record<string, unknown> {
@@ -74,7 +78,9 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
     if (ev.data === KEEPALIVE_PONG) {  // auto-response echo: close the RTT sample
       if (pingSentAt) {
         const r = performance.now() - pingSentAt;
-        rttMs = rttMs === null ? r : rttMs * 0.7 + r * 0.3;
+        rttSamples.push(r);
+        if (rttSamples.length > 5) rttSamples.shift();
+        rttMs = Math.min(...rttSamples);
         pingSentAt = 0;
       }
       return;
@@ -109,7 +115,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
     const nw = performance.now();
     if (gotFull) fullUntil = nw + 5 * 60_000;
     else { nextTryAt = nw + backoff; backoff = Math.min(backoff * 2, 60_000); }
-    rttMs = null; pingSentAt = 0;
+    rttMs = null; pingSentAt = 0; rttSamples = [];
     if (wasJoined) h.onDropped();
   };
   sock.onclose = drop;
