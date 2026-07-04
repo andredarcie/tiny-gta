@@ -38,6 +38,12 @@ export const WS_CLOSE_PROTOCOL = 4002;
 /** 0 on foot, 1 car/bike, 2 boat, 3 plane, 4 swimming. */
 export type MoveMode = 0 | 1 | 2 | 3 | 4;
 
+/** Vehicle model to render for a remote player (0 = none/on foot):
+ * 1 car, 2 motorcycle, 3 boat, 4 plane, 5 tractor, 6 police car, 7 taxi.
+ * Body colour is NOT synced yet (vehicles are still client-local entities);
+ * viewers derive a stable palette colour from the player id. */
+export const VK_MAX = 7;
+
 export interface RemotePose {
   x: number;
   y: number;
@@ -47,6 +53,9 @@ export interface RemotePose {
   m: MoveMode;
   /** 1 while inside an interior (remote avatar is hidden) */
   i: 0 | 1;
+  /** vehicle kind being driven (see VK_MAX doc); 0 on foot. While driving, the
+   * pose is the VEHICLE's origin — the avatar rides at the seat offset. */
+  vk: number;
 }
 
 export interface PlayerPub extends RemotePose {
@@ -54,8 +63,10 @@ export interface PlayerPub extends RemotePose {
   nick: string;
 }
 
-/** Compact snapshot row: [id, x, y, z, h, m, i]. */
-export type SnapRow = [number, number, number, number, number, number, number];
+/** Compact snapshot row: [id, x, y, z, h, m, i, vk]. Columns are append-only —
+ * older clients destructure by index and ignore the tail, so adding here is
+ * backward-compatible in both directions. */
+export type SnapRow = [number, number, number, number, number, number, number, number];
 
 export type ClientMsg =
   | { t: 'join'; v: number; nick: string; pid: string }
@@ -108,6 +119,8 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     if (x === null || y === null || z === null || h === null) return null;
     let mode = typeof m.m === 'number' ? m.m | 0 : 0;
     if (mode < 0 || mode > 4) mode = 0;
+    let vk = typeof m.vk === 'number' ? m.vk | 0 : 0; // absent on v1 clients → on foot
+    if (vk < 0 || vk > VK_MAX) vk = 0;
     return {
       t: 'pos',
       x: clampNum(x, -POS_LIMIT_XZ, POS_LIMIT_XZ),
@@ -116,6 +129,7 @@ export function parseClientMsg(raw: string): ClientMsg | null {
       h: wrapAngle(h),
       m: mode as MoveMode,
       i: m.i ? 1 : 0,
+      vk,
     };
   }
   return null;

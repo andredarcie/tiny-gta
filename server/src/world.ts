@@ -61,7 +61,7 @@ export class WorldDO {
         const parked = await ctx.storage.get<Record<string, RemotePose>>('poses');
         if (parked) for (const s of this.sessions.values()) {
           const p = parked[String(s.id)];
-          if (p) s.pose = p;
+          if (p) s.pose = { ...p, vk: p.vk | 0 }; // blobs parked by v1 lack vk
         }
       });
     }
@@ -108,7 +108,7 @@ export class WorldDO {
     // pos
     const s = this.sessions.get(ws);
     if (!s) { ws.close(WS_CLOSE_PROTOCOL, 'join first'); return; }
-    s.pose = { x: m.x, y: m.y, z: m.z, h: m.h, m: m.m, i: m.i };
+    s.pose = { x: m.x, y: m.y, z: m.z, h: m.h, m: m.m, i: m.i, vk: m.vk };
     s.dirty = true;
     if (!s.announced) {
       s.announced = true;
@@ -136,7 +136,7 @@ export class WorldDO {
 
   private pub(s: Session): PlayerPub {
     const p = s.pose!;
-    return { id: s.id, nick: s.nick, x: p.x, y: p.y, z: p.z, h: p.h, m: p.m, i: p.i };
+    return { id: s.id, nick: s.nick, x: p.x, y: p.y, z: p.z, h: p.h, m: p.m, i: p.i, vk: p.vk };
   }
 
   webSocketClose(ws: WebSocket): void { this.drop(ws); }
@@ -182,7 +182,7 @@ export class WorldDO {
       if (!s.dirty || !s.pose) continue;
       s.dirty = false;
       const p = s.pose;
-      rows.push([s.id, p.x, p.y, p.z, p.h, p.m, p.i]);
+      rows.push([s.id, p.x, p.y, p.z, p.h, p.m, p.i, p.vk | 0]);
     }
     if (rows.length === 0) {
       if (++this.quiet >= QUIET_TICKS) this.stopTicking();
