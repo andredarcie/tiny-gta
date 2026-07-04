@@ -92,16 +92,21 @@ function samplePose(): RemotePose | null {
   const pp = refs.playerPos?.();
   if (!pp) return null;
   const cur = refs.getCur?.();
-  let m: MoveMode = 0;
-  if (state.mode === 'car' && cur) m = cur.plane ? 3 : cur.boat ? 2 : 1;
-  else if (state.swimming) m = 4;
+  let m: MoveMode = 0, vk = 0, px = pp.x, py = pp.y, pz = pp.z;
+  if (state.mode === 'car' && cur) {
+    m = cur.plane ? 3 : cur.boat ? 2 : 1;
+    vk = cur.plane ? 4 : cur.boat ? 3 : cur.bike ? 2 : cur.tractor ? 5 : cur.police ? 6 : cur.taxi ? 7 : 1;
+    // While driving, share the VEHICLE's origin (viewers render the vehicle
+    // there and seat the avatar inside it — mirrors how the game seats us).
+    px = cur.g.position.x; py = cur.g.position.y; pz = cur.g.position.z;
+  } else if (state.swimming) m = 4;
   let h = refs.getPlayerHeading?.() ?? 0;
   if (!Number.isFinite(h)) h = 0;
   const r = (v: number) => Math.round(v * 100) / 100;
-  return { x: r(pp.x), y: r(pp.y), z: r(pp.z), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0 };
+  return { x: r(px), y: r(py), z: r(pz), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0, vk };
 }
 
 function poseChanged(a: RemotePose, b: RemotePose): boolean {
   return Math.abs(a.x - b.x) > 0.02 || Math.abs(a.z - b.z) > 0.02 || Math.abs(a.y - b.y) > 0.05
-    || Math.abs(a.h - b.h) > 0.01 || a.m !== b.m || a.i !== b.i;
+    || Math.abs(a.h - b.h) > 0.01 || a.m !== b.m || a.i !== b.i || a.vk !== b.vk;
 }

@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-04-online-vehicles",
+    "date": "2026-07-04",
+    "title": "You can see what other players are driving",
+    "description": "Online players no longer glide around as sitting ghosts when they drive. You now see the actual ride: cars, motorcycles, boats, planes, tractors — even police cruisers and taxis — with the player seated inside and their name still floating above. One honest note: the exact paint job isn't shared yet, so everyone sees a consistent color for each driver that might differ from the one they actually stole. That, too, is on the list."
+  },
+  {
     "id": "2026-07-04-instant-character",
     "date": "2026-07-04",
     "title": "Your character shows up instantly",
