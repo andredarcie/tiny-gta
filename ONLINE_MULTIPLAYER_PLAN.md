@@ -21,8 +21,17 @@
 >    100% autoritativo das seções abaixo acontece por partes, sistema a sistema, nos
 >    próximos incrementos ("aí vêm as outras partes").
 >
-> **Status:** incremento 1 implementado nesta branch. O restante do documento é o plano de
-> longo prazo original (revisá-lo a cada incremento).
+> **Status (2026-07-04, fim do dia):** incrementos 1–5 EM PRODUÇÃO — presença/movimento,
+> HUD players+ping, veículos remotos visíveis, combate PvP decidido no servidor
+> (hits/HP/morte/respawn + hitmarker/kill feed), e o início da autoridade de movimento:
+> `shared/sim/` extraído (terrain + move-check) com o servidor validando velocidade por modo
+> (orçamento de 1 teleporte/5s para os warps legítimos) e clampando altura pelo TERRENO real.
+>
+> **Latência (medido):** borda BR ≈ 53 ms (GIG), mas **DOs não rodam na América do Sul** —
+> hint `sam` cai em ENAM (nosso mundo: IAD), piso ≈ 180 ms de RTT do Brasil. Mitigado com
+> rewind de tiro 250 ms e ping do HUD por mínimo-da-janela; o dia em que a Cloudflare abrir
+> SAM, basta rotacionar `WORLD_NAME` (o `/health` reporta `worldColo`/`edgeColo`).
+> O restante do documento é o plano de longo prazo original (revisá-lo a cada incremento).
 
 > **Status original:** planejamento. Branch `feat/online-multiplayer-plan`.
 > **Data:** 2026-07-04. Limites de free tier conferidos nessa data na documentação da Cloudflare

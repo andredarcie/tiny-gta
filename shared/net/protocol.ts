@@ -98,8 +98,11 @@ export const SHOT_RANGE_MAX = 80;
 /** Shot-rate token bucket: burst covers a full shotgun blast of pellets. */
 export const SHOT_BUCKET_CAP = 12;
 export const SHOT_BUCKET_REFILL_PER_S = 12;
-/** Hits test each target's pose ~this far in the past (what the shooter saw). */
-export const SHOT_REWIND_MS = 200;
+/** Hits test each target's pose ~this far in the past (what the shooter saw).
+ * Sized for the real-world floor: BR players reach the US-homed world DO in
+ * ~180ms RTT (DOs don't run in South America yet), so rewind ≈ RTT/2 + the
+ * remote interp delay. */
+export const SHOT_REWIND_MS = 250;
 export const PVP_HP_MAX = 100;
 /** Slow server-side regen — stands in for local healing (food/hospital), which
  * is not synced yet; negligible during an actual firefight. */

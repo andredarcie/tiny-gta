@@ -18,3 +18,11 @@ new_sqlite_classes = ["WorldDO"]
 # World capacity: beyond this, joiners get {t:'full'} and the game stays offline
 # for them (graceful fallback). Tune without code changes.
 MAX_PLAYERS = "32"
+# The world DO's home region decides everyone's ping. MEASURED 2026-07-04:
+# Durable Objects do NOT run in South America yet — a 'sam' hint lands in
+# Eastern North America (we got IAD; ~180ms RTT from BR, vs ~53ms to the GIG
+# edge). The hint stays so the day Cloudflare opens SAM capacity, bumping
+# WORLD_NAME re-rolls placement into it (placement is permanent per object).
+# /health reports {worldColo, edgeColo} — check it after any rotation.
+WORLD_NAME = "world-sam1"
+WORLD_HINT = "sam"

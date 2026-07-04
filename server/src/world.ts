@@ -20,7 +20,13 @@ import {
 export interface Env {
   WORLD: DurableObjectNamespace;
   MAX_PLAYERS?: string;
+  /** rotate the world to a fresh DO (placement is decided at creation) */
+  WORLD_NAME?: string;
+  /** locationHint for that first creation, e.g. 'sam' (South America) */
+  WORLD_HINT?: string;
 }
+
+import { checkMove, clampPoseY } from '../../shared/sim/move-check.ts';
 
 interface Att { id: number; nick: string; pid: string }
 interface HistSample { t: number; x: number; y: number; z: number }
@@ -39,11 +45,14 @@ interface Session extends Att {
   shotTokens: number;    // rate budget (burst = one full shotgun blast)
   shotRefillAt: number;
   hist: HistSample[];    // short pose history for the lag-comp rewind
+  posAt: number;         // timestamp of the last ACCEPTED pose (speed checks)
+  tpAt: number;          // last accepted teleport (budget: 1 per cooldown)
 }
 
 const freshCombat = () => ({
   hp: PVP_HP_MAX, hpAt: 0, deadUntil: 0,
   shotTokens: SHOT_BUCKET_CAP, shotRefillAt: 0, hist: [] as HistSample[],
+  posAt: 0, tpAt: 0,
 });
 
 /** Stop the broadcast interval (and allow hibernation) after this many
@@ -87,10 +96,21 @@ export class WorldDO {
     return Number.isFinite(n) && n > 0 ? n : DEFAULT_MAX_PLAYERS;
   }
 
-  fetch(req: Request): Response {
+  /** Which Cloudflare colo this DO actually runs in — THE latency diagnostic
+   * (a Brazil player pinging a US-homed DO explains a 150ms+ HUD PING). */
+  private doColo: string | null = null;
+
+  async fetch(req: Request): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === '/health') {
-      return Response.json({ players: this.sessions.size, max: this.maxPlayers() });
+      if (this.doColo === null) {
+        this.doColo = '?';
+        try {
+          const t = await fetch('https://www.cloudflare.com/cdn-cgi/trace').then(r => r.text());
+          this.doColo = /colo=([A-Z]+)/.exec(t)?.[1] ?? '?';
+        } catch { /* diagnostics only */ }
+      }
+      return Response.json({ players: this.sessions.size, max: this.maxPlayers(), worldColo: this.doColo });
     }
     if (req.headers.get('Upgrade') !== 'websocket') {
       return new Response('expected websocket', { status: 426 });
@@ -123,10 +143,19 @@ export class WorldDO {
     const s = this.sessions.get(ws);
     if (!s) { ws.close(WS_CLOSE_PROTOCOL, 'join first'); return; }
     if (m.t === 'shot') { this.onShot(s, m); return; }
-    // pos
-    s.pose = { x: m.x, y: m.y, z: m.z, h: m.h, m: m.m, i: m.i, vk: m.vk };
+    // pos — plausibility first: the server walks the SAME shared terrain as the
+    // client, so impossible sustained speeds are dropped (one legit teleport per
+    // cooldown survives: hospital/prison/race warps) and the height is clamped
+    // into the plausible band (no under-the-map, no orbit).
     const now = Date.now();
-    s.hist.push({ t: now, x: m.x, y: m.y, z: m.z });
+    if (s.pose) {
+      const v = checkMove(s.pose.x, s.pose.z, m.x, m.z, now - s.posAt, m.m, now - s.tpAt);
+      if (v === 'reject') return;
+      if (v === 'teleport') s.tpAt = now;
+    }
+    s.posAt = now;
+    s.pose = { x: m.x, y: clampPoseY(m.x, m.y, m.z, m.m), z: m.z, h: m.h, m: m.m, i: m.i, vk: m.vk };
+    s.hist.push({ t: now, x: m.x, y: s.pose.y, z: m.z });
     if (s.hist.length > 8) s.hist.shift();
     s.dirty = true;
     if (!s.announced) {
