@@ -54,6 +54,13 @@ const handlers: NetHandlers = {
     setRemoteDead(id, true);
     const me = getMyOnlineId();
     if (id === me) {
+      // A remote player killed me (server-decided). Drive the LOCAL wasted flow so
+      // the PvP kill actually drops me and sends me to the hospital. Nothing else
+      // does: the on-foot pipeline has no generic health<=0 check — only specific
+      // hazards (cops, traffic, drowning) trigger WASTED, and in a pure PvP fight
+      // none may be present. Without this the victim is left at 0 HP, walking,
+      // un-hittable and lying dead to everyone else until the server respawn.
+      // getWasted() self-guards (returns if already dying), so this is idempotent.
       lastHealthSeen = 0;
       if (shouldTriggerLocalWasted(0, !!refs.isWasted?.())) refs.getWasted?.();
       refs.radioMessage?.(`<b>${remoteNick(by)}</b> took you down.`, 6000);
@@ -211,7 +218,9 @@ function samplePose(): RemotePose | null {
   if (!Number.isFinite(h)) h = 0;
   const r = (v: number) => Math.round(v * 100) / 100;
   // dead from ANY local cause (roof fall, cops, drowning, PvP): remotes lie the
-  // avatar down + blood puddle until the hospital respawn flips this back
+  // avatar down + blood puddle until the hospital respawn flips this back.
+  // NOTE: deadPoseFlag reads isWasted() (a predicate) — NOT getWasted(), which
+  // TRIGGERS the death and would kill the local player on every sample (~10Hz).
   const dead = deadPoseFlag(state.health, !!refs.isWasted?.());
   return { x: r(px), y: r(py), z: r(pz), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0, vk, d: dead as 0 | 1 };
 }

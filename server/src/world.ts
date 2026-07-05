@@ -229,7 +229,13 @@ export class WorldDO {
 
   private onShot(s: Session, m: ShotMsg): void {
     const now = Date.now();
-    if (s.deadUntil > now || !s.pose || s.pose.d) return; // the dead fire no attacks (PvP OR local death)
+    // The dead fire no attacks (PvP OR local death). SYMMETRIC with the target
+    // immunity below (interior/vehicle): a shooter who claims to be immune must
+    // not also be able to deal damage — else a crafted client sends one pos with
+    // i:1 (or a vehicle mode) to become invisible+unkillable AND keep killing
+    // everyone. Honest clients only ever fire on foot (weapons.ts gates firing to
+    // state.mode==='foot'), so this never rejects a legitimate shot.
+    if (s.deadUntil > now || !s.pose || s.pose.d || s.pose.i || (s.pose.m >= 1 && s.pose.m <= 3)) return;
     // rate: token bucket sized so one shotgun blast of pellets fits as a burst
     if (s.shotRefillAt === 0) s.shotRefillAt = now;
     s.shotTokens = Math.min(SHOT_BUCKET_CAP, s.shotTokens + (now - s.shotRefillAt) / 1000 * SHOT_BUCKET_REFILL_PER_S);
