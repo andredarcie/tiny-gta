@@ -3,7 +3,7 @@
 //
 // This module is PURE: it imports only constants.js (plain math, no Three.js, no
 // DOM) and the seeded RNG, so it runs in Node. tools/bake-world.mjs runs it once
-// and writes the result to /world.json. The game (js/world/world.ts) then reads ONLY
+// and writes the result to /data/world.json. The game (js/world/world.ts) then reads ONLY
 // world.json and builds the meshes — it never re-rolls anything, so the map is
 // identical every load and a future editor can open world.json and move objects.
 //

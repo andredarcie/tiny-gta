@@ -16,7 +16,10 @@ npm run preview  # serve the production build
 - `js/**` — gameplay **systems** (player, traffic, police, gangs, weapons, missions, the mini-games, HUD, …). They orchestrate models; they don't define geometry.
 - `assets/models/**` — pure 3D geometry **factories**, one model per file, each default-exporting a `{category, label, build(opts)}` descriptor (see `assets/models/README.md`).
 - `js/core/main.ts` — the single `requestAnimationFrame` loop; `js/core/state.ts` — the shared mutable `state`/`input`/`refs`.
+- `data/**` — baked game data read at build/boot (`world.json`, `npcs.json`, `minigame-rewards.json`, `updates.json`).
 - `backend/**` — serverless API for the global leaderboards.
+- `docs/**` — design/planning docs and the visual history under `docs/history/`.
+- `dev/**` — dev-only Vite tooling pages (`/studio`, `mixamo`, `portrait`); not part of the production build.
 
 See `CLAUDE.md` for the full architecture notes and conventions.
 

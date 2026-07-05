@@ -10,7 +10,7 @@ export default defineConfig({
     name: 'pretty-dev-pages',
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url === '/studio' || req.url === '/studio/') req.url = '/studio.html';
+        if (req.url === '/studio' || req.url === '/studio/') req.url = '/dev/studio.html';
         next();
       });
     },

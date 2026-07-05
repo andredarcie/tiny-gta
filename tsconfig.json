@@ -27,5 +27,5 @@
     "paths": { "@/*": ["./js/*"] }
   },
   "include": ["js", "assets", "shared", "vite-env.d.ts"],
-  "exclude": ["node_modules", "dist", "backend", "android", "public", "fp-preview", "comparacoes", "output", "test", "tools", "scripts"]
+  "exclude": ["node_modules", "dist", "backend", "android", "public", "docs", "output", "test", "tools", "dev"]
 }

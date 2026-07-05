@@ -12,7 +12,7 @@
     "deploy:server": "npm --prefix server run deploy",
     "lint": "eslint .",
     "bake": "tsx tools/bake-world.ts",
-    "island-check": "tsx scripts/island-check.ts",
+    "island-check": "tsx tools/island-check.ts",
     "preview": "vite preview",
     "test": "playwright test",
     "test:online": "playwright test --config=playwright.online.config.ts",

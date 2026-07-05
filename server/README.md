@@ -10,7 +10,7 @@ Movement v1 (current increment): clients report their pose (`pos` messages,
 snapshots at 10 Hz. The wire protocol lives in `../shared/net/protocol.ts`
 (shared with the browser client and unit-tested in `test/unit/`). Later
 increments move toward the full authoritative simulation described in
-`../ONLINE_MULTIPLAYER_PLAN.md`.
+`../docs/ONLINE_MULTIPLAYER_PLAN.md`.
 
 ## Commands
 

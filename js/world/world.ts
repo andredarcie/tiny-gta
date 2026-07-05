@@ -10,7 +10,7 @@ import {scene,renderer} from '@/core/engine.ts';
 // can be hand-edited / opened by a future map editor. Regenerate from the seed
 // with `npm run bake` (js/world/world-gen.ts). Terrain heightfields and the hand-authored
 // landmarks (named buildings, village, fences, fort) still come from the code below.
-import worldData from '../../world.json';
+import worldData from '../../data/world.json';
 import {makeRng} from '@/core/rng.ts';
 import {addPalm} from '../../assets/models/props/palm.ts';
 import {addUmbrella} from '../../assets/models/props/umbrella.ts';
