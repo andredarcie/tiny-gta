@@ -48,7 +48,7 @@ import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
 import {initOnline,updateOnline,remoteSnapshot} from '@/net/online.ts'; // shared-world presence (other players' avatars)
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
-  switchWeapon,selectWeaponSlot,getWeaponHud} from '@/combat/weapons.ts';
+  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById} from '@/combat/weapons.ts';
 import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
 import {updateDayNight} from '@/world/daynight.ts';
 import {updateInteriors,interiors} from '@/world/interior.ts';
@@ -96,6 +96,9 @@ declare global {
       placeVehicle: (x: number, z: number, fx: number, fz: number) => boolean;
       teleport: (x: number, z: number, fx: number, fz: number) => boolean;
       attack: () => string;
+      giveGun: () => string;
+      equipWeapon: (id: string) => boolean;
+      setHealth: (hp: number) => number;
       raceTarget: () => { x: number; z: number } | null;
     };
   }
@@ -620,6 +623,16 @@ window.__test={
   // On foot with fists it is a melee swing; the online layer reports the attack
   // and the SERVER decides any PvP hit. Returns the move mode for convenience.
   attack:()=>{performShoot();return state.mode;},
+  // Arm the player with the full arsenal (equips the pistol) — the real grant
+  // path. Lets the online harness exercise gun/blast/flame PvP, not just fists.
+  giveGun:()=>{grantWeapon();return state.weaponName||'';},
+  // Switch to a specific owned weapon by id (e.g. 'flame','grenade') so the
+  // harness can drive each attack kind's online path deterministically.
+  equipWeapon:(id: string)=>equipWeaponById(id),
+  // Set the local PvP HP directly. Raising it exercises the heal-sync path
+  // (online.ts syncLocalHeal → server HP restored); used to give each serial
+  // online combat test a clean, survivable target. Returns the applied value.
+  setHealth:(hp: number)=>{state.health=hp;return state.health;},
   // Current race checkpoint world coords (street / boat / off-road), for autopilots.
   raceTarget:()=>{
     const b=MiniGame.activeBlips?.()||[];
