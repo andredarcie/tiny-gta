@@ -6,7 +6,7 @@
 // exposes, so tests are as faithful as possible:
 //   - window.render_game_to_text()  -> full JSON state snapshot (defined in main.js)
 //   - real keyboard events via Playwright (page.keyboard) -> the real input path
-//   - live ES modules via dynamic import('/js/*.js') in page context (Vite serves
+//   - live ES modules via dynamic import('/src/js/*.js') in page context (Vite serves
 //     the same singleton module instances the running game uses), used for setup
 //     helpers like placing the car at an activity's start.
 //
@@ -81,7 +81,7 @@ export class GameDriver {
   async releaseAll() { for (const k of [...this._held]) await this.up(k); }
 
   // ---- run live game code in the page (setup / introspection) -------------
-  // `fn` runs in the browser; it may `await import('/js/<module>.js')` to reach
+  // `fn` runs in the browser; it may `await import('/src/js/<module>.js')` to reach
   // the live game modules. `arg` is passed through (must be serializable).
   async inPage(fn: any, arg?: any) { return this.page.evaluate(fn, arg); }
 

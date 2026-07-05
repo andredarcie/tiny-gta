@@ -7,7 +7,7 @@ test('studio: loads the Mixamo character and shows a button per AnimState', asyn
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push('PAGEERROR ' + e.message));
 
-  await page.goto('/studio.html');
+  await page.goto('/tools/dev/studio.html');
   // the base + clips load async; the state buttons appear once ready
   await expect(page.getByRole('button', { name: 'Walk', exact: true })).toBeVisible({ timeout: 40_000 });
   await expect(page.getByRole('button', { name: 'Run', exact: true })).toBeVisible();

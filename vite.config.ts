@@ -10,13 +10,13 @@ export default defineConfig({
     name: 'pretty-dev-pages',
     configureServer(server) {
       server.middlewares.use((req, _res, next) => {
-        if (req.url === '/studio' || req.url === '/studio/') req.url = '/studio.html';
+        if (req.url === '/studio' || req.url === '/studio/') req.url = '/tools/dev/studio.html';
         next();
       });
     },
   }],
   // `@/` -> js/  (so imports are stable regardless of a file's folder depth)
-  resolve: { alias: { '@': fileURLToPath(new URL('./js', import.meta.url)) } },
+  resolve: { alias: { '@': fileURLToPath(new URL('./src/js', import.meta.url)) } },
   server: {
     port: 5173,
     host: true   // expõe na LAN para testar no celular (projeto tem suporte mobile)

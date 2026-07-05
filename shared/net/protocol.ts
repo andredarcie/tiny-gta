@@ -3,7 +3,7 @@
 // imported by BOTH the browser client (js/net/**) and the Cloudflare Worker
 // server (server/src/**), and unit-tested in Node (test/unit).
 //
-// v1 scope (see ONLINE_MULTIPLAYER_PLAN.md, revision 2): every player shares ONE
+// v1 scope (see docs/ONLINE_MULTIPLAYER_PLAN.md, revision 2): every player shares ONE
 // world; clients report their own pose (position/heading/mode) at up to SEND_HZ
 // and the server validates structure/bounds, keeps the authoritative roster and
 // rebroadcasts. Full input-driven server simulation lands in later increments.

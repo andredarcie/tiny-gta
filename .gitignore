@@ -6,3 +6,4 @@ playwright-report/
 .playwright/
 /playwright/.cache/
 .wrangler/
+.playwright-mcp/

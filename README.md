@@ -13,10 +13,15 @@ npm run preview  # serve the production build
 
 ## Project layout
 
-- `js/**` — gameplay **systems** (player, traffic, police, gangs, weapons, missions, the mini-games, HUD, …). They orchestrate models; they don't define geometry.
-- `assets/models/**` — pure 3D geometry **factories**, one model per file, each default-exporting a `{category, label, build(opts)}` descriptor (see `assets/models/README.md`).
-- `js/core/main.ts` — the single `requestAnimationFrame` loop; `js/core/state.ts` — the shared mutable `state`/`input`/`refs`.
-- `backend/**` — serverless API for the global leaderboards.
+- `src/**` — the browser game (frontend): `src/js/` systems, `src/assets/` model factories, `src/css/`, `src/data/` baked JSON.
+- `src/js/**` — gameplay **systems** (player, traffic, police, gangs, weapons, missions, the mini-games, HUD, …). They orchestrate models; they don't define geometry.
+- `src/assets/models/**` — pure 3D geometry **factories**, one model per file, each default-exporting a `{category, label, build(opts)}` descriptor (see `src/assets/models/README.md`).
+- `src/js/core/main.ts` — the single `requestAnimationFrame` loop; `src/js/core/state.ts` — the shared mutable `state`/`input`/`refs`.
+- `src/data/**` — baked game data read at build/boot (`world.json`, `npcs.json`, `minigame-rewards.json`, `updates.json`).
+- `shared/**` — code shared between the game and the multiplayer server (net protocol, sim).
+- `server/**` — Cloudflare Worker (realtime multiplayer); `backend/**` — serverless API for the global leaderboards.
+- `tools/**` — build/dev scripts (`bake`, `island-check`) and `tools/dev/` dev-only Vite pages (`/studio`, `mixamo`, `portrait`, not in the production build).
+- `docs/**` — design/planning docs and the visual history under `docs/history/`.
 
 See `CLAUDE.md` for the full architecture notes and conventions.
 
