@@ -5,17 +5,28 @@
 // Sampling/what-to-send lives in online.ts; rendering in remote-players.ts.
 import {
   KEEPALIVE_PING, KEEPALIVE_PONG, PING_INTERVAL_MS, PROTOCOL_VERSION,
-  type PlayerPub, type RemotePose, type ShotMsg, type SnapRow, type Vec3,
+  type AreaHit, type ClientMsg, type PlayerPub, type RemotePose, type ShotMsg, type SnapRow, type Vec3,
 } from '../../shared/net/protocol.ts';
+
+/** A remote attack the server broadcast (k=0 bullet, 1 melee, 2 blast, 3 flame).
+ * `hit`/`hp` describe a single confirmed direct hit (-1 = none); `hits` carries
+ * the per-target results of an area attack (blast). Both may be empty for a miss. */
+export interface RemoteShot {
+  by: number;
+  o: Vec3;
+  d: Vec3;
+  k: number;
+  hit: number;
+  hp: number;
+  hits: AreaHit[];
+}
 
 export interface NetHandlers {
   onWelcome(id: number, players: PlayerPub[]): void;
   onAdd(p: PlayerPub): void;
   onDel(id: number): void;
   onSnap(ts: number, rows: SnapRow[]): void;
-  /** an attack somewhere in the world (k=0 bullet, k=1 melee swing); hit/hp
-   * present when it connected */
-  onShot(by: number, o: Vec3, d: Vec3, hit: number, hp: number, k: number): void;
+  onShot(ev: RemoteShot): void;
   onDeath(id: number, by: number): void;
   onSpawn(id: number): void;
   onDropped(): void;
@@ -47,15 +58,16 @@ export function netStatus(): Record<string, unknown> {
   };
 }
 
-export function netSendPos(p: RemotePose): void {
+// One send path for every outbound message: no-op unless joined, and a failed
+// send is swallowed — the socket's close handler drives the reconnect.
+function send(msg: ClientMsg): void {
   if (phase !== 'joined' || !ws) return;
-  try { ws.send(JSON.stringify({ t: 'pos', ...p })); } catch (e) { /* drop; close handler reconnects */ }
+  try { ws.send(JSON.stringify(msg)); } catch { /* drop; close handler reconnects */ }
 }
 
-export function netSendShot(m: ShotMsg): void {
-  if (phase !== 'joined' || !ws) return;
-  try { ws.send(JSON.stringify(m)); } catch (e) {}
-}
+export function netSendPos(p: RemotePose): void { send({ t: 'pos', ...p }); }
+export function netSendShot(m: ShotMsg): void { send(m); }
+export function netSendHeal(hp: number): void { send({ t: 'heal', hp }); }
 
 /** Call periodically (the online glue calls it every send tick): opens/reopens
  * the connection when allowed. Cheap no-op while connected or backing off. */
@@ -64,7 +76,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
   const now = performance.now();
   if (now < nextTryAt || now < fullUntil) return;
   let sock: WebSocket;
-  try { sock = new WebSocket(url); } catch (e) {
+  try { sock = new WebSocket(url); } catch {
     nextTryAt = now + backoff; backoff = Math.min(backoff * 2, 60_000);
     return;
   }
@@ -72,7 +84,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
   ws = sock;
   let gotFull = false;
   sock.onopen = () => {
-    try { sock.send(JSON.stringify({ t: 'join', v: PROTOCOL_VERSION, nick, pid })); } catch (e) {}
+    try { sock.send(JSON.stringify({ t: 'join', v: PROTOCOL_VERSION, nick, pid })); } catch { /* close handler reconnects */ }
   };
   sock.onmessage = (ev: MessageEvent) => {
     if (typeof ev.data !== 'string') return;
@@ -86,8 +98,7 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
       }
       return;
     }
-    let m: Record<string, unknown> | null = null;
-    try { m = JSON.parse(ev.data) as Record<string, unknown>; } catch (e) { return; }
+    const m = parseJson(ev.data);
     if (!m || typeof m.t !== 'string') return;
     try { // fail-open: a broken handler must not take the connection down with it
     switch (m.t) {
@@ -101,7 +112,15 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
       case 'snap': if (Array.isArray(m.p)) h.onSnap(Number(m.ts) || 0, m.p as SnapRow[]); break;
       case 'shot':
         if (Array.isArray(m.o) && Array.isArray(m.d))
-          h.onShot((m.by as number) | 0, m.o as Vec3, m.d as Vec3, (m.hit as number) | 0, typeof m.hp === 'number' ? m.hp : -1, (m.k as number) | 0);
+          h.onShot({
+            by: (m.by as number) | 0,
+            o: m.o as Vec3,
+            d: m.d as Vec3,
+            k: (m.k as number) | 0,
+            hit: (m.hit as number) | 0,
+            hp: typeof m.hp === 'number' ? m.hp : -1,
+            hits: Array.isArray(m.hits) ? m.hits as AreaHit[] : [],
+          });
         break;
       case 'death': h.onDeath((m.id as number) | 0, (m.by as number) | 0); break;
       case 'spawn': h.onSpawn((m.id as number) | 0); break;
@@ -122,7 +141,16 @@ export function netMaintain(url: string, nick: string, pid: string, h: NetHandle
     if (wasJoined) h.onDropped();
   };
   sock.onclose = drop;
-  sock.onerror = () => { try { sock.close(); } catch (e) {} drop(); };
+  sock.onerror = () => { try { sock.close(); } catch { /* already gone */ } drop(); };
+}
+
+/** JSON.parse that never throws: returns the object, or null on syntax error or
+ * a non-object payload. */
+function parseJson(s: string): Record<string, unknown> | null {
+  try {
+    const o = JSON.parse(s) as unknown;
+    return o !== null && typeof o === 'object' ? o as Record<string, unknown> : null;
+  } catch { return null; }
 }
 
 function startPing(sock: WebSocket): void {
@@ -131,7 +159,7 @@ function startPing(sock: WebSocket): void {
   // the game is paused/minimized. The server answers via auto-response (free,
   // no DO wake), and the 'o' echo closes the RTT sample for the HUD PING line.
   pingTimer = setInterval(() => {
-    try { pingSentAt = performance.now(); sock.send(KEEPALIVE_PING); } catch (e) {}
+    try { pingSentAt = performance.now(); sock.send(KEEPALIVE_PING); } catch { /* close handler reconnects */ }
   }, PING_INTERVAL_MS);
 }
 function stopPing(): void {

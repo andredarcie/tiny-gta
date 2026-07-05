@@ -15,11 +15,18 @@ increments move toward the full authoritative simulation described in
 ## Commands
 
 ```bash
-npm install                  # once (wrangler + workers-types)
+npm install                  # once (wrangler + workers-types + vitest)
 npm run dev                  # local server at ws://localhost:8787/ws (miniflare)
 npm run typecheck            # tsc with workers types (root typecheck skips server/)
+npm test                     # unit tests (Vitest) — WorldDO + router via Workers fakes
+npm run test:coverage        # same, with a v8 coverage report (gated at 70%)
 npm run deploy               # wrangler deploy → https://tiny-gta-mp.<account>.workers.dev
 ```
+
+The tests (`test/**/*.test.ts`) drive the `WorldDO` and the edge router in plain
+Node — no `workerd` — through minimal fakes for the few Workers-runtime APIs
+they touch (`test/setup.ts`). Coverage is scoped to `src/**` and enforced at 70%
+in `vitest.config.ts`; it currently sits at ~93% statements / ~87% branches.
 
 The Vite game in dev (`npm run dev` at the repo root) connects to
 `ws://localhost:8787/ws` automatically; production builds connect to the

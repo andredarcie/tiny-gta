@@ -429,9 +429,13 @@ export function setupInput(): void {
   // start exactly as a "Play as guest" click would. Pointer-lock/audio simply
   // engage on the first click, same as any auto-started page. LAN access (phone
   // testing via the host IP) is NOT localhost, so it keeps the normal login.
+  // A pre-seeded `tinygta_nick` wins over the 'localhost' default, so the
+  // two-player online harness can boot each window as a distinct named player.
   const onLocalhost=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
   if(onLocalhost){
-    setTimeout(()=>{ if(!state.started){ setNickname('localhost'); beginRun(); } },0);
+    let seededNick='localhost';
+    try{seededNick=localStorage.getItem('tinygta_nick')||'localhost';}catch{/* no localStorage: default nick */}
+    setTimeout(()=>{ if(!state.started){ setNickname(seededNick); beginRun(); } },0);
   }
   // Resume / fullscreen are driven from inside the pause menu (js/ui/pause-menu.ts) via
   // late-bound refs, so it never has to import this module (which imports it).

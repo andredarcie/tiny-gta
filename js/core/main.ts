@@ -4,7 +4,7 @@ import {economy} from '@/core/economy.ts'; // money ledger — imported here so 
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
 import {updateAudio} from '@/audio/audio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx,updatePlayerAnim,hasPlayerGlb} from '@/actors/player.ts';
+import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx,updatePlayerAnim,hasPlayerGlb} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
@@ -45,7 +45,7 @@ import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/cor
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
-import {initOnline,updateOnline} from '@/net/online.ts'; // shared-world presence (other players' avatars)
+import {initOnline,updateOnline,remoteSnapshot} from '@/net/online.ts'; // shared-world presence (other players' avatars)
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud} from '@/combat/weapons.ts';
@@ -94,6 +94,8 @@ declare global {
       setKey: (code: string, down: boolean) => void;
       clearKeys: () => void;
       placeVehicle: (x: number, z: number, fx: number, fz: number) => boolean;
+      teleport: (x: number, z: number, fx: number, fz: number) => boolean;
+      attack: () => string;
       raceTarget: () => { x: number; z: number } | null;
     };
   }
@@ -239,6 +241,7 @@ refs.rickInteract=rickInteract; // performInteract abre a cut-scene do Rick
 refs.getRickState=getRickState; // snapshot de debug da missão secreta
 refs.getBusted=getBusted;
 refs.getWasted=getWasted;
+refs.isWasted=isWasted;
 refs.getHeli=()=>heli;
 refs.nearestCar=nearestCar;
 refs.canPickWeapon=canPickWeapon;
@@ -313,6 +316,7 @@ function step(dt: number){
   // que se movem (jogador/NPC) ficam mais "atrasadas" — trade-off aceito. Antes
   // de qualquer render abaixo.
   if(shadowTick++%SHADOW_EVERY===0){renderer.shadowMap.needsUpdate=true;P.markShadow();}
+  P.begin('online');updateOnline(dt);P.end(); // keep remotes/socket alive even while local overlays freeze the world
   if(updateHouseTv()){renderer.render(scene,camera);return;}
   if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
@@ -359,7 +363,6 @@ function step(dt: number){
   P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
   P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
-  P.begin('online');updateOnline(dt);P.end(); // shared world: send my pose, interpolate remote players
   // While the full map is open (even with live NPCs shown) the player is input-locked,
   // so the police/army must NOT chase, shoot or arrest them — freeze those threats.
   const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
@@ -562,6 +565,8 @@ window.render_game_to_text=()=>{
     overkill:refs.getOverkillState?.()||null,
     bloodstains:refs.getBloodstainsState?.()||null, // poças de morte ativas no mundo (multiplayer)
     online:refs.getOnlineState?.()||null, // shared-world presence: phase/remotes (js/net/online.ts)
+    onlineRemotes:remoteSnapshot(), // dev/test: rendered pose of each remote avatar (position/vehicle/death sync)
+    health:state.health, // dev/test: local player HP (online PvP death assertions)
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],
@@ -601,6 +606,20 @@ window.__test={
     cur.heading=h;cur.g.rotation.set(0,h,0);cur.speed=0;cameraRig.yaw=h;
     return true;
   },
+  // Foot analog of placeVehicle: teleport the on-foot player to (x,z) facing
+  // (fx,fz), stopped. Used by the two-player online harness to line the players
+  // up at a known separation for a deterministic PvP-melee test.
+  teleport:(x: number,z: number,fx: number,fz: number)=>{
+    if(state.mode!=='foot')return false;
+    const h=Math.atan2(fx-x,fz-z);
+    player.g.position.set(x,groundHeight(x,z),z);
+    player.heading=h;cameraRig.yaw=h;
+    return true;
+  },
+  // Fire the current weapon once through the real fire path (same as a click).
+  // On foot with fists it is a melee swing; the online layer reports the attack
+  // and the SERVER decides any PvP hit. Returns the move mode for convenience.
+  attack:()=>{performShoot();return state.mode;},
   // Current race checkpoint world coords (street / boat / off-road), for autopilots.
   raceTarget:()=>{
     const b=MiniGame.activeBlips?.()||[];

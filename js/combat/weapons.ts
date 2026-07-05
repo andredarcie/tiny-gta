@@ -1094,6 +1094,7 @@ function missileBlast(pos: THREE.Vector3,hit: WeaponHit|null){
     if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
   }
   if(hit&&hit.kind==='story')hit.target.kill();
+  if(!refs.inGunShopRange?.())refs.onlineBlast?.(pos,3,6);
   state.shake=Math.max(state.shake,.4);
 }
 
@@ -1144,6 +1145,7 @@ function flameAttack(range: number){
       if(ud.bulletHits>=4)explodeCar(c,arr);
     }
   }
+  if(!refs.inGunShopRange?.())refs.onlineFlame?.(origin,dir,1,range);
 }
 
 // Arremesso em arco (granada/molotov).
@@ -1160,14 +1162,20 @@ function throwProjectile(kind: string|undefined,{power=16,fuse}: {power?: number
 function grenadeExplode(pos: THREE.Vector3){
   makeExplosion(pos.clone());
   blastDamage(pos);
-  if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
+  if(!refs.inGunShopRange?.()){
+    refs.onlineBlast?.(pos,3,5);
+    addWanted(1,'EXPLOSION!','explosion');
+  }
   state.shake=Math.max(state.shake,.4);
 }
 
 function molotovImpact(pos: THREE.Vector3){
   addFirePool(pos);
   blastDamage(pos);            // estouro inicial pega quem está bem perto
-  if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
+  if(!refs.inGunShopRange?.()){
+    refs.onlineBlast?.(pos,2,4);
+    addWanted(1,'EXPLOSION!','explosion');
+  }
   thud(10);blip([120,80],.18,'sawtooth',.22);
   state.shake=Math.max(state.shake,.25);
 }
@@ -1513,6 +1521,7 @@ export function updateWeapons(dt: number){
     if(fp.nextTick<=0){
       fp.nextTick=.5;
       const c=fp.g.position;
+      if(!refs.inGunShopRange?.())refs.onlineBlast?.(c,1,fp.radius);
       const near=(p: any)=>Math.hypot(p.g.position.x-c.x,p.g.position.z-c.z)<fp.radius;
       for(const n of npcs)if(!n.dead&&near(n))n.takeDamage(_up); // unified: peds+gang+officers+rural
 

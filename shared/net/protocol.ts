@@ -72,25 +72,30 @@ export interface PlayerPub extends RemotePose {
 export type SnapRow = [number, number, number, number, number, number, number, number, number];
 
 export type Vec3 = [number, number, number];
+export type AttackKind = 0 | 1 | 2 | 3;
+export type AreaHit = [number, number]; // [playerId, hp]
 
 /** One attack. k=0: a hitscan bullet (shotgun = one message per pellet).
  * k=1: a MELEE swing — same server-side hit pipeline with a ~2m reach and its
- * own damage table; remotes play the punch clip instead of a tracer. `dm` is
- * the game's local damage unit (1..3); the SERVER maps it to PvP HP and
- * decides the hit — the client never claims "I hit X". */
-export interface ShotMsg { t: 'shot'; o: Vec3; d: Vec3; dm: number; rg: number; k: 0 | 1 }
+ * own damage table; remotes play the punch clip instead of a tracer.
+ * k=2: radial blast/fire-pool tick around `o`; `rg` is radius.
+ * k=3: short cone/flame ray. `dm` is the game's local damage unit (1..3);
+ * the SERVER maps it to PvP HP and decides the hit — the client never claims
+ * "I hit X". */
+export interface ShotMsg { t: 'shot'; o: Vec3; d: Vec3; dm: number; rg: number; k: AttackKind }
 
 export type ClientMsg =
   | { t: 'join'; v: number; nick: string; pid: string }
   | ({ t: 'pos' } & RemotePose)
-  | ShotMsg;
+  | ShotMsg
+  | { t: 'heal'; hp: number };
 
 export type ServerMsg =
   | { t: 'welcome'; id: number; max: number; players: PlayerPub[] }
   | { t: 'add'; p: PlayerPub }
   | { t: 'del'; id: number }
   | { t: 'snap'; ts: number; p: SnapRow[] }
-  | { t: 'shot'; by: number; o: Vec3; d: Vec3; k: 0 | 1; hit?: number; hp?: number }
+  | { t: 'shot'; by: number; o: Vec3; d: Vec3; k: AttackKind; hit?: number; hp?: number; hits?: AreaHit[] }
   | { t: 'death'; id: number; by: number }
   | { t: 'spawn'; id: number }
   | { t: 'full' }
@@ -103,6 +108,8 @@ export const SHOT_DMG_HP = [0, 12, 18, 26] as const;
 export const MELEE_DMG_HP = [0, 10, 18, 18] as const;
 export const SHOT_RANGE_MAX = 80;
 export const MELEE_RANGE_MAX = 3;
+export const BLAST_RANGE_MAX = 8;
+export const FLAME_RANGE_MAX = 10;
 /** Shot-rate token bucket: burst covers a full shotgun blast of pellets. */
 export const SHOT_BUCKET_CAP = 12;
 export const SHOT_BUCKET_REFILL_PER_S = 12;
@@ -112,8 +119,8 @@ export const SHOT_BUCKET_REFILL_PER_S = 12;
  * remote interp delay. */
 export const SHOT_REWIND_MS = 250;
 export const PVP_HP_MAX = 100;
-/** Slow server-side regen — stands in for local healing (food/hospital), which
- * is not synced yet; negligible during an actual firefight. */
+/** Slow fallback regen between PvP hits; explicit local healing also syncs via
+ * the heal message, so food/hospital recovery does not leave server HP stale. */
 export const PVP_REGEN_PER_S = 2;
 export const PVP_RESPAWN_MS = 5000;
 /** Target = sphere around the chest (pose y is at the feet). */
@@ -172,6 +179,11 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     if (typeof m.pid !== 'string' || m.pid.length === 0 || m.pid.length > 64) return null;
     return { t: 'join', v: typeof m.v === 'number' ? m.v : 0, nick: sanitizeNick(m.nick), pid: m.pid };
   }
+  if (m.t === 'heal') {
+    const hp = num(m.hp);
+    if (hp === null) return null;
+    return { t: 'heal', hp: Math.round(clampNum(hp, 0, PVP_HP_MAX)) };
+  }
   if (m.t === 'pos') {
     const x = num(m.x), y = num(m.y), z = num(m.z), h = num(m.h);
     if (x === null || y === null || z === null || h === null) return null;
@@ -202,8 +214,8 @@ export function parseClientMsg(raw: string): ClientMsg | null {
     o[2] = clampNum(o[2], -POS_LIMIT_XZ, POS_LIMIT_XZ);
     let dm = typeof m.dm === 'number' ? m.dm | 0 : 1;
     if (dm < 1) dm = 1; else if (dm > 3) dm = 3;
-    const k = m.k === 1 ? 1 : 0;                // melee swing vs bullet
-    const rgMax = k ? MELEE_RANGE_MAX : SHOT_RANGE_MAX;
+    const k: AttackKind = m.k === 1 ? 1 : m.k === 2 ? 2 : m.k === 3 ? 3 : 0;
+    const rgMax = k === 1 ? MELEE_RANGE_MAX : k === 2 ? BLAST_RANGE_MAX : k === 3 ? FLAME_RANGE_MAX : SHOT_RANGE_MAX;
     let rg = typeof m.rg === 'number' ? m.rg | 0 : rgMax;
     if (rg < 1) rg = 1; else if (rg > rgMax) rg = rgMax;
     return { t: 'shot', o, d, dm, rg, k };
