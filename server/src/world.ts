@@ -14,7 +14,7 @@ import {
   HIT_CHEST_Y, HIT_RADIUS, MELEE_DMG_HP, PVP_HP_MAX, PVP_REGEN_PER_S, PVP_RESPAWN_MS,
   SHOT_BUCKET_CAP, SHOT_BUCKET_REFILL_PER_S, SHOT_DMG_HP, SHOT_REWIND_MS,
   parseClientMsg, raySphereT,
-  type PlayerPub, type RemotePose, type ServerMsg, type ShotMsg, type SnapRow,
+  type AreaHit, type PlayerPub, type RemotePose, type ServerMsg, type ShotMsg, type SnapRow,
 } from '../../shared/net/protocol.ts';
 
 export interface Env {
@@ -143,6 +143,7 @@ export class WorldDO {
     const s = this.sessions.get(ws);
     if (!s) { ws.close(WS_CLOSE_PROTOCOL, 'join first'); return; }
     if (m.t === 'shot') { this.onShot(s, m); return; }
+    if (m.t === 'heal') { this.onHeal(s, m.hp); return; }
     // pos — plausibility first: the server walks the SAME shared terrain as the
     // client, so impossible sustained speeds are dropped (one legit teleport per
     // cooldown survives: hospital/prison/race warps) and the height is clamped
@@ -197,44 +198,92 @@ export class WorldDO {
     return h[0];
   }
 
+  private onHeal(s: Session, hp: number): void {
+    const now = Date.now();
+    if (s.deadUntil > now) return;
+    this.regen(s, now);
+    s.hp = Math.max(s.hp, Math.min(PVP_HP_MAX, hp));
+  }
+
+  private regen(s: Session, now: number): void {
+    if (s.hpAt) s.hp = Math.min(PVP_HP_MAX, s.hp + (now - s.hpAt) / 1000 * PVP_REGEN_PER_S);
+    s.hpAt = now;
+  }
+
+  private damage(m: ShotMsg): number {
+    return (m.k === 1 ? MELEE_DMG_HP : SHOT_DMG_HP)[m.dm];
+  }
+
+  private applyDamage(target: Session, now: number, damage: number): number {
+    this.regen(target, now);
+    target.hp -= damage;
+    return Math.max(0, Math.round(target.hp));
+  }
+
+  private killIfNeeded(target: Session, attackerId: number, now: number): void {
+    if (target.hp > 0) return;
+    target.deadUntil = now + PVP_RESPAWN_MS;
+    this.broadcast({ t: 'death', id: target.id, by: attackerId });
+    this.ensureTicking();                         // the respawn timer lives in tick()
+  }
+
   private onShot(s: Session, m: ShotMsg): void {
     const now = Date.now();
-    if (s.deadUntil > now || !s.pose || s.pose.d) return; // the dead fire no bullets (PvP OR local death)
+    if (s.deadUntil > now || !s.pose || s.pose.d) return; // the dead fire no attacks (PvP OR local death)
     // rate: token bucket sized so one shotgun blast of pellets fits as a burst
     if (s.shotRefillAt === 0) s.shotRefillAt = now;
     s.shotTokens = Math.min(SHOT_BUCKET_CAP, s.shotTokens + (now - s.shotRefillAt) / 1000 * SHOT_BUCKET_REFILL_PER_S);
     s.shotRefillAt = now;
     if (s.shotTokens < 1) return;
     s.shotTokens -= 1;
-    // the muzzle must be roughly where the shooter's pose is
-    const mx = m.o[0] - s.pose.x, mz = m.o[2] - s.pose.z;
-    if (mx * mx + mz * mz > 36) return;
+    // Hitscan/melee/flame start at the shooter. Explosions and fire pools happen
+    // at the impact point, so a muzzle-origin check would incorrectly drop them.
+    if (m.k !== 2) {
+      const mx = m.o[0] - s.pose.x, mz = m.o[2] - s.pose.z;
+      if (mx * mx + mz * mz > 36) return;
+    }
+    const ev: Extract<ServerMsg, { t: 'shot' }> = { t: 'shot', by: s.id, o: m.o, d: m.d, k: m.k };
+    const dmg = this.damage(m);
     const rt = now - SHOT_REWIND_MS;
+
+    if (m.k === 2) {
+      const hits: AreaHit[] = [];
+      const struck: Session[] = [];               // keep the refs so the kill pass below needs no re-lookup
+      const reach = m.rg + HIT_RADIUS;
+      const reach2 = reach * reach;
+      for (const o of this.sessions.values()) {
+        if (o === s || !o.pose || o.deadUntil > now) continue;
+        if (o.pose.i || o.pose.d) continue;       // interiors/already-dead stay out of PvP blast damage
+        const p = this.rewound(o, rt);
+        if (!p) continue;
+        const dx = p.x - m.o[0], dz = p.z - m.o[2];
+        if (dx * dx + dz * dz > reach2) continue;
+        hits.push([o.id, this.applyDamage(o, now, dmg)]);
+        struck.push(o);
+      }
+      if (hits.length) ev.hits = hits;
+      this.broadcast(ev);
+      for (const o of struck) this.killIfNeeded(o, s.id, now);
+      return;
+    }
+
     let best: Session | null = null, bestT = Infinity;
+    const hitRadius = m.k === 3 ? HIT_RADIUS + 0.55 : HIT_RADIUS;
     for (const o of this.sessions.values()) {
       if (o === s || !o.pose || o.deadUntil > now) continue;
-      if (o.pose.i || o.pose.d || (o.pose.m >= 1 && o.pose.m <= 3)) continue; // interior/vehicle/already-dead: PvP-immune in v1
+      if (o.pose.i || o.pose.d || (o.pose.m >= 1 && o.pose.m <= 3)) continue; // interior/vehicle/already-dead: direct PvP-immune in v1
       const p = this.rewound(o, rt);
       if (!p) continue;
       const t = raySphereT(m.o[0], m.o[1], m.o[2], m.d[0], m.d[1], m.d[2],
-        p.x, p.y + HIT_CHEST_Y, p.z, HIT_RADIUS, m.rg);
+        p.x, p.y + HIT_CHEST_Y, p.z, hitRadius, m.rg);
       if (t !== null && t < bestT) { bestT = t; best = o; }
     }
-    const ev: Extract<ServerMsg, { t: 'shot' }> = { t: 'shot', by: s.id, o: m.o, d: m.d, k: m.k };
     if (best) {
-      // lazy regen up to now, then apply the damage table
-      if (best.hpAt) best.hp = Math.min(PVP_HP_MAX, best.hp + (now - best.hpAt) / 1000 * PVP_REGEN_PER_S);
-      best.hpAt = now;
-      best.hp -= (m.k ? MELEE_DMG_HP : SHOT_DMG_HP)[m.dm];
       ev.hit = best.id;
-      ev.hp = Math.max(0, Math.round(best.hp));
+      ev.hp = this.applyDamage(best, now, dmg);
     }
     this.broadcast(ev);
-    if (best && best.hp <= 0) {
-      best.deadUntil = now + PVP_RESPAWN_MS;
-      this.broadcast({ t: 'death', id: best.id, by: s.id });
-      this.ensureTicking();                         // the respawn timer lives in tick()
-    }
+    if (best) this.killIfNeeded(best, s.id, now);
   }
 
   webSocketClose(ws: WebSocket): void { this.drop(ws); }

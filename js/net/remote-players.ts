@@ -8,6 +8,7 @@ import { scene } from '@/core/engine.ts';
 import { gunshot, thud } from '@/audio/audio.ts';
 import { makeRemoteAvatar, makeNameTag } from '../../assets/models/characters/remote-player.ts';
 import { makeWeaponTracerLine } from '../../assets/models/effects/weapon-tracer.ts';
+import { makeExplosionModel } from '../../assets/models/effects/explosion.ts';
 import { disposeNpcGlb, setNpcGlbSeated } from '../../assets/models/characters/npc-glb.ts';
 import { makeCar, makeMotorcycle, makeBoat, makePlane, disposeGeometries } from '@/core/entities.ts';
 import { makeTractor } from '../../assets/models/vehicles/tractor.ts';
@@ -44,12 +45,39 @@ const VIS_DIST2 = 170 * 170;   // beyond the fog there is nothing to draw
 const TAG_DIST2 = 48 * 48;     // name tags only near the player
 const SNAP_JUMP = 9;           // >9 m between samples = legit teleport (hospital, interiors): snap, don't glide
 const TAG_Y = 2.55;
+const EARSHOT_DIST = 180;      // past this (beyond the fog) a remote attack is neither drawn nor heard
+const TRACER_FADE_MS = 140;    // remote bullet tracer lifetime (mirrors weapons.ts)
+const BLAST_FADE_MS = 650;     // remote explosion / fire-pool pulse lifetime
+const MELEE_AUDIBLE2 = 30 * 30;// a remote punch's whoosh carries this far (metres, squared)
 
 export const remoteCount = (): number => remotes.size;
 export const getMyOnlineId = (): number => myId;
 
+/** Dev/test introspection: the currently-rendered pose of every remote avatar
+ * (vehicle origin while driving, else the avatar). Read by render_game_to_text
+ * so the two-player online harness can assert position / vehicle / death sync.
+ * Not used by gameplay. */
+export function remoteSnapshot(): Array<{
+  id: number; nick: string; x: number; y: number; z: number;
+  m: MoveMode; vk: number; dead: boolean; interior: boolean;
+}> {
+  const out = [];
+  for (const r of remotes.values()) {
+    const o = r.veh ?? r.g;
+    out.push({
+      id: r.id, nick: r.nick,
+      x: Math.round(o.position.x * 100) / 100,
+      y: Math.round(o.position.y * 100) / 100,
+      z: Math.round(o.position.z * 100) / 100,
+      m: r.m, vk: r.vk, dead: r.poseDead || r.pvpDead, interior: r.interior,
+    });
+  }
+  return out;
+}
+
 // ---- combat v1 fx: tracers + gunshot audio + death pose for remote shots ----
 const shotFx: { line: THREE.Line; at: number }[] = [];
+const blastFx: { g: THREE.Group; at: number }[] = [];
 const _sv0 = new THREE.Vector3(), _sv1 = new THREE.Vector3();
 
 /** A bullet fired by another player: tracer + distance-faded bang + brief aim
@@ -61,7 +89,7 @@ export function remoteShotFx(by: number, o: Vec3, d: Vec3): void {
   if (r) r.g.userData.npcAimT = state.time;       // shooter strikes the aim pose
   const pp = refs.playerPos?.();
   const dist = pp ? Math.hypot(o[0] - pp.x, o[2] - pp.z) : 999;
-  if (dist > 180) return;                         // past the fog and out of earshot
+  if (dist > EARSHOT_DIST) return;                // past the fog and out of earshot
   _sv0.set(o[0], o[1], o[2]);
   _sv1.set(o[0] + d[0] * 3.2, o[1] + d[1] * 3.2, o[2] + d[2] * 3.2);
   const line = makeWeaponTracerLine(_sv0, _sv1);
@@ -69,6 +97,22 @@ export function remoteShotFx(by: number, o: Vec3, d: Vec3): void {
   shotFx.push({ line, at: performance.now() });
   gunshot(Math.max(0.12, 1 - dist / 160));
   state.shotT = state.time; state.shotX = o[0]; state.shotZ = o[2]; // NPCs scatter
+}
+
+/** A radial blast/fire tick by another player: visible pulse + close thud. */
+export function remoteBlastFx(by: number, o: Vec3): void {
+  if (by === myId) return;
+  const r = remotes.get(by);
+  if (r) r.g.userData.npcAimT = state.time;
+  const pp = refs.playerPos?.();
+  const dist = pp ? Math.hypot(o[0] - pp.x, o[2] - pp.z) : 999;
+  if (dist > EARSHOT_DIST) return;
+  const g = makeExplosionModel();
+  g.position.set(o[0], o[1], o[2]);
+  scene.add(g);
+  blastFx.push({ g, at: performance.now() });
+  thud(Math.max(2, 10 * (1 - dist / 160)));
+  state.shotT = state.time; state.shotX = o[0]; state.shotZ = o[2];
 }
 
 /** A melee swing by another player: punch clip + a close-range whoosh. */
@@ -81,7 +125,7 @@ export function remoteMeleeFx(by: number): void {
   if (pp && !r.veh) {
     const dx = r.g.position.x - pp.x, dz = r.g.position.z - pp.z;
     const d2 = dx * dx + dz * dz;
-    if (d2 < 900) thud(Math.max(1, 5 * (1 - Math.sqrt(d2) / 30)));
+    if (d2 < MELEE_AUDIBLE2) thud(Math.max(1, 5 * (1 - Math.sqrt(d2) / 30)));
   }
 }
 
@@ -248,6 +292,15 @@ function disposeGeoms(o: THREE.Object3D): void {
   o.traverse(c => { (c as THREE.Mesh).geometry?.dispose?.(); });
 }
 
+function disposeFx(o: THREE.Object3D): void {
+  disposeGeometries(o);
+  o.traverse(c => {
+    const mat = (c as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+    if (Array.isArray(mat)) for (const m of mat) m.dispose();
+    else mat?.dispose?.();
+  });
+}
+
 function removeRemote(id: number): void {
   const r = remotes.get(id);
   if (!r) return;
@@ -268,6 +321,11 @@ export function clearRemotes(): void {
     fx.line.parent?.remove(fx.line);
   }
   shotFx.length = 0;
+  for (const fx of blastFx) {
+    disposeFx(fx.g);
+    fx.g.parent?.remove(fx.g);
+  }
+  blastFx.length = 0;
 }
 
 /** Per-frame: place every remote at the interpolated pose. Cheap when empty. */
@@ -275,12 +333,30 @@ export function updateRemotes(): void {
   if (shotFx.length) {                            // fade remote tracers (mirrors weapons.ts, ~140ms)
     const nowMs = performance.now();
     for (let i = shotFx.length - 1; i >= 0; i--) {
-      if (nowMs - shotFx[i].at < 140) continue;
+      if (nowMs - shotFx[i].at < TRACER_FADE_MS) continue;
       const l = shotFx[i].line;
       disposeGeometries(l);
       (l.material as THREE.Material).dispose();   // makeWeaponTracerLine clones its material
       l.parent?.remove(l);
       shotFx.splice(i, 1);
+    }
+  }
+  if (blastFx.length) {
+    const nowMs = performance.now();
+    for (let i = blastFx.length - 1; i >= 0; i--) {
+      const age = nowMs - blastFx[i].at;
+      if (age >= BLAST_FADE_MS) {
+        disposeFx(blastFx[i].g);
+        blastFx[i].g.parent?.remove(blastFx[i].g);
+        blastFx.splice(i, 1);
+        continue;
+      }
+      const t = age / BLAST_FADE_MS;
+      blastFx[i].g.scale.setScalar(1 + t * 2.2);
+      blastFx[i].g.traverse(o => {
+        const mat = (o as THREE.Mesh).material as (THREE.Material & { opacity?: number }) | undefined;
+        if (mat && mat.opacity != null) mat.opacity = Math.max(0, .9 * (1 - t));
+      });
     }
   }
   if (!remotes.size) return;

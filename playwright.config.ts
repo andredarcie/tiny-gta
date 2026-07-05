@@ -12,6 +12,7 @@ const headless = process.env.HEADLESS === '1';
 export default defineConfig({
   testDir: './test',
   testMatch: '**/*.spec.ts',
+  testIgnore: '**/*.online.spec.ts', // two-player online specs need the MP server → run via playwright.online.config.ts
   fullyParallel: false,    // the game is a singleton page; run specs serially
   workers: 1,
   retries: 0,

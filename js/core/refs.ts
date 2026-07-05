@@ -36,7 +36,7 @@ const DEV: boolean = (() => { try { return !!import.meta.env?.DEV || /[?&]debug\
 // so a missing one is always a real regression, never a false alarm.
 export const REQUIRED: string[] = [
   // player / camera (read every frame)
-  'playerPos','getCur','getPlayerHeading','getRadarHeading','nearestCar',
+  'playerPos','getCur','getPlayerHeading','getRadarHeading','nearestCar','isWasted',
   // money + progress persistence
   'serializeLedger','importLedger','collectSave','applySave',
   // weapons + the HUD message bus
@@ -54,7 +54,8 @@ export const KNOWN = new Set<string>([
   // generic registries
   'miniBlips','zoneActions','carEnterLabels',
   // main.ts core late-binding
-  'playerPos','getCur','getPlayerHeading','getRadarHeading','traffic','cops',
+  'playerPos','getCur','getPlayerHeading','getRadarHeading','isWasted','getOnlineState',
+  'onlineShot','onlineMelee','onlineBlast','onlineFlame','traffic','cops',
   'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','spawnBlood','severHead','severArm','gangs','setGangsHidden',
   'interiorBlips','getDelivery','storyNear','storyBlips','storyTargets','rickNear',
   'rickInteract','getRickState','getBusted','getWasted','getHeli','nearestCar',

@@ -8,53 +8,102 @@
 import { state, refs } from '@/core/state.ts';
 import { getNickname, getPlayerId } from '@/ui/leaderboard.ts';
 import { thud } from '@/audio/audio.ts';
-import { SEND_HZ, type MoveMode, type RemotePose } from '../../shared/net/protocol.ts';
-import { isJoined, netMaintain, netPing, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
+import { SEND_HZ, type AreaHit, type AttackKind, type MoveMode, type RemotePose } from '../../shared/net/protocol.ts';
+import { clampHealth, deadPoseFlag, shouldSyncLocalHeal, shouldTriggerLocalWasted } from '../../shared/net/online-lifecycle.ts';
+import { isJoined, netMaintain, netPing, netSendHeal, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
 import {
   clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome,
-  remoteCount, remoteMeleeFx, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
+  remoteBlastFx, remoteCount, remoteMeleeFx, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
 } from './remote-players.ts';
+
+// Dev/test introspection facade: the two-player online harness reads the remote
+// poses through render_game_to_text (see js/core/main.ts). Gameplay never calls it.
+export { remoteSnapshot } from './remote-players.ts';
 
 const PROD_WS = 'wss://tiny-gta-mp.andredarcie.workers.dev/ws';
 
 let enabled = false;
 let acc = 0;
 let last: RemotePose | null = null;
+let lastHealthSeen = 100;
 
 const handlers: NetHandlers = {
-  onWelcome: handleWelcome,
+  onWelcome: (id, players) => {
+    handleWelcome(id, players);
+    lastHealthSeen = clampHealth(state.health);
+  },
   onAdd: handleAdd,
   onDel: handleDel,
   onSnap: handleSnap,
-  onShot: (by, o, d, hit, hp, k) => {
+  onShot: ({ by, o, d, hit, hp, k, hits }) => {
     if (k === 1) remoteMeleeFx(by);               // punch swing on the remote avatar
+    else if (k === 2) remoteBlastFx(by, o);       // explosion/fire-pool visual pulse
     else remoteShotFx(by, o, d);                  // tracer/bang/aim pose (no-op for own echo)
     const me = getMyOnlineId();
-    if (hit && by === me) {
-      // hitmarker: the server confirmed MY bullet connected
+    if (by === me && (hit || hits.length)) {
+      // hitmarker: the server confirmed MY attack connected
       thud(3);
       state.crosshairKick = Math.max(state.crosshairKick, .6);
     }
-    if (hit && hit === me && hp >= 0) {
-      // The server decided I was hit. Its PvP hp is an authoritative CEILING on
-      // my local health — damage lands through the normal pipeline, so the
-      // existing wasted/hospital flow handles death and respawn untouched.
-      if (state.health > hp) state.health = hp;
-      state.shake = Math.max(state.shake, .3);
-    }
+    const ownAreaHp = ownAreaHit(hits, me);
+    if (hit === me && hp >= 0) applyServerHp(hp);
+    else if (ownAreaHp >= 0) applyServerHp(ownAreaHp);
+    if ((hit === me && hp >= 0) || ownAreaHp >= 0) state.shake = Math.max(state.shake, .3);
   },
   onDeath: (id, by) => {
-    setRemoteDead(id, true);                      // own id: the shot already zeroed health
+    setRemoteDead(id, true);
     const me = getMyOnlineId();
-    if (id === me) refs.radioMessage?.(`<b>${remoteNick(by)}</b> took you down.`, 6000);
+    if (id === me) {
+      lastHealthSeen = 0;
+      if (shouldTriggerLocalWasted(0, !!refs.isWasted?.())) refs.getWasted?.();
+      refs.radioMessage?.(`<b>${remoteNick(by)}</b> took you down.`, 6000);
+    }
     else if (by === me) {
       refs.message?.('YOU TOOK DOWN ' + remoteNick(id), '#ff2e88');
       refs.radioMessage?.(`You took down <b>${remoteNick(id)}</b>.`, 5000);
     } else refs.radioMessage?.(`<b>${remoteNick(by)}</b> took down <b>${remoteNick(id)}</b>.`, 5000);
   },
-  onSpawn: (id) => setRemoteDead(id, false),
-  onDropped: () => { clearRemotes(); last = null; },
+  onSpawn: (id) => {
+    setRemoteDead(id, false);
+    if (id === getMyOnlineId()) lastHealthSeen = clampHealth(state.health);
+  },
+  onDropped: () => { clearRemotes(); last = null; lastHealthSeen = clampHealth(state.health); },
 };
+
+function ownAreaHit(hits: AreaHit[], me: number): number {
+  for (const [id, hp] of hits) if (id === me) return hp;
+  return -1;
+}
+
+function applyServerHp(hp: number): void {
+  const next = clampHealth(hp);
+  if (state.health > next) state.health = next;
+  lastHealthSeen = state.health;
+  if (shouldTriggerLocalWasted(next, !!refs.isWasted?.())) refs.getWasted?.();
+}
+
+// Wire-compaction: positions to 2 decimals, unit-ray components to 3. Defined
+// once at module scope (not re-created on every shot).
+const r2 = (v: number): number => Math.round(v * 100) / 100;
+const r3 = (v: number): number => Math.round(v * 1000) / 1000;
+
+interface Vec3ish { x: number; y: number; z: number }
+
+// The ONE place every weapon path reports an attack. The client only states
+// "I attacked from O toward D"; the SERVER alone decides who was hit (see
+// server/src/world.ts). Centralizing the guard + rounding + message shape keeps
+// the four public entry points below to a single line each.
+function sendAttack(k: AttackKind, o: Vec3ish, d: Vec3ish, damage: number, range: number): void {
+  if (!enabled || !isJoined()) return;
+  netSendShot({
+    t: 'shot',
+    o: [r2(o.x), r2(o.y), r2(o.z)],
+    d: [r3(d.x), r3(d.y), r3(d.z)],
+    dm: damage | 0,
+    rg: Math.round(range),
+    k,
+  });
+}
 
 export function initOnline(): void {
   enabled = resolveEnabled();
@@ -67,46 +116,31 @@ export function initOnline(): void {
     players: isJoined() ? remoteCount() + 1 : 0, // world population, me included
     ping: netPing(),
   });
-  // Called by weapons.ts for every hitscan bullet it fires (after spread).
-  // The client only says "I fired from O toward D" — the SERVER decides hits.
-  refs.onlineShot = (origin, dir, damage, range) => {
-    if (!enabled || !isJoined()) return;
-    const r2 = (v: number) => Math.round(v * 100) / 100;
-    const r3 = (v: number) => Math.round(v * 1000) / 1000;
-    netSendShot({
-      t: 'shot',
-      o: [r2(origin.x), r2(origin.y), r2(origin.z)],
-      d: [r3(dir.x), r3(dir.y), r3(dir.z)],
-      dm: damage | 0,
-      rg: Math.round(range),
-      k: 0,
-    });
-  };
-  // Called by weapons.ts for every melee swing: same server-decided hit
-  // pipeline with a ~2m reach; remotes see the punch clip instead of a tracer.
-  refs.onlineMelee = (range: number, lethal: boolean) => {
-    if (!enabled || !isJoined()) return;
+  // weapons.ts fires these for each attack; each just names the kind, its origin
+  // and direction — sendAttack() does the rest (guard/round/send).
+  // Hitscan bullet (after spread): "I fired from origin toward dir".
+  refs.onlineShot = (origin, dir, damage, range) => sendAttack(0, origin, dir, damage, range);
+  // Melee swing (~2m reach): origin/dir derived from the player's pose; remotes
+  // play the punch clip instead of a tracer.
+  refs.onlineMelee = (range, lethal) => {
     const pp = refs.playerPos?.();
     if (!pp) return;
     let h = refs.getPlayerHeading?.() ?? 0;
     if (!Number.isFinite(h)) h = 0;
-    const r2 = (v: number) => Math.round(v * 100) / 100;
-    netSendShot({
-      t: 'shot',
-      o: [r2(pp.x), r2(pp.y + 1.2), r2(pp.z)],
-      d: [Math.round(Math.sin(h) * 1000) / 1000, 0, Math.round(Math.cos(h) * 1000) / 1000],
-      dm: lethal ? 2 : 1,
-      rg: Math.max(1, Math.min(3, Math.round(range))),
-      k: 1,
-    });
+    sendAttack(1, { x: pp.x, y: pp.y + 1.2, z: pp.z }, { x: Math.sin(h), y: 0, z: Math.cos(h) }, lethal ? 2 : 1, range);
   };
+  // Radial blast / fire-pool tick centered on origin (dir is unused; straight-up
+  // just keeps the ray non-degenerate for the server parser).
+  refs.onlineBlast = (origin, damage, radius) => sendAttack(2, origin, { x: 0, y: 1, z: 0 }, damage, radius);
+  // Flamethrower cone: a short ray the server tests like a fat bullet.
+  refs.onlineFlame = (origin, dir, damage, range) => sendAttack(3, origin, dir, damage, range);
 }
 
 function resolveEnabled(): boolean {
   try {
     const v = new URLSearchParams(location.search).get('mp');
     if (v === '0' || v === 'off') return false;
-  } catch (e) { /* no URL (tests): stay enabled */ }
+  } catch { /* no URL (tests): stay enabled */ }
   return true;
 }
 
@@ -114,7 +148,7 @@ function wsUrl(): string {
   try {
     const o = new URLSearchParams(location.search).get('mpserver');
     if (o) return o;
-  } catch (e) {}
+  } catch { /* no URL (tests): fall through to the default server */ }
   if (import.meta.env.DEV) return `ws://${location.hostname}:8787/ws`;
   return PROD_WS;
 }
@@ -131,7 +165,7 @@ export function updateOnline(dt: number): void {
   try { updateOnlineInner(dt); } catch (e) {
     if (++errStrikes >= 3) {
       enabled = false;
-      try { clearRemotes(); } catch (e2) {}
+      try { clearRemotes(); } catch { /* nothing left to salvage */ }
       console.warn('[online] disabled after repeated errors:', e);
     }
   }
@@ -145,11 +179,20 @@ function updateOnlineInner(dt: number): void {
   acc = 0;
   netMaintain(wsUrl(), getNickname() || 'Player', getPlayerId() || 'anon', handlers);
   if (!isJoined()) return;
+  syncLocalHeal();
   const pose = samplePose();
   if (pose && (!last || poseChanged(last, pose))) {
     netSendPos(pose);
     last = pose;
   }
+}
+
+function syncLocalHeal(): void {
+  const hp = clampHealth(state.health);
+  if (hp < lastHealthSeen) { lastHealthSeen = hp; return; }
+  if (!shouldSyncLocalHeal(hp, lastHealthSeen)) return;
+  lastHealthSeen = hp;
+  netSendHeal(Math.round(hp));
 }
 
 function samplePose(): RemotePose | null {
@@ -169,7 +212,7 @@ function samplePose(): RemotePose | null {
   const r = (v: number) => Math.round(v * 100) / 100;
   // dead from ANY local cause (roof fall, cops, drowning, PvP): remotes lie the
   // avatar down + blood puddle until the hospital respawn flips this back
-  const dead = state.health <= 0 || !!refs.getWasted?.() ? 1 : 0;
+  const dead = deadPoseFlag(state.health, !!refs.isWasted?.());
   return { x: r(px), y: r(py), z: r(pz), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0, vk, d: dead as 0 | 1 };
 }
 

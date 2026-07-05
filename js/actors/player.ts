@@ -91,6 +91,7 @@ let playerAnim:AnimationStateMachine|null=null; // the hero's animation state ma
 let procVisual:THREE.Object3D[]=[];          // original children of player.g (doll mesh + mouth)
 let glbPunchT=0;                             // >0 while the one-shot 'punch' clip plays
 let glbDead=false;                           // dead → hold 'death' through the WASTED cut
+let wastedActive=false;                      // WASTED flow active, including vehicle instant cuts
 // The hero — and every NPC — is one clone of the shared mixamorig base (mixamo-rig.ts): real
 // clips, no IK/foot-weld hacks. Falls back to the procedural doll only if the base fails to load.
 function installHero(h:MixamoChar,anim:AnimationStateMachine):void{
@@ -588,6 +589,8 @@ export function startCut(text:string,col:string,fn:(()=>void)|null){
   if(cur)cur.speed=0;
 }
 
+export function isWasted(): boolean { return wastedActive||!!dying||glbDead; }
+
 export function getBusted(){
   if(dying)return; // morrendo não é preso
   refs.endOverkill?.(); // prisão também encerra o modo overkill na hora
@@ -600,7 +603,7 @@ export function getBusted(){
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
     player.g.visible=true;
-    glbDead=false;                 // recovered (hospital/jail) → leave the death pose
+    glbDead=false;wastedActive=false; // recovered (hospital/jail) → leave the death pose
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // Busted while carrying the weed delivery backpack: a crooked cop drives you
     // out to the woods and shakes you down for a bribe instead of booking you
@@ -629,7 +632,7 @@ function wastedCut(){
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
     unseatPlayer();
     player.g.visible=true;
-    glbDead=false;                 // recovered (hospital/jail) → leave the death pose
+    glbDead=false;wastedActive=false; // recovered (hospital/jail) → leave the death pose
     state.weaponHeld=!!state.hasGun;
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // acorda DENTRO do hospital (teleporta pra sala fora do mapa); tem que sair
@@ -644,7 +647,8 @@ let dying:{t:number;puddle:boolean}|null=null;
 // aqui a "poça" com o dinheiro perdido na morte pra outro jogador online pegar.
 let deathSpotX=0,deathSpotZ=0;
 export function getWasted(){
-  if(dying)return;
+  if(wastedActive||dying)return;
+  wastedActive=true;
   {const dp=playerPos();deathSpotX=dp.x;deathSpotZ=dp.z;} // lembra o lugar da morte (poça)
   // morrer nadando: endireita a postura do nado antes da animação de queda
   if(state.swimming){
