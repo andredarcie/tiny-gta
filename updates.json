@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-05-fix-online-death-loop",
+    "date": "2026-07-05",
+    "title": "Fixed the endless \"WASTED\" loop online",
+    "description": "A nasty bug slipped in with the latest online update: while connected to the shared city, some players were being knocked out over and over — dying again the instant they got back up, with no attacker anywhere. It made the game unplayable online. Fixed: you now stay on your feet until something actually takes you down."
+  },
+  {
     "id": "2026-07-04-online-fists-and-bodies",
     "date": "2026-07-04",
     "title": "Fists work online — and the fallen stay fallen",
