@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-05-online-explosives-and-healing",
+    "date": "2026-07-05",
+    "title": "Explosions and fire hit other players online",
+    "description": "Blowing things up finally counts in the shared city. Grenades, molotovs, the flamethrower and rocket blasts can now catch OTHER players — not just bullets and fists. Anyone in the blast radius or standing in the flames takes real, server-judged damage and can be taken down, with everyone nearby seeing the explosion. We also fixed healing: after you patch up with food or a hospital trip, other players now see you back at full health instead of still looking wounded."
+  },
+  {
     "id": "2026-07-05-online-combat-fixes",
     "date": "2026-07-05",
     "title": "Online fights play fair now",
