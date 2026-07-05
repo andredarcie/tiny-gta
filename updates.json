@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-07-05-online-combat-fixes",
+    "date": "2026-07-05",
+    "title": "Online fights play fair now",
+    "description": "Two more online fixes after the loop bug. Getting taken down by another player now sends you properly to the hospital and back into the action — before, a knockout with no police around could leave you stuck on your feet at zero health, looking dead to everyone else and unable to fight back. We also shut down a cheat where a tampered game could turn invisible and unkillable while still gunning everyone down. Cleaner, fairer streets."
+  },
+  {
     "id": "2026-07-05-fix-online-death-loop",
     "date": "2026-07-05",
     "title": "Fixed the endless \"WASTED\" loop online",
