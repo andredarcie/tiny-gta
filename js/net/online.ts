@@ -46,7 +46,17 @@ const handlers: NetHandlers = {
   onDeath: (id, by) => {
     setRemoteDead(id, true);                      // own id: the shot already zeroed health
     const me = getMyOnlineId();
-    if (id === me) refs.radioMessage?.(`<b>${remoteNick(by)}</b> took you down.`, 6000);
+    if (id === me) {
+      // A remote player killed me (server-decided). Drive the LOCAL wasted flow so
+      // the PvP kill actually drops me and sends me to the hospital. Nothing else
+      // does: the on-foot pipeline has no generic health<=0 check — only specific
+      // hazards (cops, traffic, drowning) trigger WASTED, and in a pure PvP fight
+      // none may be present. Without this the victim is left at 0 HP, walking,
+      // un-hittable and lying dead to everyone else until the server respawn.
+      // getWasted() self-guards (returns if already dying), so this is idempotent.
+      refs.getWasted?.();
+      refs.radioMessage?.(`<b>${remoteNick(by)}</b> took you down.`, 6000);
+    }
     else if (by === me) {
       refs.message?.('YOU TOOK DOWN ' + remoteNick(id), '#ff2e88');
       refs.radioMessage?.(`You took down <b>${remoteNick(id)}</b>.`, 5000);
