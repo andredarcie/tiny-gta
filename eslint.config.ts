@@ -12,7 +12,7 @@ export default tseslint.config(
     ignores: [
       'dist/**', 'node_modules/**', 'android/**', 'backend/**', 'public/**',
       'docs/**', 'output/**', '.playwright-mcp/**', '.claude/**',
-      'dev/**', // dev-only viewer/tooling pages (studio/mixamo/portrait)
+      'tools/dev/**', // dev-only viewer/tooling pages (studio/mixamo/portrait)
     ],
   },
   js.configs.recommended,

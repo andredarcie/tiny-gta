@@ -1,6 +1,6 @@
 import NPCS from '../../data/npcs.json';
 
-// Typed reader for the PURE NPC definitions in /data/npcs.json — the single source of
+// Typed reader for the PURE NPC definitions in /src/data/npcs.json — the single source of
 // truth for the game's fixed population. Identity (name, neighborhood, sex, likes)
 // lives in the file so every player meets the same people; the runtime only tracks
 // each NPC's live behaviour state. See npcs.json for the schema.

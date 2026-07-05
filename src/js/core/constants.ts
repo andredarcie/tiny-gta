@@ -5,7 +5,7 @@ import type { Racer, PrizeStreak } from '@/core/types.ts';
 // client walks on. Everything is re-exported here — every existing
 // `@/core/constants.ts` import keeps working unchanged. What remains below is
 // the impure/game-only part: RNG helpers and the shared race tuning.
-export * from '../../shared/sim/terrain.ts';
+export * from '../../../shared/sim/terrain.ts';
 
 export const rand=(a: number, b: number): number=>a+Math.random()*(b-a);
 export const irand=(a: number, b: number): number=>Math.floor(rand(a,b+1));

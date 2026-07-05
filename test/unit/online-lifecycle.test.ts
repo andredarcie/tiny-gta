@@ -27,7 +27,7 @@ describe('online lifecycle helpers', () => {
   });
 
   it('keeps pose sampling away from destructive death actions', () => {
-    const src = readFileSync(resolve(process.cwd(), 'js/net/online.ts'), 'utf8');
+    const src = readFileSync(resolve(process.cwd(), 'src/js/net/online.ts'), 'utf8');
     const start = src.indexOf('function samplePose');
     const end = src.indexOf('function poseChanged');
     expect(start).toBeGreaterThanOrEqual(0);

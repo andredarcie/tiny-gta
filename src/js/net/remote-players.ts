@@ -13,7 +13,7 @@ import { disposeNpcGlb, setNpcGlbSeated } from '../../assets/models/characters/n
 import { makeCar, makeMotorcycle, makeBoat, makePlane, disposeGeometries } from '@/core/entities.ts';
 import { makeTractor } from '../../assets/models/vehicles/tractor.ts';
 import { SEAT_OFFSET, GLB_SEAT_OFFSET } from '@/actors/vehicle-pose.ts';
-import { INTERP_DELAY_MS, wrapAngle, type MoveMode, type PlayerPub, type SnapRow, type Vec3 } from '../../shared/net/protocol.ts';
+import { INTERP_DELAY_MS, wrapAngle, type MoveMode, type PlayerPub, type SnapRow, type Vec3 } from '../../../shared/net/protocol.ts';
 
 interface Sample { t: number; x: number; y: number; z: number; h: number }
 interface Remote {

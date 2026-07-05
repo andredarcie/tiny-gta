@@ -312,7 +312,7 @@ function renderUpdates(): void {
 }
 
 // ---- mini games (read-only reference of every mini-game's money / cost / timers) --
-// Mirrors /data/minigame-rewards.json verbatim — the very {field,value,description} triples
+// Mirrors /src/data/minigame-rewards.json verbatim — the very {field,value,description} triples
 // the game tunes from — so the player always has the full payout/cost/timing reference.
 interface MgTunable { field: string; value: unknown; description: string }
 const MG_DATA=MINIGAME_REWARDS as unknown as Record<string, MgTunable[]>;

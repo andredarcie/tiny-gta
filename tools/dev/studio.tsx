@@ -8,8 +8,8 @@
 // ===========================================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { preloadRig, makeCharacter, PLAYER_LOOK, MIXAMO_LOCO_NAT, MIXAMO_WALK_NAT } from '../assets/models/characters/mixamo-rig.ts';
-import { AnimationStateMachine, AnimState, MIXAMO_TABLE, type AnimCtx } from '../js/actors/anim-fsm.ts';
+import { preloadRig, makeCharacter, PLAYER_LOOK, MIXAMO_LOCO_NAT, MIXAMO_WALK_NAT } from '../../src/assets/models/characters/mixamo-rig.ts';
+import { AnimationStateMachine, AnimState, MIXAMO_TABLE, type AnimCtx } from '../../src/js/actors/anim-fsm.ts';
 
 const STATES = Object.entries(AnimState).filter(([, v]) => typeof v === 'number') as [string, number][];
 const ONE_SHOT = new Set<number>([AnimState.Jump, AnimState.Punch, AnimState.Death]);

@@ -13,10 +13,10 @@
 //   yieldMul buds harvested
 //   color    leaf tint so each strain looks different on the bed
 // The per-strain CASH-per-bud multiplier (was `value` here) now lives in the central
-// money config — /data/minigame-rewards.json → weedFarm.strainValues (keyed by strain id).
+// money config — /src/data/minigame-rewards.json → weedFarm.strainValues (keyed by strain id).
 // NOTE: the money/cost/time values that used to live here (per-strain seed `price`,
 // cash-per-bud `value`, `CURE_TIME`, `CURE_BONUS`) now live in the central config
-// /data/minigame-rewards.json → weedFarm.* (read via @/core/minigame-rewards.ts), keyed by
+// /src/data/minigame-rewards.json → weedFarm.* (read via @/core/minigame-rewards.ts), keyed by
 // strain id. This file keeps only the per-strain GROW mechanics + display data.
 export interface Strain {
   id: string;

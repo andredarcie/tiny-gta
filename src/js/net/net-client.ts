@@ -6,7 +6,7 @@
 import {
   KEEPALIVE_PING, KEEPALIVE_PONG, PING_INTERVAL_MS, PROTOCOL_VERSION,
   type AreaHit, type ClientMsg, type PlayerPub, type RemotePose, type ShotMsg, type SnapRow, type Vec3,
-} from '../../shared/net/protocol.ts';
+} from '../../../shared/net/protocol.ts';
 
 /** A remote attack the server broadcast (k=0 bullet, 1 melee, 2 blast, 3 flame).
  * `hit`/`hp` describe a single confirmed direct hit (-1 = none); `hits` carries

@@ -6,7 +6,7 @@
 // ===========================================================================
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { preloadRig, makeCharacter, PLAYER_LOOK, lookFor, type MixamoChar } from '../assets/models/characters/mixamo-rig.ts';
+import { preloadRig, makeCharacter, PLAYER_LOOK, lookFor, type MixamoChar } from '../../src/assets/models/characters/mixamo-rig.ts';
 
 // the hero + a fixed cast of named NPCs (each look is deterministic from its name)
 const CROWD: { name: string; player?: boolean }[] = [
