@@ -1,9 +1,9 @@
-import rawData from '../../minigame-rewards.json';
+import rawData from '../../data/minigame-rewards.json';
 
 // ============================================================================
 // MINI-GAME CONFIG — single source of truth for how much money each mini-game
 // PAYS, what its activities COST, and its key TIMERS / CAPS. Tuned in
-// /minigame-rewards.json (root), where every tunable is a self-documenting
+// /data/minigame-rewards.json, where every tunable is a self-documenting
 // { field, value, description } triple grouped by mini-game.
 //
 // This module flattens those triples into REWARDS.<minigame>.<field> so game
@@ -101,6 +101,6 @@ export interface MinigameRewardConfig {
   drugBust: { bribeMin: number; bribeStashFraction: number };
 }
 
-/** Typed view of /minigame-rewards.json (flattened from its {field,value,description}
+/** Typed view of /data/minigame-rewards.json (flattened from its {field,value,description}
  *  triples). Import this anywhere a mini-game needs its money / cost / timer values. */
 export const REWARDS = FLAT as unknown as MinigameRewardConfig;

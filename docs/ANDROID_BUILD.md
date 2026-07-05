@@ -127,7 +127,7 @@ What you must do **in the Play Console / before going public** (can't live in th
 
 - 📋 **Privacy policy URL** — the game sends a nickname + a random player id +
   progress to the leaderboard backend, so Play requires a hosted policy. Publish
-  [`PRIVACY.md`](./PRIVACY.md) at a public URL and link it in the listing.
+  [`PRIVACY.md`](../PRIVACY.md) at a public URL and link it in the listing.
 - 📋 **Data Safety form** — fill it using the table at the bottom of `PRIVACY.md`.
 - 📋 **Content rating (IARC questionnaire)** — declare cartoon/action violence;
   Tiny Theft Auto is **not** a "Designed for Families" title.

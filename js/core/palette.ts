@@ -1,5 +1,5 @@
 // Central color palette — the single source of truth for the game's color
-// vocabulary. Art direction: "Vice em Miniatura" (see ART_DIRECTION.md) — a
+// vocabulary. Art direction: "Vice em Miniatura" (see docs/ART_DIRECTION.md) — a
 // miniature/diorama city: sun-faded matte world by day, Vice-style neon at
 // night, with saturation reserved for things that carry gameplay meaning.
 //

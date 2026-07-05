@@ -3,7 +3,7 @@
 // This module is a NO-OP in a normal browser: every code path is guarded by
 // `Capacitor.isNativePlatform()`, so the web/desktop build is unaffected and the
 // `@capacitor/app` import simply sits unused. It only does anything inside the
-// Android WebView shell produced by `npx cap sync android` (see ANDROID_BUILD.md).
+// Android WebView shell produced by `npx cap sync android` (see docs/ANDROID_BUILD.md).
 //
 // Today it does one important thing: it intercepts the Android hardware BACK
 // button. Without a listener, Capacitor's default is to exit the app on back —

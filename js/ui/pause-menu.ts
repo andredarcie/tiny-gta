@@ -14,10 +14,10 @@ import {economy} from '@/core/economy.ts';
 import {API,getNickname,flush} from '@/ui/leaderboard.ts';
 import {settings,setSetting,resetSettings} from '@/core/settings.ts';
 import {getNpcRoster,kindLabel,type NpcRosterEntry} from '@/actors/npc.ts';
-import UPDATES from '../../updates.json';
-import MINIGAME_REWARDS from '../../minigame-rewards.json';
+import UPDATES from '../../data/updates.json';
+import MINIGAME_REWARDS from '../../data/minigame-rewards.json';
 
-// A changelog entry shape (root updates.json, newest-first).
+// A changelog entry shape (data/updates.json, newest-first).
 interface Update { id: string; date: string; title: string; description: string; }
 // A leaderboard row from /api/scores.
 interface LbEntry { rank: number; name: string; money: number; }
@@ -35,7 +35,7 @@ const fmtCompact=(n: unknown): string=>'$'+moneyCompact.format(Math.max(0,Math.f
 const fmtTime=(t: unknown): string=>{try{return new Date(Number(t)).toLocaleString();}catch(e){return '';}};
 const fmtDate=(d: string): string=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}catch(e){return String(d);}};
 
-// ---- updates / changelog (driven by the root updates.json, newest-first) ----
+// ---- updates / changelog (driven by data/updates.json, newest-first) ----
 // The newest entry's id is what we remember as "seen": when it differs from the
 // stored value, the menu shows a NEW badge until the player opens the panel.
 const UPDATES_SEEN_KEY='tinycrime_updates_seen';
@@ -312,7 +312,7 @@ function renderUpdates(): void {
 }
 
 // ---- mini games (read-only reference of every mini-game's money / cost / timers) --
-// Mirrors /minigame-rewards.json verbatim — the very {field,value,description} triples
+// Mirrors /data/minigame-rewards.json verbatim — the very {field,value,description} triples
 // the game tunes from — so the player always has the full payout/cost/timing reference.
 interface MgTunable { field: string; value: unknown; description: string }
 const MG_DATA=MINIGAME_REWARDS as unknown as Record<string, MgTunable[]>;

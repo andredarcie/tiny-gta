@@ -10,7 +10,7 @@ test('player toon vs Schedule I', async ({page}) => {
   page.on('console', (m) => console.error('[console:' + m.type() + ']', m.text()));
   // Use our OWN dev server on a dedicated port — port 5173 is sometimes squatted
   // by another project's dev server, which would serve the wrong index.html.
-  await page.goto('http://localhost:5273/portrait.html', {waitUntil: 'load'});
+  await page.goto('http://localhost:5273/dev/portrait.html', {waitUntil: 'load'});
   try {
     await page.waitForFunction(() => (window as any).__ready === true || !!(window as any).__err, null, {timeout: 25_000});
   } catch (e) {
@@ -27,12 +27,12 @@ test('player toon vs Schedule I', async ({page}) => {
 
   // History: archive EVERY render so each evolution is preserved (never overwritten).
   // Files are numbered + timestamped so they sort chronologically.
-  const dir = 'comparacoes';
+  const dir = 'docs/history/comparacoes';
   fs.mkdirSync(dir, {recursive: true});
   const nums = fs.readdirSync(dir).map((f) => parseInt(f, 10)).filter((n) => !Number.isNaN(n));
   const n = String((nums.length ? Math.max(...nums) : 0) + 1).padStart(2, '0');
   const ts = new Date().toISOString().slice(0, 19).replace('T', '_').replace(/:/g, '-');
   fs.writeFileSync(path.join(dir, `${n}_${ts}.png`), buf);
-  fs.writeFileSync('comparacao-player-vs-scheduleI.png', buf); // always-latest at repo root
+  fs.writeFileSync('docs/history/comparacao-player-vs-scheduleI.png', buf); // always-latest
   console.error('[spec] saved comparison to', path.join(dir, `${n}_${ts}.png`));
 });

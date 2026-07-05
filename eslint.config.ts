@@ -11,8 +11,8 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**', 'node_modules/**', 'android/**', 'backend/**', 'public/**',
-      'fp-preview/**', 'comparacoes/**', 'output/**', '.playwright-mcp/**', '.claude/**',
-      'studio.tsx', 'mixamo.tsx', // dev-only viewer pages
+      'docs/**', 'output/**', '.playwright-mcp/**', '.claude/**',
+      'dev/**', // dev-only viewer/tooling pages (studio/mixamo/portrait)
     ],
   },
   js.configs.recommended,
@@ -41,7 +41,7 @@ export default tseslint.config(
   },
   {
     // Tests + tooling run under Node/Playwright, not the browser game loop.
-    files: ['test/**', 'tools/**', 'scripts/**', '*.config.ts', 'portrait.ts'],
+    files: ['test/**', 'tools/**', '*.config.ts'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
   },
 );
