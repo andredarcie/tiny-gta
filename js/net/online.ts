@@ -168,8 +168,10 @@ function samplePose(): RemotePose | null {
   if (!Number.isFinite(h)) h = 0;
   const r = (v: number) => Math.round(v * 100) / 100;
   // dead from ANY local cause (roof fall, cops, drowning, PvP): remotes lie the
-  // avatar down + blood puddle until the hospital respawn flips this back
-  const dead = state.health <= 0 || !!refs.getWasted?.() ? 1 : 0;
+  // avatar down + blood puddle until the hospital respawn flips this back.
+  // NOTE: read isWasted() (a predicate) — NOT getWasted(), which TRIGGERS the
+  // death and would kill the local player on every pose sample (~10Hz).
+  const dead = state.health <= 0 || !!refs.isWasted?.() ? 1 : 0;
   return { x: r(px), y: r(py), z: r(pz), h: Math.round(h * 1000) / 1000, m, i: state.interior ? 1 : 0, vk, d: dead as 0 | 1 };
 }
 
