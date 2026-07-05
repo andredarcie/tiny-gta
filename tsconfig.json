@@ -24,8 +24,8 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "paths": { "@/*": ["./js/*"] }
+    "paths": { "@/*": ["./src/js/*"] }
   },
-  "include": ["js", "assets", "shared", "vite-env.d.ts"],
-  "exclude": ["node_modules", "dist", "backend", "android", "public", "docs", "output", "test", "tools", "dev"]
+  "include": ["src", "shared", "vite-env.d.ts"],
+  "exclude": ["node_modules", "dist", "backend", "android", "public", "docs", "output", "test", "tools"]
 }

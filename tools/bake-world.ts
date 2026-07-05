@@ -1,4 +1,4 @@
-// Bakes the fixed world layout to /data/world.json. Run with: npm run bake
+// Bakes the fixed world layout to /src/data/world.json. Run with: npm run bake
 //
 // The generator (js/world-gen.ts) is pure (constants + seeded RNG, no Three.js/DOM),
 // so it runs headlessly here (via tsx, which resolves the game's .js import specifiers
@@ -13,7 +13,7 @@ import {generateWorldSpec} from '@/world/world-gen.ts';
 const here=dirname(fileURLToPath(import.meta.url));
 const SEED=Number(process.argv[2])||1337;
 const spec=generateWorldSpec(SEED);
-const out=join(here,'..','data','world.json');
+const out=join(here,'..','src','data','world.json');
 writeFileSync(out,JSON.stringify(spec)+'\n');
 
 const f=spec.forest;

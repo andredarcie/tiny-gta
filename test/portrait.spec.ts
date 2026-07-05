@@ -10,7 +10,7 @@ test('player toon vs Schedule I', async ({page}) => {
   page.on('console', (m) => console.error('[console:' + m.type() + ']', m.text()));
   // Use our OWN dev server on a dedicated port — port 5173 is sometimes squatted
   // by another project's dev server, which would serve the wrong index.html.
-  await page.goto('http://localhost:5273/dev/portrait.html', {waitUntil: 'load'});
+  await page.goto('http://localhost:5273/tools/dev/portrait.html', {waitUntil: 'load'});
   try {
     await page.waitForFunction(() => (window as any).__ready === true || !!(window as any).__err, null, {timeout: 25_000});
   } catch (e) {

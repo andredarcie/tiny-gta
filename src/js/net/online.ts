@@ -8,8 +8,8 @@
 import { state, refs } from '@/core/state.ts';
 import { getNickname, getPlayerId } from '@/ui/leaderboard.ts';
 import { thud } from '@/audio/audio.ts';
-import { SEND_HZ, type AreaHit, type AttackKind, type MoveMode, type RemotePose } from '../../shared/net/protocol.ts';
-import { clampHealth, deadPoseFlag, shouldSyncLocalHeal, shouldTriggerLocalWasted } from '../../shared/net/online-lifecycle.ts';
+import { SEND_HZ, type AreaHit, type AttackKind, type MoveMode, type RemotePose } from '../../../shared/net/protocol.ts';
+import { clampHealth, deadPoseFlag, shouldSyncLocalHeal, shouldTriggerLocalWasted } from '../../../shared/net/online-lifecycle.ts';
 import { isJoined, netMaintain, netPing, netSendHeal, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
 import {
   clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome,

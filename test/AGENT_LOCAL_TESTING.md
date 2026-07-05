@@ -97,9 +97,9 @@ already filters it.
 
 ## 3. How you drive the game — the `window` hooks (dev only)
 
-These are attached in `js/core/main.ts` and exist **only** on the dev server (`import.meta.env.DEV`),
+These are attached in `src/js/core/main.ts` and exist **only** on the dev server (`import.meta.env.DEV`),
 which is exactly what the harness runs against. They are the only faithful seam — a
-`page.evaluate(import('/js/...'))` gets a *separate* module instance and can't touch the live game.
+`page.evaluate(import('/src/js/...'))` gets a *separate* module instance and can't touch the live game.
 
 | Hook | What it does |
 | --- | --- |
