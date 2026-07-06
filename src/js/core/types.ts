@@ -76,6 +76,7 @@ export interface GameState {
   firstPerson: boolean;
   aiming: boolean; // GTA-style aim mode (RMB toggle / mobile AIM): closer cam + reticle + tight spread
   clothing: { shirt: number; pants: number; shoe: number; hat: number; glasses: number }; // player outfit (clothing store)
+  party: 'red' | 'blue' | null; // political party membership (js/places/party-hq.ts) — persisted in the save
   wheelOpen: boolean;
   activeMiniGame: string | null;
   mgIntro: string | null;
@@ -145,6 +146,7 @@ export interface SaveBlob {
   daily: unknown;
   farm: unknown;
   clothing?: unknown;
+  party?: 'red' | 'blue' | null; // political party membership (null = unaffiliated)
 }
 
 // ---- HUD / world registries ------------------------------------------------

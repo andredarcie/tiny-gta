@@ -24,7 +24,7 @@ const ANIM2=72*72;         // beyond this distance: skip spin/bob AND collection
 // rural peninsula — open terrain (no buildings to clip into). Lighter weapons sit
 // closer to the city; the heavy hitters are far out east. Avoids the spots used
 // by the stunt ramps, car crusher, bomb shop and the rocket-rampage pickup.
-const SPOTS=[
+const SPOTS:{id:string;x:number;z:number;party?:'red'|'blue'}[]=[
   {id:'bat',       x:-45,  z: 200},  // south beach
   {id:'pistol',    x: 20,  z: 201},  // south beach
   {id:'ak47',      x: 15,  z:-201},  // north beach
@@ -37,6 +37,10 @@ const SPOTS=[
   {id:'flame',     x: 300, z:-100},  // rural deep east
   {id:'sniper',    x: 330, z:  65},  // rural far east (long-range, fitting)
   {id:'rocket',    x: 360, z: -60},  // rural far east
+  // PARTY PERKS — a free gun always waiting at each party's HQ, visible and
+  // collectable ONLY by that party's members (state.party; see js/places/party-hq.ts).
+  {id:'uzi',       x:  92.5, z:-105.5, party:'red'},  // RED PARTY HQ (gang turf centre)
+  {id:'uzi',       x:-105.5, z:  92.5, party:'blue'}, // BLUE PARTY HQ
 ];
 
 // A floating hidden-weapon pickup in the world (spin/bob + collection bookkeeping).
@@ -49,6 +53,7 @@ interface Pickup{
   g: THREE.Object3D;
   active: boolean;
   respawnAt: number;
+  party?: 'red'|'blue'; // members-only perk: hidden unless state.party matches
 }
 
 const pickups: Pickup[]=[];
@@ -60,7 +65,7 @@ for(const s of SPOTS){
   const baseY=groundHeight(s.x,s.z)+1.0;
   g.position.set(s.x,baseY,s.z);
   scene.add(g);
-  pickups.push({id:s.id,name:w.name,x:s.x,z:s.z,baseY,g,active:true,respawnAt:0});
+  pickups.push({id:s.id,name:w.name,x:s.x,z:s.z,baseY,g,active:true,respawnAt:0,party:s.party});
 }
 
 // debug snapshot
@@ -75,6 +80,11 @@ export function updateWeaponPickups(dt: number){
   const r2=PICK_R*PICK_R;
   for(let k=0;k<pickups.length;k++){
     const p=pickups[k];
+    // Party HQ perk: only that party's members ever see or collect it.
+    if(p.party&&state.party!==p.party){
+      if(p.g.visible)p.g.visible=false;
+      continue;
+    }
     if(!p.active){
       // collected: wait out the cooldown, then put it back in the world
       if(state.time>=p.respawnAt){

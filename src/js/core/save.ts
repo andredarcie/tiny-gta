@@ -27,6 +27,7 @@ export function collectSave(): SaveBlob {
     daily: refs.getDailySave?.() || null, // dia in-game + travas "1x por dia" dos mini-games
     farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
     clothing: refs.getClothingSave?.() || null, // player outfit: shirt/pants/shoe colours + accessories
+    party: state.party ?? null, // political party membership ('red'|'blue'|null)
   };
 }
 
@@ -51,6 +52,10 @@ export function applySave(blob: unknown): void {
   refs.restoreDaily?.(b.daily);
   refs.restoreFarm?.(b.farm);
   refs.restoreClothing?.(b.clothing);
+  // Party membership: last-write-wins, explicit null included (a player who
+  // de-affiliated must stay unaffiliated). Old saves without the field are left
+  // untouched.
+  if (b.party === 'red' || b.party === 'blue' || b.party === null) state.party = b.party;
 }
 
 refs.collectSave = collectSave;
