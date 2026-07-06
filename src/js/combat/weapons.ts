@@ -5,6 +5,7 @@ import {scene,camera} from '@/core/engine.ts';
 import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {isPark} from '@/world/world.ts';
+import {partyBlockAt} from '@/places/party-data.ts';
 import {blip,thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
@@ -77,7 +78,8 @@ function makeWeaponPickup(x: number,z: number){
 }
 
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  if(!isPark(i,j))continue;
+  // party plazas have their own members-only pickup (weapon-pickups.ts) — no free park pistol there
+  if(!isPark(i,j)||partyBlockAt(i,j))continue;
   const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE;
   const tucked=Math.random()<.5?-1:1;
   makeWeaponPickup(
