@@ -274,7 +274,11 @@ export class WorldDO {
     }
 
     let best: Session | null = null, bestT = Infinity;
-    const hitRadius = m.k === 3 ? HIT_RADIUS + 0.55 : HIT_RADIUS;
+    // Melee (k=1) aims off a coarse heading, so widen the target sphere a touch —
+    // otherwise a punch that is only roughly on-target whiffs, and needing 3 clean
+    // hits (protocol MELEE_DMG_HP) becomes impractical. Flame (k=3) already fattens
+    // its cone the same way.
+    const hitRadius = m.k === 3 ? HIT_RADIUS + 0.55 : m.k === 1 ? HIT_RADIUS + 0.45 : HIT_RADIUS;
     for (const o of this.sessions.values()) {
       if (o === s || !o.pose || o.deadUntil > now) continue;
       if (o.pose.i || o.pose.d || (o.pose.m >= 1 && o.pose.m <= 3)) continue; // interior/vehicle/already-dead: direct PvP-immune in v1

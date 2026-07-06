@@ -233,3 +233,27 @@ test('a PvP kill downs the victim, then the server respawns them (~5s)', async (
     (s: any) => !(s.onlineRemotes || []).some((r: any) => r.dead),
     { timeout: 25_000, message: 'A never saw B respawn (dead flag never cleared)' });
 });
+
+test('fists are lethal in online PvP — a few clean punches down a player (k=1)', async () => {
+  await healB();
+  // Back to bare fists (A still holds the pistol from the prior test).
+  const eq = await A.driver.inPage(() => (window as any).__test.equipWeapon('fist'));
+  expect(eq, 'A should switch to fists').toBeTruthy();
+  await duelOffRoad(1.6);                          // punch reach is ~2.4m; 1.6m is well inside
+  // Punch (fireRate ~0.45s, so space the swings out) until B goes down. Each fist
+  // now deals 40 PvP HP, so 3 clean punches kill a 100 HP target. The loop bound
+  // is generous ONLY to absorb a stray whiff / send-tick — the assertion below
+  // still fails if it degrades back toward the old ~10-punch grind. Death is read
+  // from A's view (the server 'death' flag persists ~5s) OR B hitting 0 HP.
+  let deadAt = -1;
+  for (let i = 0; i < 8 && deadAt < 0; i++) {
+    await A.driver.inPage(() => (window as any).__test.attack());
+    await A.driver.page.waitForTimeout(520);
+    const bs = await B.driver.snapshot();
+    const av = (await A.driver.snapshot()).onlineRemotes[0];
+    console.log(`[fists] swing ${i + 1}: B.health=${bs.health} | A sees B dead=${av?.dead}`);
+    if (!!av?.dead || (bs.health as number) <= 0) deadAt = i + 1;
+  }
+  expect(deadAt, 'fists never killed B — punches must be lethal in PvP').toBeGreaterThan(0);
+  expect(deadAt, 'fists should down a player in a few punches, not a 10-hit grind').toBeLessThanOrEqual(5);
+});

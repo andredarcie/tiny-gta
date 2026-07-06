@@ -115,6 +115,31 @@ export function remoteBlastFx(by: number, o: Vec3): void {
   state.shotT = state.time; state.shotX = o[0]; state.shotZ = o[2];
 }
 
+// ---- hit blood: the visible proof a PvP attack CONNECTED ---------------------
+// The server confirms every hit; we splatter blood at the struck body so the
+// attacker AND bystanders SEE punches/shots land (the victim bleeds via
+// localHitBlood below). `d` is the attack ray, so the spray throws forward.
+const _bd = new THREE.Vector3();
+const CHEST_Y = 1.05;
+
+/** Blood burst on the remote avatar the server says was hit. */
+export function remoteHitBlood(id: number, d: Vec3, amount: number): void {
+  const r = remotes.get(id);
+  if (!r) return;
+  const o = r.veh ?? r.g;                          // on foot the avatar is in the scene; guard the vehicle case anyway
+  _bd.set(d[0], d[1], d[2]);
+  refs.spawnBlood?.(o.position.x, o.position.y + CHEST_Y, o.position.z, _bd, amount);
+}
+
+/** Blood burst on the LOCAL player when a remote's attack hit me — so a
+ * 3rd-person victim sees the same spray everyone else sees on my avatar. */
+export function localHitBlood(d: Vec3, amount: number): void {
+  const pp = refs.playerPos?.();
+  if (!pp) return;
+  _bd.set(d[0], d[1], d[2]);
+  refs.spawnBlood?.(pp.x, pp.y + CHEST_Y, pp.z, _bd, amount);
+}
+
 /** A melee swing by another player: punch clip + a close-range whoosh. */
 export function remoteMeleeFx(by: number): void {
   if (by === myId) return;
