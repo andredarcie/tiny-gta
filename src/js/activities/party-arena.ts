@@ -92,6 +92,8 @@ interface SideState{
   towers:ArenaTower[];
 }
 let match:{sides:Record<PartyId,SideState>;me:PartyId}|null=null;
+let matchAge=0;      // seconds since the round started (guards the forfeit prompt)
+let savedWanted=0;   // stars carried INTO the arena — restored on the way out
 let entering=false;
 let fadeOverlay:HTMLDivElement|null=null;
 
@@ -278,6 +280,10 @@ function makeTower(team:PartyId,x:number,z:number):ArenaTower{
     kind:'arena',hp:TOWER_HP,wanted:0,punchToDown:99,showLabel:true,
     name:def.title+' TOWER',gender:'M',femaleLook:false,area:'Party Arena',
   });
+  // a stone tower has no head/arms — pre-flag the gore system so a high bullet
+  // hit can't fling a head gib off it (gore.ts severHead checks these)
+  g.userData.headless=true;
+  g.userData.lostArm={L:true,R:true};
   t.team=team;t.shootT=rand(.5,1.5);
   t.onDeath=()=>{
     const p=t.g.position;
@@ -296,8 +302,12 @@ function startMatch(){
       :[makeTower('blue',ARENA_STAGE.x+FIELD_W/2-12,ARENA_STAGE.z-FIELD_D*.28),makeTower('blue',ARENA_STAGE.x+FIELD_W/2-12,ARENA_STAGE.z+FIELD_D*.28)],
   });
   match={sides:{red:mk('red'),blue:mk('blue')},me};
+  matchAge=0;
   arenaStage.visible=true;
-  // free-fire zone: enter clean and at full health, like a fresh round
+  // the round starts at full health with a clean HUD — but the stars you came
+  // in with are only PARKED (savedWanted) and come right back when you leave,
+  // so the arena is never a free wanted-wipe
+  savedWanted=state.wanted;
   state.wanted=0;state.health=100;state.swimming=false;state.swimAir=1;
   const b=baseOf(me);
   player.g.position.set(b.x,arenaGroundY(b.x,b.z),b.z);
@@ -358,6 +368,7 @@ function endMatch(won:boolean,forfeit=false){
   if(won||forfeit){
     player.g.position.set(GATE.x-4,groundHeight(GATE.x-4,GATE.z),GATE.z);
     player.heading=-Math.PI/2;player.g.rotation.y=player.heading;
+    state.wanted=savedWanted; // the stars you came in with are waiting outside
   }
   if(won){
     economy.earn(PRIZE,'arena');
@@ -393,7 +404,11 @@ function shootNpc(from:THREE.Vector3,t:Npc,dmg:number){
   const to=new THREE.Vector3(tp.x,tp.y+1.1,tp.z);
   addTracer(from,to);
   gunshot(.25);
+  // an NPC-vs-NPC kill is not the player's: keep state.kills (rampage progress
+  // & session stat) untouched if this hit downs the target
+  const k=state.kills;
   t.takeDamage(_dir.set(tp.x-from.x,0,tp.z-from.z).normalize(),dmg,to);
+  if(t.dead&&state.kills>k)state.kills=k;
 }
 
 // Everything the enemy side still has on the pitch (fighters + towers + the
@@ -412,7 +427,9 @@ function pickTarget(x:number,z:number,team:PartyId,range:number,requireSight=tru
     const d=Math.hypot(t.g.position.x-x,t.g.position.z-z);
     if(d<bd&&(!requireSight||!arenaLineBlocked(x,z,t.g.position.x,t.g.position.z))){bd=d;best=t;}
   }
-  if(match!.me!==team){
+  // never target the map-locked player (M with the live-NPC overlay keeps the
+  // world simulating) nor mid-cutscene — same rule as gang fire
+  if(match!.me!==team&&state.mode==='foot'&&!state.cine&&!state.mapOpen){
     const pp=playerPos();
     const d=Math.hypot(pp.x-x,pp.z-z);
     if(d<bd&&(!requireSight||!arenaLineBlocked(x,z,pp.x,pp.z)))return{kind:'player',d};
@@ -427,6 +444,7 @@ export function updatePartyArena(dt:number){
     if(t.t>.15){Entities.disposeGeometries(t.line);scene.remove(t.line);tracers.splice(i,1);}
   }
   if(!match)return;
+  matchAge+=dt;
   const pp=playerPos();
   // safety: the player left the pitch through some other flow (busted, hospital,
   // remote-PvP death, ...) — tear the round down silently
@@ -449,6 +467,8 @@ export function updatePartyArena(dt:number){
     for(let i=s.towers.length-1;i>=0;i--){
       const t=s.towers[i];
       if(t.dead){t.despawn();s.towers.splice(i,1);continue;}
+      // towers never move — melee knockback shoves npcs[] targets, so re-anchor
+      t.g.position.x=t.homeX;t.g.position.z=t.homeZ;
       t.shootT-=dt;
       if(t.shootT>0)continue;
       const tgt=pickTarget(t.g.position.x,t.g.position.z,team,TOWER_R);
@@ -525,8 +545,10 @@ export function updatePartyArena(dt:number){
     return{label:'ARENA',prompt:'APERTE INTERAGIR PARA ENTRAR NA ARENA',
       enabled:true,run:enterArenaWithFade};
   }
+  // forfeit from your base pad — but not in the first seconds: you spawn ON the
+  // pad, and a habitual double-tap of E must not throw the round away
   const b=baseOf(match.me);
-  if(Math.hypot(pp.x-b.x,pp.z-b.z)<3.5)
+  if(matchAge>2&&Math.hypot(pp.x-b.x,pp.z-b.z)<3.5)
     return{label:'LEAVE',prompt:'LEAVE THE ARENA (FORFEIT THE ROUND)',enabled:true,
       run:()=>endMatch(false,true)};
   return null;

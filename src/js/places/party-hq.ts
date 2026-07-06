@@ -50,8 +50,9 @@ for(const gang of gangs){
   const rep=new Npc(g,{kind:'partyrep',register:false,showLabel:true,name:def.repName,
     gender:'M',femaleLook:false,area:def.title+' HQ',personality:'friendly',
     dialogues:def.pitch});
-  // block walking through the table (approximate AABB; the desk is small)
-  solids.push({x0:x-1.0,x1:x+1.0,z0:z-.55,z1:z+.55,h:1.1});
+  // block walking through the table — a 1m-half SQUARE so the AABB covers the
+  // 1.7m top at ANY rotation (the desk is rotated to face the city centre)
+  solids.push({x0:x-1.0,x1:x+1.0,z0:z-1.0,z1:z+1.0,h:1.1});
   desks.push({party:gang.party,x,z,rep,chatT:rand(4,9)});
 }
 
@@ -109,6 +110,10 @@ function ensureUi(){
 // never see these presses while it is open).
 window.addEventListener('keydown',e=>{
   if(!uiOpen)return;
+  // a HELD key never signs the sheet: auto-repeats are swallowed entirely, so
+  // agreeing takes a deliberate fresh press (holding E through the cutscene
+  // cannot buy a membership)
+  if(e.repeat){e.preventDefault();e.stopPropagation();return;}
   if(e.code==='Enter'||e.code==='KeyE'||e.code==='Space'){e.preventDefault();e.stopPropagation();uiAgree();}
   else if(e.code==='Escape'||e.code==='KeyQ'||e.code==='KeyF'){e.preventDefault();e.stopPropagation();closeUi();}
   else e.stopPropagation();

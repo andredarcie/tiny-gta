@@ -172,9 +172,12 @@ function memberShootNpc(m:GangMember,t:Npc,dist:number){
   addTracer(from,to);
   gunshot(.3);
   if(hit){
-    const w=t.wanted;t.wanted=0;
+    // this kill belongs to the GANG, not the player: no wanted bounty and no
+    // bump to state.kills (rampage progress / session stat)
+    const w=t.wanted,k=state.kills;
     t.takeDamage(new THREE.Vector3(tp.x-from.x,0,tp.z-from.z).normalize(),1,to);
     t.wanted=w;
+    if(t.dead&&state.kills>k)state.kills=k;
   }
 }
 

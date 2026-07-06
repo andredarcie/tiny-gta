@@ -1230,7 +1230,10 @@ const api: WeaponApi={
   gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.myShotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
     if(!refs.inGunShopRange?.()){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
-      refs.policeOnShot?.(pp.x,pp.z);          // sheriff dispatches the nearest patrol over the radio
+      // no radio dispatch from the isolated Party Arena: addWanted already no-ops
+      // there (physics.ts), and a dispatch would send a cruiser toward the
+      // off-map stage coordinates once the round ends
+      if(!refs.isPartyArenaActive?.())refs.policeOnShot?.(pp.x,pp.z);
     }},
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
   melee(range: number,knock: number,lethal: boolean){meleeAttack(range,knock,lethal);},

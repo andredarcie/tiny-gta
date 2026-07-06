@@ -146,7 +146,7 @@ export interface SaveBlob {
   daily: unknown;
   farm: unknown;
   clothing?: unknown;
-  party?: 'red' | 'blue' | null; // political party membership (null = unaffiliated)
+  party?: 'red' | 'blue' | 'none' | null; // party membership ('none' = de-affiliated; null only in old local mirrors)
 }
 
 // ---- HUD / world registries ------------------------------------------------

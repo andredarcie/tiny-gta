@@ -40,8 +40,8 @@ const SPOTS:{id:string;x:number;z:number;party?:'red'|'blue';arena?:boolean}[]=[
   {id:'rocket',    x: 360, z: -60},  // rural far east
   // PARTY PERKS — a free gun always waiting at each party's HQ, visible and
   // collectable ONLY by that party's members (state.party; see js/places/party-hq.ts).
-  {id:'uzi',       x:  92.5, z:-105.5, party:'red'},  // RED PARTY HQ (gang turf centre)
-  {id:'uzi',       x:-105.5, z:  92.5, party:'blue'}, // BLUE PARTY HQ
+  {id:'uzi',       x: 114.5, z:-105.5, party:'red'},  // RED PARTY plaza (block centre 110,-110)
+  {id:'uzi',       x:-105.5, z: 114.5, party:'blue'}, // BLUE PARTY plaza (block centre -110,110)
   // PARTY ARENA — battle weapons on the stadium pitch (only members ever get
   // inside the sealed stadium; see js/activities/party-arena.ts).
   {id:'ak47',      x: ARENA_STAGE.x, z: ARENA_STAGE.z-FIELD_D*.22, arena:true},   // isolated arena pitch, south half
