@@ -37,6 +37,8 @@ import {addPrison,PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
 import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../../assets/models/city/gun-shop.ts';
 import {addClothingStore} from '../../assets/models/city/clothing-store.ts';
 import {buildPark} from '../../assets/models/city/park.ts';
+import {buildPartyPlaza} from '../../assets/models/city/party-plaza.ts';
+import {PARTIES,PARTY_HQ_BLOCK,partyBlockAt} from '@/places/party-data.ts';
 import {buildSidewalks} from '../../assets/models/city/sidewalk.ts';
 import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../../assets/models/city/workshop.ts';
 import {addBarnWithSilo} from '../../assets/models/rural/barn-with-silo.ts';
@@ -126,6 +128,17 @@ function paintCityGround(){
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     const x0=nodeX(i)+ROAD/2,z0=nodeX(j)+ROAD/2;
     x.fillStyle='#bcb6a8';x.fillRect(M(x0),M(z0),BLOCK*s,BLOCK*s); // calçadão claro
+    const party=partyBlockAt(i,j);
+    if(party){
+      // party plaza floor: open tinted pavement with a colour border band —
+      // deliberately empty (no cross paths) so the square reads as free space
+      const def=PARTIES[party];
+      x.fillStyle=def.groundCss;
+      x.fillRect(M(x0+SIDE),M(z0+SIDE),(BLOCK-2*SIDE)*s,(BLOCK-2*SIDE)*s);
+      x.strokeStyle=def.css;x.lineWidth=.9*s;
+      x.strokeRect(M(x0+SIDE+1),M(z0+SIDE+1),(BLOCK-2*SIDE-2)*s,(BLOCK-2*SIDE-2)*s);
+      continue;
+    }
     x.fillStyle=isPark(i,j)?'#5fae62':'#9c968a';
     x.fillRect(M(x0+SIDE),M(z0+SIDE),(BLOCK-2*SIDE)*s,(BLOCK-2*SIDE)*s);
     if(isPark(i,j)){
@@ -137,6 +150,8 @@ function paintCityGround(){
   // lotes abandonados: terra batida com manchas de entulho e mato ralo
   for(const lot of cityLots){
     if(!lot.empty)continue;
+    // party plaza blocks lost their lots — keep their floor clean
+    if(partyBlockAt(Math.floor((lot.cx+HALF)/CELL),Math.floor((lot.cz+HALF)/CELL)))continue;
     const lx=M(lot.cx-lot.w/2),lz=M(lot.cz-lot.d/2),lw=lot.w*s,ld=lot.d*s;
     x.fillStyle='#8a7a62';x.fillRect(lx,lz,lw,ld);
     for(let k=0;k<46;k++){
@@ -221,12 +236,29 @@ function plantSmall(t:string,x:number,z:number){
 // DIGUIFI tribute statue instead of a fountain. Deterministic, so it never moves.
 let memorialDone=false;
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  if(!isPark(i,j))continue;
+  if(!isPark(i,j)||partyBlockAt(i,j))continue; // party blocks get their own plaza below
   const memorial=!memorialDone;memorialDone=true;
   addCityPark(nodeX(i)+ROAD/2+SIDE,nodeX(j)+ROAD/2+SIDE,BLOCK-2*SIDE,memorial);
 }
-for(const v of worldData.cityParkVeg)plantSmall(v.t,v.x,v.z);
+// The two party HQ blocks become each party's own plaza — much simpler than a
+// park (open floor, corner flags, two benches, two lamps) and in its colour.
+// Replaces whatever the block had (buildings on the red block, the park on the
+// blue one); the affiliation desk lands at its centre (js/places/party-hq.ts).
+for(const id of['red','blue'] as const){
+  const b=PARTY_HQ_BLOCK[id];
+  buildPartyPlaza(
+    nodeX(b.i)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,
+    nodeX(b.j)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,
+    BLOCK-2*SIDE,solids,PARTIES[id].color);
+}
+for(const v of worldData.cityParkVeg){
+  // no baked park vegetation on the party plazas — they stay open
+  if(partyBlockAt(Math.floor((v.x+HALF)/CELL),Math.floor((v.z+HALF)/CELL)))continue;
+  plantSmall(v.t,v.x,v.z);
+}
 for(const lot of cityLots){
+  // party plaza blocks lose their buildings/abandoned lots entirely
+  if(partyBlockAt(Math.floor((lot.cx+HALF)/CELL),Math.floor((lot.cz+HALF)/CELL)))continue;
   if(lot.empty)addAbandonedLot(lot.cx,lot.cz,lot.w,lot.d,solids);
   else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids); // windows on ALL sides (omit lot.win → default {e:1,w:1,s:1,n:1})
 }

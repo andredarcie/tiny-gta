@@ -25,6 +25,8 @@ export interface PartyDef{
   pants:number;         // trouser colour for members + the granted outfit
   css:string;           // HUD accent colour
   cssA:string;          // translucent territory tint (radar/map)
+  groundCss:string;     // desaturated tint for the party plaza floor (ground canvas)
+  mapCss:string;        // darker tint for the party block on the full map
   repName:string;       // the desk recruiter's name
   voice:{freq:number;type:OscillatorType}; // cutscene voice blips
   pitch:string[];       // recruiter cutscene lines (the sales pitch)
@@ -39,6 +41,7 @@ export const PARTIES:Record<PartyId,PartyDef>={
     color:SHIRT_COLORS[0],  // 0xc23b4e — the palette's red (FLEET/WARDROBE family)
     pants:PANTS_COLORS[2],  // dark earthy brown
     css:'#c23b4e',cssA:'rgba(194,59,78,.22)',
+    groundCss:'#c9a29c',mapCss:'#8a4550',
     repName:'Comrade Lu',
     voice:{freq:120,type:'sawtooth'},
     pitch:[
@@ -69,6 +72,7 @@ export const PARTIES:Record<PartyId,PartyDef>={
     color:SHIRT_COLORS[1],  // 0x3b7ac2 — the palette's blue
     pants:PANTS_COLORS[1],  // navy
     css:'#3b7ac2',cssA:'rgba(59,122,194,.22)',
+    groundCss:'#9cadc9',mapCss:'#456a8a',
     repName:'Captain Myth',
     voice:{freq:95,type:'square'},
     pitch:[
@@ -94,6 +98,22 @@ export const PARTIES:Record<PartyId,PartyDef>={
     ],
   },
 };
+
+// HQ city blocks (grid i,j — block centre is nodeX(i)+22): each party's turf
+// centre block, rebuilt by js/world/world.ts as that party's own simplified
+// plaza (open floor, party colours) instead of buildings/the rich park. These
+// match the gang territory centres in js/actors/gangs.ts.
+export const PARTY_HQ_BLOCK:Record<PartyId,{i:number;j:number}>={
+  red:{i:6,j:1},
+  blue:{i:1,j:6},
+};
+
+// Which party's plaza (if any) occupies city block (i,j).
+export function partyBlockAt(i:number,j:number):PartyId|null{
+  if(PARTY_HQ_BLOCK.red.i===i&&PARTY_HQ_BLOCK.red.j===j)return 'red';
+  if(PARTY_HQ_BLOCK.blue.i===i&&PARTY_HQ_BLOCK.blue.j===j)return 'blue';
+  return null;
+}
 
 // The player's relation to a party's street wing: no affiliation = neutral
 // (they leave you alone), same party = ally (they fight at your side), the
