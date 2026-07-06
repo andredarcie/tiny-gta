@@ -12,8 +12,8 @@ import { SEND_HZ, type AreaHit, type AttackKind, type MoveMode, type RemotePose 
 import { clampHealth, deadPoseFlag, shouldSyncLocalHeal, shouldTriggerLocalWasted } from '../../../shared/net/online-lifecycle.ts';
 import { isJoined, netMaintain, netPing, netSendHeal, netSendPos, netSendShot, netStatus, type NetHandlers } from './net-client.ts';
 import {
-  clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome,
-  remoteBlastFx, remoteCount, remoteMeleeFx, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
+  clearRemotes, getMyOnlineId, handleAdd, handleDel, handleSnap, handleWelcome, localHitBlood,
+  remoteBlastFx, remoteCount, remoteHitBlood, remoteMeleeFx, remoteNick, remoteShotFx, setRemoteDead, updateRemotes,
 } from './remote-players.ts';
 
 // Dev/test introspection facade: the two-player online harness reads the remote
@@ -45,10 +45,20 @@ const handlers: NetHandlers = {
       thud(3);
       state.crosshairKick = Math.max(state.crosshairKick, .6);
     }
+    // Blood: the server just confirmed these hits, so splatter at every struck
+    // player — the attacker and bystanders SEE the punch/shot connect (punches
+    // spray less than gunfire). Struck REMOTES bleed on their avatar; if I'm the
+    // one hit I bleed on my own body below.
+    const amt = k === 1 ? 8 : k === 2 ? 12 : 10;
+    if (hit && hit !== me) remoteHitBlood(hit, d, amt);
+    for (const [id] of hits) if (id !== me) remoteHitBlood(id, d, amt);
     const ownAreaHp = ownAreaHit(hits, me);
     if (hit === me && hp >= 0) applyServerHp(hp);
     else if (ownAreaHp >= 0) applyServerHp(ownAreaHp);
-    if ((hit === me && hp >= 0) || ownAreaHp >= 0) state.shake = Math.max(state.shake, .3);
+    if ((hit === me && hp >= 0) || ownAreaHp >= 0) {
+      state.shake = Math.max(state.shake, .3);
+      localHitBlood(d, amt);                        // I'm the victim: bleed on my own body too
+    }
   },
   onDeath: (id, by) => {
     setRemoteDead(id, true);
