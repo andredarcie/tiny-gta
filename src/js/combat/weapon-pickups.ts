@@ -41,6 +41,10 @@ const SPOTS:{id:string;x:number;z:number;party?:'red'|'blue'}[]=[
   // collectable ONLY by that party's members (state.party; see js/places/party-hq.ts).
   {id:'uzi',       x:  92.5, z:-105.5, party:'red'},  // RED PARTY HQ (gang turf centre)
   {id:'uzi',       x:-105.5, z:  92.5, party:'blue'}, // BLUE PARTY HQ
+  // PARTY ARENA — battle weapons on the stadium pitch (only members ever get
+  // inside the sealed stadium; see js/activities/party-arena.ts).
+  {id:'ak47',      x: 455, z: -94},   // arena pitch, south half
+  {id:'shotgun',   x: 455, z: -78},   // arena pitch, north half
 ];
 
 // A floating hidden-weapon pickup in the world (spin/bob + collection bookkeeping).

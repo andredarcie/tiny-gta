@@ -54,6 +54,7 @@ import {addWaterTower} from '../../assets/models/rural/water-tower.ts';
 import {addWindmill} from '../../assets/models/rural/windmill.ts';
 import {addTownSign} from '../../assets/models/rural/town-sign.ts';
 import {addFenceRun} from '../../assets/models/rural/fence.ts';
+import {addStadium} from '../../assets/models/rural/stadium.ts';
 import {addWell} from '../../assets/models/rural/well.ts';
 import {addMarketStall} from '../../assets/models/rural/market-stall.ts';
 import {makeTexturedPlane} from '../../assets/models/terrain/textured-plane.ts';
@@ -530,6 +531,7 @@ addHayBales();
 // of the mountain, between it and the village. Drive in through the front gate or
 // slip in through the crumbled breach in the back wall. -----
 addAbandonedFort(solids,606,88);
+addStadium(solids); // PARTY ARENA stadium on the flat plain south-east of the mountain
 // a few pines screening the fort from the road
 for(const[px,pz]of[[574,70],[580,108],[636,112],[630,66]])addPine(px,pz);
 

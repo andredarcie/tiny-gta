@@ -39,6 +39,7 @@ import {updateBloodstains} from '@/loot/bloodstains.ts';       // Multiplayer as
 import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
 import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
 import {updatePartyHq,updatePartyUi,getPartyState} from '@/places/party-hq.ts';
+import {updatePartyArena,getPartyArenaState} from '@/activities/party-arena.ts';
 import {blinkBar} from '@/core/entities.ts';
 import {preloadNpcModels,updateNpcGlb} from '../../assets/models/characters/npc-glb.ts';
 preloadNpcModels(); // start loading the rigged NPC models ASAP; NPCs swap from the procedural ped when ready
@@ -245,6 +246,7 @@ refs.rickInteract=rickInteract; // performInteract abre a cut-scene do Rick
 refs.getRickState=getRickState; // snapshot de debug da missão secreta
 refs.getPartyState=getPartyState;   // debug/test snapshot of the political parties
 refs.getFootOfficers=()=>officers;  // gang allies target hunting foot officers (gangs.ts)
+refs.getPartyArenaState=getPartyArenaState; // debug/test snapshot of the stadium arena
 refs.getBusted=getBusted;
 refs.getWasted=getWasted;
 refs.isWasted=isWasted;
@@ -399,6 +401,7 @@ function step(dt: number){
   updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
   updateWeaponPickups(dt);
   updatePartyHq(dt); // party desks + the plaza membership banner
+  updatePartyArena(dt); // stadium battle rounds (members-only MOBA-style arena)
   updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
   updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   P.end();
@@ -582,6 +585,7 @@ window.render_game_to_text=()=>{
     houseTv:refs.getHouseTvState?.()||null,
     rick:refs.getRickState?.()||null,
     party:refs.getPartyState?.()||null,
+    arena:refs.getPartyArenaState?.()||null,
   });
 };
 // Test/debug hook (same spirit as advanceTime / render_game_to_text): lets the

@@ -58,7 +58,7 @@ export const KNOWN = new Set<string>([
   'onlineShot','onlineMelee','onlineBlast','onlineFlame','traffic','cops',
   'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','spawnBlood','severHead','severArm','gangs','setGangsHidden',
   'interiorBlips','getDelivery','storyNear','storyBlips','storyTargets','rickNear',
-  'rickInteract','getRickState','getPartyState','getFootOfficers','getBusted','getWasted','getHeli','nearestCar',
+  'rickInteract','getRickState','getPartyState','getFootOfficers','getPartyArenaState','getBusted','getWasted','getHeli','nearestCar',
   'canPickWeapon','isWeaponHeld','canAttack','switchWeapon','selectWeaponSlot',
   'getWeaponHud','confiscateWeapon','gymTrainState','clubDanceState','modShopState',
   'modShopInteract','workshopBlip','hospitalAdmit','prisonAdmit','gunShopState',
