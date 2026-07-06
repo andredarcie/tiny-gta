@@ -161,6 +161,7 @@ export function makeCharacter(look: Look): MixamoChar | null {
   geo.setAttribute('color', new THREE.BufferAttribute(colours, 3));
   mesh.geometry = geo;
   mesh.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1, metalness: 0 });
+  root.userData.look = { ...look };
   // Perf: LIGA o frustum culling (era false → o renderer fazia skinning+draw de TODO
   // personagem visível mesmo ATRÁS da câmera; cada um tem ~7930 tris skinned). Com a
   // bounding sphere inflada ~1.7× (cobre braços erguidos/mira/corrida) não há pop-out
@@ -172,4 +173,24 @@ export function makeCharacter(look: Look): MixamoChar | null {
   const actions: Record<string, THREE.AnimationAction> = {};
   for (const [key, clip] of Object.entries(b.clips)) actions[key] = mixer.clipAction(clip);
   return { root, mixer, actions };
+}
+// Recolour an already-instanced Mixamo character in place. The player clothing
+// store and party uniform system both change state.clothing live; the procedural
+// fallback already has setClothing(), but the GLB hero needs its vertex-colour
+// regions rewritten too.
+export function setCharacterLook(root: THREE.Object3D, patch: Partial<Look>): void {
+  const b = baseSync;
+  if (!b) return;
+  const mesh = skinned(root);
+  if (!mesh) return;
+  const attr = mesh.geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
+  if (!attr || attr.count !== b.region.length) return;
+  const look: Look = { ...((root.userData.look as Look | undefined) || PLAYER_LOOK), ...patch };
+  root.userData.look = look;
+  const col = new THREE.Color();
+  for (let v = 0; v < attr.count; v++) {
+    col.setHex(look[REGIONS[b.region[v]]] ?? 0x888888);
+    attr.setXYZ(v, col.r, col.g, col.b);
+  }
+  attr.needsUpdate = true;
 }

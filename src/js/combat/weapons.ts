@@ -906,7 +906,7 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
   // are ALL Npc instances in the global registry now, so one loop hits them all
   // (no more per-type loops that could double-hit or leave a type bullet-proof).
   for(const n of npcs){
-    if(n.dead)continue;
+    if(n.dead||isFriendlyWeaponTarget(n))continue;
     const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
     if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
   }
@@ -1276,6 +1276,11 @@ const ASSIST_VRANGE=3.5; // metres of vertical slack: NPCs far above/below (e.g.
 // Scratch for the aim-assist scan, reused every frame so the per-frame scan allocates
 // nothing (matches the engine's no-per-frame-allocation pass).
 const _assist: {best: number|null;bestErr: number}={best:null,bestErr:0};
+function isFriendlyWeaponTarget(target: any): boolean{return !!refs.isFriendlyWeaponTarget?.(target);}
+function considerAssistTarget(target: any,px: number,pz: number,py: number,yaw: number){
+  if(isFriendlyWeaponTarget(target))return;
+  considerAssist(target.g,px,pz,py,yaw);
+}
 function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: number){
   if(Math.abs(g.position.y-py)>ASSIST_VRANGE)return; // far above/below us (e.g. the street while on a rooftop) — out of view
   const dx=g.position.x-px,dz=g.position.z-pz;
@@ -1297,7 +1302,7 @@ function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: 
 // Cars are deliberately excluded so the aim doesn't stick to parked traffic.
 function aimAssistError(px: number,pz: number,py: number,yaw: number): number|null{
   _assist.best=null;_assist.bestErr=ASSIST_CONE;
-  for(const n of npcs)if(!n.dead)considerAssist(n.g,px,pz,py,yaw); // peds+gang+officers+rural
+  for(const n of npcs)if(!n.dead)considerAssistTarget(n,px,pz,py,yaw); // peds+gang+officers+rural
   for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   return _assist.best;

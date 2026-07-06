@@ -27,6 +27,7 @@ import partyBanner from '../../assets/models/city/party-banner.ts';
 
 const TALK_R=3.4;   // distance to use a desk
 const PLAZA={x:-110,z:-110}; // memorial plaza centre (first park block, world.ts)
+const DEFAULT_OUTFIT={shirt:0x19e3ff,pants:0x202435,shoe:0x111117,hat:0,glasses:0};
 
 interface Desk{party:PartyId;x:number;z:number;rep:Npc;chatT:number;}
 const desks:Desk[]=[];
@@ -179,8 +180,10 @@ function uiAgree(){
     if(d)say(d.rep.g,uiParty==='red'?'Welcome, comrade!':'Welcome, patriot!',{life:4});
   }else{
     state.party=null;
+    Object.assign(state.clothing,DEFAULT_OUTFIT);
+    applyPlayerClothing();
     refs.backupSave?.();
-    message(`YOU LEFT THE ${def.title}`,def.css);
+    message(`YOU LEFT THE ${def.title} - OUTFIT RESTORED`,def.css);
     blip([392,330,262],.09,'sine',.16);
   }
   closeUi();

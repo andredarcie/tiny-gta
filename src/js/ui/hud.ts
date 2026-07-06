@@ -484,10 +484,11 @@ function mmBlitVisible(img: HTMLCanvasElement,minX: number,minZ: number,maxX: nu
 
 const mapWrap=$('mapwrap');
 export function drawMinimap(): void {
-  // Em ambiente interno (boate/academia/hospital/presídio) o minimapa não faz sentido:
-  // esconde o painel inteiro. Ver também a seta 3D de missão em story.js.
-  if(mapWrap)mapWrap.style.display=state.interior?'none':'';
-  if(state.interior)return;
+  // Em interiores e na arena isolada o minimapa nao faz sentido: esconde o painel inteiro.
+  // Ver tambem a seta 3D de missao em story.js.
+  const hideMap=state.interior||!!refs.isPartyArenaActive?.();
+  if(mapWrap)mapWrap.style.display=hideMap?'none':'';
+  if(hideMap)return;
   const pp=refs.playerPos?.();if(!pp)return;
   const cur=refs.getCur?.();
   // a seta segue para onde o jogador/veículo está virado, não a câmera

@@ -1,6 +1,6 @@
 import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from '@/core/constants.ts';
 import {solids} from '@/world/world.ts';
-import {state} from '@/core/state.ts';
+import {state,refs} from '@/core/state.ts';
 import {addStars,MAX_STARS} from '@/core/wanted.ts';
 import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
@@ -26,7 +26,7 @@ export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOU
   // Dentro da boate/academia o jogador está a ~600m do mapa: o limite do mundo
   // não vale lá (senão o clamp o arrasta pro meio do mar); as paredes da sala
   // já são sólidas. NPCs (bound===BOUND) continuam presos à praia.
-  if(state.interior&&bound>BOUND)return hit;
+  if((state.interior||refs.isPartyArenaActive?.())&&bound>BOUND)return hit;
   // Jogador (bound>BOUND) pode seguir a península rural para +x até a montanha.
   // A folga da península (rext) é FIXA (RURAL_SWIM_MARGIN), não escala com `bound`:
   // SWIM_BOUND cresceu pra ilha a oeste, mas o alcance a leste fica igual ao de antes.
@@ -63,6 +63,10 @@ export function hasLineOfSight(ax:number,az:number,bx:number,bz:number):boolean{
 }
 
 export function addWanted(n:number,why?:string,crime='pursuit'){
+  if(refs.isPartyArenaActive?.()){
+    state.wanted=0;state.lastCrime=-99;state.spotted=false;
+    return;
+  }
   const before=Math.floor(state.wanted);
   // Accumulate + clamp via the shared star rules (MAX_STARS=6; the 6th star summons the
   // army, see js/actors/army.ts). Single source of truth in js/core/wanted.ts.
