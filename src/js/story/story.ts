@@ -8,6 +8,7 @@ import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import {AC,master,blip,thud} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {parks} from '@/world/world.ts';
+import {partyBlockAt} from '@/places/party-data.ts';
 import {player,playerPos} from '@/actors/player.ts';
 import {addBloodPuddle} from '@/world/pedestrians.ts';
 import {setTod} from '@/world/daynight.ts';
@@ -181,7 +182,11 @@ function rollRandomSpot(): Spot{
 
 // Parque mais distante do NPC (missão do Diego): rende as pistas side/vert
 function farParkSpot(fromX: number,fromZ: number): Spot{
-  const lst=[...parks].map((k: string)=>{
+  // party plazas are gang turf — story items never land there (same rule as mini-games)
+  const lst=[...parks].filter((k: string)=>{
+    const[pi,pj]=k.split('_').map(Number);
+    return !partyBlockAt(pi,pj);
+  }).map((k: string)=>{
     const[pi,pj]=k.split('_').map(Number);
     return{
       x:nodeX(pi)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,

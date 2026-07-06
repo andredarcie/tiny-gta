@@ -6,7 +6,7 @@ import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
 import {makeHat,makeGlasses} from '../../assets/models/characters/accessories.ts';
-import {preloadRig,makeCharacter,PLAYER_LOOK,MIXAMO_LOCO_NAT,MIXAMO_WALK_NAT,setGunHandBone,type MixamoChar} from '../../assets/models/characters/mixamo-rig.ts';
+import {preloadRig,makeCharacter,PLAYER_LOOK,MIXAMO_LOCO_NAT,MIXAMO_WALK_NAT,setGunHandBone,setCharacterLook,type MixamoChar} from '../../assets/models/characters/mixamo-rig.ts';
 import {AnimationStateMachine,AnimState,MIXAMO_TABLE} from '@/actors/anim-fsm.ts';
 import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
@@ -112,6 +112,7 @@ preloadRig().then(()=>{
   // measured natural speed (4.4) damped by locoScale 0.6 — the game runs ~9u/s (arcade-fast),
   // so without damping the legs whirl ~2x; 0.6 lands a realistic cadence (slight skate).
   installHero(ch,new AnimationStateMachine(ch.root,ch.mixer,ch.actions,{solveLegs:()=>{},locoScale:0.6,walkNat:MIXAMO_WALK_NAT,runNat:MIXAMO_LOCO_NAT},MIXAMO_TABLE));
+  applyPlayerClothing();
 });
 export function hasPlayerGlb():boolean{return !!glb;}
 
@@ -122,6 +123,7 @@ export function hasPlayerGlb():boolean{return !!glb;}
 // store) without touching state. applyPlayerClothing() applies the saved/committed outfit.
 export function previewPlayerClothing(o:{shirt:number;pants:number;shoe:number;hat:number;glasses:number}):void{
   player.g.userData.setClothing?.({shirt:o.shirt,pants:o.pants,shoe:o.shoe});
+  if(glb)setCharacterLook(glb.root,{Shirt:o.shirt,Pants:o.pants,Socks:o.shoe});
   setAccessory('hat',o.hat,makeHat);
   setAccessory('glasses',o.glasses,makeGlasses);
 }
@@ -579,8 +581,10 @@ function updateExiting(dt:number){
   }
 }
 
+function terrainY(x:number,z:number):number{return refs.partyArenaGroundHeight?.(x,z)??groundHeight(x,z);}
+
 export const inWater=(p:{x:number;z:number})=>{
-  if(state.interior)return false; // interiores ficam fora do mapa, mas são chão seco
+  if(state.interior||refs.isPartyArenaActive?.())return false; // interiores/arena isolada são chão seco
   return !isLand(p.x,p.z);        // costa irregular da ilha (mesma fonte do visual)
 };
 
@@ -647,6 +651,7 @@ let dying:{t:number;puddle:boolean}|null=null;
 // aqui a "poça" com o dinheiro perdido na morte pra outro jogador online pegar.
 let deathSpotX=0,deathSpotZ=0;
 export function getWasted(){
+  if(refs.handlePartyArenaDeath?.())return;
   if(wastedActive||dying)return;
   wastedActive=true;
   {const dp=playerPos();deathSpotX=dp.x;deathSpotZ=dp.z;} // lembra o lugar da morte (poça)
@@ -1244,7 +1249,7 @@ export function updateFoot(dt:number){
         state.onRoof=null;startRoofFall();return;
       }
     }
-    const gh=r?r.y:groundHeight(p.x,p.z);
+    const gh=r?r.y:terrainY(p.x,p.z);
     if(f||side)p.y=gh+Math.abs(Math.sin(player.bob))*.09;
     else p.y=gh+(p.y-gh)*.8;
   }
@@ -1476,7 +1481,7 @@ function updateCameraAim(dt:number,tgt:THREE.Vector3){
   // (GTA ADS), instead of a far third-person zoom.
   const eye=_camFocus.set(tgt.x,tgt.y+1.5,tgt.z).addScaledVector(right,-.7);  // left shoulder (player sits LEFT of the reticle)
   const want=_camWant.copy(eye).addScaledVector(dir,-2.4);                    // close behind = over-the-shoulder
-  const gy=groundHeight(want.x,want.z)+.45;if(want.y<gy)want.y=gy;           // never dip below ground
+  const gy=terrainY(want.x,want.z)+.45;if(want.y<gy)want.y=gy;           // never dip below ground
   if(state.interior){const B=state.interior.bounds;want.x=clamp(want.x,B.x0,B.x1);want.y=Math.min(want.y,B.y1);want.z=clamp(want.z,B.z0,B.z1);}
   camera.position.lerp(want,1-Math.exp(-12*dt));                             // snappy follow
   camera.fov+=(52-camera.fov)*Math.min(1,8*dt);camera.updateProjectionMatrix();

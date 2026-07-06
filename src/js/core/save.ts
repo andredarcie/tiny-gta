@@ -27,6 +27,10 @@ export function collectSave(): SaveBlob {
     daily: refs.getDailySave?.() || null, // dia in-game + travas "1x por dia" dos mini-games
     farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
     clothing: refs.getClothingSave?.() || null, // player outfit: shirt/pants/shoe colours + accessories
+    // Political party membership. 'none' (not null) encodes de-affiliation: the
+    // backend's sanitizeValue DROPS null-valued keys, so a null would vanish from
+    // the stored blob and a de-affiliation could never overwrite an old 'red'.
+    party: state.party ?? 'none',
   };
 }
 
@@ -51,6 +55,11 @@ export function applySave(blob: unknown): void {
   refs.restoreDaily?.(b.daily);
   refs.restoreFarm?.(b.farm);
   refs.restoreClothing?.(b.clothing);
+  // Party membership: last-write-wins. 'none' (or a literal null from the local
+  // mirror) means the player de-affiliated and must stay unaffiliated; old saves
+  // without the field are left untouched.
+  if (b.party === 'red' || b.party === 'blue') state.party = b.party;
+  else if (b.party === 'none' || b.party === null) state.party = null;
 }
 
 refs.collectSave = collectSave;

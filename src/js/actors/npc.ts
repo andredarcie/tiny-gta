@@ -407,6 +407,8 @@ const KIND_LABELS:Record<string,string>={
   dancer:'Clubber',gymgoer:'Gym-goer',guard:'Guard',inmate:'Inmate',
   clerk:'Clerk',medic:'Hospital',fare:'Passenger',buyer:'Buyer',
   driver:'Driver',rick:'Hermit',
+  // political parties (js/places/party-hq.ts, js/activities/party-arena.ts)
+  partyrep:'Party recruiter',arena:'Arena fighter',
 };
 export function kindLabel(kind:string):string{return KIND_LABELS[kind]||kind;}
 
