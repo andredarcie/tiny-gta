@@ -104,8 +104,11 @@ export type ServerMsg =
 // ---- combat v1 (PvP hits decided server-side; see server/src/world.ts) ------
 /** Local damage units (1..3) → PvP HP damage. Index 0 unused. */
 export const SHOT_DMG_HP = [0, 12, 18, 26] as const;
-/** Melee damage: dm 1 = fists, dm 2+ = lethal blade/club. */
-export const MELEE_DMG_HP = [0, 10, 18, 18] as const;
+/** Melee damage: dm 1 = fists, dm 2+ = lethal blade/club. Fists are a real PvP
+ * threat — 3 clean punches down a full-HP (100) player (40 each: 2 hits leave the
+ * victim standing, the 3rd kills). The lethal club stays clearly stronger (55 →
+ * 2 hits). Old values (10/18) needed ~10/6 hits, so brawling never got a kill. */
+export const MELEE_DMG_HP = [0, 40, 55, 55] as const;
 export const SHOT_RANGE_MAX = 80;
 export const MELEE_RANGE_MAX = 3;
 export const BLAST_RANGE_MAX = 8;
