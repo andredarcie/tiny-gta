@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand,groundHeight} from '@/core/constants.ts';
 
 const rockM=matte({color:0x84868f,roughness:.95});
@@ -15,8 +15,7 @@ function build({scale=1.4}={}): THREE.Mesh{
 
 export default {category:'Terrain',label:'Mountain rock',build};
 
-export function addMountainRock(x: number,z: number,scale: number): THREE.Mesh{
-  const rk=build({scale});
-  rk.position.set(x,groundHeight(x,z)+.1,z);bakeProp(rk);
-  return rk;
+// Mountain rock → a random MegaKit Rock_Medium boulder, sized from the old scale.
+export function addMountainRock(x: number,z: number,scale: number): void{
+  placeNature('rock',x,groundHeight(x,z)-.1,z,scale*rand(1.3,1.8));
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand} from '@/core/constants.ts';
 import type {ModelDescriptor} from '@/core/types.ts';
 
@@ -23,8 +23,8 @@ function build(): THREE.Group {
 const model: ModelDescriptor = {category:'Props',label:'Palm tree',build};
 export default model;
 
-export function addPalm(x: number, z: number): THREE.Group {
-  const g=build();
-  g.position.set(x,0,z);bakeProp(g);
-  return g;
+// The MegaKit (free tier) has no palm, so beach/park "palms" become tall leafy
+// CommonTrees from the kit — a lush coastal tree line. Baked at beach level (y=0).
+export function addPalm(x: number, z: number): void {
+  placeNature('tree',x,0,z,rand(5,7.2));
 }

@@ -6,9 +6,10 @@ import {makeRng} from '@/core/rng.ts';
 // Seeded so the paradise island's palms/rocks/props land in the same spot every
 // load (the rest of the world is baked to world.json; this island is still built
 // procedurally, just deterministically now — externalizing it is a follow-up).
-const {random,rand,irand,pick}=makeRng(0x15a4d);
+const {random,rand,irand}=makeRng(0x15a4d);
 import {matte} from '../matte.ts';
 import {bakeProp} from '../props/prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {addLighthouse} from '../props/lighthouse.ts';
 
 // ====== ILHA PARADISÍACA (a oeste, alcançável de barco) =====================
@@ -137,119 +138,23 @@ export function updateIslandFoam(foam: Foam[],time: number): void{
 
 // ===================== PROPS DE ALTA QUALIDADE ==============================
 
-// ---- palmeira detalhada: tronco curvo segmentado + coroa de fronds caídos +
-//      cocos. Materiais compartilhados (fundem em poucas geometrias por chunk).
-const trunkM=matte({color:0x9a7550,roughness:1});
-const trunkHi=matte({color:0xb08a5e,roughness:1});  // anéis claros do tronco
-const frondM=matte({color:0x3f9f4e,roughness:1});   // folha
-const frondHi=matte({color:0x5fbf63,roughness:1});  // folha clara (variação)
-const cocoM=matte({color:0x6b4a2c,roughness:1});
-
-function buildPalm(): THREE.Group{
-  const g=new THREE.Group();
-  const H=rand(5.2,7.2), segN=5, segH=H/segN;
-  const la=rand(0,Math.PI*2), lean=rand(.6,1.4);   // deslocamento horizontal total no topo
-  const lx=Math.cos(la)*lean, lz=Math.sin(la)*lean;
-  // tronco: 5 segmentos afunilados com uma curvatura suave (offset ∝ fração²)
-  for(let i=0;i<segN;i++){
-    const f0=i/segN, f1=(i+1)/segN, fm=(i+.5)/segN;
-    const seg=new THREE.Mesh(new THREE.CylinderGeometry(.36-f1*.22,.36-f0*.22,segH,7),
-      i%2?trunkHi:trunkM);
-    seg.position.set(lx*fm*fm, fm*H, lz*fm*fm);
-    seg.rotation.z=-lx*fm*.32; seg.rotation.x=lz*fm*.32;
-    seg.castShadow=true;g.add(seg);
-  }
-  const tx=lx, ty=H, tz=lz; // topo do tronco (lean total)
-  // coroa de fronds: cones alongados abrindo em leque e caindo nas pontas
-  const N=irand(9,11);
-  for(let k=0;k<N;k++){
-    const a=k/N*Math.PI*2+rand(-.12,.12);
-    const len=rand(2.6,3.9), droop=rand(.65,1.05);
-    const frond=new THREE.Mesh(new THREE.ConeGeometry(.24,len,5),k%3?frondM:frondHi);
-    frond.position.set(tx,ty,tz);
-    frond.rotation.order='YXZ';
-    frond.rotation.y=-a;            // gira o leque
-    frond.rotation.x=droop;         // deixa cair
-    frond.rotation.z=Math.PI/2;     // deita o cone (eixo Y → horizontal)
-    frond.translateY(len/2);        // corpo do frond pra fora, base junto ao tronco
-    frond.scale.z=.45;              // achata a folha (lâmina, não tubo)
-    frond.castShadow=true;g.add(frond);
-  }
-  // brotos curtos eretos no centro da coroa
-  for(let k=0;k<3;k++){
-    const spr=new THREE.Mesh(new THREE.ConeGeometry(.13,1.2,4),frondHi);
-    spr.position.set(tx,ty+.55,tz);spr.rotation.set(rand(-.4,.4),rand(0,6.28),rand(-.4,.4));
-    g.add(spr);
-  }
-  // cachos de coco sob a coroa
-  for(let k=0;k<irand(3,5);k++){
-    const a=rand(0,Math.PI*2),rr=rand(.18,.42);
-    const co=new THREE.Mesh(new THREE.SphereGeometry(.2,7,6),cocoM);
-    co.position.set(tx+Math.cos(a)*rr,ty-.3,tz+Math.sin(a)*rr);g.add(co);
-  }
-  return g;
-}
-
+// Palms/rocks/shrubs/grass now come from the Stylized Nature MegaKit (see
+// nature/kit.ts). The old procedural builders were removed with the swap.
 function addPalmAt(x: number,y: number,z: number): void{
-  const g=buildPalm();g.position.set(x,y,z);g.rotation.y=rand(0,Math.PI*2);
-  bakeProp(g);
+  placeNature('tree',x,y,z,rand(5.2,7.4));
 }
 
-// ---- pedra/penhasco facetado (low-poly bonito): dodecaedro deformado ----
-const rockM=matte({color:0x8f897e,roughness:1,flatShading:true});
-const rockMossM=matte({color:0x6f7d52,roughness:1,flatShading:true});
-function buildRock(scale: number,mossy: boolean): THREE.Mesh{
-  const geo=new THREE.DodecahedronGeometry(scale,0);
-  const p=geo.attributes.position;
-  for(let i=0;i<p.count;i++){
-    const f=.78+hash(p.getX(i)*3.1+i,p.getZ(i)*2.7)*.5;
-    p.setXYZ(i,p.getX(i)*f,p.getY(i)*(.6+f*.3),p.getZ(i)*f);
-  }
-  geo.computeVertexNormals();
-  const m=new THREE.Mesh(geo,mossy?rockMossM:rockM);
-  m.rotation.set(rand(0,3),rand(0,6),rand(0,3));m.castShadow=true;
-  return m;
-}
-function addRockAt(x: number,y: number,z: number,scale: number,mossy: boolean): void{
-  const m=buildRock(scale,mossy);m.position.set(x,y+scale*.35,z);bakeProp(m);
+function addRockAt(x: number,y: number,z: number,scale: number,_mossy: boolean): void{
+  placeNature('rock',x,y+scale*.35,z,scale*rand(1.2,1.6));
 }
 
-// ---- arbusto/flor tropical: tufo de pétalas coloridas sobre folhagem ----
-const bushM=matte({color:0x3c8a44,roughness:1});
-// materiais de flor COMPARTILHADOS (um por cor): assim as flores de muitos
-// arbustos fundem por cor num punhado de geometrias (não 1 material por arbusto).
-const FLOWER_MATS=[0xff5b8a,0xffd23f,0xff8a3c,0xe85cff,0xfff4f0].map(c=>matte({color:c,roughness:1}));
-function buildShrub(): THREE.Group{
-  const g=new THREE.Group();
-  const r=rand(.6,1.0);
-  const bush=new THREE.Mesh(new THREE.IcosahedronGeometry(r,0),bushM);
-  bush.position.y=r*.7;bush.scale.y=.7;bush.castShadow=true;g.add(bush);
-  const fm=pick(FLOWER_MATS);
-  for(let k=0;k<irand(3,6);k++){
-    const a=rand(0,Math.PI*2),rr=rand(.2,r*.9);
-    const fl=new THREE.Mesh(new THREE.ConeGeometry(.16,.18,5),fm);
-    fl.position.set(Math.cos(a)*rr,r*.9+rand(0,.25),Math.sin(a)*rr);
-    fl.rotation.x=Math.PI; // pétalas viradas pra cima formando um pratinho
-    g.add(fl);
-  }
-  return g;
-}
 function addShrubAt(x: number,y: number,z: number): void{
-  const g=buildShrub();g.position.set(x,y,z);g.rotation.y=rand(0,6.28);bakeProp(g);
+  placeNature('bush',x,y,z,rand(1.0,1.8));
 }
 
 // ---- capim de praia: leques de lâminas finas ----
-const grassM=matte({color:0x86b35a,roughness:1});
 function addGrassTuftAt(x: number,y: number,z: number): void{
-  const g=new THREE.Group();
-  for(let k=0;k<irand(4,7);k++){
-    const bl=new THREE.Mesh(new THREE.ConeGeometry(.05,rand(.5,1.0),3),grassM);
-    const a=rand(0,Math.PI*2);
-    bl.position.set(Math.cos(a)*.12,.4,Math.sin(a)*.12);
-    bl.rotation.set(rand(-.3,.3),a,rand(-.3,.3));
-    g.add(bl);
-  }
-  g.position.set(x,y,z);bakeProp(g);
+  placeNature('grass',x,y,z,rand(0.6,1.1));
 }
 
 // ---- cabana de praia com telhado de palha (direto na cena: poucas meshes) ----

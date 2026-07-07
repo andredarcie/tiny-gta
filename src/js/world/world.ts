@@ -25,6 +25,7 @@ import {addBush} from '../../assets/models/props/bush.ts';
 import {addFern} from '../../assets/models/props/fern.ts';
 import {addMushroom} from '../../assets/models/props/mushroom.ts';
 import {addFallenLog} from '../../assets/models/props/fallen-log.ts';
+import {scatterGround} from '../../assets/models/nature/batch.ts';
 import {addStreetLamp,lampGlowMat,lampHaloMat,lampBulbMat} from '../../assets/models/props/street-lamp.ts';
 import {addBuilding,finalizeBuildings,buildingMats} from '../../assets/models/city/building.ts';
 import {finalizeDoorArrows} from '../../assets/models/city/door-arrow.ts';
@@ -457,6 +458,21 @@ addWeedFarm(solids);
   for(const o of f.bushes)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addBush(o.x,o.z);
   for(const o of f.ferns)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addFern(o.x,o.z);
   for(const o of f.details)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
+  // ----- lush ground cover (Stylized Nature MegaKit): grass tufts, wildflowers and
+  // clover scattered around the existing forest foliage so the peninsula reads as a
+  // living meadow (like the kit's own scenes). Purely visual, baked into the merged
+  // nature chunks; anchored to vetted forest points so nothing lands on water/roads.
+  const scatter=(ox:number,oz:number,spread:number):void=>{
+    const gx=ox+rand(-spread,spread),gz=oz+rand(-spread,spread);
+    if(inRiverGap(gx,gz)||inStadiumClearing(gx,gz,34))return;
+    const r=Math.random();
+    if(r<.60)scatterGround('grass',gx,gz,rand(.5,1.15),rand(.8,1.3));
+    else if(r<.85)scatterGround('flower',gx,gz,rand(.8,1.6));
+    else scatterGround('clover',gx,gz,rand(.5,.95));
+  };
+  for(const o of f.ferns){if(inRiverGap(o.x,o.z))continue;for(let k=0;k<3;k++)scatter(o.x,o.z,3.5);}
+  for(const o of f.bushes){if(inRiverGap(o.x,o.z))continue;scatter(o.x,o.z,3);}
+  for(const o of f.trees){if(inRiverGap(o.x,o.z))continue;scatter(o.x,o.z,4.2);}
 }
 
 // fardos de feno nas roças

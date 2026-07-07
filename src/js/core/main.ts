@@ -43,6 +43,12 @@ import {updatePartyArena,getPartyArenaState} from '@/activities/party-arena.ts';
 import {blinkBar} from '@/core/entities.ts';
 import {preloadNpcModels,updateNpcGlb} from '../../assets/models/characters/npc-glb.ts';
 preloadNpcModels(); // start loading the rigged NPC models ASAP; NPCs swap from the procedural ped when ready
+import {preloadNature} from '../../assets/models/nature/kit.ts';
+import {finalizeNature,updateNatureCulling} from '../../assets/models/nature/batch.ts';
+// Load the Stylized Nature MegaKit glTF, then bake every placement world.ts already
+// recorded (trees/pines/palms/bushes/ferns/mushrooms/rocks + grass/flowers) into merged
+// chunks. Runs after the whole world import graph, so all placements are present.
+preloadNature().then(()=>{try{finalizeNature();}catch(e){console.warn('[nature] finalize failed',e);}});
 import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/core/input.ts';
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
@@ -448,6 +454,7 @@ function step(dt: number){
   P.begin('culling');
   updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
+  updateNatureCulling(pp.x,pp.z); // stylized-nature chunks (trees/rocks/grass): same size-LOD cut
   updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
   updateRuralCulling(pp.x,pp.z); // rancho + celeiro: ~130 draw calls cortados além da névoa
   // Veículos parados (avião/barco/trator/bombeiro/ambulância/carro do jogador):

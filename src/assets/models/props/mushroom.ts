@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand,groundHeight} from '@/core/constants.ts';
 
 // A little cluster of toadstools (red dome cap on a pale stem) tucked among the
@@ -23,9 +23,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Mushrooms',build};
 
-export function addMushroom(px: number,pz: number): THREE.Group{
-  const g=build();
-  g.rotation.y=rand(0,Math.PI*2);
-  g.position.set(px,groundHeight(px,pz),pz);bakeProp(g);
-  return g;
+// Mushroom → a random MegaKit mushroom (toadstool / Laetiporus shelf).
+export function addMushroom(px: number,pz: number): void{
+  placeNature('mushroom',px,groundHeight(px,pz),pz,rand(0.32,0.62));
 }
