@@ -6,7 +6,7 @@ import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/const
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {isPark} from '@/world/world.ts';
 import {partyBlockAt} from '@/places/party-data.ts';
-import {blip,thud,gunshot} from '@/audio/audio.ts';
+import {blip,thud,gunshot,pistolShot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
 import {settings} from '@/core/settings.ts';
@@ -1227,7 +1227,12 @@ const api: WeaponApi={
     if(r.shake)state.shake=Math.max(state.shake,r.shake);
   },
   outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
-  gunshot(v: number){gunshot(v);const pp=playerPos();state.shotT=state.time;state.myShotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
+  gunshot(v: number){
+    // The player's PISTOL fires the recorded pistol-shot sample; every other
+    // firearm keeps the synthesized shot. pistolShot() returns false until the
+    // sample is decoded (or if it failed to load), so we fall back to gunshot().
+    if(curWeapon?.id!=='pistol'||!pistolShot(v))gunshot(v);
+    const pp=playerPos();state.shotT=state.time;state.myShotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
     if(!refs.inGunShopRange?.()){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
       // no radio dispatch from the isolated Party Arena: addWanted already no-ops
