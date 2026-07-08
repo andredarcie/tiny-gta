@@ -7,6 +7,7 @@ playwright-report/
 /playwright/.cache/
 .wrangler/
 .playwright-mcp/
-# Raw art-pack source (Quaternius Stylized Nature MegaKit, CC0). The BAKED subset
-# lives in public/models/nature/ (committed) via tools/bake-nature-assets.py.
+# Raw art-pack source (Quaternius Stylized Nature MegaKit, CC0 + Coconut Palm Tree).
+# The BAKED subset lives in public/models/nature/ (committed) via tools/bake-nature-assets.py.
 Stylized Nature MegaKit*/
+Coconut palm tree/
