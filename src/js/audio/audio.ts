@@ -1,4 +1,7 @@
 import {state,input,refs} from '@/core/state.ts';
+// Recorded pistol shot dropped in src/assets/audio. Imported so Vite fingerprints
+// and bundles it (this is the one runtime binary asset — everything else is synth).
+import pistolShotUrl from '../../assets/audio/pistol-shot.mp3';
 
 export let AC:AudioContext|null=null,audioEngine:{o:OscillatorNode;g:GainNode}|null=null,
   siren:{lfo:OscillatorNode;g:GainNode;rate:number}|null=null,
@@ -18,6 +21,7 @@ export function initAudio(){
   if(AC)return;
   const ac=AC=new ((window as any).AudioContext||(window as any).webkitAudioContext)() as AudioContext;
   master=ac.createGain();master.gain.value=masterVol;master.connect(ac.destination);
+  loadPistolSample(ac); // decode the recorded pistol shot in the background
   // Engine — the original simple drone: a single sawtooth through a low-pass, gain
   // and pitch driven by speed in updateAudio.
   const o=ac.createOscillator();o.type='sawtooth';
@@ -185,6 +189,27 @@ export function splash(vol=1,big=false){
     og.gain.exponentialRampToValueAtTime(.001,t0+.22);
     o.connect(og).connect(master!);o.start(t0);o.stop(t0+.24);
   }
+}
+
+// Recorded pistol sample. Decoded once (on initAudio) into an AudioBuffer; the
+// player's pistol plays it via pistolShot(). Until it finishes decoding — or if
+// the file fails to load — pistolShot() returns false and the caller falls back
+// to the synthesized gunshot() below.
+let pistolBuf:AudioBuffer|null=null;
+function loadPistolSample(ac:AudioContext){
+  fetch(pistolShotUrl).then(r=>r.arrayBuffer()).then(a=>ac.decodeAudioData(a))
+    .then(b=>{pistolBuf=b;}).catch(()=>{/* keep the synth fallback */});
+}
+// Plays the recorded pistol shot through the master bus. `vol` scales the level to
+// match gunshot()'s arg. Returns false when the sample isn't ready so the caller
+// can fall back to the synthesized shot.
+export function pistolShot(vol=1):boolean{
+  if(!AC||!pistolBuf||!master)return false;
+  const src=AC.createBufferSource();src.buffer=pistolBuf;
+  const g=AC.createGain();g.gain.value=Math.max(0,vol);
+  src.connect(g).connect(master);
+  src.start(AC.currentTime);
+  return true;
 }
 
 // Tiro realista em camadas: estalo agudo do disparo, corpo do estouro,

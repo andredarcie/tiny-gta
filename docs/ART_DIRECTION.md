@@ -50,7 +50,12 @@ things that carry gameplay meaning.
 
 **Don't**
 - No photo textures on any surface (facades included) — it breaks the maquette
-  and the zero-binary-assets pillar.
+  and the zero-binary-assets pillar. **Exception (owner-approved 2026-07-07):** all
+  natural vegetation and rocks now come from the Quaternius *Stylized Nature MegaKit*
+  (CC0) with its hand-painted stylized textures (loaded via glTF — see
+  `assets/models/nature/kit.ts`). These are painterly, not photographic, so they read
+  as diorama foliage; the rest of the world (buildings, vehicles, props) stays
+  primitive + palette-flat. Don't extend the texture exception beyond nature.
 - No saturated cartoon pastels in the environment (pool-cyan, lime green) —
   those are leftovers from the old look; pull them toward the muted base when touched.
 - No saturated color without gameplay meaning.

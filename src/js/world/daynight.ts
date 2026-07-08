@@ -135,9 +135,10 @@ skyLayer.scale.setScalar(SKY_SCALE);
 for(const c of clouds)c.userData.op0=(c.material as THREE.SpriteMaterial).opacity;
 
 const SUNSET_TINT=new THREE.Color(0xff5a28);
-// Luminous haze tint for the dense rural fog on a SUNNY day, so the countryside
-// reads as bright sunlit bruma (não um cinza de tempo fechado). Ver updateDayNight.
-const RURAL_HAZE=new THREE.Color(0xeef1e9);
+// Rural fog tint: a FOREST-GREEN haze (keyed to the ground/foliage) so the dense
+// countryside fog reads as green woodland mist instead of a white/grey wall. Applied
+// only in the rural zone (scaled by ruralF), so the city fog stays the sky colour.
+const RURAL_HAZE=new THREE.Color(0x4a6b28);
 // Bulbo do poste: apagado (cinza) de dia, quente e brilhante à noite
 const BULB_DAY=new THREE.Color(0x9a948e),BULB_NIGHT=new THREE.Color(0xffd9a0);
 
@@ -195,7 +196,7 @@ export function updateDayNight(dt:number){
   // noite) — então amanhecer/entardecer/noite mantêm a própria névoa. Não mexe no
   // sol nem nas distâncias; só na cor.
   const dayF=clamp((cur.sunI-1.2)/1.0,0,1);
-  (scene.fog as THREE.Fog).color.lerp(RURAL_HAZE,ruralF*dayF*.55);
+  (scene.fog as THREE.Fog).color.lerp(RURAL_HAZE,ruralF*(.42+dayF*.45));
   // Fog por zona. Na zona rural ele fica BEM mais denso (perto e longe puxados pra
   // dentro): props (pinheiros, postes, igreja e o forte, todos assados) somem no
   // culling a ~160m, então a névoa precisa fechar ANTES disso pra esconder o
@@ -206,8 +207,13 @@ export function updateDayNight(dt:number){
   // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
   // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
   // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
-  (scene.fog as THREE.Fog).near=100-ruralF*32;
-  const fogFar=Math.min(200-ruralF*50+(ppos?Math.max(0,ppos.y)*15:0),430);
+  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the Stylized Nature
+  // MegaKit forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
+  // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
+  // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
+  // horizon from the mountaintop mirante.
+  (scene.fog as THREE.Fog).near=100-ruralF*76;
+  const fogFar=Math.min(200-ruralF*150+(ppos?Math.max(0,ppos.y)*15:0),430);
   (scene.fog as THREE.Fog).far=fogFar;
   // REGRA MESTRA (só desenha o que o jogador VÊ): o plano FAR da câmera acompanha a
   // névoa. Tudo além de `fogFar` já é 100% opaco de neblina — invisível —, então deixar

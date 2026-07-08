@@ -6,7 +6,7 @@ export function makeMountain(size: number,segments: number): THREE.Mesh{
   geo.rotateX(-Math.PI/2);
   const pos=geo.attributes.position;
   const col=new Float32Array(pos.count*3);
-  const grass=new THREE.Color(0x69a85e),dirt=new THREE.Color(0x8a7a52),
+  const grass=new THREE.Color(0x33500f),dirt=new THREE.Color(0x8a7a52),
         rock=new THREE.Color(0x8d8f99),peakC=new THREE.Color(0xc2c6cf),
         trail=new THREE.Color(0xb08a5e),tmp=new THREE.Color();
   const cell=size/segments;

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand,groundHeight} from '@/core/constants.ts';
 
 // Ground fern: a rosette of arching fronds (thin tapered blades leaning outward
@@ -27,8 +27,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Fern',build};
 
-export function addFern(px: number,pz: number): THREE.Group{
-  const g=build();
-  g.position.set(px,groundHeight(px,pz),pz);bakeProp(g);
-  return g;
+// Fern → the MegaKit Fern_1 frond rosette, scaled to ankle/knee height.
+export function addFern(px: number,pz: number): void{
+  placeNature('fern',px,groundHeight(px,pz),pz,rand(0.8,1.4));
 }

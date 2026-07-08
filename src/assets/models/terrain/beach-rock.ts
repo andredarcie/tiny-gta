@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand} from '@/core/constants.ts';
 
 const rockM=matte({color:0x8d8f99,roughness:.95});
@@ -15,8 +15,7 @@ function build({scale=1.4}={}): THREE.Mesh{
 
 export default {category:'Terrain',label:'Beach rock',build};
 
-export function addBeachRock(x: number,z: number,scale: number): THREE.Mesh{
-  const rk=build({scale});
-  rk.position.set(x,-.12,z);bakeProp(rk);
-  return rk;
+// Beach rock → a random MegaKit Rock_Medium, half-sunk in the sand at shore level.
+export function addBeachRock(x: number,z: number,scale: number): void{
+  placeNature('rock',x,-.12,z,scale*rand(0.85,1.25));
 }

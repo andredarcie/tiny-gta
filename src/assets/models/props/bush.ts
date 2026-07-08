@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand,groundHeight} from '@/core/constants.ts';
 
 // Low shrub / undergrowth clump: a couple of squashed low-poly leaf blobs that
@@ -25,9 +25,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Bush',build};
 
-export function addBush(px: number,pz: number): THREE.Group{
-  const g=build();
-  g.rotation.y=rand(0,Math.PI*2);
-  g.position.set(px,groundHeight(px,pz)-.04,pz);bakeProp(g);
-  return g;
+// Bush → a random MegaKit shrub (Bush_Common / flowering bush / small plant).
+export function addBush(px: number,pz: number): void{
+  placeNature('bush',px,groundHeight(px,pz)-.04,pz,rand(1.0,1.9));
 }

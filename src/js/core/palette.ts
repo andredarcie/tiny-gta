@@ -49,7 +49,7 @@ export const PANTS_COLORS=[0x202435,0x263454,0x2e2a24,0x3d3f46,0x18191f,0xe7dec9
 export const GROUND={
   asphalt:'#45454b',
   sidewalk:'#bcb6a8',
-  grass:'#69a85e',     // also mountain grass (assets/models/terrain/mountain.ts)
+  grass:'#33500f',     // deep forest green — as dark as the Stylized Nature MegaKit tree foliage; also mountain grass (assets/models/terrain/mountain.ts)
   parkGrass:'#5fae62',
   dirt:'#8a7a52',
   ruralRoad:'#b08a5e', // dirt roads + mountain trail
