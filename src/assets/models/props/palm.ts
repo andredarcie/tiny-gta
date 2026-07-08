@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand} from '@/core/constants.ts';
 import type {ModelDescriptor} from '@/core/types.ts';
 
@@ -23,8 +23,8 @@ function build(): THREE.Group {
 const model: ModelDescriptor = {category:'Props',label:'Palm tree',build};
 export default model;
 
-export function addPalm(x: number, z: number): THREE.Group {
-  const g=build();
-  g.position.set(x,0,z);bakeProp(g);
-  return g;
+// Beach/park palms use the standalone Coconut Palm Tree model (OBJ), baked at beach
+// level (y=0) into the merged nature chunks — a proper coastal palm line.
+export function addPalm(x: number, z: number): void {
+  placeNature('palm',x,0,z,rand(5.5,8));
 }

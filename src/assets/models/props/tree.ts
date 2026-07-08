@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand,groundHeight} from '@/core/constants.ts';
 
 // Broadleaf tree: a rounded, leafy crown to break up the conifer pines and give
@@ -33,9 +33,9 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Broadleaf tree',build};
 
-export function addTree(px: number,pz: number): THREE.Group{
-  const g=build();
-  g.rotation.y=rand(0,Math.PI*2);
-  g.position.set(px,groundHeight(px,pz)-.02,pz);bakeProp(g);
-  return g;
+// Broadleaf tree → a random Stylized Nature MegaKit CommonTree, baked into the merged
+// nature chunks (see nature/kit.ts + nature/batch.ts). build() above stays as the
+// model-viewer gallery fallback; the live world uses the loaded glTF asset.
+export function addTree(px: number,pz: number): void{
+  placeNature('tree',px,groundHeight(px,pz)-.02,pz,rand(4.2,6.6));
 }

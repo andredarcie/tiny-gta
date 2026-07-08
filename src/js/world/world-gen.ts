@@ -104,6 +104,12 @@ export function generateWorldSpec(seed=1337){
   }
 
   // ---------- rural forest ----------
+  // Density multipliers. The brutal rural fog + fog-driven nature culling (daynight.ts +
+  // nature/batch.ts) mean only the visible ~50m ever draws. TREE_DENSITY is the big
+  // canopy count (kept ~half the dense pass so the wood breathes under the tight fog);
+  // FOREST_DENSITY still packs the low ground cover (bushes/ferns/mushrooms).
+  const TREE_DENSITY=0.8;
+  const FOREST_DENSITY=1.7;
   const road=ruralRoadPath();
   const nearRoad=(px:number,pz:number):boolean=>{
     for(let i=1;i<road.length;i++){
@@ -144,14 +150,15 @@ export function generateWorldSpec(seed=1337){
   ];
   let placed=0;
   for(const[gx,gz,rx,rz,count]of groves){
+    const cnt=Math.round(count*TREE_DENSITY);
     let n=0,g2=0;
-    while(n<count&&g2++<count*6){
+    while(n<cnt&&g2++<cnt*6){
       const ox=(random()+random()-1)*rx,oz=(random()+random()-1)*rz;
       if(plantTree(gx+ox,gz+oz)){n++;placed++;}
     }
   }
   let guard=0;
-  while(placed<470&&guard++<4000){
+  while(placed<Math.round(470*TREE_DENSITY)&&guard++<9000){
     if(plantTree(rand(RURAL_X0+6,RURAL_X1-8),rand(-RURAL_HALF+6,RURAL_HALF-6)))placed++;
   }
   for(let px=RURAL_X0+24;px<MOUNT_X-MOUNT_R-6;px+=rand(7,11)){ // pines lining the dirt road
@@ -162,7 +169,7 @@ export function generateWorldSpec(seed=1337){
   }
   const bushes:{x:number;z:number}[]=[];
   let nb=0,bg=0;
-  while(nb<320&&bg++<5200){
+  while(nb<Math.round(320*FOREST_DENSITY)&&bg++<11000){
     let px,pz;
     if(random()<.7){
       const[gx,gz,rx,rz]=groves[irand(0,groves.length-1)];
@@ -174,13 +181,13 @@ export function generateWorldSpec(seed=1337){
   }
   const ferns:{x:number;z:number}[]=[];
   let nf=0,fg=0;
-  while(nf<240&&fg++<4200){
+  while(nf<Math.round(240*FOREST_DENSITY)&&fg++<9000){
     const px=rand(RURAL_X0+6,RURAL_X1-8),pz=rand(-RURAL_HALF+6,RURAL_HALF-6);
     if(okForest(px,pz)){ferns.push({x:px,z:pz});nf++;}
   }
   const details:{t:string;x:number;z:number}[]=[];           // {t:'mushroom'|'log',x,z}
   let nd=0,dg=0;
-  while(nd<80&&dg++<1600){
+  while(nd<Math.round(80*FOREST_DENSITY)&&dg++<3600){
     const[gx,gz,rx,rz]=groves[irand(0,groves.length-1)];
     const px=gx+(random()+random()-1)*(rx+6),pz=gz+(random()+random()-1)*(rz+6);
     if(!okForest(px,pz))continue;

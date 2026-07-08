@@ -25,6 +25,7 @@ import {addBush} from '../../assets/models/props/bush.ts';
 import {addFern} from '../../assets/models/props/fern.ts';
 import {addMushroom} from '../../assets/models/props/mushroom.ts';
 import {addFallenLog} from '../../assets/models/props/fallen-log.ts';
+import {scatterGround} from '../../assets/models/nature/batch.ts';
 import {addStreetLamp,lampGlowMat,lampHaloMat,lampBulbMat} from '../../assets/models/props/street-lamp.ts';
 import {addBuilding,finalizeBuildings,buildingMats} from '../../assets/models/city/building.ts';
 import {finalizeDoorArrows} from '../../assets/models/city/door-arrow.ts';
@@ -314,10 +315,14 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   // Painted into a function so it can be re-run after a context loss (see groundTexRedraws).
   const paintRural=()=>{
   const {random:rnd,rand,irand}=makeRng(0x73a17e); // deterministic, repaint-stable noise
-  x.fillStyle='#69a85e';x.fillRect(0,0,1024,512);
-  for(let k=0;k<2600;k++){
-    x.fillStyle=`rgba(${irand(70,115)},${irand(130,175)},${irand(60,95)},.22)`;
-    x.fillRect(rnd()*1024,rnd()*512,irand(2,7),irand(2,7));
+  x.fillStyle='#33500f';x.fillRect(0,0,1024,512);   // deep forest green — reads AS DARK as the MegaKit tree foliage once the floor catches full sun (base sits well below the canopy hex to compensate)
+  // Subtle two-tone mottling, BOTH greens so it never reads pale: deep shadow patches +
+  // a medium leaf-green like the canopy (~#577a00). No dry/yellow highlights.
+  for(let k=0;k<3200;k++){
+    x.fillStyle=rnd()<.7
+      ? `rgba(${irand(20,44)},${irand(40,66)},${irand(6,22)},.36)`      // deep shadow
+      : `rgba(${irand(74,104)},${irand(104,134)},${irand(6,34)},.22)`;   // leaf-green patch (~canopy tone)
+    x.fillRect(rnd()*1024,rnd()*512,irand(2,8),irand(2,8));
   }
   // roças: terra arada com linhas de plantação
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
@@ -332,7 +337,7 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   // keep the open-world stadium portal out of the ploughed-field texture
   {
     const px0=STADIUM.x-PORTAL_W/2-14,pz0=STADIUM.z-PORTAL_D/2-14;
-    x.fillStyle='#69a85e';x.fillRect(u(px0),w(pz0),u(px0+PORTAL_W+28)-u(px0),w(pz0+PORTAL_D+28)-w(pz0));
+    x.fillStyle='#33500f';x.fillRect(u(px0),w(pz0),u(px0+PORTAL_W+28)-u(px0),w(pz0+PORTAL_D+28)-w(pz0));
   }
   // estrada de terra: sai da cidade, contorna a montanha pelo NORTE e atravessa a
   // vila rural (mesmo traçado do radar — ver ruralRoadPath em constants.js)
@@ -457,6 +462,21 @@ addWeedFarm(solids);
   for(const o of f.bushes)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addBush(o.x,o.z);
   for(const o of f.ferns)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addFern(o.x,o.z);
   for(const o of f.details)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
+  // ----- lush ground cover (Stylized Nature MegaKit): grass tufts, wildflowers and
+  // clover scattered around the existing forest foliage so the peninsula reads as a
+  // living meadow (like the kit's own scenes). Purely visual, baked into the merged
+  // nature chunks; anchored to vetted forest points so nothing lands on water/roads.
+  const scatter=(ox:number,oz:number,spread:number):void=>{
+    const gx=ox+rand(-spread,spread),gz=oz+rand(-spread,spread);
+    if(inRiverGap(gx,gz)||inStadiumClearing(gx,gz,34))return;
+    const r=Math.random();
+    if(r<.60)scatterGround('grass',gx,gz,rand(.5,1.15),rand(.8,1.3));
+    else if(r<.85)scatterGround('flower',gx,gz,rand(.8,1.6));
+    else scatterGround('clover',gx,gz,rand(.5,.95));
+  };
+  for(const o of f.ferns){if(inRiverGap(o.x,o.z))continue;for(let k=0;k<3;k++)scatter(o.x,o.z,3.5);}
+  for(const o of f.bushes){if(inRiverGap(o.x,o.z))continue;scatter(o.x,o.z,3);}
+  for(const o of f.trees){if(inRiverGap(o.x,o.z))continue;scatter(o.x,o.z,4.2);}
 }
 
 // fardos de feno nas roças

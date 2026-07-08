@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from './prop-merge.ts';
+import {placeNature} from '../nature/batch.ts';
 import {rand,groundHeight} from '@/core/constants.ts';
 
 // Two foliage tones so a stand of pines doesn't read as one flat green wall —
@@ -28,8 +28,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Pine tree',build};
 
-export function addPine(px: number,pz: number): THREE.Group{
-  const g=build();
-  g.position.set(px,groundHeight(px,pz)-.02,pz);bakeProp(g);
-  return g;
+// Pine → a random MegaKit Pine model, baked into the merged nature chunks.
+export function addPine(px: number,pz: number): void{
+  placeNature('pine',px,groundHeight(px,pz)-.02,pz,rand(4.6,7.4));
 }
