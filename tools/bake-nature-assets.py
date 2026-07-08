@@ -78,6 +78,22 @@ def main():
         # write the trimmed gltf + copy the .bin verbatim
         json.dump(j, open(os.path.join(OUT, stem + ".gltf"), "w", encoding="utf-8"), separators=(",", ":"))
         shutil.copyfile(os.path.join(SRC, stem + ".bin"), os.path.join(OUT, stem + ".bin"))
+    # --- Coconut palm: a standalone OBJ pack (folder "Coconut palm tree" beside the
+    # MegaKit). Copy the .obj verbatim + downsize its single base-colour PNG to 512.
+    palm = os.environ.get("COCONUT_SRC") or os.path.join(os.path.dirname(_pack), "Coconut palm tree")
+    pobj = os.path.join(palm, "CoconutPalmTree.obj")
+    if os.path.isfile(pobj):
+        shutil.copyfile(pobj, os.path.join(OUT, "CoconutPalmTree.obj"))
+        ptex = os.path.join(palm, "CoconutPalmTree_BaseColor.png")
+        im = Image.open(ptex).convert("RGB")
+        if max(im.size) > 512:
+            r = 512 / max(im.size)
+            im = im.resize((round(im.size[0] * r), round(im.size[1] * r)), Image.LANCZOS)
+        im.save(os.path.join(OUT, "CoconutPalmTree_BaseColor.png"), optimize=True)
+        print("  coconut palm (obj) staged")
+    else:
+        print("  coconut palm NOT found at", palm)
+
     # resize + copy every referenced base texture
     for uri in sorted(needed_tex):
         src = os.path.join(SRC, uri)

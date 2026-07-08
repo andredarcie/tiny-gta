@@ -23,8 +23,8 @@ function build(): THREE.Group {
 const model: ModelDescriptor = {category:'Props',label:'Palm tree',build};
 export default model;
 
-// The MegaKit (free tier) has no palm, so beach/park "palms" become tall leafy
-// CommonTrees from the kit — a lush coastal tree line. Baked at beach level (y=0).
+// Beach/park palms use the standalone Coconut Palm Tree model (OBJ), baked at beach
+// level (y=0) into the merged nature chunks — a proper coastal palm line.
 export function addPalm(x: number, z: number): void {
-  placeNature('tree',x,0,z,rand(5,7.2));
+  placeNature('palm',x,0,z,rand(5.5,8));
 }

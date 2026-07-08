@@ -206,8 +206,13 @@ export function updateDayNight(dt:number){
   // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
   // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
   // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
-  (scene.fog as THREE.Fog).near=100-ruralF*32;
-  const fogFar=Math.min(200-ruralF*50+(ppos?Math.max(0,ppos.y)*15:0),430);
+  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the Stylized Nature
+  // MegaKit forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
+  // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
+  // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
+  // horizon from the mountaintop mirante.
+  (scene.fog as THREE.Fog).near=100-ruralF*76;
+  const fogFar=Math.min(200-ruralF*150+(ppos?Math.max(0,ppos.y)*15:0),430);
   (scene.fog as THREE.Fog).far=fogFar;
   // REGRA MESTRA (só desenha o que o jogador VÊ): o plano FAR da câmera acompanha a
   // névoa. Tudo além de `fogFar` já é 100% opaco de neblina — invisível —, então deixar

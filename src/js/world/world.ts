@@ -315,10 +315,14 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   // Painted into a function so it can be re-run after a context loss (see groundTexRedraws).
   const paintRural=()=>{
   const {random:rnd,rand,irand}=makeRng(0x73a17e); // deterministic, repaint-stable noise
-  x.fillStyle='#69a85e';x.fillRect(0,0,1024,512);
-  for(let k=0;k<2600;k++){
-    x.fillStyle=`rgba(${irand(70,115)},${irand(130,175)},${irand(60,95)},.22)`;
-    x.fillRect(rnd()*1024,rnd()*512,irand(2,7),irand(2,7));
+  x.fillStyle='#33500f';x.fillRect(0,0,1024,512);   // deep forest green — reads AS DARK as the MegaKit tree foliage once the floor catches full sun (base sits well below the canopy hex to compensate)
+  // Subtle two-tone mottling, BOTH greens so it never reads pale: deep shadow patches +
+  // a medium leaf-green like the canopy (~#577a00). No dry/yellow highlights.
+  for(let k=0;k<3200;k++){
+    x.fillStyle=rnd()<.7
+      ? `rgba(${irand(20,44)},${irand(40,66)},${irand(6,22)},.36)`      // deep shadow
+      : `rgba(${irand(74,104)},${irand(104,134)},${irand(6,34)},.22)`;   // leaf-green patch (~canopy tone)
+    x.fillRect(rnd()*1024,rnd()*512,irand(2,8),irand(2,8));
   }
   // roças: terra arada com linhas de plantação
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
@@ -333,7 +337,7 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   // keep the open-world stadium portal out of the ploughed-field texture
   {
     const px0=STADIUM.x-PORTAL_W/2-14,pz0=STADIUM.z-PORTAL_D/2-14;
-    x.fillStyle='#69a85e';x.fillRect(u(px0),w(pz0),u(px0+PORTAL_W+28)-u(px0),w(pz0+PORTAL_D+28)-w(pz0));
+    x.fillStyle='#33500f';x.fillRect(u(px0),w(pz0),u(px0+PORTAL_W+28)-u(px0),w(pz0+PORTAL_D+28)-w(pz0));
   }
   // estrada de terra: sai da cidade, contorna a montanha pelo NORTE e atravessa a
   // vila rural (mesmo traçado do radar — ver ruralRoadPath em constants.js)

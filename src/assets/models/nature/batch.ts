@@ -13,8 +13,9 @@ import { scene } from '@/core/engine.ts';
 import { groundHeight } from '@/core/constants.ts';
 import { natureProto, natureReady, pick, type NatureKind } from './kit.ts';
 
-const CHUNK = 90;    // spatial super-block (m), matches the prop merger
-const CULL = 150;    // trees read from further than small props; fog hides them ~200
+const CHUNK = 90;         // spatial super-block (m), matches the prop merger
+const CULL_MAX = 240;     // never draw nature past this even where the fog opens (mountaintop mirante)
+const CULL_MARGIN = 46;   // ~half a chunk: keep a chunk until its NEAR edge reaches the fog wall (no pop-out)
 
 interface Placement { name: string; m: THREE.Matrix4; }
 const pending: Placement[] = [];
@@ -98,9 +99,15 @@ export function finalizeNature(): void {
 
 export function natureFinalized(): boolean { return finalized; }
 
-// Hide nature chunks beyond CULL of the player (size-based LOD, like the prop merger).
+// Hide nature chunks beyond the FOG WALL. Reading scene.fog.far per frame means the
+// brutal rural fog (daynight.ts) doubles as cheap occlusion: a dense forest only ever
+// draws the chunks the player can see through the haze — everything past fog.far is
+// fully opaque anyway, so cutting it is visual-neutral and slashes draw calls + tris.
+// (The mirante reopens the horizon via the altitude term in fog.far, capped by CULL_MAX.)
 export function updateNatureCulling(px: number, pz: number): void {
-  const f2 = CULL * CULL;
+  const fog = scene.fog as THREE.Fog | null;
+  const far = Math.min(fog ? fog.far : CULL_MAX, CULL_MAX) + CULL_MARGIN;
+  const f2 = far * far;
   for (const g of natureChunks) {
     const dx = g.userData.cx - px, dz = g.userData.cz - pz;
     g.visible = dx * dx + dz * dz < f2;

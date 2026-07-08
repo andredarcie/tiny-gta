@@ -12,6 +12,7 @@
 // ===========================================================================
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 const BASE = import.meta.env.BASE_URL + 'models/nature/';
 
@@ -28,6 +29,7 @@ export function natureReady(): boolean { return protos.size > 0; }
 export const POOLS = {
   tree: ['CommonTree_1', 'CommonTree_2', 'CommonTree_3', 'CommonTree_4', 'CommonTree_5'],
   pine: ['Pine_1', 'Pine_2', 'Pine_3', 'Pine_4', 'Pine_5'],
+  palm: ['CoconutPalmTree'],   // beach/island palm — a separate OBJ pack (see OBJ_NAMES)
   bush: ['Bush_Common', 'Bush_Common_Flowers', 'Plant_1', 'Plant_7'],
   fern: ['Fern_1'],
   mushroom: ['Mushroom_Common', 'Mushroom_Laetiporus'],
@@ -38,7 +40,11 @@ export const POOLS = {
   clover: ['Clover_1', 'Clover_2'],
 } as const;
 export type NatureKind = keyof typeof POOLS;
+// Most models are glTF (MegaKit); a few are standalone OBJ packs loaded differently.
+const OBJ_NAMES = new Set<string>(['CoconutPalmTree']);
 const ALL_MODELS = [...new Set(Object.values(POOLS).flat())];
+const GLTF_MODELS = ALL_MODELS.filter(n => !OBJ_NAMES.has(n));
+const OBJ_MODELS = ALL_MODELS.filter(n => OBJ_NAMES.has(n));
 
 export function pick(kind: NatureKind): string {
   const pool = POOLS[kind];
@@ -111,6 +117,20 @@ function addProto(name: string, gltf: { scene: THREE.Object3D }): void {
   if (parts.length) protos.set(name, { parts, footprint: Math.max(size.x, size.z) / h / 2 });
 }
 
+// OBJ models (no embedded material): load geometry + the pack's base-colour PNG and
+// build one matte double-sided material, then feed the group through addProto like a glTF.
+function loadObjProto(name: string): Promise<void> {
+  const obj = new OBJLoader(), tex = new THREE.TextureLoader();
+  return Promise.all([obj.loadAsync(BASE + name + '.obj'), tex.loadAsync(BASE + name + '_BaseColor.png')])
+    .then(([root, map]) => {
+      map.colorSpace = THREE.SRGBColorSpace; map.name = name; map.anisotropy = 4;
+      const mat = new THREE.MeshStandardMaterial({ map, side: THREE.DoubleSide, metalness: 0, roughness: 1 });
+      root.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) m.material = mat; });
+      addProto(name, { scene: root });
+    })
+    .catch(e => console.warn('[nature] obj failed', name, e));
+}
+
 // ---- preload (once, before nature/batch.ts finalizes) -----------------------
 let pending: Promise<void> | null = null;
 export function preloadNature(): Promise<void> {
@@ -118,11 +138,13 @@ export function preloadNature(): Promise<void> {
     THREE.Cache.enabled = true;                // share the small texture fetches across models
     const loader = new GLTFLoader();
     const t0 = performance.now();
-    pending = Promise.all(ALL_MODELS.map(name =>
-      loader.loadAsync(BASE + name + '.gltf')
-        .then(g => addProto(name, g))
-        .catch(e => console.warn('[nature] failed', name, e))
-    )).then(() => { console.log(`[nature] ${protos.size}/${ALL_MODELS.length} models ready in ${Math.round(performance.now() - t0)}ms`); });
+    pending = Promise.all([
+      ...GLTF_MODELS.map(name =>
+        loader.loadAsync(BASE + name + '.gltf')
+          .then(g => addProto(name, g))
+          .catch(e => console.warn('[nature] failed', name, e))),
+      ...OBJ_MODELS.map(loadObjProto),
+    ]).then(() => { console.log(`[nature] ${protos.size}/${ALL_MODELS.length} models ready in ${Math.round(performance.now() - t0)}ms`); });
   }
   return pending;
 }
