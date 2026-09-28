@@ -31,12 +31,11 @@ The codebase is **TypeScript in strict mode**. Static validation is `npm run typ
 ## Deployment
 
 **🌿 BRANCHING MODEL — `dev` is the default integration branch; `main` is production only.**
-- **ALWAYS work in an isolated git worktree — never directly in the shared checkout.** This repo often has multiple sessions/agents running at once against the same `C:\repos\tiny-gta`; a plain `git checkout` in one flips the branch under the others and causes conflicts and lost work. Create a dedicated worktree off `dev` for every task (e.g. `git worktree add ../tg-<task> dev`, or use the harness's worktree isolation), do all your branch/commit/push work there, and verify the current branch before committing. One task = one worktree = no cross-contamination.
-- **ALWAYS clean up after the merge.** Once the task's branch is merged into `dev`, tear the worktree down — leaving stale worktrees around invites the branch-thrash above and clutters `git worktree list`. Do it in this order: if you junctioned/symlinked `node_modules` into the worktree, remove that link FIRST (`cmd //c rmdir "<worktree>/node_modules"`) so the removal can't follow the link into the shared checkout's `node_modules`; then `git worktree remove --force <worktree>`, `git worktree prune`, delete the merged branch (`git branch -d <branch>`), and delete it on the remote too (`git push origin --delete <branch>`). The branch's commits live on in `dev`'s history, so nothing is lost.
-- **Everything new goes to `dev`.** Cut every feature/fix branch **from `dev`**, and merge it **back into `dev`** — never branch from or merge into `main` during normal work.
+- **Work directly on `dev` in the main checkout.** No worktrees and no per-task feature branches are needed — commit straight to `dev` and push it.
+- **Everything new goes to `dev`.** Never commit to or merge into `main` during normal work.
 - **`dev` does not deploy.** Pushing `dev` (or any branch) ships nothing. It is just where work accumulates and integrates.
 - **Production ships ONLY on an explicit instruction from the user** ("ship to production" / "subir pra produção" / similar). Only then do you promote: merge **`dev` → `main`** and push `main`, which fires the itch.io pipeline. Do **not** touch `main` or merge `dev → main` on your own initiative — wait for that explicit word.
-- So the normal flow for a change is: worktree off `dev` → commit → push → merge to `dev` → push `dev` → **delete the worktree + merged branch**. The production flow (only when asked) is: merge `dev → main` → push `main` (→ pipeline → itch.io).
+- So the normal flow for a change is: on `dev` → commit → push `dev`. The production flow (only when asked) is: merge `dev → main` → push `main` (→ pipeline → itch.io).
 
 **⚠️ TO SHIP ANYTHING TO PLAYERS, IT MUST REACH `main`.** The itch.io deploy is **pipeline-driven** — it fires *only* on a push to `main` (GitHub Actions). A branch that is committed and pushed but never promoted into `main` ships nothing.
 

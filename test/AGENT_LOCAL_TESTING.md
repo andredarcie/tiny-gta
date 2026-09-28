@@ -38,11 +38,6 @@ npx playwright test test/<your-spec>.spec.ts --reporter=list
 ## 1. One-time / per-environment setup
 
 - **Chromium present?** `npx playwright install chromium` (idempotent; skips if already there).
-- **Working in a git worktree?** Junction the shared `node_modules` in so `npx`, `tsc` and
-  `vite` resolve (PowerShell):
-  ```powershell
-  New-Item -ItemType Junction -Path "<worktree>\node_modules" -Target "<main-checkout>\node_modules"
-  ```
 - **Port 5173 must be free** before you run. Playwright auto-starts `npm run dev` on 5173 with
   `reuseExistingServer: true` — if a *foreign* dev server (another checkout/branch) is already
   squatting 5173, your tests will silently run against the **wrong code**. Check first:
