@@ -356,7 +356,48 @@ function unseatPlayer(){
   setDrivePose(false);
 }
 
-// Entrar no carro é uma sequência: anda até a porta, ela abre, senta, fecha
+const DOOR_OPEN_ANGLE=1.15;
+const DOOR_OPEN_TIME=.34;
+const ENTER_APPROACH_TIME=.44;
+const ENTER_SEAT_TIME=.24;
+const DOOR_CLOSE_TIME=.36;
+const TRANSITION_SETTLE_TIME=.14;
+
+function easeInOut(t:number):number{
+  const clamped=clamp(t,0,1);
+  return clamped*clamped*(3-2*clamped);
+}
+
+function setDoorOpen(door:THREE.Object3D|null,openness:number):void{
+  if(!door)return;
+  door.rotation.y=(door.userData.sign||1)*DOOR_OPEN_ANGLE*easeInOut(openness);
+}
+
+function vehicleDoorway(car:Vehicle,side:number):THREE.Vector3{
+  const heading=car.heading??car.g.rotation.y;
+  const lateral=side*1.25,forward=.35;
+  return new THREE.Vector3(
+    car.g.position.x+lateral*Math.cos(heading)+forward*Math.sin(heading),
+    car.g.position.y,
+    car.g.position.z-lateral*Math.sin(heading)+forward*Math.cos(heading),
+  );
+}
+
+function poseSeatTransfer(progress:number,leaving:boolean):void{
+  const limbs=player.g.userData.limbs;
+  if(!limbs)return;
+  const lean=(leaving?1:-1)*easeInOut(progress);
+  limbs.leftArm.rotation.set(-.78-.34*lean,0,.38);
+  limbs.rightArm.rotation.set(-.78-.34*lean,0,-.38);
+  limbs.leftForearm?.rotation.set(-.62,0,-.18);
+  limbs.rightForearm?.rotation.set(-.62,0,.18);
+  limbs.leftLeg.rotation.set(-.82-.62*lean,0,0);
+  limbs.rightLeg.rotation.set(-.82-.62*lean,0,0);
+  limbs.leftCalf?.rotation.set(.38,0,0);
+  limbs.rightCalf?.rotation.set(.38,0,0);
+}
+
+// Entrar no carro é uma sequência: aproxima, abre, se acomoda no banco, fecha e assenta.
 interface Entering{f:{c:Vehicle;kind:string};door:THREE.Object3D|null;side:number;t:number;phase:number;}
 let entering:Entering|null=null;
 export function enterCar(){
@@ -383,26 +424,30 @@ export function cancelEntering(){
 function updateEntering(dt:number){
   const e=entering!;e.t+=dt;
   const car=e.f.c;
-  if(e.phase===0){ // porta abrindo enquanto o jogador chega nela
-    const k=Math.min(1,e.t/.4);
-    if(e.door)e.door.rotation.y=(e.door.userData.sign||1)*1.15*k;
-    const h=car.heading??car.g.rotation.y;
-    const lx=e.side*1.25,lz=.35; // ponto ao lado da porta escolhida
-    const wx=car.g.position.x+lx*Math.cos(h)+lz*Math.sin(h);
-    const wz=car.g.position.z-lx*Math.sin(h)+lz*Math.cos(h);
-    player.g.position.x+=(wx-player.g.position.x)*Math.min(1,10*dt);
-    player.g.position.z+=(wz-player.g.position.z)*Math.min(1,10*dt);
-    player.bob+=dt*8;Entities.animatePed?.(player.g,player.bob,.7);
-    if(e.t>=.45){completeEnter(e.f);e.phase=1;e.t=0;}
-  }else{ // sentado: porta fechando
-    const k=Math.min(1,e.t/.35);
-    if(e.door)e.door.rotation.y=(e.door.userData.sign||1)*1.15*(1-k);
-    if(cur)cur.speed=0;
-    if(k>=1){
-      if(e.door)e.door.rotation.y=0;
-      blip([180],.05,'square',.12); // porta bate
-      entering=null;state.controlsLocked=false;
+  if(e.phase===0){
+    const progress=easeInOut(e.t/ENTER_APPROACH_TIME);
+    setDoorOpen(e.door,e.t/DOOR_OPEN_TIME);
+    const doorway=vehicleDoorway(car,e.side);
+    const toDoorX=doorway.x-player.g.position.x;
+    const toDoorZ=doorway.z-player.g.position.z;
+    if(toDoorX*toDoorX+toDoorZ*toDoorZ>.0025){
+      player.heading=Math.atan2(toDoorX,toDoorZ);
+      player.g.rotation.y=player.heading;
+      cameraRig.yaw=player.heading;
     }
+    player.g.position.lerp(doorway,Math.min(1,9*dt));
+    player.bob+=dt*8;Entities.animatePed?.(player.g,player.bob,.7);
+    if(progress>=1){e.phase=1;e.t=0;}
+  }else if(e.phase===1){
+    setDoorOpen(e.door,1);
+    poseSeatTransfer(e.t/ENTER_SEAT_TIME,false);
+    if(e.t>=ENTER_SEAT_TIME){completeEnter(e.f);e.phase=2;e.t=0;}
+  }else if(e.phase===2){
+    setDoorOpen(e.door,1-e.t/DOOR_CLOSE_TIME);
+    if(cur)cur.speed=0;
+    if(e.t>=DOOR_CLOSE_TIME){setDoorOpen(e.door,0);blip([180],.05,'square',.12);e.phase=3;e.t=0;}
+  }else if(e.t>=TRANSITION_SETTLE_TIME){
+    entering=null;state.controlsLocked=false;
   }
 }
 
@@ -480,7 +525,7 @@ function completeEnter(f:{c:Vehicle;kind:string}){
   else{radioEnter();radioOn();}
 }
 
-// Sair também abre e fecha a porta (avião não tem porta: sai direto)
+// Sair também abre, pivota o corpo para fora, fecha e assenta (avião sai direto).
 interface Exiting{t:number;phase:number;door:THREE.Object3D;}
 let exiting:Exiting|null=null;
 export function exitCar(){
@@ -526,17 +571,20 @@ function completeExit(){
 
 function updateExiting(dt:number){
   const e=exiting!;e.t+=dt;
-  if(e.phase===0){ // porta abrindo, ainda sentado
-    e.door.rotation.y=(e.door.userData.sign||1)*1.15*Math.min(1,e.t/.35);
+  if(e.phase===0){
+    setDoorOpen(e.door,e.t/DOOR_OPEN_TIME);
     if(cur)cur.speed=0;
-    if(e.t>=.4){completeExit();e.phase=1;e.t=0;}
-  }else{ // já fora: porta fechando
-    e.door.rotation.y=(e.door.userData.sign||1)*1.15*(1-Math.min(1,e.t/.35));
-    if(e.t>=.4){
-      e.door.rotation.y=0;
-      blip([180],.05,'square',.12); // porta bate
-      exiting=null;state.controlsLocked=false;
-    }
+    if(e.t>=DOOR_OPEN_TIME){e.phase=1;e.t=0;}
+  }else if(e.phase===1){
+    setDoorOpen(e.door,1);
+    if(cur)cameraRig.yaw=cur.heading-Math.PI/2;
+    poseSeatTransfer(e.t/ENTER_SEAT_TIME,true);
+    if(e.t>=ENTER_SEAT_TIME){completeExit();e.phase=2;e.t=0;}
+  }else if(e.phase===2){
+    setDoorOpen(e.door,1-e.t/DOOR_CLOSE_TIME);
+    if(e.t>=DOOR_CLOSE_TIME){setDoorOpen(e.door,0);blip([180],.05,'square',.12);e.phase=3;e.t=0;}
+  }else if(e.t>=TRANSITION_SETTLE_TIME){
+    exiting=null;state.controlsLocked=false;
   }
 }
 

@@ -27,9 +27,9 @@ import {makeBulletModel} from '../../assets/models/effects/bullet.ts';
 import {makeFireModel} from '../../assets/models/effects/fire.ts';
 import {makeFlameJetModel} from '../../assets/models/effects/flame-jet.ts';
 import {makeWeaponTracerLine} from '../../assets/models/effects/weapon-tracer.ts';
-import {makeFpHands} from '../../assets/models/characters/fp-hands.ts';
-import {WEAPONS,ARSENAL,FIST,bySlot} from '@/combat/weapon-catalog.ts';
-import type {Weapon,WeaponApi,Recoil,Hold} from '@/combat/weapon-types.ts';
+import {makeFpHands,poseFpHands} from '../../assets/models/characters/fp-hands.ts';
+import {WEAPONS,ARSENAL,FIST,ROCKET_HANDS,bySlot} from '@/combat/weapon-catalog.ts';
+import type {Weapon,WeaponApi,Recoil,Hold,FpHandsPose} from '@/combat/weapon-types.ts';
 import type {Vehicle} from '@/core/types.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -661,14 +661,11 @@ const VM_SCALE=.6;              // shrink vs. the body-held scale (a gun fills l
 const VM_POS=[.21,-.135,-.52];  // camera-local anchor: right / down / forward
 const VM_ROCKET_BODY={pos:[.43,1.48,.15],rot:[0,0,0]}; // heldRocket's static body pose
 
-// FP viewmodel hands: two arms gripping the gun. Parented to heldHolder so they
-// recoil/bob WITH the weapon; a Y-flip cancels the holder's own flip so the arms
-// sit in camera-aligned space, and a counter-scale keeps them unit-sized whatever
-// the gun's hold.scale is. Hidden unless first person is the active view.
+// FP hands are direct camera children. They stay at unit scale regardless of a
+// weapon's model scale and can therefore also hold fists and the rampage launcher.
 const fpHands=makeFpHands({sleeve:0x19e3ff}); // matches the player's cyan shirt
-fpHands.rotation.y=Math.PI;
 fpHands.visible=false;
-heldHolder.add(fpHands);
+camera.add(fpHands);
 
 const fpHolderActive=()=>isFirstPerson()&&state.mode==='foot';
 
@@ -690,8 +687,6 @@ function syncViewModel(){
   const onCam=fpHolderActive();
   syncHolderParent(heldHolder,onCam,heldBaseScale,null); // body pose resets it each frame
   syncHolderParent(heldRocket,onCam,1,VM_ROCKET_BODY);   // static on the shoulder in 3rd person
-  // hands only in FP; the parent heldHolder's own visibility still gates them (no
-  // hands for fists/rampage, where heldHolder is hidden)
   fpHands.visible=onCam;
 }
 
@@ -700,14 +695,18 @@ function syncViewModel(){
 function applyViewModel(){
   if(!fpHolderActive())return;
   const holder=heldRocket.visible?heldRocket:(heldHolder.visible?heldHolder:null);
+  const handPose: FpHandsPose|undefined=heldRocket.visible?ROCKET_HANDS:curWeapon.hold?.fpHands;
+  if(handPose){
+    poseFpHands(fpHands,handPose);
+    fpHands.visible=true;
+  }else fpHands.visible=false;
   if(!holder)return;
   const gunScale=(holder===heldRocket?1:heldBaseScale)*VM_SCALE;
   holder.scale.setScalar(gunScale);
-  // keep the hands unit-sized regardless of the gun's hold.scale (they ride heldHolder)
-  fpHands.scale.setScalar(1/(heldBaseScale*VM_SCALE));
   const fp=(curWeapon.hold?.fp||null) as {x?: number;y?: number;z?: number;rx?: number;ry?: number;rz?: number}|null; // optional per-weapon nudge (none defined yet)
   let px=VM_POS[0]+(fp?.x||0),py=VM_POS[1]+(fp?.y||0),pz=VM_POS[2]+(fp?.z||0);
-  let rx=fp?.rx||0,ry=Math.PI+(fp?.ry||0),rz=fp?.rz||0;
+  let rx=fp?.rx||0;
+  const ry=Math.PI+(fp?.ry||0),rz=fp?.rz||0;
   if(input.moveX||input.moveY){           // walk bob: sways with the stride (player.bob)
     px+=Math.sin(player.bob)*.012;
     py-=Math.abs(Math.sin(player.bob))*.014;

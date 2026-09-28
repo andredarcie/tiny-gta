@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type {FpArmPose,FpHandsPose} from '@/combat/weapon-types.ts';
 
 // First-person hands. A single, more detailed hand (palm + curled fingers + thumb)
 // used ONLY in first person (the gun viewmodel and the car cockpit grip), so the
@@ -85,6 +86,19 @@ export function makeFpHands({skin=0xd9a06b,sleeve=0x19e3ff}: {skin?: number; sle
   g.add(right,left);
   g.userData.right=right;g.userData.left=left;
   return g;
+}
+
+export function poseFpHands(hands: THREE.Group,pose: FpHandsPose):void{
+  const right=hands.userData.right as THREE.Group;
+  const left=hands.userData.left as THREE.Group;
+  applyArmPose(right,pose.right);
+  applyArmPose(left,pose.left);
+}
+
+function applyArmPose(arm: THREE.Group,pose: FpArmPose):void{
+  arm.position.set(...pose.position);
+  arm.rotation.set(...pose.rotation);
+  arm.visible=pose.visible!==false;
 }
 
 // Model-viewer descriptor (auto-discovered). Shows a hand straight-on for inspection.
