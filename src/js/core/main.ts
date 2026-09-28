@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import {state,input,refs,keys} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts'; // money ledger — imported here so the genesis tx seeds at boot
-import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
+import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale,renderFrame} from '@/core/engine.ts';
 import {updateAudio} from '@/audio/audio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
+import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
@@ -52,7 +52,7 @@ import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
-  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById} from '@/combat/weapons.ts';
+  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest} from '@/combat/weapons.ts';
 import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
 import {updateDayNight} from '@/world/daynight.ts';
 import {updateInteriors,interiors} from '@/world/interior.ts';
@@ -92,6 +92,7 @@ declare global {
     __renderScale?: () => number;
     __test?: {
       enterCar: () => string;
+      enterPrimaryCar: () => string;
       exitCar: () => string;
       interact: () => string;
       setKey: (code: string, down: boolean) => void;
@@ -100,6 +101,7 @@ declare global {
       teleport: (x: number, z: number, fx: number, fz: number) => boolean;
       attack: () => string;
       giveGun: () => string;
+      startRampage: () => boolean;
       equipWeapon: (id: string) => boolean;
       setHealth: (hp: number) => number;
       raceTarget: () => { x: number; z: number } | null;
@@ -324,19 +326,19 @@ function step(dt: number){
   // que se movem (jogador/NPC) ficam mais "atrasadas" — trade-off aceito. Antes
   // de qualquer render abaixo.
   if(shadowTick++%SHADOW_EVERY===0){renderer.shadowMap.needsUpdate=true;P.markShadow();}
-  if(updateHouseTv()){renderer.render(scene,camera);return;}
-  if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
-  if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
-  if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
-  if(updateClothesShop(dt)){renderer.render(scene,camera);return;} // provador da loja de roupas congela o mundo
-  if(updatePartyUi()){renderer.render(scene,camera);return;} // party sign-up sheet freezes the world
+  if(updateHouseTv()){renderFrame(dt);return;}
+  if(updateGymGame(dt)){renderFrame(dt);return;} // mini-game do supino congela o mundo
+  if(updateDanceGame(dt)){renderFrame(dt);return;} // mini-game da dança congela o mundo
+  if(updateModShop(dt)){renderFrame(dt);return;} // oficina de custom congela o mundo
+  if(updateClothesShop(dt)){renderFrame(dt);return;} // provador da loja de roupas congela o mundo
+  if(updatePartyUi()){renderFrame(dt);return;} // party sign-up sheet freezes the world
   // Mapa completo (tecla M): congela o mundo — EXCETO quando o overlay "Show NPCs"
   // está ligado, daí o mundo continua simulando pros pontinhos se moverem em tempo
   // real (o jogador segue bloqueado por isBlocked). O mapa é redesenhado ao final do
   // step. Sem o overlay, mantém o congelamento estático de sempre.
-  if(state.mapOpen&&!mapNpcsShown()){renderer.render(scene,camera);return;}
-  if(state.mgIntro){renderer.render(scene,camera);return;} // mini-game briefing: frozen until the player "passes"
-  if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
+  if(state.mapOpen&&!mapNpcsShown()){renderFrame(dt);return;}
+  if(state.mgIntro){renderFrame(dt);return;} // mini-game briefing: frozen until the player "passes"
+  if(state.paused||state.orientationBlocked){renderFrame(dt);return;}
   state.time+=dt;
 
   for(const c of clouds){
@@ -354,7 +356,7 @@ function step(dt: number){
     camera.position.set(Math.cos(a)*140,65,Math.sin(a)*140);
     camera.lookAt(0,6,0);
     updateTraffic(dt);updatePeds(dt);updateGangs(dt);
-    renderer.render(scene,camera);return;
+    renderFrame(dt);return;
   }
 
   const arenaActive=!!refs.isPartyArenaActive?.();
@@ -476,7 +478,7 @@ function step(dt: number){
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
 
-  P.begin('render');renderer.render(scene,camera);P.end();
+  P.begin('render');renderFrame(dt);P.end();
   // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),
   // redraw the full map every frame so the NPC dots/trails move in real time.
   // "Show NPCs" map overlay: redraw the full map only while the toggle is on (the
@@ -600,6 +602,13 @@ window.__test={
     enterCar();                              // the real entry (walk-to-door anim + seat)
     return state.mode;
   },
+  enterPrimaryCar:()=>{
+    if(state.mode!=='foot')return state.mode;
+    const carPosition=playerCar.g.position;
+    player.g.position.set(carPosition.x-1.5,carPosition.y,carPosition.z+.35);
+    enterCar();
+    return state.mode;
+  },
   exitCar:()=>{exitCar();return state.mode;},
   // Trigger the context action (same as pressing E): enter/exit car, start a race
   // under a gate, pick up, etc. Reliable regardless of OS keyboard focus.
@@ -633,6 +642,7 @@ window.__test={
   // Arm the player with the full arsenal (equips the pistol) — the real grant
   // path.
   giveGun:()=>{grantWeapon();return state.weaponName||'';},
+  startRampage:()=>startRocketRampageForTest(),
   // Switch to a specific owned weapon by id (e.g. 'flame','grenade') so the
   // harness can drive each attack kind deterministically.
   equipWeapon:(id: string)=>equipWeaponById(id),

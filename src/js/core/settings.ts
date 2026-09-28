@@ -3,7 +3,7 @@
 // setters from engine / audio / radio (none of which import this back), so it never
 // forms an import cycle with the systems it configures. The pause menu
 // (js/ui/pause-menu.ts) renders the UI from a schema and writes back via setSetting().
-import {setShadowsEnabled,setBrightness} from '@/core/engine.ts';
+import {setShadowsEnabled,setBrightness,setAmbientOcclusion,setBloomEnabled} from '@/core/engine.ts';
 import {setMasterVolume} from '@/audio/audio.ts';
 import {setMusicVolume} from '@/ui/radio.ts';
 
@@ -19,6 +19,8 @@ interface Settings {
   fps: boolean;
   aimAssist: boolean;
   filmGrain: boolean;
+  ao: boolean;
+  bloom: boolean;
 }
 
 // Single source of truth for defaults. They are picked to REPRODUCE the game's
@@ -34,6 +36,8 @@ export const DEFAULTS: Settings={
   fps:true,       // show the FPS readout (top-left)
   aimAssist:true, // gentle aim assist while aiming/on touch (read live by weapons.ts)
   filmGrain:!(matchMedia('(pointer: coarse)').matches||innerWidth<900), // on (desktop); OFF on mobile — fullscreen mix-blend-mode is costly there. Toggle in Settings → Graphics.
+  ao:!(matchMedia('(pointer: coarse)').matches||innerWidth<900), // ambient occlusion: on (desktop), off on phones (GPU cost)
+  bloom:true,     // glow on neon / lit windows / lamps / flashes
 };
 
 export const settings: Settings={...DEFAULTS};
@@ -57,6 +61,8 @@ export function applyAudioSettings(){
 export function applyGraphicsSettings(){
   setShadowsEnabled(settings.shadows);
   setBrightness((settings.brightness/100)*1.25);
+  setAmbientOcclusion(settings.ao);
+  setBloomEnabled(settings.bloom);
 }
 export function applyFpsSetting(){
   const el=document.getElementById('fps');
@@ -79,7 +85,7 @@ export function setSetting(key: string,val: number|boolean){
   (settings as unknown as Record<string, unknown>)[key]=val;
   persist();
   if(key==='master'||key==='music'||key==='muted')applyAudioSettings();
-  else if(key==='shadows'||key==='brightness')applyGraphicsSettings();
+  else if(key==='shadows'||key==='brightness'||key==='ao'||key==='bloom')applyGraphicsSettings();
   else if(key==='fps')applyFpsSetting();
   else if(key==='filmGrain')applyFilmGrain();
 }

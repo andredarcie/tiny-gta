@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {renderer,scene,camera,dlight,sunDir} from '@/core/engine.ts';
+import {renderer,scene,camera,dlight,sunDir,sceneTarget} from '@/core/engine.ts';
 import {interiors} from '@/world/interior.ts';
 
 // Pré-aquecimento de GPU no boot (tela de título), pra matar as "grandes quedas
@@ -102,7 +102,13 @@ function warmGeometry(){
 }
 
 export function warmupShaders(){
-  warmModels();
-  warmGeometry();
-  warmInteriors();
+  // Compile/draw into the SAME target the game renders into (the post-processing
+  // buffer) so the cached shader programs are the ones used in play.
+  const prev=renderer.getRenderTarget();
+  renderer.setRenderTarget(sceneTarget());
+  try{
+    warmModels();
+    warmGeometry();
+    warmInteriors();
+  }finally{renderer.setRenderTarget(prev);}
 }

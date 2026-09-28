@@ -334,6 +334,8 @@ const SCHEMA: { group: string; items: SettingItem[] }[]=[
   ]},
   {group:'GRAPHICS',items:[
     {key:'shadows',   type:'toggle',label:'Shadows'},
+    {key:'ao',        type:'toggle',label:'Ambient occlusion'},
+    {key:'bloom',     type:'toggle',label:'Bloom (glow)'},
     {key:'brightness',type:'range', label:'Brightness',min:50,max:150,step:5,suffix:'%'},
     {key:'fps',       type:'toggle',label:'Show FPS'},
     {key:'filmGrain', type:'toggle',label:'Film grain'},
