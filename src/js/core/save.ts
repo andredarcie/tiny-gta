@@ -62,8 +62,8 @@ export function applySave(blob: unknown): void {
 }
 
 // ---- local persistence (localStorage) ---------------------------------------
-// Same key the old online build used for its local mirror, so progress already on
-// this device carries over. That mirror was stored as {pid, save}; new writes
+// Same key older builds used for their local save copy, so progress already on
+// this device carries over. That copy was stored as {pid, save}; new writes
 // store the blob itself — loadLocalSave() accepts both shapes.
 const SAVE_KEY = 'tinygta_save';
 // Saving is armed only AFTER the stored save was restored (startLocalSave), so the

@@ -251,7 +251,7 @@ function dropPassenger(){
 function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
   if(phase==='pickup'&&fare){clearMarker();fare.despawn();} // removes the waiting fare from the scene + census
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
-  // ranking: o expediente inteiro conta como UMA sessão (ganho = total da corrida)
+  // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   fare=null;phase='off';
   game.end(); // libera a trava do mundo

@@ -174,7 +174,7 @@ function startDuty(){
 function endDuty(text='STREET JUSTICE OFF DUTY',col='var(--cyan)'){
   removeCriminal();
   const summary=busts>0?` - ${busts} BUSTS / LVL ${level}`:'';
-  // ranking: a patrulha inteira é UMA sessão; score = prisões feitas
+  // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   phase='off';
   game.end(); // libera a trava do mundo

@@ -133,7 +133,7 @@ export class MiniGame{
     this._active=true;
     if(this.exclusive){
       state.activeMiniGame=this.id;
-      // briefing: mostra o ranking do mini game e congela até o jogador "passar"
+      // briefing: shows the mini game card and freezes until the player "passes"
       openMiniGameIntro(this.id,this.name);
     }
     return true;

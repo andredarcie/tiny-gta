@@ -154,7 +154,7 @@ class Economy{
 
   // Fixed loss on death/arrest: lose exactly `amount` (capped at the balance so the
   // wallet never goes negative). Records the loss as a negative tx. Returns the
-  // amount actually lost (what the death-pool puddle carries).
+  // amount actually lost.
   flatPenalty(amount: number, reason=''): number {
     const lost=Math.min(state.money,clean(amount));
     if(lost>0){

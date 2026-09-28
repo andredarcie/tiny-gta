@@ -106,7 +106,7 @@ function finishRampage(success: boolean,silent=false){
   // mantinha o arsenal e munição cheia de graça após uma única chacina.
   restoreArsenal(arsenalSnapshot);
   arsenalSnapshot=null;
-  // ranking: cada chacina é UMA sessão; vitória = meta batida, score = kills feitas
+  // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   game.end();                          // libera a trava do mundo (idempotente)
   endFlash=success?1.4:.9;             // dispara o flourish (halo pulsa no fim)

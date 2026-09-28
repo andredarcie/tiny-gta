@@ -683,7 +683,7 @@ body.is-mobile #touch-controls{display:block}
 #touch-controls.in-dialog .touch-stick,#touch-controls.in-dialog #btn-shoot,#touch-controls.in-dialog #btn-wpn,
 #touch-controls.in-dialog #btn-brake,#touch-controls.in-dialog #btn-gas,#touch-controls.in-dialog #btn-steer-left,
 #touch-controls.in-dialog #btn-steer-right,#touch-controls.in-dialog #btn-radio,#touch-controls.in-dialog #btn-aim{opacity:0;pointer-events:none}
-/* Na pausa some com tudo (menos o próprio botão de pause) p/ não cobrir o ranking */
+/* While paused, hide every touch control (except the pause button) so they don't cover the menu */
 body.paused #touch-controls .touch-stick,body.paused #touch-controls #btn-shoot,
 body.paused #touch-controls #btn-wpn,body.paused #touch-controls #btn-brake,
 body.paused #touch-controls #btn-gas,body.paused #touch-controls #btn-steer-left,

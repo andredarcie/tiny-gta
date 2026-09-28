@@ -4,9 +4,8 @@ import {bakeProp} from '../props/prop-merge.ts';
 import {groundHeight} from '@/core/constants.ts';
 
 // City-plaza MEMORIAL STATUE: a bronze figure of a man, arm raised in triumph, on a
-// stepped stone plinth with an engraved plaque. It makes the title-screen prize real
-// — honouring DIGUIFI, the player who finished #1 on the global leaderboard in the
-// game's first month. build() is pure (statue at the origin, base on the ground);
+// stepped stone plinth with an engraved plaque — a tribute to DIGUIFI, a player from
+// the game's early days. build() is pure (statue at the origin, base on the ground);
 // addStatue positions it, bakes it into the shared prop chunks and returns the
 // collision AABB. Placed as the centrepiece of one city pracinha in place of the
 // fountain (js/world/world.ts → js/../park.ts).

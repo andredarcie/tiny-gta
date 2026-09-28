@@ -402,7 +402,7 @@ function endRound(keepIfDriving=false){
   nitroT=0;megaT=0;rc.userData.speedMul=1; // buffs never carry out of a round
   if(keepIfDriving){
     // still seated: KEEP the session (lock + briefing cover the whole stay in the
-    // RC; otherwise the ranking would re-pop each round). Just a breath.
+    // RC; otherwise the briefing would re-pop each round). Just a breath.
     cooldown=2.4;
   }else{
     cooldown=0;

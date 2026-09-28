@@ -259,7 +259,7 @@ function completeRace(){
   // anti-farm: refazer a prova em loop paga cada vez menos (recupera com o tempo)
   const paid=diminishPrize(prizeState,prize+bonus,state.time,REWARDS.offroad.repeatWinDecay,REWARDS.offroad.repeatWinRecoverSec);
   economy.earn(paid,'offroad');
-  // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
+  // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
   finishRace();

@@ -161,7 +161,7 @@ function endDuty(text='AMBULANCE RUSH ENDED',col='var(--cyan)'){
   clearPatients();
   clearHospMk();
   const summary=runRescues>0?` - ${runRescues} PATIENTS SAVED`:'';
-  // ranking: o plantão inteiro é UMA sessão; score = pacientes salvos
+  // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   phase='off';onboard=0;needed=0;timeLeft=0;
   game.end(); // libera a trava do mundo

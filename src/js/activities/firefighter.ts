@@ -276,7 +276,7 @@ function endDuty(text='FIRE BRIGADE OVER',col='var(--cyan)'){
   setFireSiren(false);
   if(cannon)cannon.rotation.y=0;
   const summary=fires>0?` - ${fires} FIRES / LVL ${level}`:'';
-  // ranking: o plantão inteiro é UMA sessão; score = incêndios apagados
+  // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   phase='off';
   game.end(); // libera a trava do mundo

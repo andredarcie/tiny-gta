@@ -72,7 +72,7 @@ const LEG_X=0.42,CALF_X=0.62;            // joelhos meio dobrados (pés pro chã
 const EYE=[BENCH_X+4.6,1.95,BENCH_Z-0.30];
 const LOOK=[BENCH_X-0.20,1.12,BENCH_Z-0.42];
 
-let active=false,onWin:(()=>void)|null=null,runScore=0; // runScore = pontos da sessão (rep/perfect) p/ o ranking
+let active=false,onWin:(()=>void)|null=null;
 let phase='ready',setNum=1,reps=0,stamina=STAM_START;
 let needle=.5,vel=START_SPEED,speed=START_SPEED,zoneCenter=.5,zoneHalf=START_HALF;
 let pressPhase=1,repAnimT=0,repFail=false; // animação do levante (1=lockout, 0=peito)
@@ -112,7 +112,7 @@ export function gymGameActive(){return active;}
 export function openGymGame(cfg:{onWin?:(()=>void)|null}={}){
   if(active||!overlay)return true;
   onWin=cfg.onWin||null;
-  setNum=1;reps=0;runScore=0;result=null;resultT=0;
+  setNum=1;reps=0;result=null;resultT=0;
   flashText='';flashT=0;shakeT=0;
   active=true;state.gymActive=true;
   prevControlsLocked=state.controlsLocked;prevFov=camera.fov;
@@ -177,7 +177,6 @@ export function gymGamePress(){
   if(d<=zoneHalf){
     reps++;
     const perfect=d<=zoneHalf*PERFECT_FRAC;
-    runScore+=perfect?150:100; // pontos da sessão (PERFECT vale mais) p/ o ranking
     stamina=Math.min(STAM_MAX,stamina+(perfect?PERFECT_GAIN:HIT_GAIN));
     flash(perfect?'PERFECT!':'REP!',perfect?'#ffd24a':'#ffe9c9');
     repAnimT=REP_ANIM;repFail=false; // dispara o levante completo
