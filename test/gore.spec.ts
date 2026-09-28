@@ -1,7 +1,7 @@
 // Gore layer check: in the real game, dismember the nearest NPCs (head, arm, leg, and a
-// whole-body blow-apart) through the __test.gore hook, and assert the wounds that should
-// kill do kill, with no runtime errors. Screenshots go to output/visual/gore-*.png for a
-// visual look. Headed, like every game run.
+// whole-body blow-apart) through the __test.gore hook, and assert that only the head and a
+// full blow-apart kill outright (a lost arm or leg maims and bleeds out), with no errors.
+// Screenshots go to output/visual/gore-*.png for a visual look. Headed, like every game run.
 import {test, expect} from '@playwright/test';
 
 test('any NPC can be dismembered, with blood, without errors', async ({page}) => {
@@ -20,7 +20,8 @@ test('any NPC can be dismembered, with blood, without errors', async ({page}) =>
       if (!r) await page.waitForTimeout(500); // wait for someone to walk into range
     }
     expect(r, `an NPC in range for ${kind}`).not.toBeNull();
-    if (kind !== 'arm') expect(r.dead, `${kind} is fatal`).toBe(true);
+    if (kind === 'head' || kind === 'gib') expect(r.dead, `${kind} is fatal`).toBe(true);
+    else expect(r.dead, `${kind} only maims`).toBe(false);
     await page.waitForTimeout(900);
     await page.screenshot({path: `output/visual/gore-${kind}.png`});
   }

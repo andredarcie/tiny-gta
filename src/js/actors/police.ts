@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {N,CELL,HALF,BOUND,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND,
   RIVER_CX,RIVER_HW,BRIDGE_X0,BRIDGE_X1,BRIDGE_DECK_HW} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
-import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
+import {PLAYER_DAMAGE_TAKEN,NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
   attachHandGun,poseAiming,disposeGeometries} from '@/core/entities.ts';
@@ -12,7 +12,7 @@ import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
 import {collideStatics,hasLineOfSight} from '@/core/physics.ts';
 import {COP_VIEW_RANGE,COP_VIEW_COS,COP_NEAR,OFF_VIEW_RANGE,OFF_VIEW_COS,OFF_NEAR,inCone} from '@/actors/vision.ts';
-import {ARMY_AT,HELI_AT,ROCKET_AT,LETHAL_AT,starResponse,coolWanted} from '@/core/wanted.ts';
+import {ARMY_AT,HELI_AT,ROCKET_AT,LETHAL_AT,starResponse,coolWanted,responseDelay,SHOT_DISPATCH_DELAY} from '@/core/wanted.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur,getBusted,getWasted,player} from '@/actors/player.ts';
 import {radioMessage} from '@/ui/hud.ts';
@@ -38,6 +38,7 @@ interface Cop{
   isSheriff?:boolean;           // the one SHERIFF (radio dispatcher, distinct uniform)
   uniform?:number;              // shirt colour (sheriff tan vs. patrol blue)
   dispatchT?:number;            // >0 = radio-dispatched to investigate (chases even at ★0)
+  dispatchWait?:number;         // >0 = dispatched but still en route to rolling (keeps patrolling)
   siren?:boolean;               // true while actively chasing (lights+siren on) — drives the audio
   sees?:boolean;                // recomputed each frame: this unit's vision cone currently has the player (drives the radar wedge colour + the wanted cooldown)
   // road-grid route to the player (A*): a list of intersection waypoints to follow.
@@ -89,6 +90,7 @@ const DEPLOY_REACH=34;
 // tests. coolWanted()/starResponse() (imported above) drive the decay + escalation below.
 let lastShout=-99;
 let radioCd=0;                // throttle between radio dispatches (one per few seconds)
+let wantedSinceT=-1;          // state.time when the current wanted episode began (-1 = clean)
 let carRadioCd=0;             // throttle for generic (non-police) vehicle-explosion calls
 let lastRadioStar=0;          // last wanted star the radio escalated at (so each rise speaks once)
 // Arrest model: at ★1 the deployed officers give a SURRENDER chance (no shooting) — they
@@ -251,8 +253,9 @@ function nameList(names:string[]):string{
 const sheriffCop=()=>cops.find(c=>c.isSheriff);
 const distTo=(c:Cop,x:number,z:number)=>Math.hypot(c.g.position.x-x,c.g.position.z-z);
 
-// A shot was fired at (x,z): the sheriff dispatches the nearest patrol over the radio,
-// by name, and those units start responding (drive to investigate) even before a star.
+// A shot was fired at (x,z): the sheriff dispatches the nearest patrol over the radio, by
+// name. At ★0 only ONE unit is sent and it rolls after SHOT_DISPATCH_DELAY seconds (it keeps
+// patrolling until then), so a quick shooting can be escaped before the sirens arrive.
 function radioDispatch(x:number,z:number){
   if(radioCd>0||!cops.length)return;
   radioCd=6;
@@ -261,9 +264,10 @@ function radioDispatch(x:number,z:number){
   const region=regionName(x,z);
   const desc=suspectDesc();
   const sorted=[...cops].sort((a,b)=>distTo(a,x,z)-distTo(b,x,z));
-  const nearest=sorted[0],partner=sorted[1];
-  if(nearest)nearest.dispatchT=15; // respond/investigate for a while
-  if(partner)partner.dispatchT=15;
+  const nearest=sorted[0],partner=state.wanted>=1?sorted[1]:undefined;
+  const wait=()=>SHOT_DISPATCH_DELAY[0]+Math.random()*(SHOT_DISPATCH_DELAY[1]-SHOT_DISPATCH_DELAY[0]);
+  if(nearest&&!(nearest.dispatchT&&nearest.dispatchT>0)&&!(nearest.dispatchWait&&nearest.dispatchWait>0))nearest.dispatchWait=wait();
+  if(partner&&!(partner.dispatchT&&partner.dispatchT>0)&&!(partner.dispatchWait&&partner.dispatchWait>0))partner.dispatchWait=wait()+4;
   let line:string;
   if(nearest?.isSheriff){
     // the sheriff himself is closest
@@ -331,7 +335,7 @@ function deployOfficers(c:Cop){
     const g=makePed(c.uniform||COP_BLUE); // the sheriff's officers wear his tan uniform
     g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
     const o=new Officer(g,{
-      kind:'officer',hp:1,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
+      kind:'officer',hp:NPC_HP_TOUGH,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
       punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name,gender:c.sex, // the cruiser's named cop, on foot — same identity as the driver
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
@@ -369,7 +373,7 @@ export function clearCops(){
     const[nx,nz]=farNode();
     c.g.position.set(nx,0,nz);
     c.speed=0;c.backT=0;c.stuckT=0;c.patrolTgt=null;
-    c.siren=false;c.dispatchT=0; // kill the siren immediately (e.g. when the player dies / is busted)
+    c.siren=false;c.dispatchT=0;c.dispatchWait=0; // kill the siren immediately (e.g. when the player dies / is busted)
   }
   lastRadioStar=0; // re-arm the radio escalation for the next time
   for(const m of copMissiles){disposeGeometries(m.g);scene.remove(m.g);}
@@ -596,7 +600,11 @@ export function updateCops(dt:number){
   if(cops.length<POOL&&respawnT<=0){spawnCop();respawnT=.8;radioReturn(cops[cops.length-1]?.name);}
   // How many cruisers actively CHASE scales with the stars: none when clean, none at
   // ★6 (the army takes over). The rest keep patrolling the streets.
-  const chasers=starResponse(state.wanted,POOL).chasers;
+  // ...but only after the response delay for this star has passed since the stars first
+  // appeared (long at ★1, near-instant at ★4+) — see responseDelay() in js/core/wanted.ts.
+  if(want<=0)wantedSinceT=-1;else if(wantedSinceT<0)wantedSinceT=state.time;
+  const responding=want>0&&state.time-wantedSinceT>=responseDelay(want);
+  const chasers=responding?starResponse(state.wanted,POOL).chasers:0;
   const pp=playerPos();
   // Which cruisers actively CHASE: the NEAREST `chasers` units to the suspect — NOT a fixed
   // first-N-by-array-order, which let a cruiser parked right next to you keep calmly patrolling
@@ -622,6 +630,7 @@ export function updateCops(dt:number){
     // Perf (visual-neutro): também esconde o motorista quando a viatura
     // está a >48m — invisível dentro do carro a essa distância.
     if(c.driver)c.driver.visible=!(c.officers&&c.officers.length)&&dist<48;
+    if(c.dispatchWait&&c.dispatchWait>0){c.dispatchWait-=dt;if(c.dispatchWait<=0)c.dispatchT=15;} // en route → now rolling
     if(c.dispatchT&&c.dispatchT>0)c.dispatchT-=dt;
     // chases if it's one of the nearest responders, OR it was radio-dispatched, OR it already
     // has officers out (a cruiser COMMITS to its arrest — it is never yanked back to patrol
@@ -687,7 +696,7 @@ export function updateCops(dt:number){
       c.heading+=clamp(diff,-1,1)*2.5*dt*clamp(Math.abs(c.speed)/8+.25,0,1);
       // On foot the cruiser brakes to a full STOP as it reaches the suspect (~13m) and
       // deploys, instead of driving into them; in a car chase it keeps the pressure on.
-      const ts=state.mode==='foot'?(dist>20?24:dist>13?10:0):(dist>15?27:12);
+      const ts=state.mode==='foot'?(dist>20?19:dist>13?9:0):(dist>15?25:12);
       c.speed+=(ts-c.speed)*(ts<c.speed?3.4:1.3)*dt;
     }
     p.x+=Math.sin(c.heading)*c.speed*dt;

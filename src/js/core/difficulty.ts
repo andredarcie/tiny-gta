@@ -15,3 +15,15 @@ export const EXPLOSION_DAMAGE = 150;
 /** Damage per fire-pool tick (every 0.5 s) while standing in flames, BEFORE
  *  PLAYER_DAMAGE_TAKEN. Used to be an instant death. */
 export const FIRE_DAMAGE_TICK = 22;
+
+// ---- how hard PEOPLE are to kill (NPC hit points; weapon damage per hit) ----
+// A HEADSHOT always kills (decapitation, js/combat/gore.ts). Body shots only wear the
+// target down and tear limbs off; a maimed person bleeds out slowly.
+export const NPC_HP_CIVILIAN = 6;   // city pedestrians, country folk, party-arena fighters
+export const NPC_HP_TOUGH = 8;      // gang members, police officers
+/** Damage multiplier for a bullet that hits an arm or a leg (it tears the limb off instead). */
+export const LIMB_HIT_DAMAGE = 0.5;
+/** Damage of one lethal-melee (bat) hit — two swings down a civilian. */
+export const MELEE_DAMAGE = 3;
+/** A maimed NPC loses 1 HP every BLEED_INTERVAL seconds per missing limb, until it dies. */
+export const BLEED_INTERVAL = 2.5;

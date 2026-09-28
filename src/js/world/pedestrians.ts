@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {nodeX,irand,rand,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
+import {NPC_HP_CIVILIAN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
 import * as Entities from '@/core/entities.ts';
@@ -138,7 +139,7 @@ for(const def of npcDefsByKind('civilian')){
   const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
   g.position.set(cx+pedRng.rand(-2,2),0,cz+pedRng.rand(-2,2));
   const p=new Ped(g,{
-    kind:'ped',hp:1,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
+    kind:'ped',hp:NPC_HP_CIVILIAN,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
     punchToDown:3,showLabel:true,area:nh.name,
     gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,dialogues:def.dialogues,
   });

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {state,refs} from '@/core/state.ts';
-import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
+import {PLAYER_DAMAGE_TAKEN,NPC_HP_CIVILIAN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {rand,irand,clamp,groundHeight} from '@/core/constants.ts';
 import {makePed,attachHandGun,poseAiming} from '@/core/entities.ts';
@@ -255,7 +255,7 @@ function spawnFighter(side:SideState){
   const g=makePed(def.color,def.pants);
   g.position.set(side.base.x+rand(-3,3),arenaGroundY(side.base.x,side.base.z),side.base.z+rand(-3,3));
   const f=new ArenaFighter(g,{
-    kind:'arena',hp:1,drop:null,wanted:0,punchToDown:3,showLabel:true,
+    kind:'arena',hp:NPC_HP_CIVILIAN,drop:null,wanted:0,punchToDown:3,showLabel:true,
     area:'Party Arena',dialogues:def.lines,
   });
   f.team=side.team;

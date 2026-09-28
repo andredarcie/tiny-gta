@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {state,input,refs} from '@/core/state.ts';
-import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK} from '@/core/difficulty.ts';
+import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK,LIMB_HIT_DAMAGE,MELEE_DAMAGE} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
@@ -800,7 +800,7 @@ function resolveMeleeImpact(a: MeleeAnim){
   }
   if(hit.kind==='npc'){
     const npc=hit.target,wasAlive=!npc.dead;
-    npc.takeDamage(dir);
+    npc.takeDamage(dir,MELEE_DAMAGE);
     // a lethal bat swing caves the head clean off, or tears a limb away
     if(wasAlive&&npc.dead){if(Math.random()<.6)refs.severHead?.(npc,dir);else refs.maimRandom?.(npc,dir);}
   }
@@ -1043,16 +1043,23 @@ function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,da
     // an arm (tear it off). The doll's head sits ~1.66 above the feet, shoulders ~1.44, arms
     // at local ±0.22. Dismember BEFORE the killing hit so the body ragdolls already maimed.
     // Legs (below the hips) are blown off too — always by rifles/sniper, often by the rest.
+    // Only the HEAD is a one-shot kill; a hit on an arm or a leg does reduced damage (it
+    // tears the limb off instead), so a body-shot victim is taken apart piece by piece.
     const npc=hit.target, fy=npc.g.position.y, relY=pos.y-fy;
+    let dmg=damage;
     const wasAlive=!npc.dead, heavy=damage>=2;
     const ry=npc.g.rotation.y;
     const localX=(pos.x-npc.g.position.x)*Math.cos(ry)-(pos.z-npc.g.position.z)*Math.sin(ry);
     const side:'L'|'R'=localX<0?'L':'R';
     if(relY>1.45)refs.severHead?.(npc,dir);
     else if(relY>1.0){
-      if(Math.abs(localX)>0.16||(heavy&&Math.random()<.4))refs.severArm?.(npc,side,dir);
-    }else if(relY<.9&&(heavy||Math.random()<.45))refs.severLeg?.(npc,side,dir);
-    npc.takeDamage(dir,damage,pos);
+      if(Math.abs(localX)>0.16){dmg*=LIMB_HIT_DAMAGE;refs.severArm?.(npc,side,dir);}
+      else if(heavy&&Math.random()<.4)refs.severArm?.(npc,side,dir);
+    }else if(relY<.9){
+      dmg*=LIMB_HIT_DAMAGE;
+      if(heavy||Math.random()<.45)refs.severLeg?.(npc,side,dir);
+    }
+    npc.takeDamage(dir,dmg,pos);
     // A killing shot tears the body up: the sniper blows it apart, a close shotgun blast
     // usually does too, and any other lethal hit often takes a limb with it.
     if(wasAlive&&npc.dead){

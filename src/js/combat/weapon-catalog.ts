@@ -85,7 +85,7 @@ const SHOTGUN=new FirearmWeapon({
   id:'shotgun',name:'SHOTGUN',slot:5,fireRate:.8,maxAmmo:30,price:500,
   makeModel:makeShotgunModel,hold:{z:-.03,scale:.75,grip:'rifle',fpHands:RIFLE_HANDS},
   recoil:{kick:.18,shake:.13,crosshair:1},
-  extra:{range:30,speed:84,damage:1,pellets:8,spread:.1,vol:1.1}});
+  extra:{range:30,speed:84,damage:.6,pellets:8,spread:.1,vol:1.1}});
 
 // Large firearms -----------------------------------------------------------
 const AK47=new FirearmWeapon({

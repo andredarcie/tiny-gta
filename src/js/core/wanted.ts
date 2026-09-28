@@ -23,6 +23,18 @@ export const WANTED_COOL = 7;      // seconds to shed ONE star once it is coolin
 /** Global multiplier on every crime's heat (applied in addWanted). Below 1 = stars climb
  *  slower: at 0.45 a star takes ~6 public gunshots or ~2-3 murders instead of 2-3 / 1. */
 export const WANTED_HEAT_SCALE = 0.45;
+
+// Police response timing. A gunshot at ★0 only makes the dispatcher send ONE unit, which
+// rolls after SHOT_DISPATCH_DELAY seconds. Once the player HAS stars, cruisers only start
+// the chase after responseDelay(star) seconds since the stars first appeared — long at ★1,
+// near-instant at ★4+, so a quick crime can still be escaped before the sirens arrive.
+export const SHOT_DISPATCH_DELAY: [number, number] = [14, 22]; // seconds, random in range
+const RESPONSE_DELAYS = [0, 15, 9, 5, 2, 2, 2];                // index = star
+/** Seconds after the wanted level first appears before cruisers chase at this star. */
+export function responseDelay(star: number): number {
+  const s = Math.max(0, Math.min(MAX_STARS, Math.floor(star)));
+  return RESPONSE_DELAYS[s];
+}
 export const SIX_STAR_HOLD = 30;   // ★6 is held at least this long before it can cool
 export const ARMY_BLOCK_DIST = 90; // stars won't cool while the army is within this many metres
 

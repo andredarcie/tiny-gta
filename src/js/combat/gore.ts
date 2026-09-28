@@ -7,7 +7,7 @@
 //   refs.spawnBlood(x,y,z,dir?,amount?)   — a burst of blood droplets at a world point
 //   refs.severHead(npc,dir?)              — decapitate (kills): head flies, neck gushes
 //   refs.severArm(npc,'L'|'R',dir?)       — tear an arm off: arm flies, shoulder spurts
-//   refs.severLeg(npc,'L'|'R',dir?)       — blow a leg off (kills): leg flies, hip spurts
+//   refs.severLeg(npc,'L'|'R',dir?)       — blow a leg off: leg flies, hip spurts (both legs = fatal)
 //   refs.gibNpc(npc,dir?,force?)          — blow the whole body apart (explosions, point-blank
 //                                            shotgun, high-speed run-overs)
 //   refs.addBloodPool(x,z,size?)          — a pool of blood that spreads on the ground
@@ -24,6 +24,7 @@ import * as THREE from 'three';
 import {scene} from '@/core/engine.ts';
 import {refs} from '@/core/state.ts';
 import {groundHeight} from '@/core/constants.ts';
+import {BLEED_INTERVAL} from '@/core/difficulty.ts';
 
 const BLOOD=0x7a0707,BLOOD_DARK=0x4a0303;
 
@@ -165,6 +166,14 @@ function boneWorld(b:THREE.Object3D|undefined,fb:THREE.Vector3):THREE.Vector3{
 // Kill the NPC if the wound is fatal (no one walks around headless or legless).
 function killIt(npc:any,dir?:THREE.Vector3):void{ if(npc&&!npc.dead&&npc.kill)npc.kill(dir); }
 
+// ---------- bleeding out: every missing limb drains HP until the victim dies ------------
+const bleeding=new Set<any>();
+function startBleeding(npc:any):void{
+  if(!npc||npc.dead||!npc.takeDamage)return;
+  npc.g.userData.bleedT=npc.g.userData.bleedT??0;
+  bleeding.add(npc);
+}
+
 // ---------- dismemberment -----------------------------------------------------
 // Decapitate: collapse the head bone, hide the non-skinned head extras, fling the head,
 // and leave the neck gushing. Fatal.
@@ -207,10 +216,11 @@ export function severArm(npc:any,side:'L'|'R',dir?:THREE.Vector3):void{
   const s=side==='L'?-1:1,ry=g.rotation.y;
   addBleeder(ua,3.5,Math.cos(ry)*s*.7,.5,-Math.sin(ry)*s*.7);  // the shoulder sprays sideways
   ud.bleedingOut=(ud.bleedingOut||0)+1;
+  startBleeding(npc);
 }
 refs.severArm=severArm;
 
-// Blow a leg off at the hip. Fatal (they drop).
+// Blow a leg off at the hip. They hop on and bleed out; losing BOTH legs is fatal.
 export function severLeg(npc:any,side:'L'|'R',dir?:THREE.Vector3):void{
   const g=npc.g,ud=g.userData,limbs=ud.limbs;if(!limbs)return;
   ud.lostLeg=ud.lostLeg||{};
@@ -228,7 +238,9 @@ export function severLeg(npc:any,side:'L'|'R',dir?:THREE.Vector3):void{
   launchGib(gib,at.x,at.y-.2,at.z,dir,.9);
   spawnBlood(at.x,at.y,at.z,dir,30);
   addBleeder(ul,3,0,.3,0);
-  killIt(npc,dir);
+  ud.bleedingOut=(ud.bleedingOut||0)+1;
+  if(ud.lostLeg.L&&ud.lostLeg.R)killIt(npc,dir);
+  else startBleeding(npc);
 }
 refs.severLeg=severLeg;
 
@@ -273,6 +285,15 @@ refs.maimRandom=maimRandom;
 
 // ---------- per-frame update (pumped from updateWeapons) ---------------------
 export function updateGore(dt:number):void{
+  // maimed NPCs lose 1 HP every BLEED_INTERVAL/limbs seconds, with blood dripping from them
+  for(const npc of bleeding){
+    const ud=npc.g.userData;
+    if(npc.dead||!npc.g.parent){bleeding.delete(npc);ud.bleedT=0;continue;}
+    const limbs=Math.max(1,ud.bleedingOut||1);
+    ud.bleedT+=dt;
+    if(Math.random()<dt*6*limbs)spawnBlood(npc.g.position.x,npc.g.position.y+.9,npc.g.position.z,undefined,1);
+    if(ud.bleedT>=BLEED_INTERVAL/limbs){ud.bleedT=0;npc.takeDamage(undefined,1);}
+  }
   // bleeders: stumps spurt in pulses (a heartbeat) that weaken, and pool underneath
   for(let k=bleeders.length-1;k>=0;k--){
     const b=bleeders[k];b.t+=dt;

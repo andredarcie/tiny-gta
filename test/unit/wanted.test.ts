@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MAX_STARS, LETHAL_AT, HELI_AT, ROCKET_AT, ARMY_AT,
   WANTED_GRACE, WANTED_COOL, SIX_STAR_HOLD, ARMY_BLOCK_DIST,
-  CRIME_HEAT, WANTED_HEAT_SCALE,
+  CRIME_HEAT, WANTED_HEAT_SCALE, responseDelay, SHOT_DISPATCH_DELAY,
   clampStars, addStars, starLevel, starResponse, coolWanted,
 } from '@/core/wanted.ts';
 
@@ -221,5 +221,20 @@ describe('WANTED_HEAT_SCALE — stars climb slower', () => {
   it('needs more than one pedestrian kill for the first star', () => {
     expect(starLevel(addStars(0, CRIME_HEAT.ped_shot * WANTED_HEAT_SCALE))).toBe(0);
     expect(starLevel(addStars(0, 3 * CRIME_HEAT.ped_shot * WANTED_HEAT_SCALE))).toBe(1);
+  });
+});
+
+describe('police response delay', () => {
+  it('is long at ★1 and shrinks as the stars climb', () => {
+    expect(responseDelay(0)).toBe(0);
+    expect(responseDelay(1)).toBe(15);
+    expect(responseDelay(2)).toBeLessThan(responseDelay(1));
+    expect(responseDelay(3)).toBeLessThan(responseDelay(2));
+    expect(responseDelay(4)).toBeLessThanOrEqual(responseDelay(3));
+    expect(responseDelay(9)).toBe(responseDelay(6)); // clamps above the cap
+  });
+  it('a lone gunshot dispatches a unit only after a real delay', () => {
+    expect(SHOT_DISPATCH_DELAY[0]).toBeGreaterThanOrEqual(10);
+    expect(SHOT_DISPATCH_DELAY[1]).toBeGreaterThan(SHOT_DISPATCH_DELAY[0]);
   });
 });

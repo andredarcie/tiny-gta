@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {rand,irand,clamp,nodeX,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
-import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
+import {PLAYER_DAMAGE_TAKEN,NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,attachHandGun,poseAiming} from '@/core/entities.ts';
 import * as Entities from '@/core/entities.ts';
@@ -132,7 +132,7 @@ function spawnMember(gang:Gang){
   collideStatics(g.position,.4);
   repelFromZones(g.position);
   const m=new GangMember(g,{
-    kind:'gang',hp:1,drop:[25,90],wanted:0.4,wantedMsg:'',crime:'ped_shot',
+    kind:'gang',hp:NPC_HP_TOUGH,drop:[25,90],wanted:0.4,wantedMsg:'',crime:'ped_shot',
     punchToDown:4,showLabel:true,area:gang.name+' turf',
     dialogues:PARTIES[gang.party].lines, // satirical party chatter (speakLine)
   });

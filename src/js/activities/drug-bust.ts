@@ -12,6 +12,7 @@
 // stays decoupled from the weed-farm + cut-scene machinery.
 // ---------------------------------------------------------------------------
 import {state,refs} from '@/core/state.ts';
+import {NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {player} from '@/actors/player.ts';
 import {playCutscene} from '@/story/story.ts';
 import {makePed} from '@/core/entities.ts';
@@ -83,7 +84,7 @@ export function startDrugBust(){
   const cop=makePed(0x21407e,0x141d35); // dark-blue uniform reads as police
   const cx=WOODS.x+2.6,cz=WOODS.z+.5;
   cop.position.set(cx,groundHeight(cx,cz),cz);
-  copNpc=new Npc(cop,{kind:'officer',hp:1,register:false,area:'Roadside bust'});
+  copNpc=new Npc(cop,{kind:'officer',hp:NPC_HP_TOUGH,register:false,area:'Roadside bust'});
 
   playCutscene(cop,COP_VOICE,buildLines(bribe),()=>finishDrugBust(bribe));
 }
