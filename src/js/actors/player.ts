@@ -1256,8 +1256,17 @@ export function updateFoot(dt:number){
   doomTurn(dt);
   const startX=player.g.position.x,startZ=player.g.position.z;
   const mv=doomMove(dt,_footMv);
-  player.g.position.add(mv);
   const moveLen=Math.hypot(mv.x,mv.z);
+  // DOOM-speed moves can exceed a wall's thickness in one frame (a straferun is ~28 m/s),
+  // so collide in sub-steps of <= 0.25 m — the same idea as P_XYMovement splitting any
+  // move over MAXMOVE/2 — instead of teleporting past thin walls.
+  {
+    const steps=Math.max(1,Math.ceil(moveLen/.25));
+    for(let i=0;i<steps;i++){
+      player.g.position.x+=mv.x/steps;player.g.position.z+=mv.z/steps;
+      if(steps>1)collideStatics(player.g.position,.5,SWIM_BOUND);
+    }
+  }
   const momTics=Math.hypot(doomMom.x,doomMom.z);       // units/tic
   let walkAmount=0;
   if(moveLen>1e-5){
@@ -1404,7 +1413,7 @@ export function updateCamera(dt:number){
   // The player's own body is never seen (it would fill the view); story cut-scenes
   // show it, since story.ts frames the hero from outside.
   player.g.visible=!!state.cine;
-  updateFpCarInterior(dt,!state.cine); // load/unload the detailed cockpit (in a car only)
+  updateFpCarInterior(dt,!state.cine&&state.mode==='car'); // load/unload the detailed cockpit (seated in a car only)
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
   const inVehicle=(state.mode==='car'||state.mode==='cut')&&!!cur;
   const tgt=inVehicle?cur!.g.position:player.g.position;
