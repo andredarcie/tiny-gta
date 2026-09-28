@@ -29,10 +29,11 @@ things that carry gameplay meaning.
 4. **One palette from HUD to asphalt.** The UI's neon family (`--pink #ff2e88`,
    `--cyan`, `--gold`, `--cream` in `css/style.css`) is the same `NEON` family
    used in the world. `js/core/palette.ts` is the single source; the informal
-   arrays (`facadePalette`, `carColors`, `shirtColors`, Mixamo look pools) now
+   arrays (`facadePalette`, `carColors`, `shirtColors`, the doll skin/hair/pants pools) now
    live there.
-5. **Characters are figurines.** Flat per-region vertex colors on the shared
-   Mixamo rig — no skin/cloth textures. NPC shirts deliberately share the
+5. **Characters are figurines.** Box dolls built in code
+   (`assets/models/characters/pedestrian.ts`) with flat vertex colours and simple
+   procedural animation — no skin/cloth textures, no downloaded models or clips. NPC shirts deliberately share the
    vehicle paint family so people and traffic read as one world.
 6. **Retro film on top.** The CSS overlay stack (grain, scanlines, vignette,
    cutscene letterbox) plus the global filmic grade (`REAL_DESAT`/`REAL_EXP`

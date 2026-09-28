@@ -158,7 +158,7 @@ export function updateTraffic(dt:number){
     const cdx=np.x-pp.x,cdz=np.z-pp.z,cd2=cdx*cdx+cdz*cdz;
     if(cd2>=CAR_CULL2){t.g.visible=false;continue;}
     t.g.visible=true;
-    // Perf (visual-neutro): o motorista GLB (~7930 tris + skinning) some quando o carro
+    // Perf (visual-neutro): o motorista some quando o carro
     // está a >48m — não dá pra ver alguém dentro do carro através do para-brisa a essa
     // distância, então é 1 draw + o skinning economizados por carro médio/distante.
     if(t.driver)t.driver.visible=cd2<48*48;

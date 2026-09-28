@@ -180,7 +180,7 @@ export class Npc{
     this.gender=g2;
     if(g2==='F'&&femaleLook)addFemaleLook(g); // women get the female appearance
     this.name=name??pickName(g2);
-    g.userData.npcName=this.name; // seeds the GLB look so it's the same every play (npc-glb)
+    g.userData.npcName=this.name;
     this.homeX=g.position.x;
     this.homeZ=g.position.z;
     this.hospitalT=0;
@@ -238,7 +238,6 @@ export class Npc{
   kill(dir?:THREE.Vector3){
     if(this.dead)return;
     this.dead=true;this.deadT=0;this.grounded=false;
-    this.g.userData.npcDead=true;this.g.userData.npcGrounded=false; // GLB FSM: tumble (Ragdoll) then settle (Lie)
     state.kills++;
     const d=dir||new THREE.Vector3();
     this.vel.set(d.x,0,d.z).multiplyScalar(9).add(new THREE.Vector3(rand(-1.5,1.5),rand(5,7),rand(-1.5,1.5)));
@@ -255,7 +254,6 @@ export class Npc{
   // ambulance service later collects (see js/world/body-recovery.ts). Returns true once
   // the body has come to rest.
   updateRagdoll(dt:number,fade=true){
-    this.g.userData.npcDead=true;        // GLB FSM: covers death paths that set .dead without kill() (hit-and-run)
     this.deadT+=dt;
     const gy=groundHeight(this.g.position.x,this.g.position.z);
     if(!this.grounded){
@@ -263,7 +261,6 @@ export class Npc{
       this.vel.y-=22*dt;this.g.rotation.x+=9*dt;
       if(this.g.position.y<gy+.35&&this.vel.y<0){
         this.g.position.y=gy+.35;this.grounded=true;
-        this.g.userData.npcGrounded=true;   // GLB FSM: switch Ragdoll → Lie now it's down
         this.g.rotation.set(-Math.PI/2,this.g.rotation.y,0);
       }
     }else if(fade&&this.deadT>5){
@@ -275,7 +272,6 @@ export class Npc{
   // Revive this NPC at the given position (hospital discharge or revival).
   revive(x:number,z:number){
     this.dead=false;this.grounded=false;this.deadT=0;
-    this.g.userData.npcDead=undefined;this.g.userData.npcGrounded=undefined; // GLB FSM: back to the living
     this.bloodDropped=false;this.hp=this.maxHp;this.hospitalT=0;
     this.punchHits=0;this.lastPunchT=-99;
     this.g.position.set(x,groundHeight(x,z),z);

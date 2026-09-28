@@ -6,8 +6,6 @@ import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
 import {makeHat,makeGlasses} from '../../assets/models/characters/accessories.ts';
-import {preloadRig,makeCharacter,PLAYER_LOOK,MIXAMO_LOCO_NAT,MIXAMO_WALK_NAT,setGunHandBone,setCharacterLook,type MixamoChar} from '../../assets/models/characters/mixamo-rig.ts';
-import {AnimationStateMachine,AnimState,MIXAMO_TABLE} from '@/actors/anim-fsm.ts';
 import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
@@ -15,7 +13,7 @@ import {makeRcController} from '../../assets/models/props/rc-controller.ts';
 import {buildCarInteriorFp} from '../../assets/models/vehicles/car-interior-fp.ts';
 import {DOOM_TICRATE,DOOM_UNIT,DOOM_VIEWHEIGHT,DOOM_DEADVIEWHEIGHT,doomStep,doomThrust,doomTurnRate,doomBob,type DoomMomentum} from '@/actors/doom-physics.ts';
 import {makeTractor} from '../../assets/models/vehicles/tractor.ts';
-import {SEAT_OFFSET,GLB_SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
+import {SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
 import {thud,blip,splash} from '@/audio/audio.ts';
 import {radioOn,radioOff,radioEnter} from '@/ui/radio.ts';
 import {collideStatics,addWanted} from '@/core/physics.ts';
@@ -33,8 +31,6 @@ interface Player{
   stroke:number;
   cadence:number;
   lastHalf:number;
-  locoAmt:number;   // 0..1 on-foot locomotion this frame (drives walk/run clip blend)
-  locoRun:boolean;  // sprinting this frame
 }
 
 // The first-person camera rig (yaw/pitch + look tuning).
@@ -77,45 +73,14 @@ export function updateDrivenShadow(){
 // Campos de nado (ver updateSwim): velocidade própria com inércia, mistura de
 // pose boiando↔crawl, fase/cadência da braçada e marcador da última braçada.
 export const player:Player={g:makePlayerPed(0x19e3ff),heading:0,bob:0,
-  swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0,locoAmt:0,locoRun:false};
+  swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0};
 player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
 noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
 
-// ---- Hero avatar: swap the procedural doll for the rigged glTF humanoid -------
-// The procedural ped (player.g's children) stays in place as an instant, always-
-// working fallback and as the home for the clothing/accessory API. The GLB loads
-// async; when it arrives we hide the procedural meshes, parent the skinned model
-// under player.g (so every position/rotation/visibility/reparent path keeps
-// working unchanged) and drive its AnimationMixer from updatePlayerAnim().
-let glb:MixamoChar|null=null;
-let playerAnim:AnimationStateMachine|null=null; // the hero's animation state machine (the only clip/pose driver)
-let procVisual:THREE.Object3D[]=[];          // original children of player.g (doll mesh + mouth)
-let glbPunchT=0;                             // >0 while the one-shot 'punch' clip plays
-let glbDead=false;                           // dead → hold 'death' through the WASTED cut
+// The hero is the same BOX doll as every NPC (makePlayerPed). Hidden in first person;
+// seen in story cut-scenes, the gym bench press and the dance game.
+let deadHeld=false;                          // dead → stay down through the WASTED cut
 let wastedActive=false;                      // WASTED flow active, including vehicle instant cuts
-// The hero — and every NPC — is one clone of the shared mixamorig base (mixamo-rig.ts): real
-// clips, no IK/foot-weld hacks. Falls back to the procedural doll only if the base fails to load.
-function installHero(h:MixamoChar,anim:AnimationStateMachine):void{
-  glb=h; playerAnim=anim;
-  procVisual=player.g.children.slice();       // the skinned doll + mouth built by makePlayerPed
-  for(const o of procVisual)o.visible=false;
-  player.g.add(h.root);
-  noShadow(player.g);                          // re-assert: the new meshes never cast a shadow
-}
-function findBone(root:THREE.Object3D,name:string):THREE.Bone|null{
-  let b:THREE.Bone|null=null;root.traverse(o=>{if(!b&&(o as THREE.Bone).isBone&&o.name===name)b=o as THREE.Bone;});return b;
-}
-preloadRig().then(()=>{
-  const ch=makeCharacter(PLAYER_LOOK);
-  if(!ch)return;
-  setGunHandBone(findBone(ch.root,'mixamorigRightHand'));   // held weapon anchors on the rigged hand
-  // Mixamo rig is properly baked: no knee IK, no gym-arm rescale. Timescale uses the clip's
-  // measured natural speed (4.4) damped by locoScale 0.6 — the game runs ~9u/s (arcade-fast),
-  // so without damping the legs whirl ~2x; 0.6 lands a realistic cadence (slight skate).
-  installHero(ch,new AnimationStateMachine(ch.root,ch.mixer,ch.actions,{solveLegs:()=>{},locoScale:0.6,walkNat:MIXAMO_WALK_NAT,runNat:MIXAMO_LOCO_NAT},MIXAMO_TABLE));
-  applyPlayerClothing();
-});
-export function hasPlayerGlb():boolean{return !!glb;}
 
 // Player outfit (clothing store): push state.clothing colours into the player model's
 // in-place recolour (see assets/models/characters/pedestrian.ts setClothing). Defaults
@@ -124,7 +89,6 @@ export function hasPlayerGlb():boolean{return !!glb;}
 // store) without touching state. applyPlayerClothing() applies the saved/committed outfit.
 export function previewPlayerClothing(o:{shirt:number;pants:number;shoe:number;hat:number;glasses:number}):void{
   player.g.userData.setClothing?.({shirt:o.shirt,pants:o.pants,shoe:o.shoe});
-  if(glb)setCharacterLook(glb.root,{Shirt:o.shirt,Pants:o.pants,Socks:o.shoe});
   setAccessory('hat',o.hat,makeHat);
   setAccessory('glasses',o.glasses,makeGlasses);
 }
@@ -428,7 +392,6 @@ function updateEntering(dt:number){
     player.g.position.x+=(wx-player.g.position.x)*Math.min(1,10*dt);
     player.g.position.z+=(wz-player.g.position.z)*Math.min(1,10*dt);
     player.bob+=dt*8;Entities.animatePed?.(player.g,player.bob,.7);
-    player.locoAmt=.7;player.locoRun=false; // GLB: walk to the door
     if(e.t>=.45){completeEnter(e.f);e.phase=1;e.t=0;}
   }else{ // sentado: porta fechando
     const k=Math.min(1,e.t/.35);
@@ -498,16 +461,12 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     // avião pode receber driver (não tem rodas esterçadas, então é inócuo).
     const kind=cur.bike?'bike':cur.boat?'boat':cur.plane?'plane':'tractor';
     if(cur.plane)cur.g.userData.driver=player.g;
-    // GLB hero uses its own per-vehicle seat offset (its sit clip poses the limbs);
-    // the procedural fallback keeps the SEAT_OFFSET tuned to its body.
-    player.g.position.fromArray((hasPlayerGlb()&&GLB_SEAT_OFFSET[kind])||SEAT_OFFSET[kind]);
+    player.g.position.fromArray(SEAT_OFFSET[kind]);
     player.g.rotation.set(0,0,0);
     poseRider(player.g.userData.limbs,kind);
   }else{
     cur.g.userData.driver=player.g; // braços seguem o volante via spinWheels
-    // sentado no banco do motorista (GLB tem seu próprio offset; pose vem de applyVehiclePose)
-    if(hasPlayerGlb())player.g.position.set(-0.380,-0.157,-0.031);
-    else player.g.position.set(-.38,-.52,-.15);
+    player.g.position.set(-.38,-.52,-.15); // driver's seat
     player.g.rotation.set(0,0,0);
     setDrivePose(true);
   }
@@ -592,7 +551,7 @@ export function startCut(text:string,col:string,fn:(()=>void)|null){
   if(cur)cur.speed=0;
 }
 
-export function isWasted(): boolean { return wastedActive||!!dying||glbDead; }
+export function isWasted(): boolean { return wastedActive||!!dying||deadHeld; }
 
 export function getBusted(){
   if(dying)return; // morrendo não é preso
@@ -606,7 +565,7 @@ export function getBusted(){
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;}
     unseatPlayer();
     player.g.visible=true;
-    glbDead=false;wastedActive=false; // recovered (hospital/jail) → leave the death pose
+    deadHeld=false;wastedActive=false; // recovered (hospital/jail) → leave the death pose
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // Busted while carrying the weed delivery backpack: a crooked cop drives you
     // out to the woods and shakes you down for a bribe instead of booking you
@@ -633,7 +592,7 @@ function wastedCut(){
     if(cur){cur.g.userData.driver=null;idleCars.push(cur);cur=null;} // larga o carro
     unseatPlayer();
     player.g.visible=true;
-    glbDead=false;wastedActive=false; // recovered (hospital/jail) → leave the death pose
+    deadHeld=false;wastedActive=false; // recovered (hospital/jail) → leave the death pose
     state.weaponHeld=!!state.hasGun;
     state.mode='foot';hudCar!.style.display='none';radioOff();
     // acorda DENTRO do hospital (teleporta pra sala fora do mapa); tem que sair
@@ -658,7 +617,7 @@ export function getWasted(){
   cancelEntering();
   if(state.mode==='car'||cur)return wastedCut(); // dentro de veículo: corte direto
   dying={t:0,puddle:false};
-  glbDead=true;                   // keep the 'death' pose held until respawn (not 'sit')
+  deadHeld=true;                   // keep the 'death' pose held until respawn (not 'sit')
   state.controlsLocked=true;
   state.weaponHeld=false;
   Entities.animatePed?.(player.g,0,0); // relaxa os membros antes de cair
@@ -671,10 +630,8 @@ function updateDying(dt:number){
   // morrendo no telhado o corpo tomba na laje, não no asfalto lá embaixo
   const gh=state.onRoof?state.onRoof.y
     :groundHeight(player.g.position.x,player.g.position.z);
-  // With the GLB the 'death' clip performs the collapse itself, so keep the body
-  // upright/grounded; the procedural doll instead tips flat like the dead NPCs.
-  if(glb){player.g.rotation.x=0;player.g.position.y=gh;}
-  else{player.g.rotation.x=-Math.PI/2*k;player.g.position.y=gh+.35*k;}
+  // the doll tips flat like the dead NPCs
+  player.g.rotation.x=-Math.PI/2*k;player.g.position.y=gh+.35*k;
   if(k>=1&&!d.puddle){
     d.puddle=true;
     if(!state.onRoof)refs.addBloodPuddle?.(player.g.position.x,player.g.position.z);
@@ -1112,10 +1069,7 @@ function updateSwim(dt:number){
   p.y+=(depthTgt-p.y)*Math.min(1,6*dt);
   // ----- postura do corpo (ordem YXZ: guinada → inclina à frente → rola) -----
   player.g.rotation.order='YXZ';
-  // The Mixamo 'swim' CLIP already lays the body prone (head fwd, legs slightly down); adding
-  // the old 64° pitch on top tipped it past flat → legs in the air. So with the GLB only a tiny
-  // lean; the procedural doll fallback still needs the full tilt.
-  const pitch=pose*(glb?0.2:1.12);
+  const pitch=pose*1.12; // lean prone while stroking
   const roll=pose*Math.sin(sp)*.13; // rola de leve a cada braçada (respiração)
   player.g.rotation.set(pitch,player.heading,roll);
   animateSwim(player.g,sp,pose);
@@ -1220,11 +1174,10 @@ function doomClipMomentum(wantX:number,wantZ:number,gotX:number,gotZ:number){
 }
 
 export function updateFoot(dt:number){
-  player.locoAmt=0;player.locoRun=false; // reset each frame; the moving block below sets it
   doomLevelTime+=dt*DOOM_TICRATE;
   if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
   // P_DeathThink: the dead player's view sinks 1 unit/tic down to 6 units
-  if(dying||glbDead||wastedActive)doomViewHeight=Math.max(DOOM_DEADVIEWHEIGHT,doomViewHeight-dt*DOOM_TICRATE);
+  if(dying||deadHeld||wastedActive)doomViewHeight=Math.max(DOOM_DEADVIEWHEIGHT,doomViewHeight-dt*DOOM_TICRATE);
   else doomViewHeight=DOOM_VIEWHEIGHT;
   if(dying||roofFall||entering||exiting||state.dlgActive)doomStop(); // no momentum carries out of scripted states
   if(dying)return updateDying(dt);
@@ -1272,7 +1225,6 @@ export function updateFoot(dt:number){
   if(moveLen>1e-5){
     walkAmount=Math.min(1,momTics/8.33);               // 1 = DOOM walking top speed
     player.bob+=moveLen*1.8;
-    player.locoAmt=walkAmount;player.locoRun=momTics>12; // GLB clip selection
   }
   {
     const r=state.onRoof,p=player.g.position;
@@ -1315,72 +1267,6 @@ export function updateFoot(dt:number){
   // First person: the body always faces where the player looks.
   player.heading=cameraRig.yaw;
   player.g.rotation.y=cameraRig.yaw;
-}
-
-// ---- GLB avatar animation ---------------------------------------------------
-// Every clip/pose the hero shows goes through ONE animation state machine (anim-fsm.ts).
-// updatePlayerAnim derives the desired AnimState from live game state and lets the FSM
-// render it; nothing here plays a clip or applies a pose directly. No-op until the GLB
-// loads — until then the procedural doll animates itself via animatePed.
-const PUNCH_DUR=0.42;
-// The character is actively pointing the gun (so the gun-hold pose applies). Just HOLDING
-// a weapon while walking is NOT aiming — that stays in idle/walk. Mirrors weapons.ts.
-function aimingNow():boolean{return state.aiming||input.shootHeld||!!refs.getRampageState?.()?.active;}
-let weedOverlay:AnimState|null=null;             // weed-farm hand-work overlay (WeedPour/WeedDeal), or null
-// Resolve the hero's animation state from the live game state. `loco` is the current
-// locomotion (Idle/Walk/Run), used directly and as the base under any overlay state.
-function playerAnimState(loco:AnimState):AnimState{
-  if(dying||glbDead)return AnimState.Death;                 // dead: hold the collapse through WASTED
-  if(state.swimming)return AnimState.Swim;
-  if(roofFall)return AnimState.Ragdoll;
-  if(cur?.remote)return AnimState.RcOperate;                // RC operator stands holding the remote
-  if(state.mode==='car'&&cur)return cur.bike?AnimState.DriveBike:AnimState.DriveCar;
-  if(glbPunchT>0)return AnimState.Punch;                    // melee swing in progress
-  if(weedOverlay!==null)return weedOverlay;                 // weed-farm pour/deal (overlay on loco)
-  if(state.mode==='cut')return cur?AnimState.Sit:loco;      // vehicle cut → sit; on-foot cut → stand
-  if(state.mode==='foot'&&state.weaponHeld&&aimingNow())return AnimState.Aim; // gun-hold ONLY while aiming
-  return loco;
-}
-let _animPrevX=player.g.position.x,_animPrevZ=player.g.position.z;
-export function updatePlayerAnim(dt:number):void{
-  if(!playerAnim)return;
-  if(glbPunchT>0)glbPunchT-=dt;                              // count down the melee-swing window
-  // real horizontal ground speed this frame → walk/run clip timescale (covers analog/aim)
-  const gx=player.g.position.x,gz=player.g.position.z;
-  const groundSpeed=dt>1e-4?Math.hypot(gx-_animPrevX,gz-_animPrevZ)/dt:0;
-  _animPrevX=gx;_animPrevZ=gz;
-  const loco=player.locoAmt>0.06?(player.locoRun?AnimState.Run:AnimState.Walk):AnimState.Idle;
-  playerAnim.request(playerAnimState(loco));
-  playerAnim.update(dt,{speed:groundSpeed,loco,t:state.time,swimMoving:player.swimPose,swimPhase:player.stroke,aimPitch:cameraRig.pitch});
-}
-
-// Play the one-shot 'punch' clip when the player throws a melee swing (called from
-// weapons.ts). Forces a replay so rapid punches restart the swing, stretched to a snappy
-// window; the FSM holds the Punch state while glbPunchT counts down in updatePlayerAnim.
-export function triggerGlbPunch():void{
-  if(!playerAnim)return;
-  const clipDur=glb?.actions['punch']?.getClip().duration||PUNCH_DUR;
-  glbPunchT=PUNCH_DUR;
-  playerAnim.trigger(AnimState.Punch,clipDur/PUNCH_DUR);
-}
-
-// ----- activity animation hooks (everything routes through the FSM) -----------
-// Weed-farm hand work: overlay WeedPour/WeedDeal on the locomotion clip (or null to clear).
-export function setPlayerAnimOverlay(s:AnimState|null):void{weedOverlay=s;}
-// Drive the GLB hero into the bench-press lift (p: 1=lockout, 0=bar at chest). Called every
-// frame by the gym mini-game, which FREEZES the world (updatePlayerAnim is not called), so
-// we request the state and tick the FSM with dt=0. No-op without the GLB.
-export function posePlayerGlbBench(p:number):void{
-  if(!playerAnim)return;
-  playerAnim.request(AnimState.Bench);
-  playerAnim.update(0,{benchP:p});
-}
-// Drive the GLB hero into a dance pose (lane 0..3, amt 0..1 toward the hit). Same frozen-
-// world path as the bench press.
-export function posePlayerGlbDance(lane:number,amt:number):void{
-  if(!playerAnim)return;
-  playerAnim.request(AnimState.Dance);
-  playerAnim.update(0,{danceLane:lane,danceAmt:amt});
 }
 
 // The game is FIRST PERSON ONLY: the camera always sits at the player's eyes (on foot,

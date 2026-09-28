@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {state} from '@/core/state.ts';
 import type {ModelDescriptor} from '@/core/types.ts';
 import {NPC_DEFS} from '@/core/npc-defs.ts';
-import {makeNpcGlbViewer} from '../../assets/models/characters/npc-glb.ts';
+import {buildToonPlayer,addFemaleLook} from '../../assets/models/characters/pedestrian.ts';
+import {SHIRT_COLORS} from '@/core/palette.ts';
 
 // Galeria de objetos do jogo: um modal com renderer/cena próprios (separados do
 // jogo) que instancia cada modelo pela sua fábrica e o exibe centralizado e
@@ -62,13 +63,18 @@ async function discover(): Promise<void> {
         load:async()=>toObject3D(build(v.opts||{}))});
     }
   }
-  // "NPCs" category: every named NPC from the fixed roster, previewed with its
-  // DETERMINISTIC look (seeded by name) so the gallery matches the in-game character.
+  // "NPCs" category: every named NPC from the fixed roster as a box doll (shirt colour
+  // picked from the name, women with the female look).
   for(const def of NPC_DEFS){
     if(!def.name)continue;
     const name=def.name,female=def.sex==='F';
     entries.push({cat:'NPCs',label:name+(female?' ♀':' ♂'),zoom:1,yaw:0,
-      load:async()=>makeNpcGlbViewer(name,female)});
+      load:async()=>{
+        let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))|0;
+        const g=buildToonPlayer({color:SHIRT_COLORS[Math.abs(h)%SHIRT_COLORS.length]});
+        if(female)addFemaleLook(g);
+        return g;
+      }});
   }
   // ordena por categoria e depois por label, mantendo estável e previsível
   entries.sort((a,b)=>a.cat.localeCompare(b.cat)||a.label.localeCompare(b.label));

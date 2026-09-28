@@ -1,6 +1,6 @@
 import {state,input,keys} from '@/core/state.ts';
 import {camera} from '@/core/engine.ts';
-import {player,cameraRig,posePlayerGlbBench} from '@/actors/player.ts';
+import {player,cameraRig} from '@/actors/player.ts';
 import {blip} from '@/audio/audio.ts';
 import {GYM_TRAIN,gymFx} from '../../assets/models/city/gym.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
@@ -226,9 +226,8 @@ function restorePose(){
 
 // p: 1=lockout (barra em cima), 0=barra no peito. Move braços + a barra.
 function applyBenchPose(p:number){
-  posePlayerGlbBench(p);                 // rigged hero: drive the press on the GLB rig
   if(gymFx.barbell)gymFx.barbell.position.set(BAR_X,lerp(BAR_BOTTOM_Y,BAR_TOP_Y,p),BAR_Z);
-  const l=player.g.userData.limbs;if(!l)return; // procedural fallback below (doll hidden under the GLB)
+  const l=player.g.userData.limbs;if(!l)return;
   const armX=lerp(ARM_BOTTOM,ARM_TOP,p),foreX=lerp(FORE_BOTTOM,FORE_TOP,p);
   l.leftArm.rotation.set(armX,0,ARM_SPLAY);
   l.rightArm.rotation.set(armX,0,-ARM_SPLAY);

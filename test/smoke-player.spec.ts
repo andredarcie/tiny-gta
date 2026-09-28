@@ -1,13 +1,13 @@
-// Smoke test for the skinned player: boots the REAL game (on our dedicated port
-// 5273), walks for ~1s so animatePed rotates the player's bones, and asserts no
+// Smoke test for the box player: boots the REAL game (on the Playwright dev
+// server), walks for ~1s so animatePed rotates the player's bones, and asserts no
 // runtime error and the player is still on foot. Proves the SkinnedMesh deforms
 // in-game without breaking.
 import {test, expect} from '@playwright/test';
 
 test('skinned player boots and walks without errors', async ({page}) => {
   const errors: string[] = [];
-  page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('http://localhost:5273/', {waitUntil: 'load'});
+  page.on('pageerror', (e) => { if (!/Pointer Lock/i.test(e.message)) errors.push(e.message); }); // benign: auto-start requests pointer lock before any click
+  await page.goto('/', {waitUntil: 'load'});
   // On localhost the game auto-starts (dev shortcut in input.ts) — just wait for it.
   await page.waitForFunction(
     () => !!(window as any).render_game_to_text && JSON.parse((window as any).render_game_to_text()).started === true,

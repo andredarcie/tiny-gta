@@ -18,7 +18,7 @@ npm run preview  # serve the production build
 - `src/assets/models/**` — pure 3D geometry **factories**, one model per file, each default-exporting a `{category, label, build(opts)}` descriptor (see `src/assets/models/README.md`).
 - `src/js/core/main.ts` — the single `requestAnimationFrame` loop; `src/js/core/state.ts` — the shared mutable `state`/`input`/`refs`.
 - `src/data/**` — baked game data read at build/boot (`world.json`, `npcs.json`, `minigame-rewards.json`, `updates.json`).
-- `tools/**` — build/dev scripts (`bake`, `island-check`) and `tools/dev/` dev-only Vite pages (`/studio`, `mixamo`, `portrait`, not in the production build).
+- `tools/**` — build/dev scripts (`bake`, `island-check`).
 - `docs/**` — design/planning docs and the visual history under `docs/history/`.
 
 See `CLAUDE.md` for the full architecture notes and conventions.
