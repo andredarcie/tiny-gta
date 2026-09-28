@@ -1,7 +1,7 @@
 import {state,keys,input,refs} from '@/core/state.ts';
 import {initAudio,AC} from '@/audio/audio.ts';
 import {radioSwitch} from '@/ui/radio.ts';
-import {enterCar,exitCar,cur,player,cameraRig,toggleFirstPerson,applyMouseLook} from '@/actors/player.ts';
+import {enterCar,exitCar,cur,player,cameraRig,applyMouseLook} from '@/actors/player.ts';
 import {storyInteract,advanceCine} from '@/story/story.ts';
 import {gymTrain} from '@/places/gym.ts';
 import {gymGameActive,gymGamePress,closeGymGame} from '@/places/gym-game.ts';
@@ -30,7 +30,7 @@ function lockPointer(): void {
 }
 
 export function resetInput(keepTouch=false): void {
-  input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+  input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
   input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
   input.moveActive=false;input.lookActive=false;input.brakeActive=false;input.hornActive=false;
   if(!keepTouch)input.touchActive=false;
@@ -38,12 +38,16 @@ export function resetInput(keepTouch=false): void {
 
 export function updateKeyboardInput(): void {
   if(state.tvActive){
-    input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+    input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
     input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
     return;
   }
   const f=(keys['KeyW']||keys['ArrowUp']?1:0)-(keys['KeyS']||keys['ArrowDown']?1:0);
-  const side=(keys['KeyA']||keys['ArrowLeft']?1:0)-(keys['KeyD']||keys['ArrowRight']?1:0);
+  // On foot the arrow keys TURN (DOOM's classic keyboard layout) and A/D strafe; in a
+  // vehicle the arrows steer like A/D.
+  const onFoot=state.mode==='foot';
+  const side=(keys['KeyA']||(!onFoot&&keys['ArrowLeft'])?1:0)-(keys['KeyD']||(!onFoot&&keys['ArrowRight'])?1:0);
+  input.turnX=onFoot?(keys['ArrowRight']?1:0)-(keys['ArrowLeft']?1:0):0;
   const keyboardMoving=!!(f||side||keys['ShiftLeft']||keys['ShiftRight']);
   if(!input.moveActive||keyboardMoving){
     input.moveY=f;
@@ -213,8 +217,7 @@ export function setupInput(): void {
     // Roda de armas aberta: o mouse mira o setor, não move a câmera.
     if(state.wheelOpen){wheelPointerDelta(e.movementX,e.movementY);return;}
     if(state.paused||state.mapOpen||state.dlgActive)return;
-    // Routed through player.js so the delta drives the correct pitch (wide FP look
-    // when first-person is active, the third-person orbit pitch otherwise).
+    // Routed through player.ts, which owns the first-person yaw/pitch.
     applyMouseLook(e.movementX,e.movementY);
   });
   // Desktop: o 1º clique trava o ponteiro; com o ponteiro travado, segurar o
@@ -312,7 +315,6 @@ export function setupInput(): void {
     if(e.code==='KeyP'){performPauseToggle();return;}
     if(e.code==='KeyF'&&e.shiftKey){performFullscreenToggle();return;}
     if(e.code==='KeyR'){performRadioSwitch();return;} // rádio saiu do Tab (agora da roda de armas)
-    if(e.code==='KeyC'){toggleFirstPerson();return;}  // alterna câmera em primeira pessoa
     if(/^Digit[0-9]$/.test(e.code)){selectWeaponSlot(e.code==='Digit0'?10:+e.code.slice(5));return;}
     // Roda de armas: TAB é o padrão de mercado (open-world); Q segue valendo de alternativa.
     if(e.code==='Tab'||e.code==='KeyQ'){if(!e.repeat)openWheel();return;} // segurar abre a roda; soltar equipa (keyup)

@@ -84,6 +84,8 @@ export interface GameState {
 export interface InputState {
   moveX: number;
   moveY: number;
+  /** keyboard turn (arrow keys on foot, DOOM-style): +1 right, -1 left */
+  turnX: number;
   lookX: number;
   lookY: number;
   run: boolean;

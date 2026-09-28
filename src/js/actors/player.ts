@@ -13,6 +13,7 @@ import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
 import {makeRcController} from '../../assets/models/props/rc-controller.ts';
 import {buildCarInteriorFp} from '../../assets/models/vehicles/car-interior-fp.ts';
+import {DOOM_TICRATE,DOOM_UNIT,DOOM_VIEWHEIGHT,DOOM_DEADVIEWHEIGHT,doomStep,doomThrust,doomTurnRate,doomBob,type DoomMomentum} from '@/actors/doom-physics.ts';
 import {makeTractor} from '../../assets/models/vehicles/tractor.ts';
 import {SEAT_OFFSET,GLB_SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
 import {thud,blip,splash} from '@/audio/audio.ts';
@@ -36,7 +37,7 @@ interface Player{
   locoRun:boolean;  // sprinting this frame
 }
 
-// The orbit/first-person camera rig (yaw/pitch + look tuning).
+// The first-person camera rig (yaw/pitch + look tuning).
 interface CameraRig{
   yaw:number;
   pitch:number;
@@ -311,8 +312,6 @@ const _dentPt=new THREE.Vector3(),_dentDir=new THREE.Vector3();
 // Scratch vectors reaproveitados nos hot loops (evita alocar por frame).
 // updateFoot: camF/camR/mv vivem juntos -> 3 instâncias distintas.
 const _footF=new THREE.Vector3(),_footR=new THREE.Vector3(),_footMv=new THREE.Vector3();
-// updateCamera: forward/right/focus/want vivem juntos -> 4 instâncias distintas.
-const _camFwd=new THREE.Vector3(),_camRight=new THREE.Vector3(),_camFocus=new THREE.Vector3(),_camWant=new THREE.Vector3();
 // First-person: eye position + look direction (live together -> 2 distinct instances).
 const _fpEye=new THREE.Vector3(),_fpDir=new THREE.Vector3();
 
@@ -1182,9 +1181,52 @@ function animateSwim(g:THREE.Object3D,sp:number,pose:number){
   }
 }
 
+// ---- DOOM on-foot movement ----------------------------------------------------
+// On foot the player moves exactly like DOOM's marine: speed, acceleration, friction,
+// keyboard turning and view bob come from id's source — see doom-physics.ts.
+const doomMom:DoomMomentum={x:0,z:0};             // momentum, units/tic (world x/z)
+let doomTurnHeld=0;                              // tics a keyboard turn has been held
+let doomLevelTime=0;                             // tics elapsed (view-bob phase)
+let doomViewHeight=DOOM_VIEWHEIGHT;              // units; sinks to 6 on death (P_DeathThink)
+function doomStop(){doomMom.x=doomMom.z=0;}
+
+// Keyboard turning (arrow keys): DOOM's slow turn for the first 6 tics, then the
+// walk/run rate. Yaw grows to the LEFT in this engine.
+function doomTurn(dt:number){
+  if(!input.turnX){doomTurnHeld=0;return;}
+  doomTurnHeld+=dt*DOOM_TICRATE;
+  cameraRig.yaw-=input.turnX*doomTurnRate(doomTurnHeld,input.run)*dt;
+}
+
+// Advances the DOOM momentum by dt and returns this frame's displacement in metres.
+function doomMove(dt:number,out:THREE.Vector3):THREE.Vector3{
+  const t=doomThrust(input.moveY,input.moveX,input.run);
+  const hasCmd=!!(t.fwd||t.side);
+  const fx=Math.sin(cameraRig.yaw),fz=Math.cos(cameraRig.yaw); // view forward
+  const rx=Math.cos(cameraRig.yaw),rz=-Math.sin(cameraRig.yaw); // strafe axis (+moveX = A)
+  const d=doomStep(doomMom,fx*t.fwd+rx*t.side,fz*t.fwd+rz*t.side,dt*DOOM_TICRATE,hasCmd);
+  return out.set(d.dx*DOOM_UNIT,0,d.dz*DOOM_UNIT);
+}
+
+// Blocked by a wall/car: keep only the momentum along the direction actually travelled
+// (the slide DOOM's P_SlideMove produces), so pushing into a wall doesn't bank speed.
+function doomClipMomentum(wantX:number,wantZ:number,gotX:number,gotZ:number){
+  const want=Math.hypot(wantX,wantZ),got=Math.hypot(gotX,gotZ);
+  if(want<1e-6||got>=want*.999)return;
+  if(got<1e-6){doomStop();return;}
+  const ux=gotX/got,uz=gotZ/got;
+  const along=Math.max(0,doomMom.x*ux+doomMom.z*uz);
+  doomMom.x=ux*along;doomMom.z=uz*along;
+}
+
 export function updateFoot(dt:number){
   player.locoAmt=0;player.locoRun=false; // reset each frame; the moving block below sets it
+  doomLevelTime+=dt*DOOM_TICRATE;
   if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
+  // P_DeathThink: the dead player's view sinks 1 unit/tic down to 6 units
+  if(dying||glbDead||wastedActive)doomViewHeight=Math.max(DOOM_DEADVIEWHEIGHT,doomViewHeight-dt*DOOM_TICRATE);
+  else doomViewHeight=DOOM_VIEWHEIGHT;
+  if(dying||roofFall||entering||exiting||state.dlgActive)doomStop(); // no momentum carries out of scripted states
   if(dying)return updateDying(dt);
   if(roofFall)return updateRoofFall(dt);
   if(entering)return updateEntering(dt);
@@ -1192,7 +1234,7 @@ export function updateFoot(dt:number){
   if(state.dlgActive)return;
   // ----- água: o nado tem física, pose e efeitos próprios (updateSwim) -----
   if(inWater(player.g.position)){
-    if(!state.swimming)enterWater(); // transição terra→água: splash de entrada
+    if(!state.swimming){enterWater();doomStop();} // transição terra→água: splash de entrada
     state.swimming=true;
     return updateSwim(dt);
   }
@@ -1211,20 +1253,17 @@ export function updateFoot(dt:number){
     if(Math.abs(g.rotation.x)<.01)g.rotation.x=0;
     if(Math.abs(g.rotation.z)<.01)g.rotation.z=0;
   }
-  const f=input.moveY;
-  const side=input.moveX;
+  doomTurn(dt);
+  const startX=player.g.position.x,startZ=player.g.position.z;
+  const mv=doomMove(dt,_footMv);
+  player.g.position.add(mv);
+  const moveLen=Math.hypot(mv.x,mv.z);
+  const momTics=Math.hypot(doomMom.x,doomMom.z);       // units/tic
   let walkAmount=0;
-  if(f||side){
-    const camF=_footF.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
-    const camR=_footR.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
-    const analog=Math.min(1,Math.hypot(f,side));
-    walkAmount=analog;
-    const mv=_footMv.set(0,0,0).addScaledVector(camF,f).addScaledVector(camR,side).normalize();
-    const spd=(state.aiming?3.6:(input.run?9:5.2))*analog; // aiming: slow strafe-walk, no sprint
-    player.g.position.addScaledVector(mv,spd*dt);
-    player.heading=Math.atan2(mv.x,mv.z);
-    player.bob+=dt*spd*1.8;
-    player.locoAmt=analog;player.locoRun=input.run&&!state.aiming; // GLB clip selection
+  if(moveLen>1e-5){
+    walkAmount=Math.min(1,momTics/8.33);               // 1 = DOOM walking top speed
+    player.bob+=moveLen*1.8;
+    player.locoAmt=walkAmount;player.locoRun=momTics>12; // GLB clip selection
   }
   {
     const r=state.onRoof,p=player.g.position;
@@ -1243,9 +1282,8 @@ export function updateFoot(dt:number){
         state.onRoof=null;startRoofFall();return;
       }
     }
-    const gh=r?r.y:terrainY(p.x,p.z);
-    if(f||side)p.y=gh+Math.abs(Math.sin(player.bob))*.09;
-    else p.y=gh+(p.y-gh)*.8;
+    // feet on the floor; the DOOM view bob is applied to the eye (updateCameraFP)
+    p.y=r?r.y:terrainY(p.x,p.z);
   }
   Entities.animatePed?.(player.g,player.bob,walkAmount);
   collideStatics(player.g.position,.5,SWIM_BOUND);
@@ -1264,15 +1302,10 @@ export function updateFoot(dt:number){
       }
     }
   }
-  // Face the camera only while aiming, firing, first-person or rampaging — so a
-  // carried gun lets the player walk normally and face where they move (GTA-style);
-  // active fire snaps to the camera so the shot goes where you look.
-  const armed=refs.isWeaponHeld?.()||false;
-  const faceCam=armed&&(state.aiming||input.shootHeld||fpEligible()||!!refs.getRampageState?.()?.active);
-  if(faceCam){
-    player.heading=cameraRig.yaw;
-    player.g.rotation.y=cameraRig.yaw;
-  }else player.g.rotation.y=player.heading;
+  doomClipMomentum(mv.x,mv.z,ppos.x-startX,ppos.z-startZ);
+  // First person: the body always faces where the player looks.
+  player.heading=cameraRig.yaw;
+  player.g.rotation.y=cameraRig.yaw;
 }
 
 // ---- GLB avatar animation ---------------------------------------------------
@@ -1341,146 +1374,57 @@ export function posePlayerGlbDance(lane:number,amt:number):void{
   playerAnim.update(0,{danceLane:lane,danceAmt:amt});
 }
 
-// First-person view is a *mode of the same camera*, toggled by C. It only takes
-// over while the player has normal control on foot or in a vehicle — every special
-// state (cut-scenes, death, the roof fall, swimming, entering/leaving a car, the RC
-// operator) gracefully falls back to the polished third-person camera, so those
-// animations stay visible and nothing fights the FP positioning.
+// The game is FIRST PERSON ONLY: the camera always sits at the player's eyes (on foot,
+// swimming, dying, entering/leaving a car) or in the driver's seat (in a vehicle).
+// Story cut-scenes (state.cine) are the one exception — story.ts directs the camera.
+//
+// fpEligible() is the narrower "normal control" test: it gates the first-person
+// weapon viewmodel/hands, which hide while swimming, dying, falling, getting in/out
+// of a car or in dialogue.
 function fpEligible():boolean{
-  if(!state.firstPerson||state.cine)return false;
+  if(state.cine)return false;
   if(state.mode==='car')return !!cur&&!cur.remote;
   if(state.mode==='foot')
     return !state.swimming&&!dying&&!roofFall&&!entering&&!exiting&&!state.dlgActive;
   return false;
 }
-// Whether the FP camera is actually driving the view this frame. Used by weapons.js
-// to decide when to show the first-person weapon viewmodel.
+// Whether the FP weapon viewmodel should show this frame. Used by weapons.ts.
 export function isFirstPerson():boolean{return fpEligible();}
 
-// Toggle handler for the C key (wired in input.js). Flips the flag, recenters the
-// look forward and lets the car view settle instead of snapping, plus a little SFX.
-export function toggleFirstPerson(){
-  state.firstPerson=!state.firstPerson;
-  cameraRig.fpPitch=0;            // enter/exit looking straight ahead
-  cameraRig.touchLookIdle=1;      // don't immediately yank the yaw on the toggle frame
-  blip(state.firstPerson?[660,990]:[520,330],.06,'triangle',.1);
-  message(state.firstPerson?'FIRST PERSON':'THIRD PERSON','var(--cyan)');
-}
-
-// Mouse-look (pointer lock) routed through here so the delta updates the RIGHT
-// pitch — the wide FP pitch when first-person is live, the orbit pitch otherwise.
+// Mouse-look (pointer lock): yaw + the first-person pitch.
 export function applyMouseLook(dx:number,dy:number){
   const aimK=state.aiming?.6:1; // ADS lowers mouse sensitivity for precision
   cameraRig.yaw-=dx*cameraRig.sensitivity*aimK;
   const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity*aimK;
-  if(fpEligible())cameraRig.fpPitch=clamp(cameraRig.fpPitch+dp,-1.3,1.3);
-  else cameraRig.pitch=clamp(cameraRig.pitch+dp,state.aiming?-.85:.18,state.aiming?.95:.82);
+  cameraRig.fpPitch=clamp(cameraRig.fpPitch+dp,-1.3,1.3);
   cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
 }
 
 export function updateCamera(dt:number){
-  const fp=fpEligible();
-  // The player ped IS the first-person head: hide it so we never see inside our own
-  // model (this also hides the held weapon, which is parented to the ped). Driven
-  // every frame BEFORE the cut-scene early-out so the body always reappears the
-  // instant FP isn't the active view — including story cut-scenes (fpEligible is
-  // false during state.cine), where story.js controls the camera but shows the ped.
-  player.g.visible=!fp;
-  updateFpCarInterior(dt,fp); // load/unload the detailed cockpit (FP + car + player only)
+  // The player's own body is never seen (it would fill the view); story cut-scenes
+  // show it, since story.ts frames the hero from outside.
+  player.g.visible=!!state.cine;
+  updateFpCarInterior(dt,!state.cine); // load/unload the detailed cockpit (in a car only)
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
-  let tgt:THREE.Vector3,heading:number,dist:number,baseH:number;
-  if(state.mode==='car'||state.mode==='cut'&&cur){
-    tgt=cur?cur.g.position:player.g.position;heading=cur?cur.heading:player.heading;
-    // carro: câmera colada e baixa, estilo open-world; avião continua afastado
-    dist=cur?.plane?15.5:7.2;baseH=cur?.plane?1.95:1.1;
-  }else{
-    tgt=player.g.position;heading=player.heading;
-    // nadando, a câmera baixa e chega mais perto, rente à água
-    if(state.swimming){dist=5.6;baseH=1.0;}else{dist=5.0;baseH=1.2;} // closer 3rd-person on foot; aim mode uses its own camera (updateCameraAim)
-  }
+  const inVehicle=(state.mode==='car'||state.mode==='cut')&&!!cur;
+  const tgt=inVehicle?cur!.g.position:player.g.position;
+  const heading=inVehicle?cur!.heading:player.heading;
   if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked){
     // Positive lookX means "turn right". In this engine yaw increases to the LEFT
     // (forward = (sin yaw, cos yaw); keyboard A is moveX=+1; mouse-right does yaw-=),
     // so turning right requires subtracting, same as the pointer-lock mouse path.
     const aimK=state.aiming?.6:1; // aiming lowers look speed for finer control
     cameraRig.yaw-=input.lookX*dt*aimK;
-    // FP uses a separate, wider look pitch so toggling never clamps the orbit pitch.
-    if(fp)cameraRig.fpPitch+=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
-    else cameraRig.pitch+=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
+    cameraRig.fpPitch+=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
     cameraRig.touchLookIdle=0;
   }else cameraRig.touchLookIdle+=dt;
-  // Auto-follow atrás do alvo: assim que o jogador para de mexer a câmera por um
-  // instante, ela volta suavemente pra trás do carro OU do personagem (mesmo com
-  // pointer-lock do mouse), pra não precisar reajustar o tempo todo. A pé recentra
-  // atrás de player.heading (a direção que ele encara/anda), igual ao carro.
-  //
-  // Ressalva a pé: o movimento é RELATIVO à câmera (mv = camF*f + camR*side), então
-  // player.heading = yaw + offset do input. Perseguir esse heading enquanto se faz
-  // strafe (offset fixo ≠ 0) giraria a câmera num loop sem fim. Por isso o recentrar
-  // é suprimido enquanto há strafe ativo. Parado (sem input) é estável e é o caso
-  // principal — a câmera deriva pra trás de quem olhou pro lado. Andando reto pra
-  // frente, heading == yaw, então é um no-op inofensivo.
-  // FP a pé NÃO recentra (mira livre); FP no carro ainda volta a olhar pra frente.
-  const idle=cameraRig.touchLookIdle>.45;
-  const footStrafe=state.mode==='foot'&&Math.abs(input.moveX)>.2;
-  const autoFollow=fp
-    ?(state.mode==='car'&&idle)
-    :(idle&&!footStrafe&&!state.aiming);
-  if(autoFollow){
+  // In a vehicle the view drifts back to look out of the windshield once the player
+  // stops looking around; on foot the look is always free (it drives the movement).
+  if(inVehicle&&cameraRig.touchLookIdle>.45){
     const diff=THREE.MathUtils.euclideanModulo(heading-cameraRig.yaw+Math.PI,Math.PI*2)-Math.PI;
-    cameraRig.yaw+=diff*Math.min(1,dt*(state.mode==='car'?2.0:1.5));
+    cameraRig.yaw+=diff*Math.min(1,dt*2.0);
   }
-  if(fp)return updateCameraFP(dt,tgt);
-  if(state.aiming)return updateCameraAim(dt,tgt);
-  cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
-  const forward=_camFwd.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
-  const right=_camRight.set(Math.cos(cameraRig.yaw),0,-Math.sin(cameraRig.yaw));
-  const flat=dist*Math.cos(cameraRig.pitch);
-  const height=baseH+dist*Math.sin(cameraRig.pitch);
-  const shoulder=(state.mode==='car'||state.swimming?0:cameraRig.shoulder);
-  const focus=_camFocus.set(tgt.x,tgt.y+1.45,tgt.z).addScaledVector(right,shoulder);
-  const want=_camWant.set(tgt.x,tgt.y+height,tgt.z)
-    .addScaledVector(forward,-flat)
-    .addScaledVector(right,shoulder);
-  if(state.interior){ // no interior a câmera fica presa na sala (não vaza)
-    const B=state.interior.bounds;
-    want.x=clamp(want.x,B.x0,B.x1);
-    want.y=Math.min(want.y,B.y1);
-    want.z=clamp(want.z,B.z0,B.z1);
-  }
-  const k=1-Math.exp(-4.5*dt);
-  camera.position.lerp(want,k);
-  const tf=state.mode==='car'?62+Math.abs(cur!.speed)/32*13:62;
-  camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
-  camera.updateProjectionMatrix();
-  if(state.shake>0){
-    camera.position.x+=rand(-1,1)*state.shake;
-    camera.position.y+=rand(-1,1)*state.shake*.5;
-    state.shake=Math.max(0,state.shake-dt*1.6);
-  }
-  camera.lookAt(focus.x+forward.x*2.4,focus.y,focus.z+forward.z*2.4);
-}
-
-// Over-the-shoulder AIM camera (GTA-style). The LOOK direction (yaw + a free pitch)
-// is the source of truth and the camera sits behind it; the bullet (aimRay, while
-// aiming) follows this same direction, so shots land on the centre reticle AND
-// vertical aim (up/down) works — the orbit cam's fixed-height look can't tilt up.
-function updateCameraAim(dt:number,tgt:THREE.Vector3){
-  cameraRig.pitch=clamp(cameraRig.pitch,-.85,.95); // free look pitch (down..up)
-  const yaw=cameraRig.yaw,p=cameraRig.pitch,cp=Math.cos(p);
-  const dir=_camFwd.set(Math.sin(yaw)*cp,-Math.sin(p),Math.cos(yaw)*cp).normalize();
-  const right=_camRight.set(Math.cos(yaw),0,-Math.sin(yaw));
-  // Tight over-the-shoulder: eye at shoulder height, offset to the side; camera pulled
-  // CLOSE in behind along the aim so the player's shoulder frames the bottom corner
-  // (GTA ADS), instead of a far third-person zoom.
-  const eye=_camFocus.set(tgt.x,tgt.y+1.5,tgt.z).addScaledVector(right,-.7);  // left shoulder (player sits LEFT of the reticle)
-  const want=_camWant.copy(eye).addScaledVector(dir,-2.4);                    // close behind = over-the-shoulder
-  const gy=terrainY(want.x,want.z)+.45;if(want.y<gy)want.y=gy;           // never dip below ground
-  if(state.interior){const B=state.interior.bounds;want.x=clamp(want.x,B.x0,B.x1);want.y=Math.min(want.y,B.y1);want.z=clamp(want.z,B.z0,B.z1);}
-  camera.position.lerp(want,1-Math.exp(-12*dt));                             // snappy follow
-  camera.fov+=(52-camera.fov)*Math.min(1,8*dt);camera.updateProjectionMatrix();
-  if(state.shake>0){camera.position.x+=rand(-1,1)*state.shake;camera.position.y+=rand(-1,1)*state.shake*.5;state.shake=Math.max(0,state.shake-dt*1.6);}
-  camera.lookAt(eye.x+dir.x*4,eye.y+dir.y*4,eye.z+dir.z*4);
+  updateCameraFP(dt,tgt,inVehicle);
 }
 
 // Detailed first-person CAR cockpit: a single shared model that exists in the scene
@@ -1519,10 +1463,10 @@ function updateFpCarInterior(dt:number,fp:boolean){
 // seat (in a vehicle), and the view rotates with yaw + fpPitch. The eye is parented
 // in spirit to the body, so it follows the same bob/terrain motion the ped already
 // has — no separate smoothing that could lag behind or clip through the head.
-function updateCameraFP(dt:number,tgt:THREE.Vector3){
+function updateCameraFP(dt:number,tgt:THREE.Vector3,inVehicle:boolean){
   cameraRig.fpPitch=clamp(cameraRig.fpPitch,-1.3,1.3);
   const yaw=cameraRig.yaw,pitch=cameraRig.fpPitch;
-  if(state.mode==='car'&&cur){
+  if(inVehicle&&cur){
     // Eye fixed to the cabin: offset toward the driver side and the windshield using
     // the VEHICLE heading, then lifted to head height (per vehicle kind). Only the
     // view rotates with the look — the head stays put in the seat.
@@ -1532,19 +1476,24 @@ function updateCameraFP(dt:number,tgt:THREE.Vector3){
     // the wheel, so the detailed cockpit (dash + wheel + gauges) reads in front of you
     // and the road shows through the windshield. Open vehicles (bike/boat/plane) keep
     // the eye further forward since they have no cabin to look into.
-    const up=cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:cur.tractor?1.7:1.06;
-    const fwd=cur.plane?.7:cur.bike?.3:cur.boat?.2:cur.tractor?-.35:.1;
-    const sideOff=(cur.bike||cur.boat||cur.plane||cur.tractor)?0:-.36; // cars: sit on the driver (left) seat
+    // The RC toy is flown FPV-style: a tiny camera on the toy car itself.
+    const up=cur.remote?.35:cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:cur.tractor?1.7:1.06;
+    const fwd=cur.remote?0:cur.plane?.7:cur.bike?.3:cur.boat?.2:cur.tractor?-.35:.1;
+    const sideOff=(cur.remote||cur.bike||cur.boat||cur.plane||cur.tractor)?0:-.36; // cars: sit on the driver (left) seat
     _fpEye.set(tgt.x+cf*fwd+crx*sideOff,tgt.y+up,tgt.z+cfz*fwd+crz*sideOff);
+  }else if(state.swimming){
+    // Swimming: eyes just above the waterline (the body's depth varies with the stroke).
+    const surface=tgt.y-(SWIM_TREAD_Y+(SWIM_PRONE_Y-SWIM_TREAD_Y)*player.swimPose);
+    _fpEye.set(tgt.x,surface+.22,tgt.z);
   }else{
-    // Standing/walking: eyes near the crown of the head. tgt.y already carries the
-    // step bob and terrain height, so the view bobs naturally with the stride.
-    _fpEye.set(tgt.x,tgt.y+1.58,tgt.z);
+    // On foot: DOOM's VIEWHEIGHT above the feet plus the P_CalcHeight bob (the height
+    // sinks to 6 units when dead, like P_DeathThink).
+    _fpEye.set(tgt.x,tgt.y+(doomViewHeight+doomBob(doomMom,doomLevelTime))*DOOM_UNIT,tgt.z);
   }
   // Snap the eye to the head: zero follow-lag (most responsive), and it can never
   // interpolate through a wall the way a trailing camera could.
   camera.position.copy(_fpEye);
-  const tf=state.mode==='car'&&cur?68+Math.abs(cur.speed)/32*14:70;
+  const tf=inVehicle&&cur?68+Math.abs(cur.speed)/32*14:state.aiming?52:70; // aiming zooms in a little
   camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
   camera.updateProjectionMatrix();
   if(state.shake>0){
@@ -1552,7 +1501,7 @@ function updateCameraFP(dt:number,tgt:THREE.Vector3){
     camera.position.y+=rand(-1,1)*state.shake*.5;
     state.shake=Math.max(0,state.shake-dt*1.6);
   }
-  // Look direction from yaw + pitch. Sign matches third person and the mouse path:
+  // Look direction from yaw + pitch. Sign matches the mouse path:
   // dragging the look DOWN (fpPitch grows) tilts the view down (-Y).
   const cosP=Math.cos(pitch);
   _fpDir.set(Math.sin(yaw)*cosP,-Math.sin(pitch),Math.cos(yaw)*cosP);

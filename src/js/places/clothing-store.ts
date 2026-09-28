@@ -124,7 +124,7 @@ function cartItems():{cat:ClothCat;opt:ClothOption}[]{
 function cartTotal():number{return cartItems().reduce((s,it)=>s+it.opt.price,0);}
 
 function zeroInput():void{
-  input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+  input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
   input.run=false;input.brake=false;input.shootHeld=false;
   input.moveActive=false;input.lookActive=false;input.brakeActive=false;
   for(const k of Object.keys(keys))keys[k]=false;

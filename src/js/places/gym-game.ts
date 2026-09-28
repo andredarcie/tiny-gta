@@ -86,7 +86,7 @@ const ctx=canvas&&canvas.getContext('2d')!;
 let cw=0,ch=0,dpr=1;
 
 function zeroInput(){
-  input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+  input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
   input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
   input.moveActive=false;input.lookActive=false;input.brakeActive=false;input.hornActive=false;
   for(const k of Object.keys(keys))keys[k]=false;

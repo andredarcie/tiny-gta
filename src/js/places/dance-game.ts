@@ -73,7 +73,7 @@ let best=0;
 try{best=+JSON.parse(localStorage.getItem('tinygta_dance')||'{}').best||0;}catch(e){}
 
 function zeroInput(){
-  input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+  input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
   input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
   input.moveActive=false;input.lookActive=false;input.brakeActive=false;input.hornActive=false;
   for(const k of Object.keys(keys))keys[k]=false;
