@@ -6,7 +6,7 @@ import {economy} from '@/core/economy.ts';
 import {message} from '@/ui/hud.ts';
 import {clubMusicOn,clubMusicOff} from '@/audio/club-music.ts';
 import {openDanceGame,danceGameActive} from '@/places/dance-game.ts';
-import {openMiniGameIntro,reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {openMiniGameIntro,markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
 import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
   from '../../assets/models/city/nightclub.ts';
@@ -93,5 +93,5 @@ function onDanceFinish(info:{won:boolean;grade:string;score:number;maxCombo:numb
   }else{
     message('THE CROWD BOOED YOU OFF THE FLOOR','var(--pink)');
   }
-  reportMiniGameResult(MiniGameId.DANCE,{won:info.won,score:info.score}); // ranking da dança (top 5)
+  markMiniGamePlayed(MiniGameId.DANCE);
 }

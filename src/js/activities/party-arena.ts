@@ -24,11 +24,6 @@ import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 // come. Win by wiping the enemy side — every fighter (roster + alive) AND both
 // towers — and you reappear outside the gate with the round win (+ prize).
 // Losing your life ends the round (normal WASTED flow) — the arena cleans up.
-//
-// ONLINE: the arena is a real place in the single shared world, so other
-// players who enter are visible and PvP works exactly like anywhere else —
-// friends can fight for the same party or against each other. (Fighters and
-// towers are simulated per-client, like all NPCs in this game.)
 // ============================================================================
 
 const ROSTER=8;        // fighters per party per round (spawned in waves)
@@ -447,7 +442,7 @@ export function updatePartyArena(dt:number){
   matchAge+=dt;
   const pp=playerPos();
   // safety: the player left the pitch through some other flow (busted, hospital,
-  // remote-PvP death, ...) — tear the round down silently
+  // ...) — tear the round down silently
   if(Math.hypot(pp.x-ARENA_STAGE.x,pp.z-ARENA_STAGE.z)>ARENA_W){cleanup();return;}
   pp.x=clamp(pp.x,ARENA_STAGE.x-FIELD_W/2-ARENA_PAD,ARENA_STAGE.x+FIELD_W/2+ARENA_PAD);
   pp.z=clamp(pp.z,ARENA_STAGE.z-FIELD_D/2-ARENA_PAD,ARENA_STAGE.z+FIELD_D/2+ARENA_PAD);

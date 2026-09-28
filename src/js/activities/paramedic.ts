@@ -14,7 +14,7 @@ import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {Npc} from '@/actors/npc.ts';
 
 // Side-mission de paramédico estilo open-world (Vigilante/Paramedic): uma ambulância
@@ -162,7 +162,7 @@ function endDuty(text='AMBULANCE RUSH ENDED',col='var(--cyan)'){
   clearHospMk();
   const summary=runRescues>0?` - ${runRescues} PATIENTS SAVED`:'';
   // ranking: o plantão inteiro é UMA sessão; score = pacientes salvos
-  reportMiniGameResult(game.id,{won:runRescues>0,score:runRescues});
+  markMiniGamePlayed(game.id);
   phase='off';onboard=0;needed=0;timeLeft=0;
   game.end(); // libera a trava do mundo
   hideMedHud();
@@ -205,7 +205,7 @@ function timeout(){
   message('PATIENTS LOST - OUT OF TIME','var(--pink)');
   blip([220,165,110],.12,'sawtooth',.16);
   // Keep the session alive (do NOT call endDuty/game.end): the player is still in
-  // the ambulance, so ending here would re-open the leaderboard briefing overlay
+  // the ambulance, so ending here would re-open the briefing overlay
   // every timeout. Mirror taxi/vigilante: reset to level 1 and respawn in place.
   clearPatients();
   clearHospMk();

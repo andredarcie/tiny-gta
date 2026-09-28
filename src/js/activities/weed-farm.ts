@@ -15,7 +15,7 @@ import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HA
   makeWeedPlant,makeBud,makeBucket,makeWaterDrop} from '../../assets/models/rural/weed-farm.ts';
 import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import {getDay} from '@/world/daynight.ts';
 import {Npc} from '@/actors/npc.ts';
@@ -398,7 +398,7 @@ function endRunCleanup(): void{
 }
 function finishRun(): void{
   const sold=pack.orig;
-  reportMiniGameResult(MiniGameId.WEED_FARM,{won:true,score:sold});
+  markMiniGamePlayed(MiniGameId.WEED_FARM);
   boxed+=sold;
   endRunCleanup();
   bigText('ALL DELIVERED','var(--gold)');setTimeout(hideBig,1100);

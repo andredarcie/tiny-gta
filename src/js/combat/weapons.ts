@@ -31,7 +31,7 @@ import {makeFpHands} from '../../assets/models/characters/fp-hands.ts';
 import {WEAPONS,ARSENAL,FIST,bySlot} from '@/combat/weapon-catalog.ts';
 import type {Weapon,WeaponApi,Recoil,Hold} from '@/combat/weapon-types.ts';
 import type {Vehicle} from '@/core/types.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // ----- shared local types ----------------------------------------------------
@@ -211,7 +211,7 @@ function endRampage(won: boolean){
   rampage.active=false;
   if(rampageEl)rampageEl.style.display='none';
   rocketRespawnAt=state.time+75; // a lança-foguetes volta pro pasto um tempo depois
-  reportMiniGameResult(rampageGame.id,{won,score:rampage.kills}); // ranking (top 5)
+  markMiniGamePlayed(rampageGame.id);
   rampageGame.end();                   // libera a trava do mundo (idempotente)
   if(won){
     economy.earn(RAMPAGE_REWARD,'rocket-rampage');
@@ -1096,7 +1096,6 @@ function missileBlast(pos: THREE.Vector3,hit: WeaponHit|null){
     if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
   }
   if(hit&&hit.kind==='story')hit.target.kill();
-  if(!refs.inGunShopRange?.())refs.onlineBlast?.(pos,3,6);
   state.shake=Math.max(state.shake,.4);
 }
 
@@ -1114,17 +1113,12 @@ function fireOneBullet({range=52,speed=86,damage=1,spread=0}: {range?: number;sp
   if(s>0){dir.applyAxisAngle(_up,(Math.random()*2-1)*s);dir.normalize();}
   makeBullet(origin,dir,{speed,range,damage});
   addTracer(origin,origin.clone().addScaledVector(dir,3.2));
-  // Online: share this bullet — any PvP hit is decided by the SERVER, never
-  // here (js/net/online.ts). Practice-range shots stay local.
-  if(!refs.inGunShopRange?.())refs.onlineShot?.(origin,dir,damage,range);
 }
 
 // Golpe corpo a corpo: acerta o alvo mais próximo logo à frente.
 function meleeAttack(range: number,knock: number,lethal: boolean){
   startMeleeAnimation(range,knock,lethal);
   state.crosshairKick=1;
-  // Online: share the swing — any PvP hit is decided by the SERVER (~2m reach).
-  if(!refs.inGunShopRange?.())refs.onlineMelee?.(range,lethal);
 }
 
 // Jato do lança-chamas: efeito de cone + dano de curto alcance.
@@ -1147,7 +1141,6 @@ function flameAttack(range: number){
       if(ud.bulletHits>=4)explodeCar(c,arr);
     }
   }
-  if(!refs.inGunShopRange?.())refs.onlineFlame?.(origin,dir,1,range);
 }
 
 // Arremesso em arco (granada/molotov).
@@ -1165,7 +1158,6 @@ function grenadeExplode(pos: THREE.Vector3){
   makeExplosion(pos.clone());
   blastDamage(pos);
   if(!refs.inGunShopRange?.()){
-    refs.onlineBlast?.(pos,3,5);
     addWanted(1,'EXPLOSION!','explosion');
   }
   state.shake=Math.max(state.shake,.4);
@@ -1175,7 +1167,6 @@ function molotovImpact(pos: THREE.Vector3){
   addFirePool(pos);
   blastDamage(pos);            // estouro inicial pega quem está bem perto
   if(!refs.inGunShopRange?.()){
-    refs.onlineBlast?.(pos,2,4);
     addWanted(1,'EXPLOSION!','explosion');
   }
   thud(10);blip([120,80],.18,'sawtooth',.22);
@@ -1232,7 +1223,7 @@ const api: WeaponApi={
     // firearm keeps the synthesized shot. pistolShot() returns false until the
     // sample is decoded (or if it failed to load), so we fall back to gunshot().
     if(curWeapon?.id!=='pistol'||!pistolShot(v))gunshot(v);
-    const pp=playerPos();state.shotT=state.time;state.myShotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
+    const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
     if(!refs.inGunShopRange?.()){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
       // no radio dispatch from the isolated Party Arena: addWanted already no-ops
@@ -1536,7 +1527,6 @@ export function updateWeapons(dt: number){
     if(fp.nextTick<=0){
       fp.nextTick=.5;
       const c=fp.g.position;
-      if(!refs.inGunShopRange?.())refs.onlineBlast?.(c,1,fp.radius);
       const near=(p: any)=>Math.hypot(p.g.position.x-c.x,p.g.position.z-c.z)<fp.radius;
       for(const n of npcs)if(!n.dead&&near(n))n.takeDamage(_up); // unified: peds+gang+officers+rural
 

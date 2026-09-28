@@ -626,10 +626,8 @@ function wastedCut(){
     state.onRoof=null;roofFall=null;
     state.health=100; // wake up at the hospital fully healed
     // Hospital bill on death: a FIXED $100 fee (capped at the balance), not a
-    // percentage of the wallet. The lost cash drops as a PUDDLE where the player fell
-    // (Souls-like async multiplayer) that another online player can grab —
-    // flatPenalty() returns the amount lost, which is what the puddle carries.
-    refs.dropDeathPool?.(deathSpotX,deathSpotZ,economy.flatPenalty(100,'wasted'));
+    // percentage of the wallet.
+    economy.flatPenalty(100,'wasted');
     state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
     refs.clearArmy?.(); // army truck + soldiers (★6)
@@ -647,14 +645,10 @@ function wastedCut(){
 // Morte a pé: o corpo tomba de costas (rosto pra cima) com poça de sangue,
 // como os NPCs; o letreiro WASTED só aparece depois do corpo no chão
 let dying:{t:number;puddle:boolean}|null=null;
-// Onde o jogador morreu (x,z): o multiplayer assíncrono (js/loot/bloodstains.ts) deixa
-// aqui a "poça" com o dinheiro perdido na morte pra outro jogador online pegar.
-let deathSpotX=0,deathSpotZ=0;
 export function getWasted(){
   if(refs.handlePartyArenaDeath?.())return;
   if(wastedActive||dying)return;
   wastedActive=true;
-  {const dp=playerPos();deathSpotX=dp.x;deathSpotZ=dp.z;} // lembra o lugar da morte (poça)
   // morrer nadando: endireita a postura do nado antes da animação de queda
   if(state.swimming){
     state.swimming=false;state.swimAir=1;

@@ -1,6 +1,6 @@
 // In-game PAUSE MENU — a proper game menu (P / Esc on desktop, the II button on
 // touch). Top level: RESUME, INFO, SETTINGS, QUIT. INFO groups the read-only panels
-// (leaderboard, transactions, updates, the full MAP, and a MINI GAMES reference that
+// (transactions, updates, the full MAP, and a MINI GAMES reference that
 // lists every mini-game's payouts/costs/timers straight from minigame-rewards.json).
 // SETTINGS holds graphics/audio plus the fullscreen toggle.
 //
@@ -9,9 +9,9 @@
 // this) — resume / fullscreen / the full map go through late-bound refs
 // (refs.togglePause / refs.toggleFullscreen / refs.openFullMap) to keep the
 // dependency one-directional.
-import {state,refs} from '@/core/state.ts';
+import {refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
-import {API,getNickname,flush} from '@/ui/leaderboard.ts';
+import {saveNow} from '@/core/save.ts';
 import {settings,setSetting,resetSettings} from '@/core/settings.ts';
 import {getNpcRoster,kindLabel,type NpcRosterEntry} from '@/actors/npc.ts';
 import UPDATES from '../../data/updates.json';
@@ -19,8 +19,6 @@ import MINIGAME_REWARDS from '../../data/minigame-rewards.json';
 
 // A changelog entry shape (data/updates.json, newest-first).
 interface Update { id: string; date: string; title: string; description: string; }
-// A leaderboard row from /api/scores.
-interface LbEntry { rank: number; name: string; money: number; }
 // One settings control descriptor (the SCHEMA below).
 interface SettingItem { key: string; type: 'range' | 'toggle'; label: string; min?: number; max?: number; step?: number; suffix?: string; }
 
@@ -30,8 +28,6 @@ const escapeHtml=(s: unknown): string=>String(s).replace(/[&<>"']/g,
 
 const fmtMoney=(n: unknown): string=>'$'+Math.abs(Math.floor(Number(n)||0)).toLocaleString('en-US');
 const fmtSigned=(n: unknown): string=>(Number(n)<0?'-':'+')+fmtMoney(n);
-const moneyCompact=new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:1});
-const fmtCompact=(n: unknown): string=>'$'+moneyCompact.format(Math.max(0,Math.floor(Number(n)||0)));
 const fmtTime=(t: unknown): string=>{try{return new Date(Number(t)).toLocaleString();}catch(e){return '';}};
 const fmtDate=(d: string): string=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}catch(e){return String(d);}};
 
@@ -71,20 +67,19 @@ const bodyEl=(): HTMLElement=>$('pause-body')!;
 const setTitle=(t: string): void=>{const e=$('pause-title');if(e)e.textContent=t;};
 
 // View hierarchy. INFO and SETTINGS hang off the main menu; the read-only panels
-// (leaderboard / transactions / updates / minigames) hang off INFO. MAP is NOT a
+// (transactions / updates / minigames / npcs) hang off INFO. MAP is NOT a
 // view — it leaves the pause menu and opens the existing full-map overlay.
-// 'main' | 'info' | 'leaderboard' | 'transactions' | 'updates' | 'minigames' | 'settings'
+// 'main' | 'info' | 'transactions' | 'updates' | 'minigames' | 'npcs' | 'settings'
 let view='main';
 // Parent of each sub-view, so BACK / hardware-back walks up exactly one level.
 const PARENT: Record<string, string>={
   info:'main', settings:'main',
-  leaderboard:'info', transactions:'info', updates:'info', minigames:'info', npcs:'info',
+  transactions:'info', updates:'info', minigames:'info', npcs:'info',
 };
 function goBack(): void { openView(PARENT[view]||'main'); }
 function openView(v: string): void {
   switch(v){
     case'info': goInfo(); break;
-    case'leaderboard': openLeaderboard(); break;
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
     case'minigames': openMiniGames(); break;
@@ -118,13 +113,12 @@ function goMain(): void {
     `</div>`;
 }
 
-// ---- INFO submenu — the read-only panels (board / wallet / changelog / map / minigames)
+// ---- INFO submenu — the read-only panels (wallet / changelog / map / minigames / npcs)
 function goInfo(): void {
   view='info';
   setTitle('INFO');
   bodyEl().innerHTML=
     `<div class="pause-menu">`+
-      `<button class="pause-btn" data-act="leaderboard">LEADERBOARD</button>`+
       `<button class="pause-btn" data-act="transactions">TRANSACTIONS</button>`+
       `<button class="pause-btn" data-act="updates">UPDATES${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
       `<button class="pause-btn" data-act="map">MAP</button>`+
@@ -208,49 +202,6 @@ function renderNpcsPage(): void {
     filters+
     `<div class="pause-scroll">${table}</div>`+
     pager(npcPage,pages,note)+
-    backBtn();
-}
-
-// ---- leaderboard (global ranking, paginated) -------------------------------
-const LB_PER_PAGE=10;
-let lbEntries: LbEntry[]=[],lbTotal=0,lbPage=0,lbReqId=0;
-
-async function openLeaderboard(): Promise<void> {
-  view='leaderboard';
-  setTitle('LEADERBOARD');
-  lbPage=0;
-  bodyEl().innerHTML=`<div class="pause-loading">Loading the board&hellip;</div>`+backBtn();
-  const req=++lbReqId;
-  try{
-    const r=await fetch(API+'/api/scores?limit=100');
-    const data=(await r.json()) as {entries?: LbEntry[]; total?: number};
-    if(req!==lbReqId||view!=='leaderboard')return; // superseded or user left
-    lbEntries=data.entries||[];
-    lbTotal=Number(data.total)||lbEntries.length;
-  }catch(e){
-    if(req!==lbReqId||view!=='leaderboard')return;
-    lbEntries=[];lbTotal=0;
-  }
-  renderLeaderboardPage();
-}
-function renderLeaderboardPage(): void {
-  const pages=Math.max(1,Math.ceil(lbEntries.length/LB_PER_PAGE));
-  lbPage=Math.min(Math.max(0,lbPage),pages-1);
-  const start=lbPage*LB_PER_PAGE;
-  const me=getNickname();
-  const rows=lbEntries.slice(start,start+LB_PER_PAGE).map(e=>
-    `<tr${e.name===me?' class="pause-me"':''}>`+
-    `<td class="pause-pos">${e.rank}</td>`+
-    `<td class="pause-tname">${escapeHtml(e.name)}</td>`+
-    `<td class="num">${fmtCompact(e.money)}</td></tr>`
-  ).join('');
-  const table=lbEntries.length
-    ? `<table class="pause-table"><thead><tr><th>#</th><th>PLAYER</th><th class="num">MONEY</th></tr></thead><tbody>${rows}</tbody></table>`
-    : `<div class="pause-empty">Be the first on the board!</div>`;
-  const note=lbTotal>0?`${lbTotal.toLocaleString('en-US')} player${lbTotal===1?'':'s'} competing`:'';
-  bodyEl().innerHTML=
-    `<div class="pause-scroll">${table}</div>`+
-    pager(lbPage,pages,note)+
     backBtn();
 }
 
@@ -427,8 +378,7 @@ function renderSettings(): void {
 
 // ---- delegated input -------------------------------------------------------
 function changePage(dir: number): void {
-  if(view==='leaderboard'){lbPage+=dir;renderLeaderboardPage();}
-  else if(view==='transactions'){txPage+=dir;renderTransactionsPage();}
+  if(view==='transactions'){txPage+=dir;renderTransactionsPage();}
   else if(view==='npcs'){npcPage+=dir;renderNpcsPage();}
 }
 function onBodyClick(e: MouseEvent): void {
@@ -448,7 +398,6 @@ function onBodyClick(e: MouseEvent): void {
   switch(el.dataset.act){
     case'resume': refs.togglePause?.(); break;       // input.js owns the pause state
     case'info': goInfo(); break;
-    case'leaderboard': openLeaderboard(); break;
     case'transactions': openTransactions(); break;
     case'updates': openUpdates(); break;
     case'minigames': openMiniGames(); break;
@@ -469,7 +418,7 @@ function onBodyClick(e: MouseEvent): void {
     case'settings': openSettings(); break;
     case'fullscreen': refs.toggleFullscreen?.(); break;
     case'quit':
-      if(confirm('Quit to the title screen? Your progress is saved.')){try{flush();}catch(_){}location.reload();}
+      if(confirm('Quit to the title screen? Your progress is saved.')){saveNow();location.reload();}
       break;
     case'back': goBack(); break;
     case'page': changePage(parseInt(el.dataset.dir!,10)||0); break;

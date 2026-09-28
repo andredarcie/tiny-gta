@@ -1,5 +1,5 @@
 {
-  // Front-end (the game) type-check config. The backend has its own tsconfig.
+  // The game's type-check config.
   // The build is still Vite/esbuild (which strips types without checking); this
   // config powers `npm run typecheck` (tsc --noEmit) and editor type-checking.
   //
@@ -26,6 +26,6 @@
     "skipLibCheck": true,
     "paths": { "@/*": ["./src/js/*"] }
   },
-  "include": ["src", "shared", "vite-env.d.ts"],
-  "exclude": ["node_modules", "dist", "backend", "android", "public", "docs", "output", "test", "tools"]
+  "include": ["src", "vite-env.d.ts"],
+  "exclude": ["node_modules", "dist", "android", "public", "docs", "output", "test", "tools"]
 }

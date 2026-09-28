@@ -16,10 +16,7 @@ import {message,drawFullMap,toggleMapNpcs} from '@/ui/hud.ts';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from '@/combat/weapons.ts';
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.ts';
 import {toggleModelViewer,closeModelViewer} from '@/ui/model-viewer.ts';
-import {toggleAdmin,closeAdmin,isAdmin} from '@/ui/admin.ts';
-import {getNickname,setNickname,startSession,refreshTopPlayers,accountRequest,checkNameRegistered} from '@/ui/leaderboard.ts';
-import {applySave} from '@/core/save.ts';
-import {hasProfanity} from '@/core/profanity.ts';
+import {applySave,loadLocalSave,startLocalSave} from '@/core/save.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {openPauseMenu,closePauseMenu,pauseBack} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
@@ -75,13 +72,13 @@ export function performRadioSwitch(): void {
 export function performPauseToggle(): void {
   if(!state.started||state.mode==='cut')return;
   state.paused=!state.paused;
-  if(state.paused){resetInput(true);openPauseMenu();} // builds the menu (own leaderboard fetch)
+  if(state.paused){resetInput(true);openPauseMenu();}
   else closePauseMenu();
 }
 
 // Android hardware "back" button. Mirrors the keydown Escape precedence so back
 // closes whatever overlay is open (mini-game, map, weapon wheel, TV, …) before
-// falling back to pause. Returns 'exit' only at the very top (title/nick screen)
+// falling back to pause. Returns 'exit' only at the very top (title screen)
 // so the native shell can leave the app; otherwise 'consumed'. See js/core/native.ts.
 export function performBack(): 'exit' | 'consumed' {
   if(state.cine)return 'consumed';                                        // cut-scene: ignore back
@@ -90,13 +87,10 @@ export function performBack(): 'exit' | 'consumed' {
   if(modShopActive()){closeModShop();return 'consumed';}
   if(state.tvActive){closeHouseTv();return 'consumed';}
   if(state.viewerOpen){closeModelViewer();return 'consumed';}
-  const nick=document.getElementById('nickmodal');
-  if(nick?.classList.contains('open')){nick.classList.remove('open');return 'consumed';}
   if(!state.started)return 'exit';                                        // title screen: allow exit
   if(state.dlgActive)return 'consumed';                                   // cut-scene dialogue
   if(state.wheelOpen){closeWheel(false);return 'consumed';}
   if(state.mapOpen){closeFullMap();return 'consumed';}
-  if(state.adminOpen){closeAdmin();return 'consumed';}                    // admin dashboard (Y)
   if(state.paused&&pauseBack())return 'consumed';                        // pause sub-panel -> main menu
   performPauseToggle();                                                   // gameplay: pause / unpause
   return 'consumed';
@@ -194,93 +188,23 @@ export function startGameFromUserGesture(opts: {mobile?: boolean}={}): void {
 
 const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').matches;
 
-// Abre o modal de nickname/login (passo antes de iniciar a partida).
-function openNickModal(): void {
-  if(state.started)return;
-  const inp=document.getElementById('nick-input') as HTMLInputElement | null;
-  if(inp)inp.value=getNickname();
-  setNickStatus('');
-  document.getElementById('nickmodal')?.classList.add('open');
-  setTimeout(()=>inp?.focus(),60);
-}
-
-// Lê o apelido do campo já saneado (mesma regra do servidor).
-function readNick(): string {
-  const inp=document.getElementById('nick-input') as HTMLInputElement | null;
-  return (inp?.value||'').toUpperCase().replace(/[^A-Z0-9 _-]/g,'').replace(/\s+/g,' ').trim().slice(0,12);
-}
-// Linha de status do modal (erro em vermelho, ok em ciano).
-function setNickStatus(msg: string,ok?: boolean): void {
-  const el=document.getElementById('nick-status');
-  if(el){el.textContent=msg||'';el.classList.toggle('ok',!!ok);}
-}
-function nickShake(): void {
-  const inp=document.getElementById('nick-input');
-  inp?.classList.add('err');setTimeout(()=>inp?.classList.remove('err'),350);
-}
-
-// Fecha o modal e ENTRA na partida. Este caminho roda dentro do clique/tap do
-// usuário (gesto), então vale pra áudio/fullscreen/pointer-lock. Abre a sessão do
-// ranking (não bloqueia o start) e RESTAURA o save: dinheiro, armas, casa, etc.
-//
-// IDEMPOTENTE (guarda por state.started): os botões LOG IN / CREATE ACCOUNT /
-// convidado + Enter ficam todos ativos durante o accountRequest assíncrono, então
-// um duplo-toque (comum no celular) chamava beginRun 2x → 2x startSession/applySave.
-// O 2º applySave reaplicava o "gap" sobre o saldo já restaurado e DOBRAVA o dinheiro.
+// Enters the game. Runs inside the player's click/tap (a user gesture), so audio,
+// fullscreen and pointer-lock are allowed. Restores this device's local save
+// (money, weapons, house, ...) and then arms autosave. Idempotent: guarded by
+// state.started, so a double-tap can't restore twice.
 function beginRun(): void {
-  if(state.started)return; // já entrou na partida: 2º toque não reabre sessão nem re-restaura
-  document.getElementById('nickmodal')?.classList.remove('open');
+  if(state.started)return;
   startGameFromUserGesture({mobile:isMobileEnv()});
-  startSession().then(save=>{
-    if(!save)return;
+  const save=loadLocalSave();
+  if(save){
     applySave(save);
     if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
-  });
-}
-
-// Jogar como CONVIDADO: fluxo anônimo (pid no localStorage, sem conta). Antes de
-// entrar, confere no backend se o apelido já é de uma CONTA cadastrada — um
-// convidado NÃO pode usar o apelido de outra pessoa (senão herdaria o dinheiro/save
-// dela). Se estiver cadastrado, manda fazer LOG IN com senha ou escolher outro nome.
-async function playAsGuest(): Promise<void> {
-  const name=readNick();
-  if(!name||hasProfanity(name)){nickShake();setNickStatus('Pick a valid nickname.');return;}
-  setNickStatus('Checking nickname…',true);
-  if(await checkNameRegistered(name)){
-    nickShake();
-    setNickStatus('That nickname belongs to an account. LOG IN with your password, or pick another name.');
-    return;
   }
-  setNickname(name);
-  beginRun();
+  startLocalSave();
 }
 
-// Mensagens amigáveis pros códigos de erro do /api/account.
-const ACCT_ERR: Record<string, string>={
-  taken:'Nickname already registered — use LOG IN.',
-  invalid_credentials:'Wrong nickname or password.', // genérico (não revela se o nick existe)
-  rate_limited:'Too many tries — wait a moment.',
-  invalid_password:'Password must be 4+ characters.',
-  invalid_name:'Pick a valid nickname.',
-  network:'Network error — try again.',
-  name_registered:'That nickname belongs to an account. LOG IN with your password.',
-};
-
-// CRIAR CONTA ou ENTRAR: valida local, resolve a conta no backend (adota pid+nick)
-// e só então entra na partida. Erros aparecem no status, sem iniciar o jogo.
-async function doAccount(action: string): Promise<void> {
-  const name=readNick();
-  const pass=(document.getElementById('nick-pass') as HTMLInputElement | null)?.value||'';
-  if(!name||hasProfanity(name)){nickShake();setNickStatus('Pick a valid nickname.');return;}
-  if(pass.length<4){setNickStatus('Password must be 4+ characters.');return;}
-  setNickStatus(action==='register'?'Creating account…':'Logging in…',true);
-  const res=await accountRequest(action,name,pass);
-  if(!res.ok){setNickStatus(ACCT_ERR[res.error]||ACCT_ERR.network);return;}
-  beginRun();
-}
-
-// Usado pelo touch-controls: tocar pra jogar abre o modal de nickname.
-export function requestStart(): void { openNickModal(); }
+// Used by touch-controls: tapping PLAY starts the game.
+export function requestStart(): void { beginRun(); }
 
 export function setupInput(): void {
   const canvas=gameCanvas();
@@ -328,7 +252,7 @@ export function setupInput(): void {
   });
 
   addEventListener('keydown',(e: KeyboardEvent)=>{
-    // Digitando num campo (ex.: modal de nickname): não captura atalhos globais.
+    // Typing in a text field: don't capture global shortcuts.
     const t=e.target as (HTMLElement | null);
     if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable))return;
     if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Tab'].includes(e.code))
@@ -376,8 +300,6 @@ export function setupInput(): void {
     if(state.wheelOpen){if(e.code==='Escape')closeWheel(false);return;}
     // Mapa completo aberto: só M/Esc o fecham; o resto dos atalhos fica congelado
     if(state.mapOpen){if(e.code==='KeyM'||e.code==='Escape')closeFullMap();return;}
-    // Dashboard de admin aberto: só Y/Esc fecham; o resto congela (cliques no modal).
-    if(state.adminOpen){if(e.code==='KeyY'||e.code==='Escape')closeAdmin();return;}
     // Pause menu open: Esc backs out of a sub-panel (or unpauses at the main menu),
     // P toggles pause, and every other shortcut is swallowed so gameplay keys are
     // inert while the menu is up.
@@ -387,7 +309,6 @@ export function setupInput(): void {
       return;
     }
     if(e.code==='KeyM'){toggleFullMap();return;}
-    if(e.code==='KeyY'&&isAdmin()){toggleAdmin();return;} // painel do dono (só 'REI')
     if(e.code==='KeyP'){performPauseToggle();return;}
     if(e.code==='KeyF'&&e.shiftKey){performFullscreenToggle();return;}
     if(e.code==='KeyR'){performRadioSwitch();return;} // rádio saiu do Tab (agora da roda de armas)
@@ -412,31 +333,15 @@ export function setupInput(): void {
     if(document.hidden)resetInput(true);
   });
 
-  // Iniciar passa pelo modal de nickname (o nick vai pro ranking global).
-  refreshTopPlayers();
-  document.getElementById('play')?.addEventListener('click',(e: MouseEvent)=>{e.stopPropagation();openNickModal();});
-  document.getElementById('nick-register')?.addEventListener('click',()=>doAccount('register'));
-  document.getElementById('nick-login')?.addEventListener('click',()=>doAccount('login'));
-  document.getElementById('nick-guest')?.addEventListener('click',playAsGuest);
-  // Enter em qualquer campo: faz LOGIN (caminho mais comum de quem volta).
-  const nickEnter=(e: KeyboardEvent): void=>{ if(e.key==='Enter'){e.preventDefault();doAccount('login');} };
-  document.getElementById('nick-input')?.addEventListener('keydown',nickEnter);
-  document.getElementById('nick-pass')?.addEventListener('keydown',nickEnter);
+  document.getElementById('play')?.addEventListener('click',(e: MouseEvent)=>{e.stopPropagation();beginRun();});
 
-  // Dev shortcut: on localhost, skip the whole title/login screen and jump
-  // straight into the game with a fixed nickname. Deferred to a macrotask so the
-  // rest of boot (pause menu, touch, wheel, settings) finishes first — then we
-  // start exactly as a "Play as guest" click would. Pointer-lock/audio simply
-  // engage on the first click, same as any auto-started page. LAN access (phone
-  // testing via the host IP) is NOT localhost, so it keeps the normal login.
-  // A pre-seeded `tinygta_nick` wins over the 'localhost' default, so the
-  // two-player online harness can boot each window as a distinct named player.
+  // Dev shortcut: on localhost, skip the title screen and jump straight into the
+  // game. Deferred to a macrotask so the rest of boot (pause menu, touch, wheel,
+  // settings) finishes first — then we start exactly as a PLAY click would.
+  // Pointer-lock/audio simply engage on the first click. LAN access (phone
+  // testing via the host IP) is NOT localhost, so it keeps the title screen.
   const onLocalhost=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
-  if(onLocalhost){
-    let seededNick='localhost';
-    try{seededNick=localStorage.getItem('tinygta_nick')||'localhost';}catch{/* no localStorage: default nick */}
-    setTimeout(()=>{ if(!state.started){ setNickname(seededNick); beginRun(); } },0);
-  }
+  if(onLocalhost)setTimeout(()=>{ if(!state.started)beginRun(); },0);
   // Resume / fullscreen are driven from inside the pause menu (js/ui/pause-menu.ts) via
   // late-bound refs, so it never has to import this module (which imports it).
   refs.togglePause=performPauseToggle;

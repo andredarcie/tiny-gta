@@ -479,7 +479,7 @@ body.mod-shop-open #touch-controls{display:none!important}
   #clothesshop{background:linear-gradient(0deg,rgba(8,0,8,.8) 0%,rgba(8,0,8,.3) 46%,rgba(8,0,8,0) 70%)}
 }
 /* ---- intro splash: "André N. Darcie presents" — covers boot (world build + shader
-   warmup + leaderboard fetch). The reveal is a GPU-COMPOSITED wipe: a black panel slides
+   warmup). The reveal is a GPU-COMPOSITED wipe: a black panel slides
    off to the right via transform, uncovering the glowing title left→right. Using only
    transform/opacity keeps it SMOOTH even while the main thread is frozen building the world
    / warming up shaders — main-thread effects (clip-path, text-shadow pulses) just freeze and
@@ -507,29 +507,7 @@ body.mod-shop-open #touch-controls{display:none!important}
   transform:skewX(-7deg) rotate(-2deg);text-align:center;color:var(--cream);
   text-shadow:4px 4px 0 var(--pink),8px 8px 0 #5a0e3a,0 0 50px rgba(255,46,136,.55)}
 #logo span{display:block}
-/* ----- Global ranking on the title screen (the pause menu has its own) ----- */
-#leaderboard{margin-top:34px;width:min(420px,90vw);background:rgba(20,9,31,.58);
-  border:2px solid var(--cyan);border-radius:14px;padding:14px 16px 12px;
-  box-shadow:0 0 18px rgba(25,227,255,.35)}
-.lb-head{font-family:'Bowlby One SC';font-size:16px;letter-spacing:2px;color:var(--cyan);
-  text-align:center;text-shadow:0 0 12px rgba(25,227,255,.7);margin-bottom:8px}
-#lb-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
-#lb-list li{display:grid;grid-template-columns:1.6em 1fr auto;align-items:center;gap:8px;
-  font:700 14px 'IBM Plex Mono',monospace;color:var(--cream);
-  padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.05)}
-#lb-list li:nth-child(1){background:rgba(255,210,74,.18);border:1px solid rgba(255,210,74,.6)}
-.lb-rank{color:var(--gold);text-align:center;font-weight:800}
-.lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.lb-money{color:#7CFFB0;font-variant-numeric:tabular-nums}
-.lb-empty{display:block;text-align:center;opacity:.7;font-weight:600}
-.lb-total{margin-top:9px;text-align:center;font:700 12px 'IBM Plex Mono',monospace;
-  letter-spacing:.5px;color:var(--cyan);opacity:.85;text-shadow:0 0 8px rgba(25,227,255,.4)}
-.lb-total:empty{display:none}
-.lb-prize{margin-top:10px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.45;
-  color:var(--cream);opacity:.85;text-align:center}
-.lb-prize b{color:var(--gold)}
-
-/* Briefing/ranking que aparece no começo de cada mini game (ver js/minigame-leaderboard.js) */
+/* Briefing shown at the start of each mini game (see js/activities/minigame-intro.ts) */
 #mg-intro{position:fixed;inset:0;z-index:46;display:none;align-items:center;justify-content:center;
   padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
   background:radial-gradient(ellipse at 50% 40%,rgba(10,2,20,.35),rgba(6,1,14,.78) 80%);
@@ -542,17 +520,6 @@ body.mod-shop-open #touch-controls{display:none!important}
 .mgi-sub{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:4px;color:var(--gold);opacity:.8}
 #mgi-title{font-family:'Bowlby One SC';font-size:30px;line-height:1.1;letter-spacing:1px;color:var(--cream);
   text-shadow:0 0 18px rgba(255,210,74,.5);margin:2px 0 14px}
-.mgi-box .lb-head{font-size:14px;margin-bottom:8px}
-#mgi-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
-#mgi-list li{display:grid;grid-template-columns:1.6em 1fr auto;align-items:center;gap:8px;
-  font:700 14px 'IBM Plex Mono',monospace;color:var(--cream);
-  padding:5px 8px;border-radius:7px;background:rgba(255,255,255,.05);text-align:left}
-#mgi-list li:nth-child(1){background:rgba(255,210,74,.18);border:1px solid rgba(255,210,74,.6)}
-#mgi-list .lb-rank{color:var(--gold);text-align:center;font-weight:800}
-#mgi-list .lb-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mgi-rating{color:#7CFFB0;font-variant-numeric:tabular-nums;text-align:right;line-height:1.1}
-.mgi-rating small{display:block;font-size:9px;font-weight:600;color:var(--cream);opacity:.55;letter-spacing:.5px}
-#mgi-list .lb-empty{display:block;text-align:center;opacity:.7;font-weight:600}
 #mgi-go{margin-top:16px;font-family:'Bowlby One SC';font-size:20px;letter-spacing:3px;
   color:var(--ink);background:var(--gold);padding:10px 32px;border:none;border-radius:8px;
   cursor:pointer;box-shadow:0 0 22px rgba(255,210,74,.6),3px 3px 0 #7a3a00}
@@ -564,18 +531,15 @@ body.mod-shop-open #touch-controls{display:none!important}
 @media (max-width:560px){
   .mgi-box{width:min(360px,94vw);padding:14px 14px 16px}
   #mgi-title{font-size:24px}
-  #mgi-list li{font-size:12px;padding:4px 7px}
   #mgi-go{font-size:18px;padding:9px 26px}
 }
 /* Short viewports (phone landscape / short windows): compact the briefing so the
-   top-5 + button fit the height. Any tap/key dismisses it, so even if it still
+   card + button fit the height. Any tap/key dismisses it, so even if it still
    needs a nudge of scroll the player can start without reaching the button. */
 @media (max-height:480px){
   .mgi-box{padding:12px 16px 14px}
   .mgi-sub{letter-spacing:3px}
   #mgi-title{font-size:21px;margin:2px 0 8px}
-  .mgi-box .lb-head{font-size:12px;margin-bottom:5px}
-  #mgi-list li{font-size:11px;padding:3px 7px}
   #mgi-go{margin-top:10px;font-size:17px;padding:8px 26px}
   .mgi-desc{margin-top:8px}
   .mgi-hint{margin-top:7px}
@@ -586,55 +550,6 @@ body.mod-shop-open #touch-controls{display:none!important}
   cursor:pointer;box-shadow:0 0 28px rgba(255,210,74,.7),4px 4px 0 #7a3a00;
   animation:pulse 1.1s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.06)}}
-
-/* ----- Modal de nickname ----- */
-#nickmodal{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
-  background:rgba(8,4,14,.72);backdrop-filter:blur(3px);
-  padding:max(18px,env(safe-area-inset-top)) max(18px,env(safe-area-inset-right)) max(18px,env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
-#nickmodal.open{display:flex}
-.nick-box{width:min(360px,92vw);max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  background:linear-gradient(180deg,#1a1026,#241433);
-  border:2px solid var(--pink);border-radius:16px;padding:24px 22px;text-align:center;
-  box-shadow:0 0 40px rgba(255,46,136,.45)}
-.nick-title{font-family:'Bowlby One SC';font-size:20px;letter-spacing:1px;color:var(--cream);
-  text-shadow:0 0 16px rgba(255,46,136,.6);margin-bottom:16px}
-#nick-input,#nick-pass{width:100%;box-sizing:border-box;font:700 22px 'IBM Plex Mono',monospace;
-  text-align:center;letter-spacing:3px;text-transform:uppercase;color:var(--cream);
-  background:rgba(0,0,0,.35);border:2px solid var(--cyan);border-radius:10px;padding:12px;
-  outline:none}
-#nick-pass{margin-top:10px;letter-spacing:2px}
-#nick-input.err,#nick-pass.err{border-color:#ff4d6d;animation:nick-shake .3s}
-@keyframes nick-shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
-.nick-note{margin:12px 2px 10px;font:600 12px 'IBM Plex Mono',monospace;line-height:1.5;
-  color:var(--cream);opacity:.8}
-.nick-note b{color:var(--cyan)}
-/* linha de status/erro do login (vazia por padrão; ocupa altura fixa pra não pular) */
-#nick-status{min-height:18px;margin:0 2px 12px;font:700 12px 'IBM Plex Mono',monospace;
-  letter-spacing:.5px;color:#ff7a93}
-#nick-status.ok{color:var(--cyan)}
-/* dois botões principais lado a lado: ENTRAR (alt) e CRIAR CONTA (destaque) */
-.nick-btns{display:flex;gap:10px}
-.nick-btns button{flex:1;font-family:'Bowlby One SC';font-size:16px;letter-spacing:2px;
-  color:var(--ink);background:var(--gold);padding:12px 8px;border:none;border-radius:10px;
-  cursor:pointer;box-shadow:0 0 22px rgba(255,210,74,.6),3px 3px 0 #7a3a00}
-.nick-btns .nick-alt{background:var(--cyan);box-shadow:0 0 22px rgba(80,220,255,.5),3px 3px 0 #0a4a5a}
-/* link discreto pra jogar sem conta (mantém o fluxo anônimo de antes) */
-.nick-secondary{margin-top:14px;width:100%;background:none;border:none;cursor:pointer;
-  font:600 12px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:var(--cream);
-  opacity:.6;text-decoration:underline}
-.nick-secondary:hover{opacity:.9}
-/* Short viewports (phone in landscape — the mobile orientation — and short
-   desktop windows): shrink the login box so it fits the height without scrolling. */
-@media (max-height:520px){
-  .nick-box{padding:16px 18px}
-  .nick-title{font-size:17px;margin-bottom:10px}
-  #nick-input,#nick-pass{font-size:18px;padding:9px;letter-spacing:2px}
-  #nick-pass{margin-top:8px}
-  .nick-note{margin:8px 2px 8px;font-size:11px;line-height:1.4}
-  #nick-status{min-height:14px;margin:0 2px 8px}
-  .nick-btns button{font-size:15px;padding:10px 8px}
-  .nick-secondary{margin-top:10px}
-}
 
 #missionpass{position:fixed;inset:0;z-index:58;display:none;
   flex-direction:column;align-items:center;justify-content:center;
@@ -855,28 +770,14 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #mp-mission,#mp-respect{max-width:86vw;text-align:center;line-height:1.35}
   #title{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
   #logo{font-size:clamp(12px,2.75vw,30px)}
-  #leaderboard{margin-top:20px;padding:10px 12px 9px;width:min(360px,92vw)}
-  .lb-head{font-size:14px}
-  #lb-list li{font-size:12px;padding:4px 7px}
-  .lb-prize{font-size:10px;margin-top:8px}
   #play{margin-top:16px;font-size:clamp(18px,4vw,24px);padding:10px 24px}
 }
 
 /* Title in short landscape (mobile is locked to landscape; also short desktop
-   windows): a tall single column clips, so use a 2-column grid — logo beside the
-   ranking, with PLAY centred on its own row below (grid keeps PLAY at its natural
-   width instead of stretching it). The ranking list scrolls internally so it
-   never pushes the button off-screen. */
+   windows): shrink the logo and tighten PLAY so both fit the height. */
 @media (max-height:560px) and (orientation:landscape){
-  #title{display:grid;grid-template-columns:auto auto;
-    grid-template-areas:"logo board" "play play";
-    align-content:center;justify-content:center;
-    column-gap:clamp(14px,4vw,46px);row-gap:10px;overflow:hidden}
-  #logo{grid-area:logo;align-self:center;font-size:clamp(9px,2.125vw,18px)}
-  #leaderboard{grid-area:board;margin-top:0;padding:10px 14px 10px;width:min(340px,46vw)}
-  #lb-list{max-height:34vh;overflow-y:auto;-webkit-overflow-scrolling:touch}
-  .lb-prize{margin-top:7px;font-size:10px}
-  #play{grid-area:play;justify-self:center;margin-top:0}
+  #logo{font-size:clamp(9px,2.125vw,18px)}
+  #play{margin-top:14px}
 }
 
 /* Galeria de objetos (tecla I) */
@@ -986,57 +887,6 @@ body.map-open #touch-controls{display:none!important}
   .fm-box{padding:10px 10px 8px;gap:8px}
   .fm-title{font-size:clamp(18px,5vw,24px)}
   #fullmap-canvas{max-width:96vw;max-height:calc(94vh - 96px)}
-}
-
-/* ---- Admin dashboard (key Y, owner only) -------------------------------- */
-#admin-dash{position:fixed;inset:0;z-index:72;display:none;align-items:center;justify-content:center;
-  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
-  background:radial-gradient(ellipse at 50% 40%,rgba(20,9,31,.85),rgba(8,4,16,.96));
-  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-#admin-dash.open{display:flex}
-.admin-box{display:flex;flex-direction:column;gap:10px;width:min(860px,96vw);max-height:92vh;
-  background:rgba(16,6,30,.94);border:2px solid var(--gold);border-radius:14px;padding:14px 14px 10px;
-  box-shadow:0 0 26px rgba(255,210,74,.4),inset 0 0 30px rgba(255,210,74,.08)}
-.admin-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.admin-title{font-family:'Bowlby One SC';font-size:clamp(18px,3vw,26px);color:var(--gold);
-  letter-spacing:1px;text-shadow:2px 2px 0 #6b4a00,0 0 18px rgba(255,210,74,.5)}
-#admin-close{font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;color:var(--cream);
-  background:rgba(255,210,74,.16);border:2px solid var(--gold);border-radius:8px;
-  width:36px;height:36px;flex:none;cursor:pointer;transition:background .15s,transform .15s}
-#admin-close:hover{background:rgba(255,210,74,.4);transform:scale(1.06)}
-#admin-body{overflow:auto;border-radius:10px;border:1px solid rgba(255,210,74,.25);
-  background:rgba(8,4,16,.5);font-family:'IBM Plex Mono',monospace;color:var(--cream)}
-.admin-msg{padding:18px;text-align:center;color:rgba(255,233,201,.7);letter-spacing:1px}
-.admin-table{width:100%;border-collapse:collapse;font-size:13px}
-.admin-table th{position:sticky;top:0;background:rgba(20,9,31,.96);color:var(--gold);
-  text-align:left;padding:8px 12px;font-weight:700;letter-spacing:1px;font-size:11px;border-bottom:1px solid rgba(255,210,74,.3)}
-.admin-table td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap}
-.admin-table .num{text-align:right;font-variant-numeric:tabular-nums}
-.admin-row{cursor:pointer;transition:background .12s}
-.admin-row:hover{background:rgba(255,210,74,.12)}
-.admin-name{color:var(--cyan)}
-.admin-pos{color:rgba(255,233,201,.45)}
-.admin-amt-pos{color:#7dff8a}
-.admin-amt-neg{color:var(--pink)}
-.admin-bar{display:flex;align-items:center;gap:10px;padding:8px 4px;flex-wrap:wrap}
-.admin-back{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink);background:var(--gold);
-  border:none;border-radius:7px;padding:6px 12px;cursor:pointer;font-weight:700;letter-spacing:1px}
-.admin-back:hover{filter:brightness(1.1)}
-.admin-back:disabled{opacity:.35;cursor:default;filter:none}
-.admin-bar{justify-content:space-between}
-.admin-sub{color:var(--cream);font-size:13px}
-.admin-sub b{color:var(--gold)}
-.admin-hint{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;color:rgba(255,233,201,.7)}
-.admin-hint b{color:var(--gold)}
-body.admin-open #touch-controls{display:none!important}
-/* Small / touch screens: tighten the dashboard chrome (the table body already
-   scrolls both ways, so the data stays reachable). */
-@media (max-width:640px),(pointer:coarse){
-  .admin-box{padding:10px 10px 8px;gap:8px}
-  .admin-title{font-size:clamp(16px,5vw,22px)}
-  .admin-table{font-size:12px}
-  .admin-table th,.admin-table td{padding:6px 9px}
-  .admin-hint{display:none}
 }
 
 /* ---- Floating NPC name labels (overlay over the 3D world) ----

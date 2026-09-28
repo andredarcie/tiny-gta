@@ -4,9 +4,17 @@
 // the heavy synchronous boot (the city/world is built as a side effect of importing
 // world.ts, plus warmupShaders() pre-compiles every shader). Loading the game after the
 // intro is on screen means that boot freeze happens BEHIND the splash instead of on a
-// black page, so the intro actually masks the load (world + shader warmup), while the
-// leaderboard fetch (refreshTopPlayers) streams in the background. The title/menu is ready
-// the moment the splash fades, so Play starts immediately.
+// black page, so the intro actually masks the load (world + shader warmup). The title/menu
+// is ready the moment the splash fades, so Play starts immediately.
+
+// UI fonts, bundled with the game (no font CDN — the game must run fully offline).
+// Only the latin subsets/weights the CSS actually uses.
+import '@fontsource/bowlby-one-sc/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-400.css';
+import '@fontsource/ibm-plex-mono/latin-600.css';
+import '@fontsource/ibm-plex-mono/latin-700.css';
+import '@fontsource/press-start-2p/latin-400.css';
+import '@fontsource/yellowtail/latin-400.css';
 
 const intro = document.getElementById('intro');
 if (intro) {

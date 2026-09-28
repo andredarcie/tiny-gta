@@ -24,11 +24,8 @@ new MiniGame({id:MiniGameId.OVERKILL,name:'Overkill',exclusive:false});
 //    perigoso, mais dinheiro;
 //  - o modo acaba quando o jogador MORRE ou é PRESO (player.js chama endOverkill).
 //
-// CUIDADO COM O BACKEND: o ranking (backend/lib/scores.js) só aceita score até
-// BASE_MONEY + MONEY_PER_SEC(=200)/s ACUMULADO desde o início da run. Por isso a
-// renda do overkill é limitada a MAX_RATE=75/s — fica BEM abaixo do teto e deixa
-// folga pro resto da renda (delivery/taxi), então o cumulativo não estoura e a
-// submissão não é rejeitada como implausible_score.
+// INCOME CAP: overkill income is limited to MAX_RATE=75/s so it doesn't dwarf
+// every other way of earning money.
 //
 // BALANCEAMENTO: o overkill é high-risk (segurar estrela alta, morte/prisão tira
 // 15–20%), então paga melhor que tudo — mas com teto e K moderados pra não virar
@@ -121,7 +118,7 @@ export function updateOverkill(dt: number): void{
   else ok.mult=Math.max(1,ok.mult-DECAY*dt);
   ok.peak=Math.max(ok.peak,ok.mult);
 
-  // renda por segundo, com TETO de segurança pro backend
+  // income per second, capped at MAX_RATE
   const rate=Math.min(MAX_RATE,w*ok.mult*K);
   ok.rate=rate;
   ok.acc+=rate*dt;

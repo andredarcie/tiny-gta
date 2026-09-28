@@ -6,7 +6,7 @@ import {blip} from '@/audio/audio.ts';
 import {getDay} from '@/world/daynight.ts';
 import {Interior} from '@/world/interior.ts';
 import {openGymGame,gymGameActive} from '@/places/gym-game.ts';
-import {openMiniGameIntro} from '@/activities/minigame-leaderboard.ts';
+import {openMiniGameIntro} from '@/activities/minigame-intro.ts';
 import {MiniGameId,dailyLockCleared} from '@/activities/minigame.ts';
 import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
   gymFx,gymInterior} from '../../assets/models/city/gym.ts';

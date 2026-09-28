@@ -35,7 +35,6 @@ import {updateBombShop} from '@/activities/bomb-shop.ts';             // Open-wo
 import {updateRcToyz} from '@/activities/rc-toyz.ts';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: as 12 armas escondidas pelo mapa
 import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
-import {updateBloodstains} from '@/loot/bloodstains.ts';       // Multiplayer assíncrono: poças de morte (estilo Souls)
 import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
 import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
 import {updatePartyHq,updatePartyUi,getPartyState} from '@/places/party-hq.ts';
@@ -53,7 +52,6 @@ import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/cor
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
-import {initOnline,updateOnline,remoteSnapshot} from '@/net/online.ts'; // shared-world presence (other players' avatars)
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById} from '@/combat/weapons.ts';
@@ -75,7 +73,6 @@ import {hospitalAdmit} from '@/places/hospital.ts';
 import {prisonAdmit} from '@/places/prison.ts';
 import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from '@/places/gun-shop.ts';
 import {clothesShopState,clothesShopInteract,updateClothesShop} from '@/places/clothing-store.ts';
-import {scheduleFlush} from '@/ui/leaderboard.ts';
 import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from '@/places/property.ts';
 import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.ts';
 import {updateDoors} from '@/world/doors.ts';
@@ -301,14 +298,13 @@ initPolice(); // the fixed pool of named patrol cops exists from the start (no s
 initArmy();   // the fixed named squad exists (stationed) from the start too
 
 setupInput();
-setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)
+setupPauseMenu(); // in-game pause menu (transactions / settings / quit)
 setupTouchControls();
 setupNative(); // hardware back button on Android; no-op in the browser
 setupWheel(); // roda de seleção de armas (overlay próprio; ver js/combat/weapon-wheel.ts)
 // Apply saved graphics/FPS settings at boot (audio is re-applied after initAudio,
 // from startGameFromUserGesture); the audio setters no-op until the graph exists.
 applySettings();
-initOnline(); // shared-world presence: connects after the run starts; offline fallback if full/down
 
 const clock=new THREE.Clock();
 let shadowTick=0;
@@ -330,7 +326,6 @@ function step(dt: number){
   // que se movem (jogador/NPC) ficam mais "atrasadas" — trade-off aceito. Antes
   // de qualquer render abaixo.
   if(shadowTick++%SHADOW_EVERY===0){renderer.shadowMap.needsUpdate=true;P.markShadow();}
-  P.begin('online');updateOnline(dt);P.end(); // keep remotes/socket alive even while local overlays freeze the world
   if(updateHouseTv()){renderer.render(scene,camera);return;}
   if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
   if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
@@ -342,8 +337,7 @@ function step(dt: number){
   // real (o jogador segue bloqueado por isBlocked). O mapa é redesenhado ao final do
   // step. Sem o overlay, mantém o congelamento estático de sempre.
   if(state.mapOpen&&!mapNpcsShown()){renderer.render(scene,camera);return;}
-  if(state.adminOpen){renderer.render(scene,camera);return;} // dashboard de admin (tecla Y) congela o mundo
-  if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"
+  if(state.mgIntro){renderer.render(scene,camera);return;} // mini-game briefing: frozen until the player "passes"
   if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
   state.time+=dt;
 
@@ -410,7 +404,6 @@ function step(dt: number){
     updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
     updatePartyHq(dt); // party desks + the plaza membership banner
     updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
-    updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   }
   updateWeaponPickups(dt); // includes arena-only weapons when a round is active
   updatePartyArena(dt); // isolated Party Arena battle rounds
@@ -443,7 +436,6 @@ function step(dt: number){
   }
   P.end();
   P.begin('hud');updateHUD(dt);P.end();
-  scheduleFlush(); // mantém o envio agendado (ranking = dinheiro atual + save)
   P.begin('audio');updateAudio();P.end();
   // Radar redesenhado a ~22fps (ver MM_INTERVAL): liberar a main thread sem
   // impacto visual perceptível.
@@ -589,10 +581,7 @@ window.render_game_to_text=()=>{
     fertilizer:state.fertilizer|0, // plant-food charges
     generalStore:refs.getGeneralStoreState?.()||null,
     overkill:refs.getOverkillState?.()||null,
-    bloodstains:refs.getBloodstainsState?.()||null, // poças de morte ativas no mundo (multiplayer)
-    online:refs.getOnlineState?.()||null, // shared-world presence: phase/remotes (js/net/online.ts)
-    onlineRemotes:remoteSnapshot(), // dev/test: rendered pose of each remote avatar (position/vehicle/death sync)
-    health:state.health, // dev/test: local player HP (online PvP death assertions)
+    health:state.health, // dev/test: local player HP
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],
@@ -635,8 +624,7 @@ window.__test={
     return true;
   },
   // Foot analog of placeVehicle: teleport the on-foot player to (x,z) facing
-  // (fx,fz), stopped. Used by the two-player online harness to line the players
-  // up at a known separation for a deterministic PvP-melee test.
+  // (fx,fz), stopped.
   teleport:(x: number,z: number,fx: number,fz: number)=>{
     if(state.mode!=='foot')return false;
     const h=Math.atan2(fx-x,fz-z);
@@ -645,18 +633,15 @@ window.__test={
     return true;
   },
   // Fire the current weapon once through the real fire path (same as a click).
-  // On foot with fists it is a melee swing; the online layer reports the attack
-  // and the SERVER decides any PvP hit. Returns the move mode for convenience.
+  // On foot with fists it is a melee swing. Returns the move mode for convenience.
   attack:()=>{performShoot();return state.mode;},
   // Arm the player with the full arsenal (equips the pistol) — the real grant
-  // path. Lets the online harness exercise gun/blast/flame PvP, not just fists.
+  // path.
   giveGun:()=>{grantWeapon();return state.weaponName||'';},
   // Switch to a specific owned weapon by id (e.g. 'flame','grenade') so the
-  // harness can drive each attack kind's online path deterministically.
+  // harness can drive each attack kind deterministically.
   equipWeapon:(id: string)=>equipWeaponById(id),
-  // Set the local PvP HP directly. Raising it exercises the heal-sync path
-  // (online.ts syncLocalHeal → server HP restored); used to give each serial
-  // online combat test a clean, survivable target. Returns the applied value.
+  // Set the local player's HP directly. Returns the applied value.
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
   // Current race checkpoint world coords (street / boat / off-road), for autopilots.
   raceTarget:()=>{

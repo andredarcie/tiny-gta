@@ -10,7 +10,7 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
   {
     ignores: [
-      'dist/**', 'node_modules/**', 'android/**', 'backend/**', 'public/**',
+      'dist/**', 'node_modules/**', 'android/**', 'public/**',
       'docs/**', 'output/**', '.playwright-mcp/**', '.claude/**',
       'tools/dev/**', // dev-only viewer/tooling pages (studio/mixamo/portrait)
     ],

@@ -3,9 +3,8 @@
 Tiny Theft Auto ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
 bundles the production web build (`dist/`) straight into a native APK, so the game
 runs **fully offline** inside an Android System WebView — no server to host, no
-PWA hosting, no Digital Asset Links. Online extras (the global leaderboard, web
-fonts) light up automatically when there's a connection; every `fetch` is already
-wrapped in `try/catch`, so the game is playable with no network at all.
+PWA hosting, no Digital Asset Links. The game has no online features at all (fonts
+are bundled too); the only network use is the optional ranch-house TV page.
 
 The mobile gameplay layer (twin analog sticks, touch buttons, landscape HUD,
 orientation overlay) was already in the web build — Capacitor just wraps it as a
@@ -125,9 +124,9 @@ What you must do **in the Play Console / before going public** (can't live in th
   policy would flag. Keep the **store listing, icon, and screenshots** original too.
   (`applicationId` stays `com.andredarcie.tinygta` — an internal id, not user-visible.)
 
-- 📋 **Privacy policy URL** — the game sends a nickname + a random player id +
-  progress to the leaderboard backend, so Play requires a hosted policy. Publish
-  [`PRIVACY.md`](../PRIVACY.md) at a public URL and link it in the listing.
+- 📋 **Privacy policy URL** — the game collects no data, but Play still asks for a
+  hosted policy. Publish [`PRIVACY.md`](../PRIVACY.md) at a public URL and link it in
+  the listing.
 - 📋 **Data Safety form** — fill it using the table at the bottom of `PRIVACY.md`.
 - 📋 **Content rating (IARC questionnaire)** — declare cartoon/action violence;
   Tiny Theft Auto is **not** a "Designed for Families" title.

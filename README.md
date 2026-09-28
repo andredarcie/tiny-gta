@@ -1,6 +1,6 @@
 # Tiny Theft Auto
 
-A browser open-world action game built with vanilla JavaScript ES modules and [Three.js](https://threejs.org/), bundled by [Vite](https://vitejs.dev/). No framework, no TypeScript. The whole world — city, terrain, characters, vehicles, effects — is generated **procedurally in code**: there are no image/model binary assets, textures are drawn to `<canvas>`, and geometry is built from Three.js primitives.
+A fully **offline** browser open-world action game (no server, no accounts, no leaderboard — progress is saved in the browser) built with TypeScript ES modules and [Three.js](https://threejs.org/), bundled by [Vite](https://vitejs.dev/). No UI framework. The whole world — city, terrain, characters, vehicles, effects — is generated **procedurally in code**: there are no image/model binary assets, textures are drawn to `<canvas>`, and geometry is built from Three.js primitives.
 
 ## Quick start
 
@@ -18,8 +18,6 @@ npm run preview  # serve the production build
 - `src/assets/models/**` — pure 3D geometry **factories**, one model per file, each default-exporting a `{category, label, build(opts)}` descriptor (see `src/assets/models/README.md`).
 - `src/js/core/main.ts` — the single `requestAnimationFrame` loop; `src/js/core/state.ts` — the shared mutable `state`/`input`/`refs`.
 - `src/data/**` — baked game data read at build/boot (`world.json`, `npcs.json`, `minigame-rewards.json`, `updates.json`).
-- `shared/**` — code shared between the game and the multiplayer server (net protocol, sim).
-- `server/**` — Cloudflare Worker (realtime multiplayer); `backend/**` — serverless API for the global leaderboards.
 - `tools/**` — build/dev scripts (`bake`, `island-check`) and `tools/dev/` dev-only Vite pages (`/studio`, `mixamo`, `portrait`, not in the production build).
 - `docs/**` — design/planning docs and the visual history under `docs/history/`.
 

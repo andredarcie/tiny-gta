@@ -54,8 +54,7 @@ export const KNOWN = new Set<string>([
   // generic registries
   'miniBlips','zoneActions','carEnterLabels',
   // main.ts core late-binding
-  'playerPos','getCur','getPlayerHeading','getRadarHeading','isWasted','getOnlineState',
-  'onlineShot','onlineMelee','onlineBlast','onlineFlame','traffic','cops',
+  'playerPos','getCur','getPlayerHeading','getRadarHeading','isWasted','traffic','cops',
   'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','spawnBlood','severHead','severArm','gangs','setGangsHidden',
   'interiorBlips','getDelivery','storyNear','storyBlips','storyTargets','rickNear',
   'rickInteract','getRickState','getPartyState','getFootOfficers','getPartyArenaState','isFriendlyWeaponTarget',
@@ -66,8 +65,8 @@ export const KNOWN = new Set<string>([
   'gunShopBuy','gunShopTargets','inGunShopRange','clothesShopState','clothesShopInteract','overkillNear','endOverkill',
   'getOverkillState','exitCar','houseBuyState','houseEatState','houseGarageState',
   'getHouseState','houseTvState','getHouseTvState',
-  // economy.ts / save.ts / leaderboard.ts
-  'serializeLedger','importLedger','takeUnsyncedTxs','ackSyncedTxs','debugLedger',
+  // economy.ts / save.ts
+  'serializeLedger','importLedger','debugLedger',
   'collectSave','applySave','backupSave','getClothingSave','restoreClothing',
   // hud.ts / input.ts
   'message','togglePause','toggleFullscreen','toggleAim','openFullMap',
@@ -76,7 +75,7 @@ export const KNOWN = new Set<string>([
   // per-system state getters / save slots / blips / interactions
   'getBombShopState','getCarCrusherState','boatRaceBlips','getBoatRaceState',
   'boatRaceNear','startBoatRaceInteract','clearArmy','armyTargets','blastArmy',
-  'armyDist','getArmyState','dropDeathPool','getBloodstainsState','clearCops',
+  'armyDist','getArmyState','clearCops',
   'getOffroadState','offroadNear','startOffroadInteract','getGeneralStoreState',
   'getFirefighterState','clearPoliceBoats','policeBoats','getHiddenPackagesState',
   'getPackagesSave','restorePackages','isCarryingDrugs','startDrugBust',

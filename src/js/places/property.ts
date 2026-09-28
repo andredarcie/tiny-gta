@@ -38,7 +38,7 @@ interface SavedCar{
 }
 interface SavedProperty{owned:boolean;car:SavedCar|null;}
 
-// allow-lists so a tampered/old backend payload can't install a garbage part
+// allow-lists so a tampered/old save payload can't install a garbage part
 const SPOILER_TYPES=['lip','wing','gt'];
 const HOOD_TYPES=['scoop','vents'];
 
@@ -231,11 +231,11 @@ export function getHouseState(){
   return{owned:saved.owned,active:house.active,car:saved.car};
 }
 
-// ----- SAVE: posse da casa + carro da garagem (js/core/save.ts) -----
-// A posse e o carro guardado já viviam em localStorage; aqui espelhamos no save
-// do backend pra sobreviver à limpeza de dados / troca de dispositivo. O restore
-// só ACRESCENTA (nunca tira a casa de quem já tem) e cria o carro da garagem se
-// vier um e ainda não existir.
+// ----- SAVE: house ownership + garage car (js/core/save.ts) -----
+// Ownership and the stored car also live in their own localStorage keys; here they
+// are mirrored into the main save blob. The restore only ADDS (never takes the house
+// away from someone who owns it) and creates the garage car if the save has one
+// and it doesn't exist yet.
 function sanitizeCar(c:any):SavedCar|null{
   if(!c||typeof c!=='object')return null;
   const type=c.type==='bike'?'bike':'car';

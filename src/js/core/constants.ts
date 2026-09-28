@@ -1,11 +1,10 @@
 import type { Racer, PrizeStreak } from '@/core/types.ts';
 
-// World-grid + terrain math moved VERBATIM to shared/sim/terrain.ts (pure,
-// THREE-free) so the multiplayer server (server/src) reads the SAME ground the
-// client walks on. Everything is re-exported here — every existing
-// `@/core/constants.ts` import keeps working unchanged. What remains below is
-// the impure/game-only part: RNG helpers and the shared race tuning.
-export * from '../../../shared/sim/terrain.ts';
+// World-grid + terrain math lives in terrain.ts (pure, THREE-free) and is
+// re-exported here — every existing `@/core/constants.ts` import keeps working
+// unchanged. What remains below is the impure part: RNG helpers and the shared
+// race tuning.
+export * from './terrain.ts';
 
 export const rand=(a: number, b: number): number=>a+Math.random()*(b-a);
 export const irand=(a: number, b: number): number=>Math.floor(rand(a,b+1));

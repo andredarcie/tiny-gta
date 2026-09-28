@@ -3,7 +3,7 @@ import {camera} from '@/core/engine.ts';
 import {player,cameraRig,posePlayerGlbBench} from '@/actors/player.ts';
 import {blip} from '@/audio/audio.ts';
 import {GYM_TRAIN,gymFx} from '../../assets/models/city/gym.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
 
 // ============================================================================
@@ -146,7 +146,7 @@ export function closeGymGame(){
 
 function finish(){
   const cb=onWin,won=result==='win';
-  reportMiniGameResult(MiniGameId.GYM,{won,score:runScore}); // ranking do supino (top 5)
+  markMiniGamePlayed(MiniGameId.GYM);
   closeGymGame();
   if(won)cb?.();
 }

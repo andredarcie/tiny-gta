@@ -32,12 +32,9 @@ export class GameDriver {
   }
 
   // ---- boot ---------------------------------------------------------------
-  // Start the game. On localhost it AUTO-STARTS with a fixed nickname (the dev shortcut
-  // in js/core/input.ts), so there is NO title/login UI to drive — we just wait until the
-  // running game reports `started`. (Do NOT drive the old title → nickname → #nick-play
-  // flow: the login modal is now guest/login/register, so #nick-play no longer exists and
-  // clicking it would hang the boot — this was the long-standing "boot always fails" trap.)
-  // `_nick` is accepted for back-compat but ignored (the auto-start picks the nickname).
+  // Start the game. On localhost it AUTO-STARTS (the dev shortcut in js/core/input.ts),
+  // so there is NO title UI to drive — we just wait until the running game reports
+  // `started`. `_nick` is accepted for back-compat but ignored (there are no nicknames).
   async boot(_nick = 'BOT') {
     const page = this.page;
     // Benign: the auto-start requests Pointer Lock before any user click — ignore that one.
@@ -134,11 +131,11 @@ export class GameDriver {
       await this.inPage(() => (window as any).__test.interact());    // focus fallback (still starts the race)
       await this.page.waitForFunction(racing, stateKey, { timeout: 5000 });
     }
-    await this.dismissBriefing();   // pass the leaderboard briefing so the countdown can run
+    await this.dismissBriefing();   // pass the mini-game briefing so the countdown can run
     return started;
   }
 
-  // Starting an exclusive mini-game opens the leaderboard briefing (#mg-intro,
+  // Starting an exclusive mini-game opens the briefing card (#mg-intro,
   // state.mgIntro) which FREEZES the world until the player "passes" it. Click
   // its GO button (after the 300ms guard) so the race countdown can run.
   async dismissBriefing() {

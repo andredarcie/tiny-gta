@@ -1,10 +1,6 @@
 // World grid + terrain math — the game's single source of truth for "where is
-// the ground", MOVED VERBATIM from js/core/constants.ts (which re-exports all
-// of it, so every existing import keeps working). Pure TypeScript, zero
-// imports, no THREE: this file is also compiled into the multiplayer server
-// (server/src/world.ts) so the server reads the SAME ground the client walks
-// on — the basis for server-side movement plausibility checks and, later, for
-// full input-driven server simulation.
+// the ground". Re-exported by js/core/constants.ts, so every existing import
+// keeps working. Pure TypeScript, zero imports, no THREE.
 
 export const N=8, CELL=44, ROAD=14, BLOCK=30, SIDE=4, HALF=N*CELL/2;
 export const GROUND=N*CELL+ROAD;

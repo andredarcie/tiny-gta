@@ -8,11 +8,7 @@ test('skinned player boots and walks without errors', async ({page}) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('http://localhost:5273/', {waitUntil: 'load'});
-  await page.waitForSelector('#play', {timeout: 30_000});
-  await page.evaluate(() => document.getElementById('play')!.click());
-  await page.waitForSelector('#nick-input', {state: 'visible', timeout: 10_000});
-  await page.evaluate(() => { (document.getElementById('nick-input') as HTMLInputElement).value = 'SMOKE'; });
-  await page.evaluate(() => document.getElementById('nick-play')!.click());
+  // On localhost the game auto-starts (dev shortcut in input.ts) — just wait for it.
   await page.waitForFunction(
     () => !!(window as any).render_game_to_text && JSON.parse((window as any).render_game_to_text()).started === true,
     null, {timeout: 20_000});

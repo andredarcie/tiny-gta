@@ -14,7 +14,7 @@ import {blip,raceSiren} from '@/audio/audio.ts';
 import {radioOff} from '@/ui/radio.ts';
 import {raceMusicOn,raceMusicOff} from '@/audio/race-music.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 
 // checkpoint (x,z) na ordem do circuito
@@ -242,7 +242,7 @@ function abortRace(text='RACE ABANDONED',col='var(--pink)'){
 }
 
 function loseRace(){
-  reportMiniGameResult(game.id,{won:false,score:0}); // ranking: corrida perdida
+  markMiniGamePlayed(game.id);
   finishRace();
   bigText('YOU LOST','var(--pink)');
   scheduleHide(2200);
@@ -260,7 +260,7 @@ function completeRace(){
   const paid=diminishPrize(prizeState,prize+bonus,state.time,REWARDS.offroad.repeatWinDecay,REWARDS.offroad.repeatWinRecoverSec);
   economy.earn(paid,'offroad');
   // ranking: vitória = 1º lugar; score = prêmio ganho (justo entre as posições)
-  reportMiniGameResult(game.id,{won:place===1,score:paid});
+  markMiniGamePlayed(game.id);
   const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
   finishRace();
   bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');

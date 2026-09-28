@@ -14,7 +14,7 @@ import {Beacon} from '@/core/beacon.ts';
 import {message} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {Blip} from '@/core/types.ts';
 
 // Current ride: the passenger + origin/destination + payment and deadline. Extends
@@ -252,7 +252,7 @@ function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
   if(phase==='pickup'&&fare){clearMarker();fare.despawn();} // removes the waiting fare from the scene + census
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
   // ranking: o expediente inteiro conta como UMA sessão (ganho = total da corrida)
-  reportMiniGameResult(game.id,{won:shiftFares>0,score:shiftEarnings});
+  markMiniGamePlayed(game.id);
   fare=null;phase='off';
   game.end(); // libera a trava do mundo
   hideTaxiHud();

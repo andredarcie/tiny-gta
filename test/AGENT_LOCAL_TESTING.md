@@ -54,13 +54,11 @@ it manually in *this* checkout beforehand is the safe way to guarantee the right
 
 ## 2. The boot trap (this is what bites every time)
 
-**Do not drive the title/login screen.** The shared harness used to click
-`#play → #nick-input → #nick-play`, but the login modal changed (it's now guest / login /
-register — there is no `#nick-play`), so that path **hangs forever** waiting for a hidden
-element. That stale flow was the "boot always fails" trap.
+**Do not drive the title screen.** The old harness clicked through a nickname/login modal
+that no longer exists, so that path **hangs forever** waiting for a missing element. That
+stale flow was the "boot always fails" trap.
 
-**What actually happens:** on `localhost` the game **auto-starts** with a fixed nickname (the
-dev shortcut in `js/core/input.ts` — `onLocalhost` → `beginRun()`). So there is no UI to drive.
+**What actually happens:** on `localhost` the game **auto-starts** (the dev shortcut in `js/core/input.ts` — `onLocalhost` → `beginRun()`). So there is no UI to drive.
 Just navigate and wait for the running game to report `started`:
 
 ```ts
