@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {N,CELL,HALF,BOUND,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND,
   RIVER_CX,RIVER_HW,BRIDGE_X0,BRIDGE_X1,BRIDGE_DECK_HW} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,spinWheels,blinkBar,dentCar,seatDriver,
   attachHandGun,poseAiming,disposeGeometries} from '@/core/entities.ts';
@@ -415,7 +416,7 @@ function officerShoot(o:Officer,pp:THREE.Vector3,dist:number){
   addTracer(from,to);
   gunshot(.35);
   if(hit){
-    state.health-=state.mode==='car'?irand(2,4):irand(4,9);
+    state.health-=(state.mode==='car'?irand(2,4):irand(4,9))*PLAYER_DAMAGE_TAKEN;
     state.shake=Math.max(state.shake,.12);
     refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,new THREE.Vector3(to.x-from.x,to.y-from.y,to.z-from.z).normalize(),7);
     if(state.health<=0){state.health=100;getWasted();}

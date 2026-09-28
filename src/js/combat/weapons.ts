@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {state,input,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
@@ -203,6 +204,11 @@ function beginRampage(){
   rocketPickup.visible=false;
   message(`ROCKET FRENZY! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
   blip([220,330,440,660],.09,'square',.2);
+}
+
+export function startRocketRampageForTest():boolean{
+  beginRampage();
+  return rampage.active;
 }
 
 function endRampage(won: boolean){
@@ -793,7 +799,12 @@ function resolveMeleeImpact(a: MeleeAnim){
     if(tallyPunch(hit.target,hit.target.punchToDown))hit.target.kill(dir);
     return;
   }
-  if(hit.kind==='npc')hit.target.takeDamage(dir);
+  if(hit.kind==='npc'){
+    const npc=hit.target,wasAlive=!npc.dead;
+    npc.takeDamage(dir);
+    // a lethal bat swing caves the head clean off, or tears a limb away
+    if(wasAlive&&npc.dead){if(Math.random()<.6)refs.severHead?.(npc,dir);else refs.maimRandom?.(npc,dir);}
+  }
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
@@ -923,7 +934,12 @@ function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
   const bp=pos.clone().setY(.6);
   const pp=playerPos();
   if(!opts?.noSelf&&pp.distanceTo(pos)<5){
-    if(state.mode==='foot')getWasted();
+    // on foot: a heavy hit that falls off with distance (not an instant death)
+    if(state.mode==='foot'){
+      state.health-=EXPLOSION_DAMAGE*(1-pp.distanceTo(pos)/5*.6)*PLAYER_DAMAGE_TAKEN;
+      state.shake=Math.max(state.shake,.9);
+      if(state.health<=0){state.health=100;getWasted();}
+    }
     else if(cur){
       const dir=new THREE.Vector3().subVectors((cur as Vehicle).g.position,pos).setY(0).normalize();
       dentCar((cur as Vehicle).g,bp,dir,.3);(cur as Vehicle).speed*=.5;state.shake=.9;
@@ -931,9 +947,13 @@ function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
   }
   // Unified registry: pedestrians, gang members, foot officers and rural folk are
   // all Npc instances, so one loop catches everyone in the blast radius.
+  // Everyone near the blast is blown apart; further out they're maimed.
   for(const n of npcs){
-    if(!n.dead&&n.g.position.distanceTo(pos)<5)
-      n.takeDamage(new THREE.Vector3().subVectors(n.g.position,pos).setY(0).normalize());
+    const d=n.g.position.distanceTo(pos);
+    if(n.dead||d>=5)continue;
+    const away=new THREE.Vector3().subVectors(n.g.position,pos).setY(0).normalize();
+    if(d<3.2)refs.gibNpc?.(n,away,1.9-d*.15);
+    else{n.takeDamage(away);refs.maimRandom?.(n,away);}
   }
   refs.blastArmy?.(pos); // army soldiers (★6) caught in the blast
   for(const arr of[traffic,idleCars,cops] as Vehicle[][]){
@@ -1023,14 +1043,24 @@ function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,da
     // Hit LOCATION from the 3D impact point: high = head (decapitate), upper + off-centre =
     // an arm (tear it off). The doll's head sits ~1.66 above the feet, shoulders ~1.44, arms
     // at local ±0.22. Dismember BEFORE the killing hit so the body ragdolls already maimed.
+    // Legs (below the hips) are blown off too — always by rifles/sniper, often by the rest.
     const npc=hit.target, fy=npc.g.position.y, relY=pos.y-fy;
+    const wasAlive=!npc.dead, heavy=damage>=2;
+    const ry=npc.g.rotation.y;
+    const localX=(pos.x-npc.g.position.x)*Math.cos(ry)-(pos.z-npc.g.position.z)*Math.sin(ry);
+    const side:'L'|'R'=localX<0?'L':'R';
     if(relY>1.45)refs.severHead?.(npc,dir);
     else if(relY>1.0){
-      const ry=npc.g.rotation.y;
-      const localX=(pos.x-npc.g.position.x)*Math.cos(ry)-(pos.z-npc.g.position.z)*Math.sin(ry);
-      if(Math.abs(localX)>0.16)refs.severArm?.(npc,localX<0?'L':'R',dir);
-    }
+      if(Math.abs(localX)>0.16||(heavy&&Math.random()<.4))refs.severArm?.(npc,side,dir);
+    }else if(relY<.9&&(heavy||Math.random()<.45))refs.severLeg?.(npc,side,dir);
     npc.takeDamage(dir,damage,pos);
+    // A killing shot tears the body up: the sniper blows it apart, a close shotgun blast
+    // usually does too, and any other lethal hit often takes a limb with it.
+    if(wasAlive&&npc.dead){
+      const close=pos.distanceTo(playerPos())<6;
+      if(damage>=4||(curWeapon.id==='shotgun'&&close&&Math.random()<.75))refs.gibNpc?.(npc,dir,damage>=4?1.8:1.4);
+      else if(Math.random()<.35)refs.maimRandom?.(npc,dir);
+    }
   }
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
@@ -1512,7 +1542,10 @@ export function updateWeapons(dt: number){
         const ud=car.g.userData;ud.bulletHits=(ud.bulletHits||0)+1;
         if(ud.bulletHits>=4)explodeCar(car,arr);
       }
-      if(state.mode==='foot'&&playerPos().distanceTo(c)<fp.radius)getWasted();
+      if(state.mode==='foot'&&playerPos().distanceTo(c)<fp.radius){ // burns, doesn't insta-kill
+        state.health-=FIRE_DAMAGE_TICK*PLAYER_DAMAGE_TAKEN;
+        if(state.health<=0){state.health=100;getWasted();}
+      }
     }
     if(fp.t>fp.life-1)
       fp.g.traverse(o=>{const m=(o as THREE.Mesh).material as THREE.Material&{opacity: number};if(m&&m.opacity!=null)

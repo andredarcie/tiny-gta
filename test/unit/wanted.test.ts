@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MAX_STARS, LETHAL_AT, HELI_AT, ROCKET_AT, ARMY_AT,
   WANTED_GRACE, WANTED_COOL, SIX_STAR_HOLD, ARMY_BLOCK_DIST,
-  CRIME_HEAT,
+  CRIME_HEAT, WANTED_HEAT_SCALE,
   clampStars, addStars, starLevel, starResponse, coolWanted,
 } from '@/core/wanted.ts';
 
@@ -26,8 +26,9 @@ describe('wanted — escalation constants', () => {
   });
 
   it('exposes the cooldown tuning', () => {
-    expect(WANTED_GRACE).toBe(24);
-    expect(WANTED_COOL).toBe(10);
+    expect(WANTED_GRACE).toBe(16);
+    expect(WANTED_COOL).toBe(7);
+    expect(WANTED_HEAT_SCALE).toBe(0.45);
     expect(SIX_STAR_HOLD).toBe(30);
     expect(ARMY_BLOCK_DIST).toBe(90);
   });
@@ -208,5 +209,17 @@ describe('coolWanted — star decay after the heat is lost', () => {
   });
   it('the ★6 hold applies only at the cap (★5 cools regardless of sinceSixStar)', () => {
     expect(coolWanted(5, 1, { ...clear, sinceSixStar: 0 })).toBeCloseTo(5 - 1 / WANTED_COOL);
+  });
+});
+
+describe('WANTED_HEAT_SCALE — stars climb slower', () => {
+  it('needs several public gunshots for the first star', () => {
+    let w = 0, shots = 0;
+    while (starLevel(w) < 1) { w = addStars(w, CRIME_HEAT.gunfire * WANTED_HEAT_SCALE); shots++; }
+    expect(shots).toBe(6);
+  });
+  it('needs more than one pedestrian kill for the first star', () => {
+    expect(starLevel(addStars(0, CRIME_HEAT.ped_shot * WANTED_HEAT_SCALE))).toBe(0);
+    expect(starLevel(addStars(0, 3 * CRIME_HEAT.ped_shot * WANTED_HEAT_SCALE))).toBe(1);
   });
 });

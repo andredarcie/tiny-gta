@@ -17,8 +17,12 @@ export const ROCKET_AT = 5; // ★5+: foot officers carry rocket launchers
 export const ARMY_AT = 6;   // ★6:  the army responds (and cruisers stop chasing)
 
 // Cooldown tuning (seconds / metres).
-export const WANTED_GRACE = 24;    // out of sight this long before the star starts cooling
-export const WANTED_COOL = 10;     // seconds to shed ONE star once it is cooling
+export const WANTED_GRACE = 16;    // out of sight this long before the star starts cooling
+export const WANTED_COOL = 7;      // seconds to shed ONE star once it is cooling
+
+/** Global multiplier on every crime's heat (applied in addWanted). Below 1 = stars climb
+ *  slower: at 0.45 a star takes ~6 public gunshots or ~2-3 murders instead of 2-3 / 1. */
+export const WANTED_HEAT_SCALE = 0.45;
 export const SIX_STAR_HOLD = 30;   // ★6 is held at least this long before it can cool
 export const ARMY_BLOCK_DIST = 90; // stars won't cool while the army is within this many metres
 

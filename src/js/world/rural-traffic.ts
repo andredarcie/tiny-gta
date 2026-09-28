@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {ruralRoadPath,groundHeight,clamp,wrapA,pick,rand,irand,SWIM_BOUND} from '@/core/constants.ts';
 import {state,carNames,carColors} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {makeCar,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
 import {collideStatics,addWanted} from '@/core/physics.ts';
 import {thud} from '@/audio/audio.ts';
@@ -164,7 +165,7 @@ export function updateRuralTraffic(dt:number){
       // WASTED once health hits 0.
       if(t.g.position.distanceTo(player.g.position)<1.5){
         t.hitT=.8;
-        state.health-=irand(10,18)+Math.round(Math.abs(t.speed)*1.5);
+        state.health-=(irand(10,18)+Math.round(Math.abs(t.speed)*1.5))*PLAYER_DAMAGE_TAKEN;
         state.shake=Math.max(state.shake,.35);thud(Math.abs(t.speed));
         if(state.health<=0){state.health=100;getWasted();}
       }

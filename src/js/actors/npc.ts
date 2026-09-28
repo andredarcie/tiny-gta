@@ -242,7 +242,7 @@ export class Npc{
     const d=dir||new THREE.Vector3();
     this.vel.set(d.x,0,d.z).multiplyScalar(9).add(new THREE.Vector3(rand(-1.5,1.5),rand(5,7),rand(-1.5,1.5)));
     if(!this.bloodDropped){this.bloodDropped=true;refs.addBloodPuddle?.(this.g.position.x,this.g.position.z);}
-    refs.spawnBlood?.(this.g.position.x,this.g.position.y+1.1,this.g.position.z,d,16); // death burst
+    refs.spawnBlood?.(this.g.position.x,this.g.position.y+1.1,this.g.position.z,d,34); // death burst
     if(this.drop)spawnDrop(this.g.position.x,this.g.position.z,irand(this.drop[0],this.drop[1]));
     if(this.wanted)addWanted(this.wanted,this.wantedMsg,this.crime);
     this.onDeath?.(dir);
@@ -261,6 +261,7 @@ export class Npc{
       this.vel.y-=22*dt;this.g.rotation.x+=9*dt;
       if(this.g.position.y<gy+.35&&this.vel.y<0){
         this.g.position.y=gy+.35;this.grounded=true;
+        refs.addBloodPool?.(this.g.position.x,this.g.position.z); // the body bleeds out where it lands
         this.g.rotation.set(-Math.PI/2,this.g.rotation.y,0);
       }
     }else if(fade&&this.deadT>5){
@@ -281,7 +282,8 @@ export class Npc{
   }
 
   // Undo dismemberment (js/combat/gore.ts) so a revived NPC isn't permanently maimed:
-  // restore the collapsed bones to full scale and re-show the head extras.
+  // restore the collapsed bones (head, arms, legs, or the whole blown-apart body) to
+  // full scale and re-show the head extras.
   restoreLimbs(){
     const ud=this.g.userData,limbs=ud.limbs;
     if(ud.headless){
@@ -295,6 +297,13 @@ export class Npc{
       if(ud.lostArm.R){limbs?.rightArm?.scale.setScalar(1);limbs?.rightForearm?.scale.setScalar(1);}
       ud.lostArm={};
     }
+    if(ud.lostLeg){
+      if(ud.lostLeg.L){limbs?.leftLeg?.scale.setScalar(1);limbs?.leftCalf?.scale.setScalar(1);}
+      if(ud.lostLeg.R){limbs?.rightLeg?.scale.setScalar(1);limbs?.rightCalf?.scale.setScalar(1);}
+      ud.lostLeg={};
+    }
+    if(ud.gibbed){(ud.rootBone as {scale:{setScalar:(n:number)=>void}}|undefined)?.scale.setScalar(1);ud.gibbed=false;}
+    ud.bleedingOut=0;
   }
 
   despawn(){

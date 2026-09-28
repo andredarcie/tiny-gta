@@ -127,6 +127,7 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
     leftArm:uaL,rightArm:uaR,leftForearm:laL,rightForearm:laR,
     leftLeg:ulL,rightLeg:ulR,leftCalf:llL,rightCalf:llR,
   };
+  g.userData.rootBone=root; // the gore layer collapses it when a body is blown apart
   g.userData.fadeMats=[mat,mouthMat];
 
   // Runtime re-clothing (clothing store): rewrite the colour of the tagged garment boxes.

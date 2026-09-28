@@ -215,6 +215,10 @@ export function updatePeds(dt:number){
       _dir.set(Math.sin(activeCur.heading),0,Math.cos(activeCur.heading));
       _rnd.set(rand(-2,2),rand(5,8),rand(-2,2));
       p.vel.copy(_dir).multiplyScalar(activeCur.speed*.4).add(_rnd);
+      // fast impact blows the body apart; slower ones rip a limb off
+      if(Math.abs(activeCur.speed)>24)refs.gibNpc?.(p,_dir,1.3);
+      else refs.maimRandom?.(p,_dir);
+      refs.spawnBlood?.(p.g.position.x,p.g.position.y+1,p.g.position.z,_dir,40);
       state.comboN=state.time-state.lastHit<4?state.comboN+1:1;
       state.lastHit=state.time;state.kills++;
       spawnDrop(p.g.position.x,p.g.position.z,irand(20,80)*state.comboN);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {state,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {rand,irand,clamp,groundHeight} from '@/core/constants.ts';
 import {makePed,attachHandGun,poseAiming} from '@/core/entities.ts';
@@ -279,6 +280,7 @@ function makeTower(team:PartyId,x:number,z:number):ArenaTower{
   // hit can't fling a head gib off it (gore.ts severHead checks these)
   g.userData.headless=true;
   g.userData.lostArm={L:true,R:true};
+  g.userData.lostLeg={L:true,R:true};g.userData.gibbed=true;
   t.team=team;t.shootT=rand(.5,1.5);
   t.onDeath=()=>{
     const p=t.g.position;
@@ -385,7 +387,7 @@ function shootPlayer(from:THREE.Vector3,pp:THREE.Vector3,dist:number,dmgLo:numbe
   addTracer(from,to);
   gunshot(.3);
   if(hit){
-    state.health-=irand(dmgLo,dmgHi);
+    state.health-=irand(dmgLo,dmgHi)*PLAYER_DAMAGE_TAKEN;
     state.shake=Math.max(state.shake,.14);
     refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,_dir.subVectors(to,from).normalize(),7);
     if(state.health<=0)respawnAtBase();

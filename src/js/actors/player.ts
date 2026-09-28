@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
   isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z,RIVER_CX,RIVER_HW,BRIDGE_DECK_HW,bridgeDeckH} from '@/core/constants.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {makeCar,makeMotorcycle,makeBoat,makePed,makePlayerPed,makePlane,spinWheels,dentCar} from '@/core/entities.ts';
@@ -1093,7 +1094,7 @@ function updateSwim(dt:number){
   }
   // ----- afogamento: sem fôlego, a vida cai (acorda no hospital) -----
   if(state.swimAir<=0){
-    state.health-=14*dt;
+    state.health-=14*dt*PLAYER_DAMAGE_TAKEN;
     if(Math.random()<.05){splash(.5,false);state.shake=Math.max(state.shake,.05);}
     if(state.health<=0){state.health=100;getWasted();} // getWasted reseta a postura do nado
   }

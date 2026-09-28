@@ -11,7 +11,7 @@ import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts'
 import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts';
 import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collects dead NPCs → hospital
 import {updateGangs,gangs,gangPeds,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
-import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
+import {updateNpcLabels,reconcileVehicleNpcs,npcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
 import {updateRuralFolk,folk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic,ruralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach,solids} from '@/world/world.ts';
@@ -104,6 +104,7 @@ declare global {
       startRampage: () => boolean;
       equipWeapon: (id: string) => boolean;
       setHealth: (hp: number) => number;
+      gore: (kind: string) => {kind: string; name: string; dead: boolean; dist: number} | null;
       raceTarget: () => { x: number; z: number } | null;
     };
   }
@@ -648,6 +649,24 @@ window.__test={
   equipWeapon:(id: string)=>equipWeaponById(id),
   // Set the local player's HP directly. Returns the applied value.
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
+  // Gore test: dismember the nearest living outdoor NPC ('head'|'arm'|'leg'|'gib'),
+  // first placing the player 5 m away facing it so the result is on screen. Returns what
+  // it did (or null) — lets the harness exercise the gore layer directly.
+  gore:(kind: string)=>{
+    const pp=playerPos();let best=null as null|typeof npcs[number],bd=1e9;
+    for(const n of npcs){if(n.dead||Math.abs(n.g.position.x)>600)continue;const d=n.g.position.distanceTo(pp);if(d<bd){bd=d;best=n;}}
+    if(!best||state.mode!=='foot')return null;
+    const b=best.g.position;
+    player.g.position.set(b.x-5,groundHeight(b.x-5,b.z),b.z);
+    player.heading=Math.PI/2;cameraRig.yaw=Math.PI/2;cameraRig.fpPitch=.12;
+    best.g.visible=true;
+    const dir=new THREE.Vector3(1,0,0);
+    if(kind==='head')refs.severHead?.(best,dir);
+    else if(kind==='arm')refs.severArm?.(best,'R',dir);
+    else if(kind==='leg')refs.severLeg?.(best,'L',dir);
+    else refs.gibNpc?.(best,dir,1.5);
+    return {kind,name:best.name,dead:best.dead,dist:Math.round(bd)};
+  },
   // Current race checkpoint world coords (street / boat / off-road), for autopilots.
   raceTarget:()=>{
     const b=MiniGame.activeBlips?.()||[];
