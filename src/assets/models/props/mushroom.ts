@@ -23,7 +23,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Mushrooms',build};
 
-// Mushroom → a random MegaKit mushroom (toadstool / Laetiporus shelf).
+// Mushroom → a random code-built mushroom (spotted toadstools / shelf fungus), see nature/kit.ts.
 export function addMushroom(px: number,pz: number): void{
   placeNature('mushroom',px,groundHeight(px,pz),pz,rand(0.32,0.62));
 }

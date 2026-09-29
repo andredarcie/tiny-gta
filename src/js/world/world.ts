@@ -315,7 +315,7 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   // Painted into a function so it can be re-run after a context loss (see groundTexRedraws).
   const paintRural=()=>{
   const {random:rnd,rand,irand}=makeRng(0x73a17e); // deterministic, repaint-stable noise
-  x.fillStyle='#33500f';x.fillRect(0,0,1024,512);   // deep forest green — reads AS DARK as the MegaKit tree foliage once the floor catches full sun (base sits well below the canopy hex to compensate)
+  x.fillStyle='#33500f';x.fillRect(0,0,1024,512);   // deep forest green — reads AS DARK as the forest foliage once the floor catches full sun (base sits well below the canopy hex to compensate)
   // Subtle two-tone mottling, BOTH greens so it never reads pale: deep shadow patches +
   // a medium leaf-green like the canopy (~#577a00). No dry/yellow highlights.
   for(let k=0;k<3200;k++){
@@ -462,7 +462,7 @@ addWeedFarm(solids);
   for(const o of f.bushes)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addBush(o.x,o.z);
   for(const o of f.ferns)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addFern(o.x,o.z);
   for(const o of f.details)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
-  // ----- lush ground cover (Stylized Nature MegaKit): grass tufts, wildflowers and
+  // ----- lush ground cover (code-built nature kit): grass tufts, wildflowers and
   // clover scattered around the existing forest foliage so the peninsula reads as a
   // living meadow (like the kit's own scenes). Purely visual, baked into the merged
   // nature chunks; anchored to vetted forest points so nothing lands on water/roads.

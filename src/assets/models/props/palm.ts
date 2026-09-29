@@ -23,7 +23,7 @@ function build(): THREE.Group {
 const model: ModelDescriptor = {category:'Props',label:'Palm tree',build};
 export default model;
 
-// Beach/park palms use the standalone Coconut Palm Tree model (OBJ), baked at beach
+// Beach/park palms: a code-built curved coconut palm (nature/kit.ts), baked at beach
 // level (y=0) into the merged nature chunks — a proper coastal palm line.
 export function addPalm(x: number, z: number): void {
   placeNature('palm',x,0,z,rand(5.5,8));

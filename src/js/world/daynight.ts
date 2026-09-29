@@ -207,8 +207,8 @@ export function updateDayNight(dt:number){
   // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
   // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
   // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
-  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the Stylized Nature
-  // MegaKit forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
+  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the dense
+  // rural forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
   // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
   // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
   // horizon from the mountaintop mirante.

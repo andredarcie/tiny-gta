@@ -42,7 +42,7 @@ import {updatePartyArena,getPartyArenaState} from '@/activities/party-arena.ts';
 import {blinkBar} from '@/core/entities.ts';
 import {preloadNature} from '../../assets/models/nature/kit.ts';
 import {finalizeNature,updateNatureCulling} from '../../assets/models/nature/batch.ts';
-// Load the Stylized Nature MegaKit glTF, then bake every placement world.ts already
+// Generate the code-built nature kit, then bake every placement world.ts already
 // recorded (trees/pines/palms/bushes/ferns/mushrooms/rocks + grass/flowers) into merged
 // chunks. Runs after the whole world import graph, so all placements are present.
 preloadNature().then(()=>{try{finalizeNature();}catch(e){console.warn('[nature] finalize failed',e);}});

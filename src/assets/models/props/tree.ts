@@ -33,9 +33,8 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Broadleaf tree',build};
 
-// Broadleaf tree → a random Stylized Nature MegaKit CommonTree, baked into the merged
-// nature chunks (see nature/kit.ts + nature/batch.ts). build() above stays as the
-// model-viewer gallery fallback; the live world uses the loaded glTF asset.
+// Broadleaf tree → a random code-built tree variant, baked into the merged nature chunks
+// (see nature/kit.ts + nature/batch.ts). build() above is the model-viewer gallery piece.
 export function addTree(px: number,pz: number): void{
   placeNature('tree',px,groundHeight(px,pz)-.02,pz,rand(4.2,6.6));
 }

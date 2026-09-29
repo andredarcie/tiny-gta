@@ -1,8 +1,8 @@
 // ===========================================================================
-// nature/batch.ts — record-then-merge renderer for the stylized-nature kit.
+// nature/batch.ts — record-then-merge renderer for the code-built nature kit.
 //
-// glTF loads ASYNC, but the world is built SYNC at import. So placement calls just
-// RECORD a transform (kind + world matrix) into a list; once preloadNature() resolves,
+// Placement calls just RECORD a transform (kind + world matrix) into a list while the
+// world is built at import; once preloadNature() resolves (after the whole world graph),
 // finalizeNature() bakes every recorded instance into per-chunk merged meshes — one
 // mesh per (spatial chunk, shared material) — exactly like the primitive prop merger.
 // Draw calls stay tiny and distant chunks cull with a size-appropriate cutoff.
