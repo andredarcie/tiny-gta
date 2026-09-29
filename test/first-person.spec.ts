@@ -34,3 +34,43 @@ test('first person on foot moves at DOOM speeds', async ({ game }) => {
   expect(walk).toBeLessThan(13);
   expect(errors).toEqual([]);
 });
+
+// The first-person arms move with the player: while walking they sway (DOOM-style weapon
+// bob), standing still they only breathe. Samples the arms' camera-space offset
+// (__test.vmArms) over a second and compares how far they travel.
+test('first-person arms sway while walking', async ({ game }) => {
+  const page = game.page;
+  await page.evaluate(() => (window as any).__test.teleport(196, 4, 196, 104)); // open prairie
+  await page.waitForTimeout(1500);
+  const travel = async (): Promise<number> => {
+    const xs: number[] = [], ys: number[] = [];
+    for (let i = 0; i < 20; i++) {
+      const a = await page.evaluate(() => (window as any).__test.vmArms());
+      xs.push(a.x); ys.push(a.y);
+      await page.waitForTimeout(50);
+    }
+    return (Math.max(...xs) - Math.min(...xs)) + (Math.max(...ys) - Math.min(...ys));
+  };
+  const still = await travel();
+  await game.down('w');
+  await page.waitForTimeout(600);
+  const walking = await travel();
+  await game.up('w');
+  console.log(`[fp arms] travel — still ${still.toFixed(3)}, walking ${walking.toFixed(3)}`);
+  expect(walking).toBeGreaterThan(0.04);
+  expect(walking).toBeGreaterThan(still * 3);
+});
+
+// Firing kicks the arms back with the gun's recoil (not just the weapon).
+test('first-person arms recoil when firing', async ({ game }) => {
+  const page = game.page;
+  await page.evaluate(() => (window as any).__test.teleport(196, 4, 196, 104));
+  await page.evaluate(() => (window as any).__test.giveGun());
+  await page.waitForTimeout(1200);
+  const rest = await page.evaluate(() => (window as any).__test.vmArms().z);
+  await page.evaluate(() => (window as any).__test.attack());
+  await page.waitForTimeout(40);
+  const kicked = await page.evaluate(() => (window as any).__test.vmArms().z);
+  console.log(`[fp arms] z rest ${rest.toFixed(3)}, after shot ${kicked.toFixed(3)}`);
+  expect(kicked - rest).toBeGreaterThan(0.015);  // pushed back toward the viewer (+z)
+});

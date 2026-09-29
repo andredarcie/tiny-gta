@@ -690,39 +690,63 @@ function syncViewModel(){
   fpHands.visible=onCam;
 }
 
-// Place the active viewmodel in view space (after the body pose ran). Adds walk bob,
-// idle breathing, the recoil kick (gunKick) and a forward jab for a melee swing.
+// Place the active viewmodel in view space (after the body pose ran). The gun AND the arms
+// share the same motion, so the hands never float still while the weapon moves:
+//  - walk: DOOM's weapon sway (A_WeaponReady: x = bob·cos, y = bob·|sin| of a 128/8192
+//    per-tic phase ≈ one cycle per 1.8 s), ramping in while moving;
+//  - idle: a gentle breathing drift;
+//  - fire: the recoil kick (gunKick) pushes gun and both arms back and tips them up,
+//    pivoting at the gun anchor;
+//  - melee: the striking arm (and the bat/knife, if any) thrusts forward.
+const VM_SWAY=2*Math.PI*35*128/8192;     // rad/s — DOOM's weapon-bob phase speed
+let vmMove=0,vmLastT=0;
+const _vmPivot=new THREE.Vector3(),_vmRot=new THREE.Vector3();
 function applyViewModel(){
   if(!fpHolderActive())return;
+  const dt=Math.min(.05,Math.max(0,state.time-vmLastT));vmLastT=state.time;
+  const moving=!!(input.moveX||input.moveY);
+  vmMove+=((moving?1:0)-vmMove)*Math.min(1,dt*6);  // sway fades in/out with walking
+  // shared motion offsets (camera space)
+  const ph=state.time*VM_SWAY;
+  let bx=Math.cos(ph)*.05*vmMove, by=-Math.abs(Math.sin(ph))*.035*vmMove, bz=0, brx=0;
+  by+=Math.sin(state.time*1.6)*.004*(1-vmMove);   // breathing when standing still
+  bx+=Math.sin(state.time*.9)*.003*(1-vmMove);
+  bz+=gunKick*.6;brx-=gunKick*.8;by+=gunKick*.12;   // recoil: back toward the viewer + muzzle up
+  let strike=0;
+  if(meleeAnim){
+    const p=clamp01(meleeAnim.t/meleeAnim.dur);
+    strike=Math.sin(clamp01((p-.06)/.5)*Math.PI);
+  }
+
   const holder=heldRocket.visible?heldRocket:(heldHolder.visible?heldHolder:null);
   const handPose: FpHandsPose|undefined=heldRocket.visible?ROCKET_HANDS:curWeapon.hold?.fpHands;
   if(handPose){
     poseFpHands(fpHands,handPose);
     fpHands.visible=true;
+    // move the whole pair of arms like the gun: rotate about the gun anchor, then offset
+    fpHands.rotation.set(brx,0,0);
+    _vmPivot.set(VM_POS[0],VM_POS[1],VM_POS[2]);
+    _vmRot.copy(_vmPivot).applyEuler(fpHands.rotation);
+    fpHands.position.set(_vmPivot.x-_vmRot.x+bx,_vmPivot.y-_vmRot.y+by,_vmPivot.z-_vmRot.z+bz);
+    if(strike&&meleeAnim){                         // the striking arm thrusts forward
+      const arm=(meleeAnim.side<0?fpHands.userData.left:fpHands.userData.right) as THREE.Object3D|undefined;
+      if(arm){arm.position.z-=strike*.3;arm.position.x-=strike*.08*meleeAnim.side;arm.rotation.x-=strike*.5;}
+    }
   }else fpHands.visible=false;
   if(!holder)return;
   const gunScale=(holder===heldRocket?1:heldBaseScale)*VM_SCALE;
   holder.scale.setScalar(gunScale);
   const fp=(curWeapon.hold?.fp||null) as {x?: number;y?: number;z?: number;rx?: number;ry?: number;rz?: number}|null; // optional per-weapon nudge (none defined yet)
-  let px=VM_POS[0]+(fp?.x||0),py=VM_POS[1]+(fp?.y||0),pz=VM_POS[2]+(fp?.z||0);
-  let rx=fp?.rx||0;
+  let px=VM_POS[0]+(fp?.x||0)+bx,py=VM_POS[1]+(fp?.y||0)+by,pz=VM_POS[2]+(fp?.z||0)+bz;
+  let rx=(fp?.rx||0)+brx;
   const ry=Math.PI+(fp?.ry||0),rz=fp?.rz||0;
-  if(input.moveX||input.moveY){           // walk bob: sways with the stride (player.bob)
-    px+=Math.sin(player.bob)*.012;
-    py-=Math.abs(Math.sin(player.bob))*.014;
-  }else{                                  // idle: a gentle breathing drift
-    py+=Math.sin(state.time*1.6)*.004;
-    px+=Math.sin(state.time*.9)*.003;
-  }
-  if(meleeAnim){                          // melee swing: thrust the viewmodel forward
-    const p=clamp01(meleeAnim.t/meleeAnim.dur);
-    const strike=Math.sin(clamp01((p-.06)/.5)*Math.PI);
-    pz-=strike*.34;rx-=strike*.45;px-=strike*.1*meleeAnim.side;
-  }
-  pz+=gunKick*.3;                         // recoil: kick back toward the viewer...
-  rx-=gunKick*.5;                         // ...and tip the muzzle up
+  if(strike&&meleeAnim){pz-=strike*.34;rx-=strike*.45;px-=strike*.1*meleeAnim.side;} // bat/knife thrust
   holder.position.set(px,py,pz);
   holder.rotation.set(rx,ry,rz);
+}
+// Test/debug: the FP arms' current camera-space offset (window.__test.vmArms).
+export function viewmodelArms(): {x:number;y:number;z:number;visible:boolean}{
+  return {x:fpHands.position.x,y:fpHands.position.y,z:fpHands.position.z,visible:fpHands.visible};
 }
 const clamp01=(v: number)=>Math.max(0,Math.min(1,v));
 const easeInOut=(t: number)=>t*t*(3-2*t);

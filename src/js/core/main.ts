@@ -52,7 +52,7 @@ import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
-  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest} from '@/combat/weapons.ts';
+  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest,viewmodelArms} from '@/combat/weapons.ts';
 import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
 import {updateDayNight} from '@/world/daynight.ts';
 import {updateInteriors,interiors} from '@/world/interior.ts';
@@ -105,6 +105,7 @@ declare global {
       startRampage: () => boolean;
       equipWeapon: (id: string) => boolean;
       setHealth: (hp: number) => number;
+      vmArms: () => {x: number; y: number; z: number; visible: boolean};
       gore: (kind: string) => {kind: string; name: string; dead: boolean; dist: number} | null;
       raceTarget: () => { x: number; z: number } | null;
     };
@@ -650,6 +651,7 @@ window.__test={
   equipWeapon:(id: string)=>equipWeaponById(id),
   // Set the local player's HP directly. Returns the applied value.
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
+  vmArms:()=>viewmodelArms(), // FP arms' camera-space offset (arm-motion test)
   // Gore test: dismember the nearest living outdoor NPC ('head'|'arm'|'leg'|'gib'),
   // first placing the player 5 m away facing it so the result is on screen. Returns what
   // it did (or null) — lets the harness exercise the gore layer directly.

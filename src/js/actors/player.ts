@@ -11,7 +11,6 @@ import * as Entities from '@/core/entities.ts';
 import {makeWakePuff} from '../../assets/models/effects/boat-wake.ts';
 import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
 import {makeRcController} from '../../assets/models/props/rc-controller.ts';
-import {buildCarInteriorFp} from '../../assets/models/vehicles/car-interior-fp.ts';
 import {DOOM_TICRATE,DOOM_UNIT,DOOM_VIEWHEIGHT,DOOM_DEADVIEWHEIGHT,doomStep,doomThrust,doomTurnRate,doomBob,type DoomMomentum} from '@/actors/doom-physics.ts';
 import {makeTractor} from '../../assets/models/vehicles/tractor.ts';
 import {SEAT_OFFSET,poseRider} from '@/actors/vehicle-pose.ts';
@@ -277,6 +276,8 @@ const _dentPt=new THREE.Vector3(),_dentDir=new THREE.Vector3();
 // Scratch vectors reaproveitados nos hot loops (evita alocar por frame).
 // updateFoot: camF/camR/mv vivem juntos -> 3 instâncias distintas.
 const _footF=new THREE.Vector3(),_footR=new THREE.Vector3(),_footMv=new THREE.Vector3();
+// Chase camera (vehicles): forward/focus/want live together -> 3 distinct instances.
+const _camFwd=new THREE.Vector3(),_camFocus=new THREE.Vector3(),_camWant=new THREE.Vector3();
 // First-person: eye position + look direction (live together -> 2 distinct instances).
 const _fpEye=new THREE.Vector3(),_fpDir=new THREE.Vector3();
 
@@ -1318,16 +1319,16 @@ export function updateFoot(dt:number){
   player.g.rotation.y=cameraRig.yaw;
 }
 
-// The game is FIRST PERSON ONLY: the camera always sits at the player's eyes (on foot,
-// swimming, dying, entering/leaving a car) or in the driver's seat (in a vehicle).
-// Story cut-scenes (state.cine) are the one exception — story.ts directs the camera.
+// Camera: FIRST PERSON ON FOOT (eyes at DOOM's view height — walking, swimming, dying,
+// walking to/from a car door), and the CLASSIC THIRD-PERSON CHASE CAMERA in any vehicle
+// (car, bike, boat, plane, tractor, the RC toy). Story cut-scenes (state.cine) direct
+// their own camera (story.ts).
 //
-// fpEligible() is the narrower "normal control" test: it gates the first-person
+// fpEligible() is the narrower "normal control on foot" test: it gates the first-person
 // weapon viewmodel/hands, which hide while swimming, dying, falling, getting in/out
-// of a car or in dialogue.
+// of a car or in dialogue — and in every vehicle.
 function fpEligible():boolean{
   if(state.cine)return false;
-  if(state.mode==='car')return !!cur&&!cur.remote;
   if(state.mode==='foot')
     return !state.swimming&&!dying&&!roofFall&&!entering&&!exiting&&!state.dlgActive;
   return false;
@@ -1335,22 +1336,26 @@ function fpEligible():boolean{
 // Whether the FP weapon viewmodel should show this frame. Used by weapons.ts.
 export function isFirstPerson():boolean{return fpEligible();}
 
-// Mouse-look (pointer lock): yaw + the first-person pitch.
+// True while the chase camera drives the view (in a vehicle, or a vehicle WASTED/BUSTED cut).
+const inVehicleView=():boolean=>(state.mode==='car'||state.mode==='cut')&&!!cur;
+
+// Mouse-look (pointer lock): yaw + pitch — the first-person pitch on foot, the chase
+// camera's orbit pitch in a vehicle.
 export function applyMouseLook(dx:number,dy:number){
   const aimK=state.aiming?.6:1; // ADS lowers mouse sensitivity for precision
   cameraRig.yaw-=dx*cameraRig.sensitivity*aimK;
   const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity*aimK;
-  cameraRig.fpPitch=clamp(cameraRig.fpPitch+dp,-1.3,1.3);
+  if(inVehicleView())cameraRig.pitch=clamp(cameraRig.pitch+dp,.18,.82);
+  else cameraRig.fpPitch=clamp(cameraRig.fpPitch+dp,-1.3,1.3);
   cameraRig.touchLookIdle=0; // mexeu o mouse: adia o auto-follow atrás do carro
 }
 
 export function updateCamera(dt:number){
-  // The player's own body is never seen (it would fill the view); story cut-scenes
-  // show it, since story.ts frames the hero from outside.
-  player.g.visible=!!state.cine;
-  updateFpCarInterior(dt,!state.cine&&state.mode==='car'); // load/unload the detailed cockpit (seated in a car only)
+  const inVehicle=inVehicleView();
+  // The hero's own body: hidden on foot (first person, it would fill the view), shown in a
+  // vehicle (the chase camera sees the driver/rider) and in story cut-scenes.
+  player.g.visible=!!state.cine||inVehicle;
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
-  const inVehicle=(state.mode==='car'||state.mode==='cut')&&!!cur;
   const tgt=inVehicle?cur!.g.position:player.g.position;
   const heading=inVehicle?cur!.heading:player.heading;
   if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked){
@@ -1359,73 +1364,53 @@ export function updateCamera(dt:number){
     // so turning right requires subtracting, same as the pointer-lock mouse path.
     const aimK=state.aiming?.6:1; // aiming lowers look speed for finer control
     cameraRig.yaw-=input.lookX*dt*aimK;
-    cameraRig.fpPitch+=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
+    const dp=(cameraRig.invertY?-1:1)*input.lookY*dt*aimK;
+    if(inVehicle)cameraRig.pitch+=dp;else cameraRig.fpPitch+=dp;
     cameraRig.touchLookIdle=0;
   }else cameraRig.touchLookIdle+=dt;
-  // In a vehicle the view drifts back to look out of the windshield once the player
-  // stops looking around; on foot the look is always free (it drives the movement).
+  // In a vehicle the camera drifts back BEHIND it once the player stops looking around;
+  // on foot the look is always free (it drives the movement).
   if(inVehicle&&cameraRig.touchLookIdle>.45){
     const diff=THREE.MathUtils.euclideanModulo(heading-cameraRig.yaw+Math.PI,Math.PI*2)-Math.PI;
     cameraRig.yaw+=diff*Math.min(1,dt*2.0);
   }
-  updateCameraFP(dt,tgt,inVehicle);
+  if(inVehicle)updateCameraChase(dt,tgt);
+  else updateCameraFP(dt,tgt);
 }
 
-// Detailed first-person CAR cockpit: a single shared model that exists in the scene
-// ONLY while the PLAYER is in first person inside a car (not bike/boat/plane/RC). It
-// is built lazily once, attached to the player's car (so it rides along), and removed
-// the instant FP ends, the car is left, or the player dies — with the stock low-poly
-// steering wheel hidden behind the detailed one while it is loaded.
-let fpInterior:THREE.Object3D|null=null,fpInteriorCar:THREE.Object3D|null=null,fpHiddenSteer:THREE.Object3D|null=null;
-function updateFpCarInterior(dt:number,fp:boolean){
-  const inCar=fp&&cur&&!cur.bike&&!cur.boat&&!cur.plane&&!cur.remote&&!cur.tractor;
-  const want=inCar?cur!.g:null;
-  if(want!==fpInteriorCar){
-    if(fpInterior&&fpInterior.parent)fpInterior.parent.remove(fpInterior); // unload
-    if(fpHiddenSteer){fpHiddenSteer.visible=true;fpHiddenSteer=null;}       // restore stock wheel
-    if(want){                                                              // load into the car
-      if(!fpInterior){fpInterior=buildCarInteriorFp();noShadow(fpInterior);}
-      want.add(fpInterior);
-      const steer=want.userData.steer;
-      if(steer){steer.visible=false;fpHiddenSteer=steer;}
-    }
-    fpInteriorCar=want;
+// Classic third-person CHASE camera for vehicles: close and low behind cars/bikes/boats,
+// further back for the plane. The camera trails smoothly toward its wanted spot, the FOV
+// widens with speed, and it looks a little ahead of the vehicle.
+function updateCameraChase(dt:number,tgt:THREE.Vector3){
+  const dist=cur?.plane?15.5:7.2,baseH=cur?.plane?1.95:1.1;
+  cameraRig.pitch=clamp(cameraRig.pitch,.18,.82);
+  const forward=_camFwd.set(Math.sin(cameraRig.yaw),0,Math.cos(cameraRig.yaw));
+  const flat=dist*Math.cos(cameraRig.pitch);
+  const height=baseH+dist*Math.sin(cameraRig.pitch);
+  const focus=_camFocus.set(tgt.x,tgt.y+1.45,tgt.z);
+  const want=_camWant.set(tgt.x,tgt.y+height,tgt.z).addScaledVector(forward,-flat);
+  if(state.interior){ // no interior a câmera fica presa na sala (não vaza)
+    const B=state.interior.bounds;
+    want.x=clamp(want.x,B.x0,B.x1);want.y=Math.min(want.y,B.y1);want.z=clamp(want.z,B.z0,B.z1);
   }
-  // live cockpit: the wheel turns with steering input, the speedo needle sweeps with speed
-  if(fpInteriorCar&&fpInterior){
-    const u=fpInterior.userData;
-    if(u.steerWheel)
-      u.steerWheel.rotation.z+=(-input.moveX*.7-u.steerWheel.rotation.z)*Math.min(1,10*dt);
-    if(u.speedNeedle){
-      const tgtN=2.2-Math.min(1,Math.abs(cur!.speed)/40)*4.4;
-      u.speedNeedle.rotation.z+=(tgtN-u.speedNeedle.rotation.z)*Math.min(1,6*dt);
-    }
+  camera.position.lerp(want,1-Math.exp(-4.5*dt));
+  const tf=62+Math.abs(cur?.speed||0)/32*13;
+  camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
+  camera.updateProjectionMatrix();
+  if(state.shake>0){
+    camera.position.x+=rand(-1,1)*state.shake;
+    camera.position.y+=rand(-1,1)*state.shake*.5;
+    state.shake=Math.max(0,state.shake-dt*1.6);
   }
+  camera.lookAt(focus.x+forward.x*2.4,focus.y,focus.z+forward.z*2.4);
 }
 
-// First-person positioning: the eye sits at the head (on foot) or in the driver's
-// seat (in a vehicle), and the view rotates with yaw + fpPitch. The eye is parented
-// in spirit to the body, so it follows the same bob/terrain motion the ped already
-// has — no separate smoothing that could lag behind or clip through the head.
-function updateCameraFP(dt:number,tgt:THREE.Vector3,inVehicle:boolean){
+// First-person positioning (on foot): the eye sits at the head, and the view rotates with
+// yaw + fpPitch, snapped to the body so it can't lag behind or clip through the head.
+function updateCameraFP(dt:number,tgt:THREE.Vector3){
   cameraRig.fpPitch=clamp(cameraRig.fpPitch,-1.3,1.3);
   const yaw=cameraRig.yaw,pitch=cameraRig.fpPitch;
-  if(inVehicle&&cur){
-    // Eye fixed to the cabin: offset toward the driver side and the windshield using
-    // the VEHICLE heading, then lifted to head height (per vehicle kind). Only the
-    // view rotates with the look — the head stays put in the seat.
-    const ch=cur.heading,cf=Math.sin(ch),cfz=Math.cos(ch);
-    const crx=Math.cos(ch),crz=-Math.sin(ch);
-    // Heights/offsets per cabin. For a CAR the eye sits at the driver's seat, BEHIND
-    // the wheel, so the detailed cockpit (dash + wheel + gauges) reads in front of you
-    // and the road shows through the windshield. Open vehicles (bike/boat/plane) keep
-    // the eye further forward since they have no cabin to look into.
-    // The RC toy is flown FPV-style: a tiny camera on the toy car itself.
-    const up=cur.remote?.35:cur.plane?1.5:cur.boat?1.35:cur.bike?1.45:cur.tractor?1.7:1.06;
-    const fwd=cur.remote?0:cur.plane?.7:cur.bike?.3:cur.boat?.2:cur.tractor?-.35:.1;
-    const sideOff=(cur.remote||cur.bike||cur.boat||cur.plane||cur.tractor)?0:-.36; // cars: sit on the driver (left) seat
-    _fpEye.set(tgt.x+cf*fwd+crx*sideOff,tgt.y+up,tgt.z+cfz*fwd+crz*sideOff);
-  }else if(state.swimming){
+  if(state.swimming){
     // Swimming: eyes just above the waterline (the body's depth varies with the stroke).
     const surface=tgt.y-(SWIM_TREAD_Y+(SWIM_PRONE_Y-SWIM_TREAD_Y)*player.swimPose);
     _fpEye.set(tgt.x,surface+.22,tgt.z);
@@ -1437,7 +1422,7 @@ function updateCameraFP(dt:number,tgt:THREE.Vector3,inVehicle:boolean){
   // Snap the eye to the head: zero follow-lag (most responsive), and it can never
   // interpolate through a wall the way a trailing camera could.
   camera.position.copy(_fpEye);
-  const tf=inVehicle&&cur?68+Math.abs(cur.speed)/32*14:state.aiming?52:70; // aiming zooms in a little
+  const tf=state.aiming?52:70; // aiming zooms in a little
   camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
   camera.updateProjectionMatrix();
   if(state.shake>0){
