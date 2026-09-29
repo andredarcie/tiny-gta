@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {clamp,RURAL_X0} from '@/core/constants.ts';
-import {scene,renderer,hemi,dlight,sunDir,clouds,camera,setBloomStrength} from '@/core/engine.ts';
+import {scene,renderer,hemi,dlight,sunDir,clouds,camera,setBloomStrength,setNightBloom} from '@/core/engine.ts';
 import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
 import {state,refs} from '@/core/state.ts';
 import {beamMat} from '@/core/entities.ts';
@@ -93,6 +93,7 @@ function sampleKeyframes(){
 // Céu completo. O grupo fica exportado por causa dos interiores off-map:
 // o domo tem raio 900 e pode atravessar salas como a loja de armas.
 const skyLayer=new THREE.Group();scene.add(skyLayer);
+let bloomNight=false; // is the night bloom pipeline on (see updateDayNight)
 export function setSkyHidden(hidden:boolean){skyLayer.visible=!hidden;}
 
 // --- Cúpula do céu (gradiente redesenhado conforme a hora) ---
@@ -228,10 +229,15 @@ export function updateDayNight(dt:number){
   // vertical + sol/lua manterem a direção de mundo certa conforme a hora do dia)
   skyLayer.position.copy(camera.position);
   renderer.toneMappingExposure=cur.exp*REAL_EXP;
-  // Bloom rides the day: a faint glint by day, a strong neon glow at night (only
-  // HDR-bright pixels bloom — lit windows, signs, lamps, headlights, flashes).
+  // Bloom is a NIGHT-only effect (the neon glow — lit windows, signs, lamps, headlights,
+  // flashes): the post-processing pipeline switches on after dusk and off after dawn, with
+  // hysteresis so it never flickers, and its strength ramps up from ~0 at the switch so
+  // there is no visible pop. By day the game renders straight to the screen (cheaper).
   {const nightF=clamp(1-(cur.sunI-.5)/1.3,0,1);
-   setBloomStrength(.3+nightF*1.1,.92-nightF*.32);}
+   const on=nightF>(bloomNight?.45:.5);
+   if(on!==bloomNight){bloomNight=on;setNightBloom(on);}
+   const ramp=clamp((nightF-.45)/.2,0,1);
+   setBloomStrength((.3+nightF*1.1)*ramp,.92-nightF*.32);}
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;
   for(const m of buildingMats)m.emissiveIntensity=cur.win;

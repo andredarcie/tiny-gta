@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {renderer,scene,camera,sceneTarget,holdRendering} from '@/core/engine.ts';
+import {renderer,scene,camera,sceneTarget,otherSceneTarget,holdRendering} from '@/core/engine.ts';
 import {interiors} from '@/world/interior.ts';
 
 // GPU warmup, run in the BACKGROUND right after boot (startWarmup, at the bottom), so the
@@ -57,6 +57,9 @@ async function warmInteriorsAsync(): Promise<void>{
     parent.remove(g);g.visible=true;
     let p:Promise<unknown>=Promise.resolve();
     withSceneTarget(()=>{try{p=renderer.compileAsync(g,camera,scene);}catch{}});
+    let q:Promise<unknown>=Promise.resolve();
+    withTarget(otherSceneTarget(),()=>{try{q=renderer.compileAsync(g,camera,scene);}catch{}});
+    p=Promise.all([p,q]);
     g.visible=was;parent.add(g);
     await Promise.race([p.catch(()=>{}),new Promise<void>(r=>setTimeout(r,4000))]); // never stall
     await new Promise<void>(r=>setTimeout(r,16));
@@ -65,10 +68,22 @@ async function warmInteriorsAsync(): Promise<void>{
 
 // Run `fn` with the game's scene render target bound (the post-processing buffer), so the
 // programs compiled/cached are the exact variants used in play.
-function withSceneTarget(fn: ()=>void): void{
+function withSceneTarget(fn: ()=>void): void{withTarget(sceneTarget(),fn);}
+function withTarget(t: THREE.WebGLRenderTarget|null,fn: ()=>void): void{
   const prev=renderer.getRenderTarget();
-  renderer.setRenderTarget(sceneTarget());
+  renderer.setRenderTarget(t);
   try{fn();}finally{renderer.setRenderTarget(prev);}
+}
+// The pipeline flips between the HDR buffer (night) and the screen (day), and the programs
+// differ between the two, so the variant NOT live at boot is compiled too — in the background,
+// after the live one — so dusk/dawn never recompiles the world at once.
+function compileOtherVariant(): Promise<unknown>{
+  const bag=modelBag();
+  scene.add(bag);
+  let p:Promise<unknown>=Promise.resolve();
+  withTarget(otherSceneTarget(),()=>{try{p=renderer.compileAsync(scene,camera);}catch{}});
+  scene.remove(bag);
+  return p.catch(()=>{});
 }
 
 // ---- sliced GPU upload -----------------------------------------------------------------
@@ -130,7 +145,7 @@ export function startWarmup(): void{
       const t0=performance.now();
       do{
         const step=steps.shift();
-        if(!step){void warmInteriorsAsync().then(()=>performance.mark('tg:warm-done'));return;}
+        if(!step){void compileOtherVariant().then(warmInteriorsAsync).then(()=>performance.mark('tg:warm-done'));return;}
         withSceneTarget(step);
       }while(performance.now()-t0<4);
       setTimeout(pump,16);

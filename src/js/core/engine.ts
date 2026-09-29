@@ -121,7 +121,10 @@ export const clouds:THREE.Sprite[]=[];
 //   ACES  — the same filmic tone mapping as before (exposure from
 //           renderer.toneMappingExposure, so daynight + the Brightness setting still work).
 // No ambient occlusion and no film overlays: its noise pattern and corner darkening read
-// as dirt on the flat-colour world. With bloom off the game renders straight to screen.
+// as dirt on the flat-colour world.
+// The pipeline only runs AT NIGHT (daynight.ts -> setNightBloom), when the neon glow is the
+// point. By day — or with Bloom off in the settings — the game renders straight to the
+// screen (the renderer's own ACES + MSAA), skipping the HDR buffer and every full-screen pass.
 const mobilePipe=isMobileLike();
 export const composer=new EffectComposer(renderer,{
   frameBufferType:THREE.HalfFloatType,
@@ -140,8 +143,10 @@ const effects=[bloom,new SMAAEffect({preset:mobilePipe?SMAAPreset.MEDIUM:SMAAPre
 export const effectPass=new EffectPass(camera,...effects);
 composer.addPass(effectPass);
 
-let bloomOn=true;
-function pipelineOn(){return bloomOn;}
+let bloomOn=true,night=false;
+function pipelineOn(){return bloomOn&&night;}
+// Day/night switch for the pipeline (daynight.ts, with hysteresis so dusk never flickers).
+export function setNightBloom(on:boolean){night=!!on;}
 function syncPipeline(){
   bloom.blendMode.opacity.value=bloomOn?1:0;
 }
@@ -172,6 +177,11 @@ export function renderFrame(dt=0){
 // otherwise every material would recompile (and hitch) on first sight in game.
 export function sceneTarget():THREE.WebGLRenderTarget|null{
   return pipelineOn()?composer.inputBuffer:null;
+}
+// The target NOT in use right now: the pipeline flips at dusk/dawn, so the warmup compiles
+// this variant too (in the background), or the switch would recompile everything at once.
+export function otherSceneTarget():THREE.WebGLRenderTarget|null{
+  return pipelineOn()?null:composer.inputBuffer;
 }
 function resizeComposer(){
   const {w,h}=viewportSize();
