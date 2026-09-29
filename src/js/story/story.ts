@@ -351,7 +351,7 @@ function endCutscene(){
     l.rightForearm?.rotation.set(0,0,0);l.leftForearm?.rotation.set(0,0,0);
   }
   const mouth=cine.actor?.ped.userData.mouth;
-  if(mouth)mouth.scale.y=1;
+  if(mouth){mouth.scale.y=1;mouth.visible=false;}
   const fn=cine.onDone;cine.onDone=null;fn&&fn();
 }
 
@@ -376,7 +376,7 @@ function setTalkPose(actor: CineActor | null,t: number,talking: boolean){
     }
   }
   const mouth=actor.ped.userData.mouth;
-  if(mouth)mouth.scale.y=talking?1+Math.abs(Math.sin(t*16))*5:1;
+  if(mouth){mouth.visible=talking;mouth.scale.y=talking?1+Math.abs(Math.sin(t*16))*5:1;}
 }
 
 function updateCine(dt: number){

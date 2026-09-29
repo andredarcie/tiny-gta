@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
+import {addVehicleLod} from './vehicle-lod.ts';
 
 function taperTop(geo: THREE.BufferGeometry,sx: number,sz: number): THREE.BufferGeometry{
   const p=geo.attributes.position;
@@ -214,12 +215,13 @@ function buildCar({color=0xff2e88,police=false}: {color?: number; police?: boole
 
   const beam=new THREE.Mesh(beamGeo,beamMat);
   beam.rotation.x=-Math.PI/2;beam.position.set(0,.07,4.8);
-  beam.renderOrder=2;g.add(beam);
+  beam.renderOrder=2;beam.userData.lodKeep=true;g.add(beam); // stays live outside the LOD (night beam)
 
   if(police){
     const r=new THREE.Mesh(policeLightG,barRM);
     const b=new THREE.Mesh(policeLightG,barBM);
     r.position.set(-.22,1.46,-.2);b.position.set(.22,1.46,-.2);
+    r.userData.lodKeep=b.userData.lodKeep=true; // the bar blinks: kept live outside the LOD
     g.add(r,b);g.userData.bar=[r,b];
     g.add(new THREE.Mesh(policeStripesGeo,darkM));
   }
@@ -232,4 +234,8 @@ export default {category:'Vehicles',label:'Car',build:buildCar,
             {label:'Car — police',opts:{color:0x1b2b4a,police:true}}]};
 
 // Compat: gameplay usa makeCar(color,police) e espera o carro já na cena.
-export function makeCar(color: number,police: boolean): THREE.Group{const g=buildCar({color,police});scene.add(g);return g;}
+export function makeCar(color: number,police: boolean): THREE.Group{
+  const g=buildCar({color,police});
+  addVehicleLod(g,'car:'+color+(police?':police':''));
+  scene.add(g);return g;
+}

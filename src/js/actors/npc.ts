@@ -288,8 +288,6 @@ export class Npc{
     const ud=this.g.userData,limbs=ud.limbs;
     if(ud.headless){
       limbs?.head?.scale.setScalar(1);
-      if(ud.mouth)(ud.mouth as {visible:boolean}).visible=true;
-      if(ud.femaleHairMesh)(ud.femaleHairMesh as {visible:boolean}).visible=true;
       ud.headless=false;
     }
     if(ud.lostArm){

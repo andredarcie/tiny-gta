@@ -184,7 +184,6 @@ export function severHead(npc:any,dir?:THREE.Vector3):void{
   const at=boneWorld(head,new THREE.Vector3(g.position.x,g.position.y+1.6,g.position.z));
   if(head)head.scale.setScalar(1e-4);
   if(ud.mouth)(ud.mouth as THREE.Object3D).visible=false;
-  if(ud.femaleHairMesh)(ud.femaleHairMesh as THREE.Object3D).visible=false;
   const gib=new THREE.Group();
   part(gib,.26,.28,.26,0,0,0,col(ud,'skin',0xd9a06b));
   part(gib,.28,.07,.28,0,.15,0,ud.hairColor??0x2a1911);
