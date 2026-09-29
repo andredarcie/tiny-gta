@@ -47,6 +47,8 @@ The codebase is **TypeScript in strict mode**. Static validation is `npm run typ
 
 ## Architecture
 
+**Instant boot — no loading screen.** The title/menu is static HTML (on screen at ~0.05 s); `boot.ts` loads the game after that paint (an early PLAY click is queued). GPU warmup (`src/js/core/warmup.ts`) never blocks: `compileAsync` compiles all shaders in parallel (3D drawing held until ready, ~1 s), then meshes and interiors are warmed in ~4 ms-per-frame slices. Don't reintroduce a splash or a synchronous warmup. `npx playwright test test/boot-time.spec.ts` prints the boot timeline (`BASE_URL=http://localhost:4173` + `npx vite preview --port 4173` to measure the production build).
+
 **Entry & loop.** `index.html` loads `src/js/core/main.ts` as a module. `main.ts` runs the single `requestAnimationFrame` loop (`frame` → `step(dt)`), dispatching each frame by `state.mode` (`'foot'` | `'car'` | `'cut'`) and calling every system's `update*(dt)`. `dt` is clamped to 0.05s.
 
 **State.** `src/js/core/state.ts` is the shared mutable core:

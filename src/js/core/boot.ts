@@ -1,11 +1,7 @@
-// Bootstrap / loader. The intro splash ("André N. Darcie presents") is pure HTML/CSS in
-// index.html, so the browser paints it the instant the page is parsed. We then wait for
-// that first paint and ONLY THEN load the game (js/core/main.ts) — whose evaluation does
-// the heavy synchronous boot (the city/world is built as a side effect of importing
-// world.ts, plus warmupShaders() pre-compiles every shader). Loading the game after the
-// intro is on screen means that boot freeze happens BEHIND the splash instead of on a
-// black page, so the intro actually masks the load (world + shader warmup). The title/menu
-// is ready the moment the splash fades, so Play starts immediately.
+// Bootstrap / loader. There is NO loading screen: the title/menu is static HTML/CSS in
+// index.html, so it's on screen the instant the page is parsed. The game module
+// (js/core/main.ts — its import builds the world) loads right after that first paint, and
+// the GPU warmup then runs in the BACKGROUND (js/core/warmup.ts), never blocking.
 
 // UI fonts, bundled with the game (no font CDN — the game must run fully offline).
 // Only the latin subsets/weights the CSS actually uses.
@@ -16,18 +12,11 @@ import '@fontsource/ibm-plex-mono/latin-700.css';
 import '@fontsource/press-start-2p/latin-400.css';
 import '@fontsource/yellowtail/latin-400.css';
 
-const intro = document.getElementById('intro');
-if (intro) {
-  // Let a click/tap/key skip the splash, and drop it from the DOM once it has faded so it
-  // never intercepts input on the title screen. Wired here (before the heavy import) so the
-  // skip is armed as early as possible.
-  const drop = (): void => { intro.classList.add('intro-gone'); setTimeout(() => intro.remove(), 400); };
-  intro.addEventListener('pointerdown', drop, { once: true });
-  addEventListener('keydown', drop, { once: true });
-  setTimeout(() => { intro.remove(); }, 15000); // fallback ONLY (e.g. game chunk fails to load); the normal fade is gated on game-ready in main.ts
-}
+// PLAY pressed before the game module finished loading: remember it; input.ts starts the
+// run as soon as it's wired (see setupInput).
+const queuePlay = (): void => { (window as unknown as {__playQueued?: boolean}).__playQueued = true; };
+document.getElementById('play')?.addEventListener('click', queuePlay, { once: true });
 
-// Two rAFs guarantee the browser has PAINTED the intro before we block the main thread
-// loading + evaluating the game (world build + shader warmup).
-const loadGame = (): void => { void import('./main.ts'); };
+// Two rAFs guarantee the browser has PAINTED the title before we start evaluating the game.
+const loadGame = (): void => { performance.mark('tg:import-start'); void import('./main.ts'); };
 requestAnimationFrame(() => requestAnimationFrame(loadGame));

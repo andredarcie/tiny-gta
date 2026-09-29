@@ -80,8 +80,9 @@ import {updatePropCulling,propChunks} from '../../assets/models/props/prop-merge
 import {updateLotCulling,lotChunks} from '../../assets/models/city/abandoned-lot.ts';
 import {updateRuralCulling} from '@/world/rural-cull.ts'; // grandes marcos rurais (rancho/celeiro): corte por névoa
 import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
-import {warmupShaders} from '@/core/warmup.ts'; // pré-compila shaders no boot (anti-hitch)
+import {startWarmup} from '@/core/warmup.ts'; // background shader/geometry warmup (anti-hitch, non-blocking)
 import {validateRefs,auditRefs} from '@/core/refs.ts'; // boot-time check of the late-binding ref contract
+performance.mark('tg:modules-evaluated'); // every module (incl. the whole world build) has run
 
 // Dev/test-only hooks attached to window (see DEBUG_HOOKS block below). Declared
 // here so the assignments type-check without `any`.
@@ -681,23 +682,9 @@ window.__test={
 // instead of a silent in-game no-op that ships unseen. See js/refs.ts.
 validateRefs();
 auditRefs();
-// Pré-compila TODOS os shaders ANTES do loop: tanto os materiais da cena montada
-// (chunks da cidade revelados ao andar) quanto os modelos que só nascem em jogo
-// (efeitos de combate, arma na mão, heli, props de minigame). Sem isso o THREE
-// compila o programa na 1ª aparição de cada material — síncrono no render — e o
-// frame congela centenas de ms ("grandes quedas de FPS do nada"; ver warmup.js).
-// O custo migra pro boot (tela de título), onde é invisível.
-try{warmupShaders();}catch(e){}
+// Start the loop NOW and warm the GPU in the background (shaders compile in parallel, then
+// geometry/interiors upload one idle slot at a time) — see js/core/warmup.ts. No loading
+// screen: the player sees the title/game immediately.
+startWarmup();   // issue every shader compile in parallel FIRST (drawing is held until ready)
 frame();
-
-// World built + first frame rendering: the menu behind the splash is ready, so fade the
-// intro now — but hold it for a minimum so the reveal animation plays. Gating the fade on
-// THIS point (not a fixed timer) means the splash only lifts once the game is actually
-// loaded, even on a slow connection. boot.ts armed the skip + a long safety fallback.
-{
-  const introEl=document.getElementById('intro');
-  if(introEl){
-    const fade=()=>{introEl.classList.add('intro-gone');setTimeout(()=>introEl.remove(),800);};
-    setTimeout(fade,Math.max(0,3000-performance.now()));
-  }
-}
+performance.mark('tg:first-frame');

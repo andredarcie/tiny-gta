@@ -90,7 +90,9 @@ const groundTexRedraws:(()=>void)[]=[];
 const groundCv=document.createElement('canvas');
 {
   const mobile=matchMedia('(pointer: coarse)').matches||innerWidth<900;
-  groundCv.width=groundCv.height=Math.min(mobile?2048:4096,renderer.capabilities.maxTextureSize);
+  // 2048 everywhere: the ground is flat colours + road paint now, so 4096 (64 MB + mips,
+  // ~0.6 s to upload at boot) bought nothing visible.
+  groundCv.width=groundCv.height=Math.min(2048,renderer.capabilities.maxTextureSize);
 }
 function paintCityGround(){
   // FLAT COLOURS ONLY: asphalt, pavement, lots and road paint are solid fills — no

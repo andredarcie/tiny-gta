@@ -456,24 +456,6 @@ body.mod-shop-open #touch-controls{display:none!important}
   #clothesshop-panel{width:auto;left:max(10px,env(safe-area-inset-left));top:auto;height:46vh}
   #clothesshop{background:linear-gradient(0deg,rgba(8,0,8,.8) 0%,rgba(8,0,8,.3) 46%,rgba(8,0,8,0) 70%)}
 }
-/* ---- intro splash: "André N. Darcie presents" — covers boot (world build + shader
-   warmup). The reveal is a GPU-COMPOSITED wipe: a black panel slides
-   off to the right via transform, uncovering the glowing title left→right. Using only
-   transform/opacity keeps it SMOOTH even while the main thread is frozen building the world
-   / warming up shaders — main-thread effects (clip-path, text-shadow pulses) just freeze and
-   snap. The glow is static; the fade-out (intro-gone) is opacity, also composited. ---- */
-#intro{position:fixed;inset:0;z-index:300;background:#000;overflow:hidden;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
-#intro.intro-gone{opacity:0;pointer-events:none;transition:opacity .7s ease}
-#intro-name{font-family:'Bowlby One SC';letter-spacing:3px;font-size:clamp(26px,7vw,66px);
-  color:var(--cream);text-align:center;
-  text-shadow:0 0 18px var(--pink),0 0 48px rgba(255,46,136,.7),0 0 92px rgba(255,46,136,.4)}
-#intro-presents{font-family:'Bowlby One SC';letter-spacing:8px;font-size:clamp(12px,2.3vw,20px);
-  color:var(--pink);text-shadow:0 0 12px rgba(255,46,136,.75)}
-#intro-wipe{position:absolute;inset:0;background:#000;transform:translateX(0);will-change:transform;
-  animation:introWipe 1.9s cubic-bezier(.5,0,.15,1) .1s forwards}
-@keyframes introWipe{from{transform:translateX(0)}to{transform:translateX(101%)}}
-
 #title{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
   align-items:center;justify-content:center;cursor:pointer;
   background:

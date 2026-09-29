@@ -153,10 +153,19 @@ export function setBloomStrength(intensity:number,threshold:number){
   bloom.luminanceMaterial.threshold=threshold;
 }
 
+// While the boot shader compile is still running in the background (js/core/warmup.ts),
+// 3D drawing is held so the first frames don't compile every program synchronously
+// (a ~1.5 s freeze). The game loop keeps running; the canvas just isn't redrawn yet.
+let renderHeld=false,firstRenderMarked=false;
+export function holdRendering(on:boolean){renderHeld=on;}
+
 // Draw one frame: through the pipeline, or straight to the screen when it's off.
 export function renderFrame(dt=0){
+  if(renderHeld)return;
+  if(!firstRenderMarked){firstRenderMarked=true;performance.mark('tg:first-render-start');}
   if(pipelineOn())composer.render(dt);
   else renderer.render(scene,camera);
+  if(firstRenderMarked&&!performance.getEntriesByName('tg:first-render-end').length)performance.mark('tg:first-render-end');
 }
 // The render target the scene is drawn into. Shader programs differ between drawing to a
 // target and to the screen, so the boot warmup (warmup.ts) compiles with this bound —
