@@ -11,7 +11,12 @@ import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {makePed,animatePed,makeMotorcycle} from '@/core/entities.ts';
 import {say} from '@/ui/speech.ts';
 import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HALF,
-  makeWeedPlant,makeBud,makeBucket,makeWaterDrop} from '../../assets/models/rural/weed-farm.ts';
+  TAP_YAW,SALE_YAW,TAP_SPOUT,TAP_BUCKET_REST,CRATE_LOCAL,CRATE_INNER,
+  makeWeedPlant} from '../../assets/models/rural/weed-farm.ts';
+import {makeFarmBucket} from '../../assets/models/rural/farm-bucket.ts';
+import {makeHarvestedPlant} from '../../assets/models/rural/weed-harvest.ts';
+import {fpHeld,fpHeldObject,fpBusy,setHeld,fpPickUp,fpPlace,fpFill,fpPour,fpSow,fpUproot,
+  abortActions,updateFarmFocus} from '@/activities/weed-farm-fp.ts';
 import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
@@ -24,25 +29,23 @@ import {peds,type Ped} from '@/world/pedestrians.ts'; // street peds that like w
 // GREEN ACRES — the HIDDEN weed-farm activity, played entirely in the 3D world on
 // foot inside the walled compound (the compound is in
 // assets/models/rural/weed-farm.ts). No map blip, no HUD, no floating markers:
-// the FARM ITSELF tells you everything. The loop:
+// the FARM ITSELF tells you everything. Everything is done BY HAND, in first
+// person (the hands, what they hold and every animation live in
+// js/activities/weed-farm-fp.ts):
 //
-//   1. PLANT  — stand on an empty planter bed, press E → a 3D seedling pops in.
-//   2. WATER  — water is carried ONE bucket at a time: fill at the TAP (a bucket
-//               appears in the player's hand), walk to a plant, press E to POUR it
-//               (the arm tips the bucket and water arcs onto the bed). One bucket
-//               waters one plant; you CANNOT water with an empty hand.
-//   3. GROW   — read the crop by LOOKING at it: a thirsty plant visibly droops and
-//               its soil dries pale; a watered plant stands up and the soil goes
-//               dark and wet. Keeping it well-watered raises its QUALITY; letting
-//               it run dry wilts it and, if ignored, kills it.
-//   4. HARVEST— a ripe plant glistens (frosted cola + soft pulsing glow). Press E
-//               to cut it — buds burst off and you carry the FLOWERS. Better-tended
-//               plants give more, higher-grade buds (SCHWAG → FIRE).
-//   5. STASH  — drop the harvest in the DEPOSIT crate (no cash here, just storage).
-//   6. DELIVER— take the stash OUT of the box: the player straps on a backpack and
-//               enters a DELIVERY RUN. Carry it to buyers spread across the country
-//               and the city and DEAL it for cash (city buyers pay a premium). Touch
-//               the box again empty-handed to hand the backpack back.
+//   1. SOW    — at an empty planter bed, pinch seeds, flick them into the soil and
+//               pat it down → a seedling pops up.
+//   2. WATER  — pick up the BUCKET at the standpipe, hold it under the faucet and
+//               watch it fill; carry it to a bed and TIP it — the water pours onto
+//               the soil (which darkens). One bucket (or more, with upgrades) per fill.
+//   3. GROW   — read the crop by LOOKING at it: a thirsty plant droops and its soil
+//               dries pale; keeping it watered raises its QUALITY; left dry it dies.
+//   4. HARVEST— grip a ripe plant with both hands and PULL it out, roots and all. You
+//               carry ONE plant at a time (better-tended plants hold more buds).
+//   5. STASH  — lay each plant in the wooden CRATE on the sale table, one by one
+//               (or hang it on the drying rack first to cure it for more cash).
+//   6. DELIVER— take the stash OUT of the crate: the player straps on a backpack and
+//               enters a DELIVERY RUN to buyers across the country and the city.
 //
 // Open-world activity: zone actions + a per-frame update, no world lock.
 // ============================================================================
@@ -59,7 +62,6 @@ const DRY_DEATH=REWARDS.weedFarm.dryDeathSec;       // seconds bone-dry before t
 const SEED_F=0.18;        // growth fraction where the seedling becomes a plant
 const POUR_TIME=REWARDS.weedFarm.pourTimeSec;      // length of the pour-the-bucket animation (s)
 const PRICE=REWARDS.weedFarm.pricePerBud;  // base cash per bud at the sale table
-const PILE_CAP=27;        // max bud nuggets shown piled in the crate
 // quality (care matters): recovers while well-watered, bleeds while parched
 const QUALITY_START=78, QUALITY_RECOVER=3, QUALITY_DROP=9, HYD_HEALTHY=30;
 const YIELD_MIN=2, YIELD_MAX=6; // buds from a ripe plant, by its locked quality
@@ -89,8 +91,6 @@ const box={x:WEED_CX+WEED_BOX.x,z:WEED_CZ+WEED_BOX.z};
 const tap={x:WEED_CX+WEED_TAP.x,z:WEED_CZ+WEED_TAP.z};
 const rackPos={x:WEED_CX+WEED_RACK.x,z:WEED_CZ+WEED_RACK.z};
 const shackPos={x:WEED_CX-7.5,z:WEED_CZ-4};   // grow-shack front doubles as the upgrade bench
-// the drying rack: 'empty' → hang a harvest → 'drying' (cures over weedFarm.cureTimeSec) → 'cured'
-const rack: {state:'empty'|'drying'|'cured';buds:number;val:number;t:number;fx:THREE.Object3D[]}={state:'empty',buds:0,val:0,t:0,fx:[]};
 
 let waterCharges=0;       // pours left in the carried bucket (filled at the tap)
 // ---------- farm upgrades (bought at the grow shack; persisted via the save) ----------
@@ -104,10 +104,7 @@ const WATER_CAP=[1,3,8,8];   // bucket capacity by upgrade level
 let upLevel=0;               // 0 = bare bucket … 3 = sprinklers installed
 const canCapacity=()=>WATER_CAP[Math.min(upLevel,3)];
 const hasSprinklers=()=>upLevel>=3;
-let carried=0;            // FRESH flowers in hand (harvested, not yet stashed)
-let carriedVal=0;         // accrued cash value of the carried buds (strains differ in $/bud)
 let boxed=0;              // flowers delivered this life (debug)
-const pile: THREE.Object3D[]=[];            // visual bud nuggets stashed in the deposit crate
 
 // ---------- deposit box → backpack → delivery run ----------
 // The crate is a DEPOSIT box: stashing pays nothing. Take the stash OUT and the
@@ -118,6 +115,7 @@ const deposit={buds:0,val:0};                 // stash sitting in the box (no ca
 const pack={active:false,buds:0,val:0,orig:0}; // what the backpack carries on a run
 let backpackObj: THREE.Object3D|null=null;     // the 3D pack worn on the player's back
 let delivering=false;
+let packItems: {buds:number;val:number;strain:string;quality:number;cured:boolean}[]=[]; // the plants the pack holds (to refill the crate on return)
 const DELIV_RANGE=2.6;
 // buyers: a few rural roadside spots + a couple of city road junctions (spawned only
 // during a run). All sit on open road/clearing ground — clear of buildings/fences.
@@ -212,15 +210,34 @@ const WEED_BUYER_LINES=[
   "Smells like home. Appreciate ya.",
 ];
 
-let bucketObj: THREE.Object3D|null=null;       // the 3D bucket parented to the player's hand while carrying
-let pourT=0;              // pour-animation timer (>0 while tipping the bucket)
-let armPosed=false;       // true while the hero's arm is posed (pour/deal)
-let pourSlot: Slot|null=null;        // the slot being watered during the pour
-let pourApplied=false;    // whether the water has landed (hyd set) this pour
-// live particles (water droplets + harvest bud burst)
-interface Particle{m: THREE.Object3D;vx:number;vy:number;vz:number;gy:number;}
-const fx: Particle[]=[];              // live particles (water droplets + harvest bud burst)
+let armPosed=false;       // true while the hero's arm is posed (deal hand-off)
 const _wp=new THREE.Vector3();
+
+// ---------- world anchors (the standpipe faucet, the bucket's rest spot, the crate) ----------
+// Rotate a LOCAL (x,z) offset by a prop's yaw exactly as THREE's rotation.y does.
+const yawXZ=(x: number,z: number,yaw: number)=>({x:x*Math.cos(yaw)+z*Math.sin(yaw),z:-x*Math.sin(yaw)+z*Math.cos(yaw)});
+const tapGY=groundHeight(tap.x,tap.z);
+const spoutW=(()=>{const o=yawXZ(TAP_SPOUT.x,TAP_SPOUT.z,TAP_YAW);return new THREE.Vector3(tap.x+o.x,tapGY+TAP_SPOUT.y,tap.z+o.z);})();
+const bucketRestW=(()=>{const o=yawXZ(TAP_BUCKET_REST.x,TAP_BUCKET_REST.z,TAP_YAW);return new THREE.Vector3(tap.x+o.x,tapGY+TAP_BUCKET_REST.y,tap.z+o.z);})();
+const crateW=(()=>{const o=yawXZ(CRATE_LOCAL.x,CRATE_LOCAL.z,SALE_YAW);
+  return new THREE.Vector3(box.x+o.x,groundHeight(box.x,box.z)+CRATE_LOCAL.y+CRATE_INNER.floorY,box.z+o.z);})();
+
+// ---------- the ONE bucket: resting under the faucet, in your hand, or set down ----------
+const bucket=makeFarmBucket();
+const setBucketWater=bucket.userData.setWater as (f: number)=>void;
+function restBucketAtTap(): void{
+  if(bucket.parent!==scene)scene.add(bucket);
+  bucket.position.copy(bucketRestW);bucket.rotation.set(0,TAP_YAW,0);bucket.scale.setScalar(1);
+}
+restBucketAtTap();
+const holdingBucket=()=>fpHeld()==='bucket';
+const bucketFree=()=>!holdingBucket()&&bucket.parent===scene; // lying in the world, pick-up-able
+
+// ---------- a harvested plant: carried one at a time, laid in the crate / hung / dropped ----------
+interface Harvest{buds:number;val:number;strain:string;quality:number;cured:boolean;}
+let heldPlant: Harvest|null=null;
+const groundPlants: {obj:THREE.Object3D;data:Harvest}[]=[];   // plants put down anywhere
+const holdingPlant=()=>fpHeld()==='plant'&&!!heldPlant;
 
 const rand=(a: number,b: number)=>a+Math.random()*(b-a);
 const dist=(p: {x:number;z:number},o: {x:number;z:number})=>Math.hypot(p.x-o.x,p.z-o.z);
@@ -243,23 +260,12 @@ function plantStrain(): string{
 // so WHEN you run the deliveries matters; city buyers add a premium on top.
 const marketFactor=()=>{const r=Math.abs(Math.sin((getDay()+1)*12.9898))%1;return REWARDS.weedFarm.marketFactorMin+r*REWARDS.weedFarm.marketFactorSpan;};
 
-// ---------- bucket carried in hand ----------
-function attachBucket(): void{
-  const l=playerLimbs();
-  if(!l?.rightForearm)return;
-  detachBucket();
-  bucketObj=makeBucket(true);
-  bucketObj.position.set(0,-.30,.06);  // hangs from the hand, slightly in front
-  bucketObj.rotation.set(0,0,0);
-  l.rightForearm.add(bucketObj);
-}
-function detachBucket(): void{
-  if(bucketObj){bucketObj.parent?.remove(bucketObj);bucketObj=null;}
-}
-
 // ---------- plant lifecycle ----------
-function plantSeed(slot: Slot): void{
-  if(slot.plant)return;
+const soilPoint=(slot: Slot)=>new THREE.Vector3(slot.x,groundHeight(slot.x,slot.z)+.38,slot.z);
+const reserved=new Set<Slot>();                 // beds with a clip in flight on them
+
+function sow(slot: Slot): void{
+  if(slot.plant||reserved.has(slot))return;
   // seeds are bought at the rural General Store (js/places/general-store.ts); no seed, no planting
   const sid=plantStrain();
   if(!sid){
@@ -268,37 +274,69 @@ function plantSeed(slot: Slot): void{
     return;
   }
   state.seeds[sid]--;
+  reserved.add(slot);
   const st=STRAIN_BY_ID[sid];
-  const y=groundHeight(slot.x,slot.z)+.38;        // sits on the raised planter soil
-  const g=makeWeedPlant(1,false,st.color);        // tinted to the strain
-  g.position.set(slot.x,y,slot.z);g.rotation.y=rand(0,Math.PI*2);g.scale.setScalar(.3);
-  // wet-soil decal: a dark disc over the bed whose opacity tracks hydration
-  const wet=new THREE.Mesh(new THREE.CircleGeometry(.95,16),
-    new THREE.MeshBasicMaterial({color:0x1c0d04,transparent:true,opacity:0,depthWrite:false}));
-  wet.rotation.x=-Math.PI/2;wet.position.set(slot.x,y,slot.z);
-  scene.add(g,wet);
-  slot.plant={g,wet,glow:null,stage:'seed',t:0,hyd:45,dryT:0,strain:sid,
-    quality:QUALITY_START,baseY:y,phase:rand(0,6.28),pop:0};
-  message(`PLANTED ${st.name} - FILL A BUCKET AT THE TAP AND POUR IT`,'var(--cyan)');
-  blip([392,523],.06,'sine',.13);
+  fpSow(soilPoint(slot),false,{
+    onLand:()=>{
+      const y=soilPoint(slot).y;                    // sits on the raised planter soil
+      const g=makeWeedPlant(1,false,st.color);      // tinted to the strain
+      g.position.set(slot.x,y,slot.z);g.rotation.y=rand(0,Math.PI*2);g.scale.setScalar(.01);
+      // wet-soil decal: a dark disc over the bed whose opacity tracks hydration
+      const wet=new THREE.Mesh(new THREE.CircleGeometry(.95,16),
+        new THREE.MeshBasicMaterial({color:0x1c0d04,transparent:true,opacity:0,depthWrite:false}));
+      wet.rotation.x=-Math.PI/2;wet.position.set(slot.x,y+.005,slot.z);
+      scene.add(g,wet);
+      slot.plant={g,wet,glow:null,stage:'seed',t:0,hyd:45,dryT:0,strain:sid,
+        quality:QUALITY_START,baseY:y,phase:rand(0,6.28),pop:.9};
+      blip([392,523],.06,'sine',.13);
+    },
+    onDone:()=>{reserved.delete(slot);message(`PLANTED ${st.name} - GET THE BUCKET AT THE TAP AND WATER IT`,'var(--cyan)');},
+  });
 }
 
-function fillCan(): void{
-  if(waterCharges>0)return;
-  waterCharges=canCapacity();              // the player now visibly carries a full bucket
-  attachBucket();
-  message(canCapacity()>1?`BUCKET FILLED - ${canCapacity()} POURS`:'BUCKET FILLED - CARRY IT TO A PLANT','var(--cyan)');
-  blip([392,523,659],.06,'sine',.13);
+function pickUpBucket(): void{
+  fpPickUp(bucket,'bucket',{onGrab:()=>blip([330,392],.05,'sine',.1)});
+}
+function fillBucket(): void{
+  const cap=canCapacity();
+  fpFill(spoutW,waterCharges/cap,1,{onDone:()=>{
+    waterCharges=cap;
+    message(cap>1?`BUCKET FULL - ${cap} POURS`:'BUCKET FULL - CARRY IT TO A PLANT AND POUR','var(--cyan)');
+    blip([392,523,659],.06,'sine',.13);
+  }});
+}
+// set the bucket down: back under the faucet, or on the ground right in front of you
+function putBucketDown(atTap: boolean): void{
+  const pos=atTap?bucketRestW.clone():(()=>{
+    // beside you, on your right and a step ahead — pushed out of any planter bed
+    const p=playerPos(),f=cameraRig.yaw;
+    let x=p.x+Math.sin(f)*.45-Math.cos(f)*.6,z=p.z+Math.cos(f)*.45+Math.sin(f)*.6;
+    for(const sl of slots){
+      const dx=x-sl.x,dz=z-sl.z;
+      if(Math.abs(dx)<1.2&&Math.abs(dz)<1.2){
+        if(Math.abs(dx)>Math.abs(dz))x=sl.x+Math.sign(dx||1)*1.3;else z=sl.z+Math.sign(dz||1)*1.3;
+      }
+    }
+    return new THREE.Vector3(x,groundHeight(x,z)+.3,z);
+  })();
+  const q=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),atTap?TAP_YAW:cameraRig.yaw);
+  fpPlace({pos,quat:q,scale:1},{hover:.15,focus:pos,stepDist:atTap?.9:undefined});
 }
 
-// Start pouring the bucket over a plant. The water only lands (and a charge is
-// only spent) partway through the pour animation — see updateWeedFarm.
+// Tip the bucket over a bed: the soil drinks as the water lands.
 function water(slot: Slot): void{
   const pl=slot.plant;
-  if(!pl||pl.stage==='dead'||waterCharges<=0||pourT>0)return; // need water; one pour at a time
-  pourSlot=slot;pourT=POUR_TIME;pourApplied=false;
-  message('POURING THE WATER','var(--cyan)');
-  blip([523,659],.05,'sine',.13);
+  if(!pl||pl.stage==='dead'||waterCharges<=0||reserved.has(slot))return;
+  const cap=canCapacity(),h0=pl.hyd;
+  const from=waterCharges/cap;waterCharges--;
+  reserved.add(slot);
+  fpPour(soilPoint(slot),from,waterCharges/cap,{pourTime:POUR_TIME,
+    onProgress:(k)=>{const p=slot.plant;if(p&&p.stage!=='dead')p.hyd=Math.max(p.hyd,h0+(100-h0)*k);},
+    onDone:()=>{
+      reserved.delete(slot);
+      const p=slot.plant;if(p&&p.stage!=='dead'){p.hyd=100;p.pop=.35;}
+      if(waterCharges<=0)message('BUCKET EMPTY - REFILL IT AT THE TAP','var(--cyan)');
+    }});
 }
 
 // rebuild the plant as a frosted, ripe cola at full size + a soft glistening glow
@@ -321,61 +359,121 @@ function killPlant(slot: Slot): void{
   pl.g.rotation.set(0,pl.g.rotation.y,1.3);pl.g.scale.y*=.45; // wilt over and droop
 }
 
-function removePlant(slot: Slot): void{
+function removePlant(slot: Slot,keepModel=false): void{
   const pl=slot.plant;
   if(!pl)return;
-  scene.remove(pl.g,pl.wet);
+  if(!keepModel)scene.remove(pl.g);
+  scene.remove(pl.wet);
   (pl.wet.material as THREE.Material).dispose();
   (pl.glow?.material as THREE.Material|undefined)?.dispose();
   slot.plant=null;
 }
 
+// Pull a dead plant out and toss it over your shoulder.
 function clearSlot(slot: Slot): void{
-  removePlant(slot);
-  message('CLEARED THE BED','var(--cream)');
-  blip([300,220],.05,'square',.08);
+  const pl=slot.plant;if(!pl||reserved.has(slot))return;
+  reserved.add(slot);
+  const obj=pl.g;
+  obj.rotation.set(0,obj.rotation.y,0);
+  fpUproot(obj,{toss:true,onPull:()=>removePlant(slot,true),
+    onDone:()=>{reserved.delete(slot);message('CLEARED THE BED','var(--cream)');blip([300,220],.05,'square',.08);}});
 }
 
+// Grip the ripe plant and pull it out — it ends up in your hand (one at a time).
 function harvest(slot: Slot): void{
-  const pl=slot.plant!;
+  const pl=slot.plant;if(!pl||pl.stage!=='ripe'||reserved.has(slot))return;
   const q=pl.quality;
   const st=STRAIN_BY_ID[pl.strain]||STRAIN_BY_ID.hybrid;
   const fed=pl.fed?FERTILIZER.yieldMul:1;
   const buds=Math.max(YIELD_MIN,Math.round((YIELD_MIN+(YIELD_MAX-YIELD_MIN)*(q/100))*st.yieldMul*fed));
-  carried+=buds;
-  carriedVal+=buds*Math.round(PRICE*REWARDS.weedFarm.strainValues[st.id]);   // this strain's $/bud locked in now
-  spawnBurst(slot);
-  removePlant(slot);
-  bigText(`+${buds} ${st.name} ${grade(q)}`,'var(--gold)');setTimeout(hideBig,1000);
-  message(`CARRYING ${carried} BUDS - STASH THEM IN THE DEPOSIT BOX`,'var(--gold)');
-  blip([659,880,1175],.07,'square',.18);
+  const data: Harvest={buds,val:buds*Math.round(PRICE*REWARDS.weedFarm.strainValues[st.id]),strain:pl.strain,quality:q,cured:false};
+  reserved.add(slot);
+  // with the bucket in hand, set it down beside you first (both hands are needed)
+  if(holdingBucket())putBucketDown(false);
+  // swap the bed plant for the uprootable one (same ripe plant + its root ball, hidden in the soil)
+  const obj=makeHarvestedPlant(st.color);
+  obj.position.set(slot.x,pl.baseY,slot.z);obj.rotation.y=pl.g.rotation.y;
+  obj.userData.harvest=data;
+  scene.remove(pl.g);scene.add(obj);              // identical look; the root ball hides in the soil
+  fpUproot(obj,{
+    onPull:()=>{removePlant(slot,true);blip([523,392],.05,'square',.1);},
+    onUprooted:()=>{heldPlant=data;},
+    onDone:()=>{
+      reserved.delete(slot);
+      bigText(`${st.name} ${grade(q)} - ${buds} BUDS`,'var(--gold)');setTimeout(hideBig,1100);
+      message('LAY THE PLANT IN THE CRATE (OR HANG IT TO DRY)','var(--gold)');
+      blip([659,880,1175],.07,'square',.18);
+    }});
 }
 
-function addBudsToPile(n: number): void{
-  const y0=groundHeight(box.x,box.z)+1.05;   // piled inside the deposit crate
-  for(let i=0;i<n&&pile.length<PILE_CAP;i++){
-    const b=makeBud(rand(.8,1.1));
-    const layer=(pile.length/8)|0;
-    b.position.set(box.x+rand(-.4,.4),y0+layer*.13,box.z+rand(-.28,.28));
-    b.rotation.set(rand(0,3),rand(0,3),rand(0,3));
-    scene.add(b);pile.push(b);
+// ---------- the crate: each plant is laid in by hand, one at a time ----------
+const CRATE_VIS_CAP=12;
+const crateObjs: THREE.Object3D[]=[];
+let crateItems: Harvest[]=[];                     // what's in the crate (for a returned pack)
+// The n-th plant's resting pose in the crate: rows across the crate, stacked in layers,
+// alternating head-to-tail like harvested plants tossed in neatly.
+function crateSlot(n: number): {pos:THREE.Vector3;quat:THREE.Quaternion}{
+  const i=n%CRATE_VIS_CAP,layer=(i/4)|0,row=i%4;
+  const flip=(row+layer)%2?1:-1;
+  const lz=(-1.5+row)*CRATE_INNER.halfD*.62;
+  const lx=-flip*.3*CRATE_INNER.halfW;             // stem base offset so the plant sits centred
+  const o=yawXZ(lx,lz,SALE_YAW);
+  const pos=new THREE.Vector3(crateW.x+o.x,crateW.y+.07+layer*.085,crateW.z+o.z);
+  const e=new THREE.Euler(((n*37)%10-5)*.04,SALE_YAW,flip*Math.PI/2,'YXZ');
+  return{pos,quat:new THREE.Quaternion().setFromEuler(e)};
+}
+const PLANT_CRATE_SCALE=.55;
+function addPlantVisual(data: Harvest): THREE.Object3D|null{
+  if(crateObjs.length>=CRATE_VIS_CAP)return null;
+  const obj=makeHarvestedPlant(STRAIN_BY_ID[data.strain]?.color,data.cured);
+  const sl=crateSlot(crateObjs.length);
+  obj.position.copy(sl.pos);obj.quaternion.copy(sl.quat);obj.scale.setScalar(PLANT_CRATE_SCALE);
+  scene.add(obj);crateObjs.push(obj);return obj;
+}
+function clearCrateVisuals(): void{for(const o of crateObjs)scene.remove(o);crateObjs.length=0;}
+
+function placeInCrate(): void{
+  const data=heldPlant;if(!data||!holdingPlant())return;
+  const sl=crateSlot(crateObjs.length);
+  fpPlace({pos:sl.pos,quat:sl.quat,scale:PLANT_CRATE_SCALE},{focus:crateW,hover:.35,stepDist:1.05,
+    onRelease:(obj)=>{
+      heldPlant=null;
+      if(crateObjs.length<CRATE_VIS_CAP)crateObjs.push(obj);else scene.remove(obj);
+      deposit.buds+=data.buds;deposit.val+=data.val;crateItems.push(data);
+    },
+    onDone:()=>{
+      message(`IN THE CRATE: ${deposit.buds} BUDS - NO CASH HERE; TAKE IT OUT TO RUN DELIVERIES`,'var(--gold)');
+      blip([330,392],.06,'sine',.12);
+    }});
+}
+
+// ---------- a plant put down anywhere (walked off, or set down on purpose) ----------
+function dropPlantHere(animated: boolean): void{
+  const data=heldPlant;const obj=fpHeldObject();
+  if(!data||!obj)return;
+  const p=playerPos(),f=cameraRig.yaw;
+  const x=p.x+Math.sin(f)*.8,z=p.z+Math.cos(f)*.8;
+  const pos=new THREE.Vector3(x,groundHeight(x,z)+.1,z);
+  const quat=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,f+Math.PI/2,Math.PI/2,'YXZ'));
+  const keep=()=>{heldPlant=null;groundPlants.push({obj,data});};
+  if(animated)fpPlace({pos,quat,scale:.8},{hover:.25,onRelease:keep});
+  else{
+    scene.add(obj);obj.position.copy(pos);obj.quaternion.copy(quat);obj.scale.setScalar(.8);
+    setHeld('none',null);keep();
   }
 }
-function clearPile(): void{ for(const b of pile)scene.remove(b); pile.length=0; }
+function pickUpPlant(i: number): void{
+  const it=groundPlants[i];if(!it)return;
+  groundPlants.splice(i,1);
+  fpPickUp(it.obj,'plant',{onGrab:()=>{heldPlant=it.data;}});
+}
 
 // ---------- deposit box: stash (no pay) / take out (backpack + run) / return ----------
-function depositBuds(): void{
-  if(carried<=0)return;
-  deposit.buds+=carried;deposit.val+=carriedVal;
-  addBudsToPile(carried);
-  message(`STASHED ${carried} BUDS - NO CASH HERE; TAKE IT OUT TO RUN DELIVERIES`,'var(--gold)');
-  blip([330,392],.06,'sine',.12);
-  carried=0;carriedVal=0;
-}
 function withdrawPack(): void{
   if(pack.active||deposit.buds<=0)return;
   pack.active=true;pack.buds=deposit.buds;pack.val=deposit.val;pack.orig=deposit.buds;
-  deposit.buds=0;deposit.val=0;clearPile();
+  deposit.buds=0;deposit.val=0;clearCrateVisuals();
+  packItems=crateItems;crateItems=[];
   runEarned=0;
   attachBackpack();spawnBuyers();delivering=true;
   bigText('DELIVERY RUN','var(--gold)');setTimeout(hideBig,1100);
@@ -385,7 +483,8 @@ function withdrawPack(): void{
 function returnPack(): void{
   if(!pack.active)return;
   deposit.buds+=pack.buds;deposit.val+=pack.val;
-  addBudsToPile(pack.buds);
+  crateItems=packItems;packItems=[];
+  for(const it of crateItems)addPlantVisual(it);
   endRunCleanup();
   message('BACKPACK RETURNED - THE STASH IS BACK IN THE BOX','var(--cream)');
   blip([300,240],.05,'square',.1);
@@ -516,95 +615,111 @@ function buyUpgrade(): void{
 // ---------- fertilizer: feed a growing plant once for a bigger, better harvest ----------
 function fertilize(slot: Slot): void{
   const pl=slot.plant;
-  if(!pl||pl.fed||pl.stage==='dead'||pl.stage==='ripe')return;
+  if(!pl||pl.fed||pl.stage==='dead'||pl.stage==='ripe'||reserved.has(slot))return;
   if((state.fertilizer|0)<=0){message('NO PLANT FOOD - BUY IT AT THE GENERAL STORE','var(--pink)');return;}
   state.fertilizer--;
-  pl.fed=true;pl.pop=.4;
-  message(`FED ${STRAIN_BY_ID[pl.strain]?.name||''} - BIGGER, BETTER BUDS`,'var(--gold)');
-  blip([523,659,880],.07,'sine',.14);
+  reserved.add(slot);
+  fpSow(soilPoint(slot),true,{
+    onLand:()=>{const p=slot.plant;if(p){p.fed=true;p.pop=.4;}blip([523,659,880],.07,'sine',.14);},
+    onDone:()=>{reserved.delete(slot);message(`FED ${STRAIN_BY_ID[pl.strain]?.name||''} - BIGGER, BETTER BUDS`,'var(--gold)');},
+  });
 }
 
-// ---------- drying rack: hang a wet harvest, let it cure, collect for more cash ----------
-function hangBuds(): void{
-  if(rack.state!=='empty'||carried<=0)return;
-  rack.state='drying';rack.buds=carried;rack.val=carriedVal;rack.t=0;
-  const y0=groundHeight(rackPos.x,rackPos.z)+1.85;        // hang clusters along the top bar
-  const n=Math.min(8,Math.max(3,carried));
-  for(let i=0;i<n;i++){
-    const b=makeBud(rand(1.0,1.4));
-    b.position.set(rackPos.x-1.3+i*(2.6/(n-1||1)),y0-rand(.1,.3),rackPos.z);
-    b.rotation.set(rand(0,3),rand(0,3),rand(0,3));
-    scene.add(b);rack.fx.push(b);
-  }
-  carried=0;carriedVal=0;
-  message('HUNG TO DRY - COME BACK ONCE IT HAS CURED','var(--cyan)');
-  blip([392,330],.07,'sine',.12);
+// ---------- drying rack: hang plants upside down, let them cure, take them back ----------
+const RACK_HOOKS=5;
+const hooks: ({obj:THREE.Object3D;data:Harvest;t:number}|null)[]=new Array(RACK_HOOKS).fill(null);
+// plants hang upside down from the rack's LOWER bar (1.45 m, on its yard side) — below eye
+// level and clear of the lean-to roof, so you see them hang (assets/models/rural/weed-farm.ts)
+const rackBarY=groundHeight(rackPos.x,rackPos.z)+1.45;
+const hookPos=(i: number)=>new THREE.Vector3(rackPos.x-1.1+i*(2.2/(RACK_HOOKS-1)),rackBarY,rackPos.z+.22);
+const HANG_QUAT=new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.PI,0,0)); // upside down
+function freeHook(): number{return hooks.findIndex(h=>!h);}
+function nearestHook(filter: (h:{obj:THREE.Object3D;data:Harvest;t:number})=>boolean): number{
+  const p=playerPos();let best=-1,bd=1e9;
+  hooks.forEach((h,i)=>{if(h&&filter(h)){const d=hookPos(i).distanceTo(new THREE.Vector3(p.x,rackBarY,p.z));if(d<bd){bd=d;best=i;}}});
+  return best;
 }
-function collectCured(): void{
-  if(rack.state!=='cured')return;
-  carried=rack.buds;carriedVal=Math.round(rack.val*REWARDS.weedFarm.cureBonus);
-  for(const b of rack.fx)scene.remove(b);rack.fx.length=0;
-  rack.state='empty';rack.buds=0;rack.val=0;rack.t=0;
-  bigText('CURED FLOWERS','var(--gold)');setTimeout(hideBig,1000);
-  message(`COLLECTED ${carried} CURED BUDS - STASH THEM IN THE DEPOSIT BOX`,'var(--gold)');
-  blip([659,880,1175],.08,'square',.18);
+function hangPlant(): void{
+  const data=heldPlant;const i=freeHook();
+  if(!data||i<0||!holdingPlant())return;
+  if(data.cured){message('ALREADY CURED - LAY IT IN THE CRATE','var(--cream)');return;}
+  const hp=hookPos(i);hp.y-=.02;
+  hooks[i]={obj:null as unknown as THREE.Object3D,data,t:0};   // reserve the hook
+  fpPlace({pos:hp,quat:HANG_QUAT,scale:.6},{focus:hp,hover:.12,stepDist:1.0,
+    onRelease:(obj)=>{heldPlant=null;hooks[i]={obj,data,t:0};},
+    onDone:()=>{message('HUNG TO DRY - COME BACK ONCE IT HAS CURED','var(--cyan)');blip([392,330],.07,'sine',.12);}});
 }
-
-// ---------- particles (water droplets + harvest burst) ----------
-function spawnDrops(slot: Slot|null): void{
-  if(!slot?.plant)return;
-  const py=slot.plant.baseY;
-  if(bucketObj)bucketObj.getWorldPosition(_wp); else _wp.set(slot.x,py+1.4,slot.z);
-  for(let i=0;i<14;i++){
-    const d=makeWaterDrop();
-    d.position.set(_wp.x+rand(-.05,.05),_wp.y,_wp.z+rand(-.05,.05));
-    scene.add(d);
-    fx.push({m:d,vx:(slot.x-_wp.x)*.7+rand(-.25,.25),vy:rand(.2,.9),
-      vz:(slot.z-_wp.z)*.7+rand(-.25,.25),gy:py+.05});
-  }
+function takeCured(i: number): void{
+  const h=hooks[i];if(!h||!h.data.cured||!h.obj)return;
+  hooks[i]=null;
+  fpPickUp(h.obj,'plant',{onGrab:()=>{heldPlant=h.data;},
+    onDone:()=>{message(`CURED ${STRAIN_BY_ID[h.data.strain]?.name||''} - LAY IT IN THE CRATE`,'var(--gold)');blip([659,880,1175],.08,'square',.18);}});
 }
-function spawnBurst(slot: Slot): void{
-  const y=slot.plant!.baseY+.8, gy=groundHeight(slot.x,slot.z)+.1;
-  for(let i=0;i<9;i++){
-    const b=makeBud(rand(.5,.8));
-    b.position.set(slot.x+rand(-.15,.15),y,slot.z+rand(-.15,.15));
-    scene.add(b);
-    fx.push({m:b,vx:rand(-1.3,1.3),vy:rand(1.6,3),vz:rand(-1.3,1.3),gy});
-  }
-}
-function updateFx(dt: number): void{
-  for(let i=fx.length-1;i>=0;i--){
-    const p=fx[i];
-    p.vy-=9*dt;
-    p.m.position.x+=p.vx*dt;p.m.position.y+=p.vy*dt;p.m.position.z+=p.vz*dt;
-    if(p.m.position.y<=p.gy){scene.remove(p.m);fx.splice(i,1);}
-  }
+function cureHook(i: number): void{
+  const h=hooks[i];if(!h||!h.obj)return;
+  h.data.cured=true;h.data.val=Math.round(h.data.val*REWARDS.weedFarm.cureBonus);
+  const cured=makeHarvestedPlant(STRAIN_BY_ID[h.data.strain]?.color,true);
+  cured.position.copy(h.obj.position);cured.quaternion.copy(h.obj.quaternion);cured.scale.copy(h.obj.scale);
+  scene.remove(h.obj);scene.add(cured);h.obj=cured;
 }
 
 // ---------- registry: ONE context-sensitive zone action on foot ----------
-(refs.zoneActions||(refs.zoneActions=[])).push(()=>{
-  if(state.mode!=='foot')return null;
+// What E does depends on what your hands hold and what you're next to. Nothing is
+// offered while a clip is playing (so a hand animation always finishes cleanly).
+type ZoneAct={label:string;prompt:string;enabled:boolean;run:()=>void};
+const act=(label: string,prompt: string,run: ()=>void): ZoneAct=>({label,prompt,enabled:true,run});
+function nearestSlot(): Slot|null{
+  const p=playerPos();let best: Slot|null=null,bd=RANGE;
+  for(const s of slots){const d=dist(p,s);if(d<bd){bd=d;best=s;}}
+  return best;
+}
+(refs.zoneActions||(refs.zoneActions=[])).push((): ZoneAct|null=>{
+  if(state.mode!=='foot'||state.swimming||fpBusy())return null;
   const p=playerPos();
-  if(dist(p,box)<RANGE){
-    if(carried>0) // fresh harvest in hand → stash it (no money here)
-      return{label:'STASH',prompt:`STASH ${carried} BUD${carried>1?'S':''} (NO PAY - DELIVER FOR CASH)`,enabled:true,run:depositBuds};
-    if(pack.active) // already on a run → hand the backpack back
-      return{label:'STASH',prompt:'RETURN THE DELIVERY BACKPACK',enabled:true,run:returnPack};
-    if(deposit.buds>0) // stash sitting in the box → strap on the backpack for a run
-      return{label:'TAKE',prompt:`TAKE ${deposit.buds} BUDS FOR DELIVERY`,enabled:true,run:withdrawPack};
+  const nearCrate=dist(p,box)<RANGE, nearTap=dist(p,tap)<RANGE, nearRack=dist(p,rackPos)<RANGE;
+  const slot=nearestSlot(), pl=slot?.plant||null;
+
+  // ---- a plant in hand ----
+  if(holdingPlant()){
+    if(nearCrate)return act('PLACE','LAY THE PLANT IN THE CRATE',placeInCrate);
+    if(nearRack&&!heldPlant!.cured&&freeHook()>=0)
+      return act('HANG',`HANG IT TO DRY (+${Math.round((REWARDS.weedFarm.cureBonus-1)*100)}% WHEN CURED)`,hangPlant);
+    if(slot&&pl?.stage==='ripe')return act('FULL','HANDS FULL - LAY THIS ONE IN THE CRATE FIRST',()=>message('ONE PLANT AT A TIME - TAKE IT TO THE CRATE','var(--cream)'));
+    return act('DROP','PUT THE PLANT DOWN',()=>dropPlantHere(true));
   }
-  if(dist(p,tap)<RANGE&&waterCharges<=0)
-    return{label:'FILL',prompt:'FILL THE WATERING BUCKET',enabled:true,run:fillCan};
-  // drying rack: hang a wet harvest, watch it cure, then collect it for more cash
-  if(dist(p,rackPos)<RANGE){
-    if(rack.state==='cured')
-      return{label:'COLLECT',prompt:`COLLECT ${rack.buds} CURED BUDS`,enabled:true,run:collectCured};
-    if(rack.state==='drying')
-      return{label:'DRY',prompt:`DRYING - ${Math.ceil(REWARDS.weedFarm.cureTimeSec-rack.t)}s LEFT`,enabled:true,
-        run:()=>message('STILL DRYING - GIVE IT TIME','var(--cyan)')};
-    if(carried>0)
-      return{label:'DRY',prompt:`HANG ${carried} BUDS TO DRY (+${Math.round((REWARDS.weedFarm.cureBonus-1)*100)}% WHEN CURED)`,
-        enabled:true,run:hangBuds};
+
+  // ---- the bucket in hand ----
+  if(holdingBucket()){
+    if(nearTap&&waterCharges<canCapacity())return act('FILL','FILL THE BUCKET AT THE FAUCET',fillBucket);
+    if(slot&&pl&&!reserved.has(slot)){
+      if(pl.stage==='ripe')return act('HARVEST',`SET THE BUCKET DOWN AND HARVEST THE ${grade(pl.quality)} PLANT`,()=>harvest(slot));
+      if(pl.stage==='dead')return act('BUCKET','SET THE BUCKET DOWN FIRST',()=>putBucketDown(false));
+      if(waterCharges>0&&pl.hyd<92)return act('WATER',`POUR THE WATER${waterCharges>1?` (${waterCharges} LEFT)`:''}`,()=>water(slot));
+      if(waterCharges<=0)return act('EMPTY','BUCKET EMPTY - FILL IT AT THE TAP',()=>message('FILL THE BUCKET AT THE TAP','var(--cyan)'));
+      if(!pl.fed&&(state.fertilizer|0)>0)return act('FEED',`FEED PLANT FOOD (${state.fertilizer} LEFT)`,()=>fertilize(slot));
+    }
+    if(slot&&!pl&&!reserved.has(slot)&&plantStrain())
+      return act('SOW',`SOW ${STRAIN_BY_ID[plantStrain()].name} (${seedCount(plantStrain())} LEFT)`,()=>sow(slot));
+    if(nearTap)return act('BUCKET','PUT THE BUCKET BACK',()=>putBucketDown(true));
+    return act('BUCKET','SET THE BUCKET DOWN',()=>putBucketDown(false));
+  }
+
+  // ---- empty hands ----
+  if(nearCrate){
+    if(pack.active)return act('RETURN','RETURN THE DELIVERY BACKPACK',returnPack);
+    if(deposit.buds>0)return act('TAKE',`TAKE ${deposit.buds} BUDS FOR DELIVERY`,withdrawPack);
+  }
+  for(let i=0;i<groundPlants.length;i++){
+    const gp=groundPlants[i].obj.position;
+    if(Math.hypot(p.x-gp.x,p.z-gp.z)<1.6)return act('PICK UP','PICK UP THE PLANT',()=>pickUpPlant(i));
+  }
+  if(bucketFree()&&Math.hypot(p.x-bucket.position.x,p.z-bucket.position.z)<(nearTap?RANGE:1.8))
+    return act('BUCKET','PICK UP THE BUCKET',pickUpBucket);
+  if(nearRack){
+    const c=nearestHook(h=>h.data.cured&&!!h.obj);
+    if(c>=0)return act('TAKE','TAKE THE CURED PLANT',()=>takeCured(c));
+    const d=nearestHook(h=>!h.data.cured);
+    if(d>=0){const h=hooks[d]!;return act('DRY',`DRYING - ${Math.max(1,Math.ceil(REWARDS.weedFarm.cureTimeSec-h.t))}s LEFT`,()=>message('STILL DRYING - GIVE IT TIME','var(--cyan)'));}
   }
   // grow-shack: reinvest earnings into farm upgrades (watering gear → sprinklers)
   if(dist(p,shackPos)<RANGE){
@@ -612,35 +727,21 @@ function updateFx(dt: number): void{
       return{label:'SHED',prompt:'ALL FARM UPGRADES OWNED',enabled:false,run:()=>{}};
     const u=UPGRADES[upLevel];
     if(state.money<u.price)
-      return{label:'SHED',prompt:`NEED $${u.price} FOR ${u.name}`,enabled:true,
-        run:()=>message(`NOT ENOUGH MONEY - NEED $${u.price}`,'var(--pink)')};
-    return{label:'UPGRADE',prompt:`BUY ${u.name} $${u.price} - ${u.desc}`,enabled:true,run:buyUpgrade};
+      return act('SHED',`NEED $${u.price} FOR ${u.name}`,()=>message(`NOT ENOUGH MONEY - NEED $${u.price}`,'var(--pink)'));
+    return act('UPGRADE',`BUY ${u.name} $${u.price} - ${u.desc}`,buyUpgrade);
   }
-  let best: Slot|null=null,bd=RANGE;
-  for(const s of slots){const d=dist(p,s);if(d<bd){bd=d;best=s;}}
-  if(!best)return null;
-  const pl=best.plant;
+  if(!slot||reserved.has(slot))return null;
   if(!pl){
     const sid=plantStrain();
-    if(sid){
-      const st=STRAIN_BY_ID[sid];
-      return{label:'PLANT',prompt:`PLANT ${st.name} (${seedCount(sid)} LEFT)`,enabled:true,run:()=>plantSeed(best!)};
-    }
-    return{label:'PLANT',prompt:'NEED SEEDS - BUY AT THE GENERAL STORE',enabled:true,
-      run:()=>plantSeed(best!)}; // plantSeed shows the "buy seeds" hint when empty
+    if(sid)return act('SOW',`SOW ${STRAIN_BY_ID[sid].name} (${seedCount(sid)} LEFT)`,()=>sow(slot));
+    return act('SOW','NEED SEEDS - BUY AT THE GENERAL STORE',()=>sow(slot)); // sow() shows the "buy seeds" hint
   }
-  if(pl.stage==='dead')return{label:'CLEAR',prompt:'CLEAR THE DEAD PLANT',enabled:true,run:()=>clearSlot(best!)};
-  if(pl.stage==='ripe')return{label:'HARVEST',prompt:`HARVEST THE ${grade(pl.quality)} FLOWERS`,enabled:true,run:()=>harvest(best!)};
-  // with a full bucket you can pour on any not-full plant; without one you simply
-  // CANNOT water — a thirsty plant just tells you to go fill a bucket at the tap.
-  if(waterCharges>0&&pl.hyd<92)return{label:'WATER',prompt:`POUR THE BUCKET${waterCharges>1?` (${waterCharges} LEFT)`:''}`,enabled:true,run:()=>water(best!)};
-  if(pl.hyd<35)return{label:'WATER',prompt:'NEEDS WATER - FILL A BUCKET AT THE TAP',enabled:true,
-    run:()=>message('FILL A BUCKET AT THE TAP FIRST','var(--cyan)')};
-  // well-watered & growing: offer to FEED it once if you carry plant food
+  if(pl.stage==='dead')return act('CLEAR','PULL OUT THE DEAD PLANT',()=>clearSlot(slot));
+  if(pl.stage==='ripe')return act('HARVEST',`PULL THE ${grade(pl.quality)} PLANT`,()=>harvest(slot));
   if((pl.stage==='seed'||pl.stage==='growing')&&!pl.fed&&(state.fertilizer|0)>0)
-    return{label:'FEED',prompt:`FEED PLANT FOOD (${state.fertilizer} LEFT)`,enabled:true,run:()=>fertilize(best!)};
-  return{label:'GROW',prompt:pl.fed?'GROWING (FED) - KEEP IT WATERED':'GROWING - KEEP IT WATERED',enabled:true,
-    run:()=>message('STILL GROWING','var(--cyan)')};
+    return act('FEED',`FEED PLANT FOOD (${state.fertilizer} LEFT)`,()=>fertilize(slot));
+  if(pl.hyd<35)return act('WATER','NEEDS WATER - GET THE BUCKET AT THE TAP',()=>message('PICK UP THE BUCKET AT THE TAP','var(--cyan)'));
+  return act('GROW',pl.fed?'GROWING (FED) - KEEP IT WATERED':'GROWING - KEEP IT WATERED',()=>message('STILL GROWING','var(--cyan)'));
 });
 
 // ---------- second zone action: DEAL to a buyer during a delivery run ----------
@@ -721,11 +822,26 @@ function dealToPed(ped: Ped): void{
 refs.getWeedFarmState=()=>{
   let planted=0,ripe=0;
   for(const s of slots){if(s.plant){planted++;if(s.plant.stage==='ripe')ripe++;}}
-  return{planted,ripe,carried,carriedVal,boxed,waterCharges,upLevel,sprinklers:hasSprinklers(),
+  return{planted,ripe,held:fpHeld(),busy:fpBusy(),heldPlant:heldPlant?{...heldPlant}:null,
+    bucketWater:+((bucket.userData.water as number)||0).toFixed(2),crate:crateItems.length,
+    hung:hooks.filter(Boolean).length,dropped:groundPlants.length,
+    boxed,waterCharges,upLevel,sprinklers:hasSprinklers(),
     seeds:{...state.seeds},seedSel:state.seedSel||plantStrain(),
     deposit:{...deposit},delivering,heat:Math.round(heat),runEarned,
     pack:{active:pack.active,buds:pack.buds,val:pack.val},
     buyers:buyers.filter(b=>!b.served).length};
+};
+
+// Test scaffolding (window.__test.farm): stock seeds/food, ripen / dry out / kill every
+// growing plant, or finish every curing plant — so the harness can reach each clip without waiting.
+refs.farmTest=(cmd: string)=>{
+  if(cmd==='state')return refs.getWeedFarmState!();
+  if(cmd==='stock'){for(const st of STRAINS)state.seeds[st.id]=(state.seeds[st.id]|0)+3;state.fertilizer=(state.fertilizer|0)+3;}
+  if(cmd==='ripen')for(const s of slots){const pl=s.plant;if(pl&&(pl.stage==='seed'||pl.stage==='growing'))setRipe(s);}
+  if(cmd==='thirsty')for(const s of slots){const pl=s.plant;if(pl&&pl.stage!=='dead')pl.hyd=10;}
+  if(cmd==='kill')for(const s of slots){const pl=s.plant;if(pl&&pl.stage!=='dead')killPlant(s);}
+  if(cmd==='cure')hooks.forEach((h,i)=>{if(h&&h.obj&&!h.data.cured)cureHook(i);});
+  return refs.getWeedFarmState!();
 };
 
 // Busted while carrying the backpack: the crooked-cop shakedown (js/activities/drug-bust.ts)
@@ -763,39 +879,24 @@ function updateWeedHud(): void{
 
 // ---------- per-frame update (called from main.js, no world lock) ----------
 export function updateWeedFarm(dt: number): void{
-  // pour animation — runs AFTER the player's walk pose (updateFoot) each frame, so
-  // tipping the arm here wins. Water lands mid-pour, then the bucket empties.
-  if(pourT>0){
-    pourT-=dt;
-    if(state.mode==='foot'){
-      const l=playerLimbs();
-      if(l){l.rightArm.rotation.set(-1.45,0,-.25);l.rightForearm?.rotation.set(-.55,0,0);}
-      armPosed=true;
-      if(bucketObj)bucketObj.rotation.z=Math.min(2.1,(POUR_TIME-pourT)*4.5);
-    }
-    if(!pourApplied&&pourT<=POUR_TIME*.55){
-      pourApplied=true;
-      const pl=pourSlot?.plant;
-      if(pl&&pl.stage!=='dead'){pl.hyd=100;pl.pop=.35;}
-      spawnDrops(pourSlot);
-    }
-    if(pourT<=0){pourT=0;waterCharges=Math.max(0,waterCharges-1);pourSlot=null;if(waterCharges<=0)detachBucket();}
-  }
-  // pour finished (or got interrupted out of foot mode): the walk cycle takes the arm back.
-  if(armPosed&&pourT<=0&&state.mode==='foot')armPosed=false;
-  updateFx(dt);
+  if(armPosed&&state.mode==='foot')armPosed=false;
+  updateFarmFocus(dt);   // an active hand clip turns the view to its target (before the camera)
 
-  // Carry the water only AT the plot: wander off (or hop on a vehicle) and a filled
-  // bucket is left behind — you refill at the tap when you come back. Stops the
-  // bucket dangling in the player's hand halfway across the map.
-  if(waterCharges>0&&pourT<=0){
+  // Hands full only AT the plot: wander off (or hop on a vehicle / into the water) and the
+  // bucket goes back under the faucet and a carried plant is set down where you were.
+  if(!fpBusy()&&fpHeld()!=='none'){
     const p=playerPos();
-    if(state.mode!=='foot'||Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)>BUCKET_DROP_DIST){
-      const walked=state.mode==='foot';
-      waterCharges=0;detachBucket();
-      if(walked)message('LEFT THE BUCKET BEHIND - REFILL AT THE TAP','var(--cream)');
+    const away=state.mode!=='foot'||state.swimming||Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)>BUCKET_DROP_DIST;
+    if(away){
+      if(holdingBucket()){
+        setHeld('none',null);waterCharges=0;setBucketWater(0);restBucketAtTap();
+        if(state.mode==='foot')message('LEFT THE BUCKET AT THE TAP','var(--cream)');
+      }else if(holdingPlant()){
+        dropPlantHere(false);
+        if(state.mode==='foot')message('YOU PUT THE PLANT DOWN','var(--cream)');
+      }
     }
-  }
+  }else if(fpBusy()&&(state.mode!=='foot'||state.swimming))abortActions();
 
   // Vehicles can't ride into the grow-op. The gate gap stays open for the on-foot
   // player (so the activity works), but a DRIVEN vehicle that noses into it is bounced
@@ -807,11 +908,13 @@ export function updateWeedFarm(dt: number): void{
     }
   }
 
-  // drying rack: cure over time, then the hanging buds visibly shrink (dried)
-  if(rack.state==='drying'){
-    rack.t+=dt;
-    if(rack.t>=REWARDS.weedFarm.cureTimeSec){rack.state='cured';for(const b of rack.fx)b.scale.multiplyScalar(.8);}
-  }
+  // drying rack: each hung plant cures on its own clock, then visibly dries (paler, thinner)
+  hooks.forEach((h,i)=>{
+    if(!h||!h.obj||h.data.cured)return;
+    h.t+=dt;
+    h.obj.rotation.z=Math.sin(state.time*1.3+i)*.04;   // hangs and sways a little
+    if(h.t>=REWARDS.weedFarm.cureTimeSec)cureHook(i);
+  });
 
   // idle the delivery buyers so they read as living NPCs waiting on the corner — and
   // keep idling the ones already served, so a buyer you dealt to stays put and alive

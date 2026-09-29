@@ -245,6 +245,7 @@ document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ ARSENA
 // detonador atacam sem retículo. O rampage da lança-foguetes também conta como armado.
 export function isWeaponHeld(){
   if(state.mode!=='foot'||state.swimming)return false; // nadando não se empunha arma
+  if(refs.farmHandsActive?.())return false;             // hands busy on the weed farm (bucket/plant)
   return rampage.active||(curWeapon.aimed&&state.weaponHeld);
 }
 
@@ -1280,6 +1281,7 @@ const api: WeaponApi={
 
 export function shootWeapon(){
   if(state.mode!=='foot'||state.swimming)return; // sem disparo dentro d'água
+  if(refs.farmHandsActive?.())return;             // hands full on the weed farm: no shooting/punching
   if(rampage.active)return fireMissile();
   curWeapon.tryFire(api);
 }
@@ -1388,14 +1390,18 @@ export function updateWeapons(dt: number){
   // hand (you visibly carry a bat/knife); rampage uses its own rocket model (heldRocket).
   // When a holstered firearm is hidden no body pose runs, so animatePed (called every frame
   // in updateFoot) keeps the arms in the normal walk cycle.
-  heldHolder.visible=showHeld&&(curWeapon.aimed?aimingNow:true);
+  // weed farm: while the farm hands hold a bucket/plant or play a clip, the weapon is put away
+  const farmHands=!!refs.farmHandsActive?.();
+  if(farmHands&&state.aiming)state.aiming=false;
+  heldHolder.visible=!farmHands&&showHeld&&(curWeapon.aimed?aimingNow:true);
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
   if(!swimming&&!meleeAnimating){
     if(rampaging||(showHeld&&curWeapon.aimed&&aimingNow))posePlayerWithGun();
     else if(showHeld&&!curWeapon.aimed)carryPose();
   }
   // first person: override the holder with its Counter-Strike-style viewmodel pose.
-  applyViewModel();
+  if(farmHands){fpHands.visible=false;heldRocket.visible=false;}
+  else applyViewModel();
   gunKick=Math.max(0,gunKick-dt*.55);
   updateMeleeTrails(dt);
 

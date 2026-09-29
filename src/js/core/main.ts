@@ -62,6 +62,7 @@ import {updateDanceGame} from '@/places/dance-game.ts';
 import {gymTrainState} from '@/places/gym.ts';
 import {updateGymGame} from '@/places/gym-game.ts';
 import {updateWeedFarm} from '@/activities/weed-farm.ts'; // Rural: cultivo de erva (atividade no mundo, a pé)
+import {updateFarmView} from '@/activities/weed-farm-fp.ts'; // weed farm first-person hands/clips
 import '@/places/general-store.ts'; // Rural: instancia a General Store em interiors[] + ação BUY SEEDS
 import '@/activities/drug-bust.ts'; // Busted carrying the delivery backpack → crooked-cop shakedown in the woods
 import {modShopState,modShopInteract,updateModShop,workshopBlip} from '@/places/mod-shop.ts';
@@ -104,6 +105,7 @@ declare global {
       equipWeapon: (id: string) => boolean;
       setHealth: (hp: number) => number;
       vmArms: () => {x: number; y: number; z: number; visible: boolean};
+      farm: (cmd: string) => unknown;
       gore: (kind: string) => {kind: string; name: string; dead: boolean; dist: number} | null;
       raceTarget: () => { x: number; z: number } | null;
     };
@@ -413,7 +415,7 @@ function step(dt: number){
   for(const c of idleCars)blinkBar(c.g);
   P.end();
 
-  P.begin('camera');updateCamera(dt);P.end();
+  P.begin('camera');updateCamera(dt);updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
@@ -634,6 +636,7 @@ window.__test={
   // Set the local player's HP directly. Returns the applied value.
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
   vmArms:()=>viewmodelArms(), // FP arms' camera-space offset (arm-motion test)
+  farm:(cmd: string)=>refs.farmTest?.(cmd), // weed farm: 'stock' | 'ripen' | 'thirsty' | 'cure' -> state
   // Gore test: dismember the nearest living outdoor NPC ('head'|'arm'|'leg'|'gib'),
   // first placing the player 5 m away facing it so the result is on screen. Returns what
   // it did (or null) — lets the harness exercise the gore layer directly.

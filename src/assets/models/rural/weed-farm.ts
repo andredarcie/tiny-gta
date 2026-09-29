@@ -44,6 +44,14 @@ export const WEED_SLOTS=[
 export const WEED_BOX={x:9.5,z:6.5};      // sale table / crate (LOCAL)
 export const WEED_TAP={x:-9.5,z:6.5};     // water standpipe (LOCAL)
 export const WEED_RACK={x:-2.5,z:-7.3};   // drying rack — hang the harvest to cure (LOCAL)
+// Exact spots the first-person farm actions aim at (LOCAL to the standpipe / sale table,
+// before their yaw): the faucet mouth water runs from, where the live bucket rests under
+// it, and the open crate on the sale table (its inner floor height and half-extents).
+export const TAP_YAW=.5, SALE_YAW=-Math.PI/2.4;
+export const TAP_SPOUT={x:.22,y:1.1,z:-.2};
+export const TAP_BUCKET_REST={x:.3,y:.4,z:.1};
+export const CRATE_LOCAL={x:0,y:0,z:1.3}, CRATE_SCALE=1; // on the ground, yard side: you look down into it
+export const CRATE_INNER={floorY:.1*CRATE_SCALE,halfW:.62*CRATE_SCALE,halfD:.42*CRATE_SCALE};
 
 // ---- materials (shared, so bakeProp merges every farm mesh by material) ----
 const concreteM=matte({color:0xb9b3a6,roughness:1});      // wall body
@@ -321,11 +329,8 @@ function makeStandpipe(): THREE.Group {
   tip.position.set(.22,1.2,-.2);g.add(tip);
   const valve=new THREE.Mesh(new THREE.TorusGeometry(.13,.035,6,14),valveM);
   valve.rotation.x=Math.PI/2;valve.position.set(-.2,1.42,-.2);g.add(valve);
-  // a galvanized bucket under the spout
-  const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.2,.16,.34,12),pipeM);
-  bucket.position.set(.3,.3,.1);bucket.castShadow=true;g.add(bucket);
-  const bwater=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.02,12),waterM);
-  bwater.position.set(.3,.45,.1);g.add(bwater);
+  // (the bucket under the spout is LIVE — js/activities/weed-farm.ts places it at
+  // TAP_BUCKET_REST so the player can pick it up)
   // a coiled hose hanging on the riser
   const hose=new THREE.Mesh(new THREE.TorusGeometry(.22,.04,6,16),hoseM);
   hose.position.set(-.2,.9,-.34);hose.rotation.x=.4;g.add(hose);
@@ -360,8 +365,8 @@ function makeSaleTable(): THREE.Group {
   const board=new THREE.Mesh(new THREE.PlaneGeometry(.9,.66),
     new THREE.MeshBasicMaterial({map:priceTexture(),side:THREE.DoubleSide}));
   board.position.set(.3,1.4,.5);board.rotation.x=.12;g.add(board);
-  // open crate on the table for the buds
-  const crate=makeCrate(.8);crate.position.set(-.1,.98,.05);g.add(crate);
+  // open crate on the ground beside the table: each harvested plant is laid in it by hand
+  const crate=makeCrate(CRATE_SCALE);crate.position.set(CRATE_LOCAL.x,CRATE_LOCAL.y,CRATE_LOCAL.z);g.add(crate);
   return g;
 }
 
@@ -531,8 +536,8 @@ function build(): THREE.Group {
   const gh=makeGreenhouse();gh.position.set(6.5,0,-5.6);gh.rotation.y=-Math.PI/2;g.add(gh);
 
   // water standpipe + sale table at the two front corners
-  const tap=makeStandpipe();tap.position.set(WEED_TAP.x,0,WEED_TAP.z);tap.rotation.y=.5;g.add(tap);
-  const sale=makeSaleTable();sale.position.set(WEED_BOX.x,0,WEED_BOX.z);sale.rotation.y=-Math.PI/2.4;g.add(sale);
+  const tap=makeStandpipe();tap.position.set(WEED_TAP.x,0,WEED_TAP.z);tap.rotation.y=TAP_YAW;g.add(tap);
+  const sale=makeSaleTable();sale.position.set(WEED_BOX.x,0,WEED_BOX.z);sale.rotation.y=SALE_YAW;g.add(sale);
 
   // clutter for a lived-in grow-op
   const sacks=makeSackStack();sacks.position.set(-9,0,-2);g.add(sacks);
