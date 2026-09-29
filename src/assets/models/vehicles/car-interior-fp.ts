@@ -87,11 +87,12 @@ function makeGauge(x: number,withNeedle: boolean): {group: THREE.Group; needle: 
   return {group:g,needle};
 }
 
-// A sleeved forearm capsule spanning a→b (lap → wheel rim), oriented along the line.
+// A square sleeved forearm (box, like the NPC dolls) spanning a→b (lap → wheel rim),
+// oriented along the line.
 function limb(mat: THREE.Material,r: number,ax: number,ay: number,az: number,bx: number,by: number,bz: number): THREE.Mesh{
   _a.set(ax,ay,az);_b.set(bx,by,bz);
   const len=_a.distanceTo(_b);
-  const m=new THREE.Mesh(new THREE.CapsuleGeometry(r,Math.max(.02,len-2*r),6,12),mat);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(r*2.2,len,r*2.2),mat);
   m.position.copy(_a).add(_b).multiplyScalar(.5);
   m.quaternion.setFromUnitVectors(_up,_b.sub(_a).normalize());
   m.castShadow=m.receiveShadow=false;
@@ -118,7 +119,7 @@ function addWheelArms(wheelSpin: THREE.Group): void{
     // the rim ring (no clipping through the wheel) on its way to the lap.
     const ex=side*.42, ey=-.5, ez=-.34;
     wheelSpin.add(limb(SLEEVE,.032, hx,hy,hz, ex,ey,ez));           // slim forearm: rim → elbow
-    wheelSpin.add(mesh(new THREE.SphereGeometry(.034,10,8),SLEEVE,ex,ey,ez)); // cuff
+    wheelSpin.add(mesh(new THREE.BoxGeometry(.075,.075,.075),SLEEVE,ex,ey,ez)); // square cuff
     // wrap-grip hand: its origin is the rim tube, so place it AT the grip point and
     // spin it so the hand's X aligns with the rim tangent there (perpendicular to the
     // radius), making the fingers wrap over the outer edge of the rim
