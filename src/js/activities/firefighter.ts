@@ -53,7 +53,7 @@ const REGEN_RATE=0.6;      // "vida" recuperada por segundo quando ninguém borr
 const WRECK_RESPAWN=REWARDS.firefighter.wreckRespawnSec;    // caminhão destruído: volta à esquina depois disso (s)
 
 // Truck parked at the intersection x=nodeX(3)=-44, z=nodeX(6)=88 (open asphalt,
-// OUTSIDE the BLUE PARTY turf — rule: a mini-game never spawns inside a gang zone)
+// OUTSIDE the SKULLS turf — rule: a mini-game never spawns inside a gang zone)
 const spawn={x:nodeX(3)+4,z:nodeX(6),heading:0};
 
 const truck: any={g:makeFireTruck(),heading:0,speed:0,name:'FIRE TRUCK',firetruck:true};

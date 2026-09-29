@@ -7,7 +7,6 @@ import {makePed} from '@/core/entities.ts';
 import {AC,master,blip,thud} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {parks} from '@/world/world.ts';
-import {partyBlockAt} from '@/places/party-data.ts';
 import {player,playerPos} from '@/actors/player.ts';
 import {addBloodPuddle} from '@/world/pedestrians.ts';
 import {setTod} from '@/world/daynight.ts';
@@ -20,6 +19,7 @@ import {Beacon} from '@/core/beacon.ts';
 import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {Npc,NPC_SEED} from '@/actors/npc.ts';
+import {inGangTerritory} from '@/actors/gangs.ts';
 import {makeRng} from '@/core/rng.ts';
 
 // ---- shapes for the story mission descriptors / engine ----------------------
@@ -181,17 +181,14 @@ function rollRandomSpot(): Spot{
 
 // Parque mais distante do NPC (missão do Diego): rende as pistas side/vert
 function farParkSpot(fromX: number,fromZ: number): Spot{
-  // party plazas are gang turf — story items never land there (same rule as mini-games)
-  const lst=[...parks].filter((k: string)=>{
-    const[pi,pj]=k.split('_').map(Number);
-    return !partyBlockAt(pi,pj);
-  }).map((k: string)=>{
+  // story items never land on gang turf (same rule as mini-games)
+  const lst=[...parks].map((k: string)=>{
     const[pi,pj]=k.split('_').map(Number);
     return{
       x:nodeX(pi)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,
       z:nodeX(pj)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2
     };
-  }).sort((a,b)=>Math.hypot(b.x-fromX,b.z-fromZ)-Math.hypot(a.x-fromX,a.z-fromZ));
+  }).filter(t=>!inGangTerritory(t.x,t.z)).sort((a,b)=>Math.hypot(b.x-fromX,b.z-fromZ)-Math.hypot(a.x-fromX,a.z-fromZ));
   const t=lst[0];
   const x=t.x+rand(-2.5,2.5),z=t.z+rand(-2.5,2.5);
   return{x,z,side:x<0?'west':'east',vert:z<0?'north':'south'};

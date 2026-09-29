@@ -7,7 +7,6 @@ import {scene,camera} from '@/core/engine.ts';
 import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {isPark} from '@/world/world.ts';
-import {partyBlockAt} from '@/places/party-data.ts';
 import {blip,thud,gunshot,pistolShot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
@@ -79,8 +78,7 @@ function makeWeaponPickup(x: number,z: number){
 }
 
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  // party plazas have their own members-only pickup (weapon-pickups.ts) — no free park pistol there
-  if(!isPark(i,j)||partyBlockAt(i,j))continue;
+  if(!isPark(i,j))continue;
   const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE;
   const tucked=Math.random()<.5?-1:1;
   makeWeaponPickup(
@@ -918,7 +916,7 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
   // are ALL Npc instances in the global registry now, so one loop hits them all
   // (no more per-type loops that could double-hit or leave a type bullet-proof).
   for(const n of npcs){
-    if(n.dead||isFriendlyWeaponTarget(n))continue;
+    if(n.dead)continue;
     const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
     if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
   }
@@ -1267,10 +1265,7 @@ const api: WeaponApi={
     // on their own: ped kills, vehicle shots, explosions…).
     if(!refs.inGunShopRange?.()&&!isRuralAt(pp.x,pp.z)){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
-      // no radio dispatch from the isolated Party Arena: addWanted already no-ops
-      // there (physics.ts), and a dispatch would send a cruiser toward the
-      // off-map stage coordinates once the round ends
-      if(!refs.isPartyArenaActive?.())refs.policeOnShot?.(pp.x,pp.z);
+      refs.policeOnShot?.(pp.x,pp.z);
     }},
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
   melee(range: number,knock: number,lethal: boolean){meleeAttack(range,knock,lethal);},
@@ -1316,9 +1311,7 @@ const ASSIST_VRANGE=3.5; // metres of vertical slack: NPCs far above/below (e.g.
 // Scratch for the aim-assist scan, reused every frame so the per-frame scan allocates
 // nothing (matches the engine's no-per-frame-allocation pass).
 const _assist: {best: number|null;bestErr: number}={best:null,bestErr:0};
-function isFriendlyWeaponTarget(target: any): boolean{return !!refs.isFriendlyWeaponTarget?.(target);}
 function considerAssistTarget(target: any,px: number,pz: number,py: number,yaw: number){
-  if(isFriendlyWeaponTarget(target))return;
   considerAssist(target.g,px,pz,py,yaw);
 }
 function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: number){

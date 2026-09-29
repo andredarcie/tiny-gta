@@ -28,10 +28,6 @@ export function collectSave(): SaveBlob {
     daily: refs.getDailySave?.() || null, // in-game day + the mini-games' "once per day" locks
     farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
     clothing: refs.getClothingSave?.() || null, // player outfit: shirt/pants/shoe colours + accessories
-    // Political party membership. 'none' (not null) encodes de-affiliation, so
-    // an explicit "left the party" is distinguishable from an old save that
-    // predates the field.
-    party: state.party ?? 'none',
   };
 }
 
@@ -55,10 +51,6 @@ export function applySave(blob: unknown): void {
   refs.restoreDaily?.(b.daily);
   refs.restoreFarm?.(b.farm);
   refs.restoreClothing?.(b.clothing);
-  // Party membership: 'none' (or a literal null) means the player de-affiliated
-  // and must stay unaffiliated; old saves without the field are left untouched.
-  if (b.party === 'red' || b.party === 'blue') state.party = b.party;
-  else if (b.party === 'none' || b.party === null) state.party = null;
 }
 
 // ---- local persistence (localStorage) ---------------------------------------

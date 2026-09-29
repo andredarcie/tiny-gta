@@ -1,6 +1,6 @@
 import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from '@/core/constants.ts';
 import {solids} from '@/world/world.ts';
-import {state,refs} from '@/core/state.ts';
+import {state} from '@/core/state.ts';
 import {addStars,heatGain,MAX_STARS,GUNFIRE_HEAT_GAP} from '@/core/wanted.ts';
 import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
@@ -26,7 +26,7 @@ export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOU
   // Dentro da boate/academia o jogador está a ~600m do mapa: o limite do mundo
   // não vale lá (senão o clamp o arrasta pro meio do mar); as paredes da sala
   // já são sólidas. NPCs (bound===BOUND) continuam presos à praia.
-  if((state.interior||refs.isPartyArenaActive?.())&&bound>BOUND)return hit;
+  if(state.interior&&bound>BOUND)return hit;
   // Jogador (bound>BOUND) pode seguir a península rural para +x até a montanha.
   // A folga da península (rext) é FIXA (RURAL_SWIM_MARGIN), não escala com `bound`:
   // SWIM_BOUND cresceu pra ilha a oeste, mas o alcance a leste fica igual ao de antes.
@@ -64,10 +64,6 @@ export function hasLineOfSight(ax:number,az:number,bx:number,bz:number):boolean{
 
 let lastGunfireHeat=-99;
 export function addWanted(n:number,why?:string,crime='pursuit'){
-  if(refs.isPartyArenaActive?.()){
-    state.wanted=0;state.lastCrime=-99;state.spotted=false;
-    return;
-  }
   // Rapid fire counts as one burst: gunfire heat at most every GUNFIRE_HEAT_GAP seconds.
   if(crime==='gunfire'){
     if(state.time-lastGunfireHeat<GUNFIRE_HEAT_GAP)return;

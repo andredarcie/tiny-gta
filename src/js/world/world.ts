@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,CELL,ROAD,BLOCK,SIDE,HALF,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
+import {N,ROAD,BLOCK,SIDE,GROUND,BEACH,nodeX,rand,irand,pick,clamp,
   RURAL_X0,RURAL_GAP,RURAL_X1,RURAL_HALF,MOUNT_X,MOUNT_R,MOUNT_H,MOUNT_SEG,MOUNT_S,
   TOWN_CX,ruralRoadPath,groundHeight,ruralHillH,riverBedH,
   RIVER_CX,RIVER_HW,BRIDGE_X0,BRIDGE_X1,BRIDGE_DECK_HW} from '@/core/constants.ts';
@@ -37,8 +37,6 @@ import {addPrison,PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
 import {addGunShop,GUNSHOP_I,GUNSHOP_J} from '../../assets/models/city/gun-shop.ts';
 import {addClothingStore} from '../../assets/models/city/clothing-store.ts';
 import {buildPark} from '../../assets/models/city/park.ts';
-import {buildPartyPlaza} from '../../assets/models/city/party-plaza.ts';
-import {PARTIES,PARTY_HQ_BLOCK,partyBlockAt} from '@/places/party-data.ts';
 import {buildSidewalks} from '../../assets/models/city/sidewalk.ts';
 import {addWorkshop,WORKSHOP_I,WORKSHOP_J} from '../../assets/models/city/workshop.ts';
 import {addBarnWithSilo} from '../../assets/models/rural/barn-with-silo.ts';
@@ -54,7 +52,6 @@ import {addWaterTower} from '../../assets/models/rural/water-tower.ts';
 import {addWindmill} from '../../assets/models/rural/windmill.ts';
 import {addTownSign} from '../../assets/models/rural/town-sign.ts';
 import {addFenceRun} from '../../assets/models/rural/fence.ts';
-import {addStadium,inStadiumClearing,STADIUM,PORTAL_W,PORTAL_D} from '../../assets/models/rural/stadium.ts';
 import {addWell} from '../../assets/models/rural/well.ts';
 import {addMarketStall} from '../../assets/models/rural/market-stall.ts';
 import {makeTexturedPlane} from '../../assets/models/terrain/textured-plane.ts';
@@ -103,17 +100,6 @@ function paintCityGround(){
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     const x0=nodeX(i)+ROAD/2,z0=nodeX(j)+ROAD/2;
     x.fillStyle='#bcb6a8';x.fillRect(M(x0),M(z0),BLOCK*s,BLOCK*s); // calçadão claro
-    const party=partyBlockAt(i,j);
-    if(party){
-      // party plaza floor: open tinted pavement with a colour border band —
-      // deliberately empty (no cross paths) so the square reads as free space
-      const def=PARTIES[party];
-      x.fillStyle=def.groundCss;
-      x.fillRect(M(x0+SIDE),M(z0+SIDE),(BLOCK-2*SIDE)*s,(BLOCK-2*SIDE)*s);
-      x.strokeStyle=def.css;x.lineWidth=.9*s;
-      x.strokeRect(M(x0+SIDE+1),M(z0+SIDE+1),(BLOCK-2*SIDE-2)*s,(BLOCK-2*SIDE-2)*s);
-      continue;
-    }
     x.fillStyle=isPark(i,j)?'#5fae62':'#9c968a';
     x.fillRect(M(x0+SIDE),M(z0+SIDE),(BLOCK-2*SIDE)*s,(BLOCK-2*SIDE)*s);
     if(isPark(i,j)){
@@ -125,8 +111,6 @@ function paintCityGround(){
   // abandoned lots: flat packed-dirt fill
   for(const lot of cityLots){
     if(!lot.empty)continue;
-    // party plaza blocks lost their lots — keep their floor clean
-    if(partyBlockAt(Math.floor((lot.cx+HALF)/CELL),Math.floor((lot.cz+HALF)/CELL)))continue;
     const lx=M(lot.cx-lot.w/2),lz=M(lot.cz-lot.d/2),lw=lot.w*s,ld=lot.d*s;
     x.fillStyle='#8a7a62';x.fillRect(lx,lz,lw,ld);
   }
@@ -197,29 +181,14 @@ function plantSmall(t:string,x:number,z:number){
 // DIGUIFI tribute statue instead of a fountain. Deterministic, so it never moves.
 let memorialDone=false;
 for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  if(!isPark(i,j)||partyBlockAt(i,j))continue; // party blocks get their own plaza below
+  if(!isPark(i,j))continue;
   const memorial=!memorialDone;memorialDone=true;
   addCityPark(nodeX(i)+ROAD/2+SIDE,nodeX(j)+ROAD/2+SIDE,BLOCK-2*SIDE,memorial);
 }
-// The two party HQ blocks become each party's own plaza — much simpler than a
-// park (open floor, corner flags, two benches, two lamps) and in its colour.
-// Replaces whatever the block had (buildings on the red block, the park on the
-// blue one); the affiliation desk lands at its centre (js/places/party-hq.ts).
-for(const id of['red','blue'] as const){
-  const b=PARTY_HQ_BLOCK[id];
-  buildPartyPlaza(
-    nodeX(b.i)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,
-    nodeX(b.j)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,
-    BLOCK-2*SIDE,solids,PARTIES[id].color);
-}
 for(const v of worldData.cityParkVeg){
-  // no baked park vegetation on the party plazas — they stay open
-  if(partyBlockAt(Math.floor((v.x+HALF)/CELL),Math.floor((v.z+HALF)/CELL)))continue;
   plantSmall(v.t,v.x,v.z);
 }
 for(const lot of cityLots){
-  // party plaza blocks lose their buildings/abandoned lots entirely
-  if(partyBlockAt(Math.floor((lot.cx+HALF)/CELL),Math.floor((lot.cz+HALF)/CELL)))continue;
   if(lot.empty)addAbandonedLot(lot.cx,lot.cz,lot.w,lot.d,solids);
   else addBuilding(lot.cx,lot.cz,lot.w,lot.d,solids); // windows on ALL sides (omit lot.win → default {e:1,w:1,s:1,n:1})
 }
@@ -284,11 +253,6 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
     for(let r=w(fz0)+5;r<w(fz1)-2;r+=7){
       x.beginPath();x.moveTo(u(fx0)+3,r);x.lineTo(u(fx1)-3,r);x.stroke();
     }
-  }
-  // keep the open-world stadium portal out of the ploughed-field texture
-  {
-    const px0=STADIUM.x-PORTAL_W/2-14,pz0=STADIUM.z-PORTAL_D/2-14;
-    x.fillStyle='#33500f';x.fillRect(u(px0),w(pz0),u(px0+PORTAL_W+28)-u(px0),w(pz0+PORTAL_D+28)-w(pz0));
   }
   // estrada de terra: sai da cidade, contorna a montanha pelo NORTE e atravessa a
   // vila rural (mesmo traçado do radar — ver ruralRoadPath em constants.js)
@@ -393,17 +357,17 @@ addWeedFarm(solids);
     Math.abs(x-RIVER_CX)<RIVER_HW+3 ||
     (x>BRIDGE_X0-2&&x<BRIDGE_X1+2&&Math.abs(z)<BRIDGE_DECK_HW+3);
   const f=worldData.forest;
-  for(const o of f.trees)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))plantSmall(o.t,o.x,o.z);    // 'pine' | 'tree'
-  for(const o of f.bushes)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addBush(o.x,o.z);
-  for(const o of f.ferns)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addFern(o.x,o.z);
-  for(const o of f.details)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
+  for(const o of f.trees)if(!inRiverGap(o.x,o.z))plantSmall(o.t,o.x,o.z);    // 'pine' | 'tree'
+  for(const o of f.bushes)if(!inRiverGap(o.x,o.z))addBush(o.x,o.z);
+  for(const o of f.ferns)if(!inRiverGap(o.x,o.z))addFern(o.x,o.z);
+  for(const o of f.details)if(!inRiverGap(o.x,o.z))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
   // ----- lush ground cover (code-built nature kit): grass tufts, wildflowers and
   // clover scattered around the existing forest foliage so the peninsula reads as a
   // living meadow (like the kit's own scenes). Purely visual, baked into the merged
   // nature chunks; anchored to vetted forest points so nothing lands on water/roads.
   const scatter=(ox:number,oz:number,spread:number):void=>{
     const gx=ox+rand(-spread,spread),gz=oz+rand(-spread,spread);
-    if(inRiverGap(gx,gz)||inStadiumClearing(gx,gz,34))return;
+    if(inRiverGap(gx,gz))return;
     const r=Math.random();
     if(r<.60)scatterGround('grass',gx,gz,rand(.5,1.15),rand(.8,1.3));
     else if(r<.85)scatterGround('flower',gx,gz,rand(.8,1.6));
@@ -427,7 +391,7 @@ addHayBales();
     .map(f=>[f[0]+G,f[1]+G,f[2],f[3]]);
   const safeFence=(x0:number,z0:number,x1:number,z1:number)=>{
     const mx=(x0+x1)/2,mz=(z0+z1)/2;
-    if(inStadiumClearing(x0,z0,10)||inStadiumClearing(x1,z1,10)||inStadiumClearing(mx,mz,10))return;
+    
     addFenceRun(x0,z0,x1,z1);
   };
   for(const[a,b,d,e]of fences){
@@ -496,7 +460,6 @@ addHayBales();
 // of the mountain, between it and the village. Drive in through the front gate or
 // slip in through the crumbled breach in the back wall. -----
 addAbandonedFort(solids,606,88);
-addStadium(solids); // PARTY ARENA stadium on the flat plain south-east of the mountain
 // a few pines screening the fort from the road
 for(const[px,pz]of[[574,70],[580,108],[636,112],[630,66]])addPine(px,pz);
 
@@ -504,14 +467,14 @@ for(const[px,pz]of[[574,70],[580,108],[636,112],[630,66]])addPine(px,pz);
 // houses reclaimed by the woods, south-west of Pine Hollow (off the mountain and
 // the dirt road). The dense tree cover sells the "abandoned" feel. -----
 for(const[hx,hz,hr]of[[440,-50,.25],[462,-64,-.35],[430,-38,.15],[566,-66,-.45],[598,-58,.3]])
-  if(!inStadiumClearing(hx,hz,18))solids.push(addAbandonedHouse(hx,hz,hr));
+  solids.push(addAbandonedHouse(hx,hz,hr));
 // broadleaf trees crowding the derelict houses
 for(const[tx,tz]of[[428,-46],[444,-62],[452,-36],[470,-54],[480,-70],[492,-44],
-  [556,-58],[574,-72],[588,-50],[604,-66],[538,-74],[516,-56]])if(!inStadiumClearing(tx,tz,22))addTree(tx,tz);
+  [556,-58],[574,-72],[588,-50],[604,-66],[538,-74],[516,-56]])addTree(tx,tz);
 // pines mixed in + a second grove on the north-east village outskirts
 for(const[px,pz]of[[436,-70],[460,-44],[500,-72],[560,-80],[596,-72],[522,-66],
-  [680,60],[712,72],[660,90]])if(!inStadiumClearing(px,pz,22))addPine(px,pz);
-for(const[tx,tz]of[[664,72],[690,64],[706,84],[672,96],[700,104]])if(!inStadiumClearing(tx,tz,22))addTree(tx,tz);
+  [680,60],[712,72],[660,90]])addPine(px,pz);
+for(const[tx,tz]of[[664,72],[690,64],[706,84],[672,96],[700,104]])addTree(tx,tz);
 
 // espuma da costa (anéis polares da cidade + tiras da península) + espuma da ilha
 // a oeste — ver island.js / island-paradise.js

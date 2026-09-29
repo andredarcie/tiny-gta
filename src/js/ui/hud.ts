@@ -3,7 +3,6 @@ import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
   cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from '@/core/constants.ts';
 import {state,input,refs} from '@/core/state.ts';
 import {isPark} from '@/world/world.ts';
-import {partyBlockAt,PARTIES} from '@/places/party-data.ts';
 import {getTod} from '@/world/daynight.ts';
 import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
 import {MiniGame} from '@/activities/minigame.ts';
@@ -207,9 +206,7 @@ const mmStatic=document.createElement('canvas');mmStatic.width=512;mmStatic.heig
   x.fillStyle='#e8dcc4';                                      // ruas claras (miolo da cidade)
   x.fillRect(M(-GROUND/2),M(-GROUND/2),GROUND*s,GROUND*s);
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-    const party=partyBlockAt(i,j);
-    x.fillStyle=party?PARTIES[party].mapCss                    // praça de partido
-      :isPark(i,j)?'#5d7c3e':'#8a6f4d';                        // parque / quarteirão
+    x.fillStyle=isPark(i,j)?'#5d7c3e':'#8a6f4d';               // park / city block
     x.fillRect(M(nodeX(i)+ROAD/2),M(nodeX(j)+ROAD/2),BLOCK*s,BLOCK*s);
   }
 }
@@ -468,7 +465,7 @@ const mapWrap=$('mapwrap');
 export function drawMinimap(): void {
   // Em interiores e na arena isolada o minimapa nao faz sentido: esconde o painel inteiro.
   // Ver tambem a seta 3D de missao em story.js.
-  const hideMap=state.interior||!!refs.isPartyArenaActive?.();
+  const hideMap=state.interior;
   if(mapWrap)mapWrap.style.display=hideMap?'none':'';
   if(hideMap)return;
   const pp=refs.playerPos?.();if(!pp)return;

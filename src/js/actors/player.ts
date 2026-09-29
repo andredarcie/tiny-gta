@@ -589,10 +589,10 @@ function updateExiting(dt:number){
   }
 }
 
-function terrainY(x:number,z:number):number{return refs.partyArenaGroundHeight?.(x,z)??groundHeight(x,z);}
+function terrainY(x:number,z:number):number{return groundHeight(x,z);}
 
 export const inWater=(p:{x:number;z:number})=>{
-  if(state.interior||refs.isPartyArenaActive?.())return false; // interiores/arena isolada são chão seco
+  if(state.interior)return false; // interiors are dry ground
   return !isLand(p.x,p.z);        // costa irregular da ilha (mesma fonte do visual)
 };
 
@@ -654,7 +654,6 @@ function wastedCut(){
 // como os NPCs; o letreiro WASTED só aparece depois do corpo no chão
 let dying:{t:number;puddle:boolean}|null=null;
 export function getWasted(){
-  if(refs.handlePartyArenaDeath?.())return;
   if(wastedActive||dying)return;
   wastedActive=true;
   // morrer nadando: endireita a postura do nado antes da animação de queda

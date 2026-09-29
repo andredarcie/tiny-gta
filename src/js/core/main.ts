@@ -37,8 +37,6 @@ import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: 
 import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
 import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
 import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
-import {updatePartyHq,updatePartyUi,getPartyState} from '@/places/party-hq.ts';
-import {updatePartyArena,getPartyArenaState} from '@/activities/party-arena.ts';
 import {blinkBar} from '@/core/entities.ts';
 import {preloadNature} from '../../assets/models/nature/kit.ts';
 import {finalizeNature,updateNatureCulling} from '../../assets/models/nature/batch.ts';
@@ -250,9 +248,6 @@ refs.storyTargets=storyTargets;
 refs.rickNear=rickNear;         // HUD mostra TALK TO RICK no acampamento secreto
 refs.rickInteract=rickInteract; // performInteract abre a cut-scene do Rick
 refs.getRickState=getRickState; // snapshot de debug da missão secreta
-refs.getPartyState=getPartyState;   // debug/test snapshot of the political parties
-refs.getFootOfficers=()=>officers;  // gang allies target hunting foot officers (gangs.ts)
-refs.getPartyArenaState=getPartyArenaState; // debug/test snapshot of the stadium arena
 refs.getBusted=getBusted;
 refs.getWasted=getWasted;
 refs.isWasted=isWasted;
@@ -334,7 +329,6 @@ function step(dt: number){
   if(updateDanceGame(dt)){renderFrame(dt);return;} // mini-game da dança congela o mundo
   if(updateModShop(dt)){renderFrame(dt);return;} // oficina de custom congela o mundo
   if(updateClothesShop(dt)){renderFrame(dt);return;} // provador da loja de roupas congela o mundo
-  if(updatePartyUi()){renderFrame(dt);return;} // party sign-up sheet freezes the world
   // Mapa completo (tecla M): congela o mundo — EXCETO quando o overlay "Show NPCs"
   // está ligado, daí o mundo continua simulando pros pontinhos se moverem em tempo
   // real (o jogador segue bloqueado por isBlocked). O mapa é redesenhado ao final do
@@ -362,8 +356,6 @@ function step(dt: number){
     renderFrame(dt);return;
   }
 
-  const arenaActive=!!refs.isPartyArenaActive?.();
-
   P.begin('player');
   if(state.mode==='cut'){
     state.cutT-=dt;
@@ -372,52 +364,46 @@ function step(dt: number){
   else updateFoot(dt);
   P.end();
 
-  P.begin('traffic');if(!arenaActive)updateTraffic(dt);P.end();
-  P.begin('peds');if(!arenaActive){updatePeds(dt);updateBodyRecovery(dt);}P.end();
-  P.begin('gangs');if(!arenaActive)updateGangs(dt);P.end();
-  P.begin('rural');if(!arenaActive){updateRuralFolk(dt);updateRuralTraffic(dt);}P.end(); // country folk + sparse dirt-road cars
+  P.begin('traffic');updateTraffic(dt);P.end();
+  P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
+  P.begin('gangs');updateGangs(dt);P.end();
+  P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
   // While the full map is open (even with live NPCs shown) the player is input-locked,
   // so the police/army must NOT chase, shoot or arrest them — freeze those threats.
   const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
-  P.begin('cops');if(combatOn&&!arenaActive){updateCops(dt);updatePoliceBoats(dt);}P.end();
-  P.begin('army');if(combatOn&&!arenaActive)updateArmy(dt);P.end(); // ★6: the army
+  P.begin('cops');if(combatOn){updateCops(dt);updatePoliceBoats(dt);}P.end();
+  P.begin('army');if(combatOn)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
-  if(!arenaActive){
-    updateHeli(dt);
-    updatePickups(dt);
-    updateTaxi(dt);
-    updateVigilante(dt); // viatura: patrulha vigilante (caça aos criminosos)
-    updateParamedic(dt); // ambulância: plantão de paramédico (resgate de feridos)
-    updateRace(dt);
-    updateBoatRace(dt);
-    updateOffroad(dt); // corrida off-road (circuito de terra na zona rural)
-    // Minigames estilo open-world (cada um se auto-registra em refs; ver os módulos).
-    // Rodam DEPOIS do update do jogador/carro (acima), então o stunt-jumps pode
-    // sobrescrever a altura do carro pra desenhar o arco do salto.
-    updateFirefighter(dt);
-    updateRampage(dt);
-    updateHiddenPackages(dt);
-    updateStuntJumps(dt);
-    updateCarCrusher(dt);
-    updateImportExport(dt);
-    updateBombShop(dt);
-    updateRcToyz(dt);
-    updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
-    updatePartyHq(dt); // party desks + the plaza membership banner
-    updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
-  }
-  updateWeaponPickups(dt); // includes arena-only weapons when a round is active
-  updatePartyArena(dt); // isolated Party Arena battle rounds
+  updateHeli(dt);
+  updatePickups(dt);
+  updateTaxi(dt);
+  updateVigilante(dt); // viatura: patrulha vigilante (caça aos criminosos)
+  updateParamedic(dt); // ambulância: plantão de paramédico (resgate de feridos)
+  updateRace(dt);
+  updateBoatRace(dt);
+  updateOffroad(dt); // corrida off-road (circuito de terra na zona rural)
+  // Minigames estilo open-world (cada um se auto-registra em refs; ver os módulos).
+  // Rodam DEPOIS do update do jogador/carro (acima), então o stunt-jumps pode
+  // sobrescrever a altura do carro pra desenhar o arco do salto.
+  updateFirefighter(dt);
+  updateRampage(dt);
+  updateHiddenPackages(dt);
+  updateStuntJumps(dt);
+  updateCarCrusher(dt);
+  updateImportExport(dt);
+  updateBombShop(dt);
+  updateRcToyz(dt);
+  updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
+  updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
+  updateWeaponPickups(dt);
   P.end();
   P.begin('weapons');updateWeapons(dt);P.end();
   P.begin('misc');
-  if(!arenaActive){
-    updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
-    updateJailBreak(dt); // prison hole <-> escape tunnel <-> fort triggers
-    updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
-    updateOverkill(dt);  // modo overkill: multiplicador de heat + renda
-    updateDoors(); // portas por toque: interiores e telhados dos prédios
-  }
+  updateInteriors(dt); // boate, academia e qualquer ambiente interno futuro
+  updateJailBreak(dt); // prison hole <-> escape tunnel <-> fort triggers
+  updateStreetChatter(dt); // pedestres soltam frases aleatórias/contextuais
+  updateOverkill(dt);  // modo overkill: multiplicador de heat + renda
+  updateDoors(); // portas por toque: interiores e telhados dos prédios
   updateSpeech(dt);    // segue/fade dos balões de diálogo (rua e interiores)
   if(input.shootHeld)performShoot();
 
@@ -431,10 +417,8 @@ function step(dt: number){
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
-  if(!arenaActive){
-    updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
-    updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
-  }
+  updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
+  updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
   P.end();
   P.begin('hud');updateHUD(dt);P.end();
   P.begin('audio');updateAudio();P.end();
@@ -588,8 +572,6 @@ window.render_game_to_text=()=>{
     house:refs.getHouseState?.()||null,
     houseTv:refs.getHouseTvState?.()||null,
     rick:refs.getRickState?.()||null,
-    party:refs.getPartyState?.()||null,
-    arena:refs.getPartyArenaState?.()||null,
   });
 };
 // Test/debug hook (same spirit as advanceTime / render_game_to_text): lets the
