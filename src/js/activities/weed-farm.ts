@@ -42,9 +42,10 @@ import {peds,type Ped} from '@/world/pedestrians.ts'; // street peds that like w
 //               dries pale; keeping it watered raises its QUALITY; left dry it dies.
 //   4. HARVEST— grip a ripe plant with both hands and PULL it out, roots and all. You
 //               carry ONE plant at a time (better-tended plants hold more buds).
-//   5. STASH  — lay each plant in the wooden CRATE on the sale table, one by one
-//               (or hang it on the drying rack first to cure it for more cash).
-//   6. DELIVER— take the stash OUT of the crate: the player straps on a backpack and
+//   5. DRY    — hang each plant upside down on the drying RACK (mandatory): in a few
+//               seconds it dries and turns golden-brown. Take it back down.
+//   6. STASH  — lay each DRIED plant in the wooden CRATE, one by one (a fresh plant is refused).
+//   7. DELIVER— take the stash OUT of the crate: the player straps on a backpack and
 //               enters a DELIVERY RUN to buyers across the country and the city.
 //
 // Open-world activity: zone actions + a per-frame update, no world lock.
@@ -401,7 +402,7 @@ function harvest(slot: Slot): void{
     onDone:()=>{
       reserved.delete(slot);
       bigText(`${st.name} ${grade(q)} - ${buds} BUDS`,'var(--gold)');setTimeout(hideBig,1100);
-      message('LAY THE PLANT IN THE CRATE (OR HANG IT TO DRY)','var(--gold)');
+      message('HANG IT ON THE DRYING RACK','var(--gold)');
       blip([659,880,1175],.07,'square',.18);
     }});
 }
@@ -433,7 +434,7 @@ function addPlantVisual(data: Harvest): THREE.Object3D|null{
 function clearCrateVisuals(): void{for(const o of crateObjs)scene.remove(o);crateObjs.length=0;}
 
 function placeInCrate(): void{
-  const data=heldPlant;if(!data||!holdingPlant())return;
+  const data=heldPlant;if(!data||!holdingPlant()||!data.cured)return; // only dried plants (drying is mandatory)
   const sl=crateSlot(crateObjs.length);
   fpPlace({pos:sl.pos,quat:sl.quat,scale:PLANT_CRATE_SCALE},{focus:crateW,hover:.35,stepDist:1.05,
     onRelease:(obj)=>{
@@ -642,18 +643,18 @@ function nearestHook(filter: (h:{obj:THREE.Object3D;data:Harvest;t:number})=>boo
 function hangPlant(): void{
   const data=heldPlant;const i=freeHook();
   if(!data||i<0||!holdingPlant())return;
-  if(data.cured){message('ALREADY CURED - LAY IT IN THE CRATE','var(--cream)');return;}
+  if(data.cured){message('ALREADY DRY - LAY IT IN THE CRATE','var(--cream)');return;}
   const hp=hookPos(i);hp.y-=.02;
   hooks[i]={obj:null as unknown as THREE.Object3D,data,t:0};   // reserve the hook
   fpPlace({pos:hp,quat:HANG_QUAT,scale:.6},{focus:hp,hover:.12,stepDist:1.0,
     onRelease:(obj)=>{heldPlant=null;hooks[i]={obj,data,t:0};},
-    onDone:()=>{message('HUNG TO DRY - COME BACK ONCE IT HAS CURED','var(--cyan)');blip([392,330],.07,'sine',.12);}});
+    onDone:()=>{message(`DRYING - READY IN ${REWARDS.weedFarm.cureTimeSec}s`,'var(--cyan)');blip([392,330],.07,'sine',.12);}});
 }
 function takeCured(i: number): void{
   const h=hooks[i];if(!h||!h.data.cured||!h.obj)return;
   hooks[i]=null;
   fpPickUp(h.obj,'plant',{onGrab:()=>{heldPlant=h.data;},
-    onDone:()=>{message(`CURED ${STRAIN_BY_ID[h.data.strain]?.name||''} - LAY IT IN THE CRATE`,'var(--gold)');blip([659,880,1175],.08,'square',.18);}});
+    onDone:()=>{message(`DRIED ${STRAIN_BY_ID[h.data.strain]?.name||''} - LAY IT IN THE CRATE`,'var(--gold)');blip([659,880,1175],.08,'square',.18);}});
 }
 function cureHook(i: number): void{
   const h=hooks[i];if(!h||!h.obj)return;
@@ -681,10 +682,16 @@ function nearestSlot(): Slot|null{
 
   // ---- a plant in hand ----
   if(holdingPlant()){
-    if(nearCrate)return act('PLACE','LAY THE PLANT IN THE CRATE',placeInCrate);
-    if(nearRack&&!heldPlant!.cured&&freeHook()>=0)
-      return act('HANG',`HANG IT TO DRY (+${Math.round((REWARDS.weedFarm.cureBonus-1)*100)}% WHEN CURED)`,hangPlant);
-    if(slot&&pl?.stage==='ripe')return act('FULL','HANDS FULL - LAY THIS ONE IN THE CRATE FIRST',()=>message('ONE PLANT AT A TIME - TAKE IT TO THE CRATE','var(--cream)'));
+    // drying is MANDATORY: only a dried plant goes in the crate; a fresh one goes on the rack
+    const dry=heldPlant!.cured;
+    if(nearCrate)return dry?act('PLACE','LAY THE DRIED PLANT IN THE CRATE',placeInCrate)
+      :act('WET','STILL WET - DRY IT ON THE RACK FIRST',()=>message('DRY IT ON THE RACK FIRST - ONLY DRIED PLANTS GO IN THE CRATE','var(--cyan)'));
+    if(nearRack&&!dry){
+      if(freeHook()>=0)return act('HANG','HANG IT UPSIDE DOWN TO DRY',hangPlant);
+      return act('FULL','THE RACK IS FULL - WAIT FOR ONE TO DRY',()=>message('THE RACK IS FULL - TAKE A DRIED ONE DOWN FIRST','var(--cream)'));
+    }
+    if(slot&&pl?.stage==='ripe')return act('FULL',dry?'HANDS FULL - LAY THIS ONE IN THE CRATE FIRST':'HANDS FULL - HANG THIS ONE TO DRY FIRST',
+      ()=>message(dry?'ONE PLANT AT A TIME - TAKE IT TO THE CRATE':'ONE PLANT AT A TIME - HANG IT ON THE DRYING RACK','var(--cream)'));
     return act('DROP','PUT THE PLANT DOWN',()=>dropPlantHere(true));
   }
 
@@ -717,7 +724,7 @@ function nearestSlot(): Slot|null{
     return act('BUCKET','PICK UP THE BUCKET',pickUpBucket);
   if(nearRack){
     const c=nearestHook(h=>h.data.cured&&!!h.obj);
-    if(c>=0)return act('TAKE','TAKE THE CURED PLANT',()=>takeCured(c));
+    if(c>=0)return act('TAKE','TAKE THE DRIED PLANT',()=>takeCured(c));
     const d=nearestHook(h=>!h.data.cured);
     if(d>=0){const h=hooks[d]!;return act('DRY',`DRYING - ${Math.max(1,Math.ceil(REWARDS.weedFarm.cureTimeSec-h.t))}s LEFT`,()=>message('STILL DRYING - GIVE IT TIME','var(--cyan)'));}
   }

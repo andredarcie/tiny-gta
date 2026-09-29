@@ -1,7 +1,7 @@
 // Weed farm in FIRST PERSON: plays the whole hand loop on the real game — pick up the
 // bucket, fill it at the faucet, sow a bed, water it, harvest the (fast-ripened) plant
 // and lay it in the crate — asserting the state after each clip and saving frames of
-// every animation to output/visual/farm/ for review.
+// every animation to output/visual/farm/ for review. Drying on the rack is mandatory.
 //   npx playwright test test/weed-farm.spec.ts
 import { test, expect } from './support/game.ts';
 
@@ -56,9 +56,21 @@ test('weed farm first-person hand loop', async ({ game }) => {
   s = await act('harvest', [500, 1300, 1900, 2500, 3200, 3700]);
   expect(s.held).toBe('plant');
   expect(s.heldPlant?.buds).toBeGreaterThan(0);
-  // 6) lay it in the crate
+  // 6) the crate REFUSES a fresh plant: drying is mandatory
   await tp(W(6.8, 6.4), W(8.24, 6.84));        // the crate sits on the ground, yard side of the sale table
   await page.waitForTimeout(700);
+  s = await act('crate-wet', []);
+  expect(s.held).toBe('plant');
+  expect(s.crate).toBe(0);
+  // 7) hang it on the rack and let it dry for real (8 s), take it down, THEN the crate
+  await tp(W(-2.5, -5.6), W(-2.5, -7.3)); await page.waitForTimeout(700);
+  s = await act('hang', [500, 1000]);
+  expect(s.hung).toBe(1);
+  await page.waitForTimeout(8600);
+  await page.screenshot({ path: `output/visual/farm/${String(++shot).padStart(2, '0')}-dried.png` });
+  s = await act('takedry', [500]);
+  expect(s.heldPlant?.cured).toBe(true);
+  await tp(W(6.8, 6.4), W(8.24, 6.84)); await page.waitForTimeout(700);
   s = await act('crate', [400, 900, 1250]);
   expect(s.held).toBe('none');
   expect(s.crate).toBe(1);

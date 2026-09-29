@@ -43,6 +43,17 @@ test('video: weed farm', async ({ page }) => {
   // harvest
   await d.clip('harvest', 'Pull it out, roots and all', async () => { await d.farmAct(); }, 250);
 
+  // dry it on the rack (mandatory) — hang it, it dries and turns golden-brown, take it down
+  await d.walkTo(W(-2.5, -5.4), .35);
+  await d.turnTo(W(-2.5, -7.3), 300);
+  await d.clip('hang', 'Hang it to dry', async () => { await d.farmAct(); }, 150);
+  await d.clip('dry', 'Dried and ready', async () => {
+    await page.waitForFunction(() => (window as any).__test.farm('state').hung > 0, null, { timeout: 5000 });
+    await d.farm('cure');
+    await d.wait(700);
+    await d.farmAct();
+  }, 150);
+
   // stash it in the crate, then take the stash on a delivery run
   await d.walkTo(W(6.6, 6.3), .35);
   await d.turnTo(W(8.24, 6.84), 300);

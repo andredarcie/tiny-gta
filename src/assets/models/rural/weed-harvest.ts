@@ -14,7 +14,8 @@ const rootGeo=new THREE.CylinderGeometry(.008,.002,.16,4);
 
 export function makeHarvestedPlant(leafColor: THREE.ColorRepresentation|null=null,cured=false): THREE.Group{
   const g=new THREE.Group();
-  const plant=makeWeedPlant(1,true,cured?new THREE.Color(leafColor??0x4f9a3d).lerp(new THREE.Color(0xb8a060),.45):leafColor);
+  // dried: the green turns a dusty golden-brown so a dry plant is obvious at a glance
+  const plant=makeWeedPlant(1,true,cured?new THREE.Color(leafColor??0x4f9a3d).lerp(new THREE.Color(0x9c7a3c),.68):leafColor);
   if(cured)plant.scale.set(.85,.95,.85);
   g.add(plant);
   const ball=new THREE.Mesh(soilGeo,soilM);
