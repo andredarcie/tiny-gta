@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {nodeX,irand,rand,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
+import {NPC_HP_CIVILIAN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,shirtColors} from '@/core/entities.ts';
-import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import * as Entities from '@/core/entities.ts';
 import {collideStatics,addWanted} from '@/core/physics.ts';
 import {thud} from '@/audio/audio.ts';
@@ -139,7 +139,7 @@ for(const def of npcDefsByKind('civilian')){
   const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
   g.position.set(cx+pedRng.rand(-2,2),0,cz+pedRng.rand(-2,2));
   const p=new Ped(g,{
-    kind:'ped',hp:1,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
+    kind:'ped',hp:NPC_HP_CIVILIAN,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
     punchToDown:3,showLabel:true,area:nh.name,
     gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,dialogues:def.dialogues,
   });
@@ -208,7 +208,6 @@ export function updatePeds(dt:number){
     const lx=p.g.position.x-pp.x,lz=p.g.position.z-pp.z;
     if(lx*lx+lz*lz>PED_CULL2){p.g.visible=false;continue;}
     p.g.visible=true;
-    setNpcGlbGesture(p.g,null);   // clear last frame's gesture; the action branches below re-set it
     // Hit-and-run: ped is close to a fast car — launch without the standard `kill()`
     // path (different wanted message + combo multiplier).
     if(danger&&p.g.position.distanceTo(activeCur.g.position)<2.0){
@@ -217,6 +216,10 @@ export function updatePeds(dt:number){
       _dir.set(Math.sin(activeCur.heading),0,Math.cos(activeCur.heading));
       _rnd.set(rand(-2,2),rand(5,8),rand(-2,2));
       p.vel.copy(_dir).multiplyScalar(activeCur.speed*.4).add(_rnd);
+      // fast impact blows the body apart; slower ones rip a limb off
+      if(Math.abs(activeCur.speed)>24)refs.gibNpc?.(p,_dir,1.3);
+      else refs.maimRandom?.(p,_dir);
+      refs.spawnBlood?.(p.g.position.x,p.g.position.y+1,p.g.position.z,_dir,40);
       state.comboN=state.time-state.lastHit<4?state.comboN+1:1;
       state.lastHit=state.time;state.kills++;
       spawnDrop(p.g.position.x,p.g.position.z,irand(20,80)*state.comboN);
@@ -241,7 +244,6 @@ export function updatePeds(dt:number){
       p.t+=dt*4;
       p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
       poseWeedBeckon(p.g,p.t); // distinct "come deal" beckon, not the plain greeting wave
-      setNpcGlbGesture(p.g,'beckon');   // rigged ped: the come-here beckon (procedural pose is invisible on GLB)
       continue;
     }
     if(p.aiState==='panic'){
@@ -261,7 +263,7 @@ export function updatePeds(dt:number){
       const distP=state.mode==='foot'?p.g.position.distanceTo(pp):1e9;
       if(p.personality==='friendly'&&distP<6){          // greet + wave
         pedFace(p,pp);p.t+=dt*4;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
-        poseWavePed(p.g,p.t);setNpcGlbGesture(p.g,'wave');continue; // rigged ped: friendly greeting wave
+        poseWavePed(p.g,p.t);continue; // rigged ped: friendly greeting wave
       }
       if(p.personality==='brave'&&distP<4){pedStandFacing(p,pp,dt,.05);continue;} // stare you down
       const confront=p.personality==='hostile',beg=p.personality==='greedy';

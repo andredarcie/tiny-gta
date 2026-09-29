@@ -11,9 +11,8 @@ import {test, expect} from '@playwright/test';
 import {GameDriver} from './support/game.ts';
 
 // Boot the game and surface any page error. On localhost the game AUTO-STARTS (the
-// dev shortcut in input.ts), so we don't drive the title/login UI at all — we just wait
-// for state.started. (The shared harness's boot() clicks a #nick-play button that the
-// current login modal no longer has, so it can't be used here.) The benign "user gesture
+// dev shortcut in input.ts), so we don't drive the title UI at all — we just wait
+// for state.started. The benign "user gesture
 // required for Pointer Lock" error is filtered — it only fires because nothing clicked yet.
 async function bootGame(page: import('@playwright/test').Page, errors: string[]) {
   page.on('pageerror', (e) => { if (!/Pointer Lock/i.test(e.message)) errors.push(e.message); });

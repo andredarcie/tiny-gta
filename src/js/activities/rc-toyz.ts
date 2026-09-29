@@ -14,7 +14,7 @@ import {makeRcRager} from '../../assets/models/vehicles/rc-rager.ts';
 import {makeRcPad} from '../../assets/models/props/rc-pad.ts';
 import {makeRcCrate} from '../../assets/models/props/rc-crate.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {ZoneAction} from '@/core/types.ts';
 
 // RC SMASH — a remote-control demolition mini-game: you pilot a tiny RC car that is
@@ -52,7 +52,7 @@ const SPAWN_MIN=18, SPAWN_MAX=72; // target spawn distance from the player/pad
 
 // Combo: wrecks within COMBO_WINDOW of each other chain. The cash multiplier steps
 // up the longer the chain runs (capped at ×3 to keep payouts near the original
-// per-kill and under the backend's plausibility cap); callouts fire per chain length.
+// per-kill); callouts fire per chain length.
 const COMBO_WINDOW=REWARDS.rcToyz.comboWindowSec;
 function comboMult(c: number){ for(const t of REWARDS.rcToyz.comboTiers)if(c>=t.minCombo)return t.mult; return 1; }
 interface Callout{c:number;txt:string;col:string;}
@@ -402,7 +402,7 @@ function endRound(keepIfDriving=false){
   nitroT=0;megaT=0;rc.userData.speedMul=1; // buffs never carry out of a round
   if(keepIfDriving){
     // still seated: KEEP the session (lock + briefing cover the whole stay in the
-    // RC; otherwise the ranking would re-pop each round). Just a breath.
+    // RC; otherwise the briefing would re-pop each round). Just a breath.
     cooldown=2.4;
   }else{
     cooldown=0;
@@ -420,7 +420,7 @@ function killTarget(t: Target){
   destroyed++;
   combo++;comboT=COMBO_WINDOW;bestCombo=Math.max(bestCombo,combo);
   // gold is its own flat bonus (not multiplied by the combo) so a single kill can
-  // never spike past the backend's per-second cap; it still advances the chain.
+  // never spike the payout; it still advances the chain.
   const cash=Math.min(REWARDS.rcToyz.maxCashPerKill,t.gold?PER_KILL*GOLD_MULT:PER_KILL*comboMult(combo));
   economy.earn(cash,'rc-toyz');
   timeLeft=Math.min(TIME_CAP,timeLeft+(t.gold?GOLD_TIME:TIME_PER_KILL)); // time-attack reward
@@ -469,7 +469,7 @@ function detonate(){
 
 function finishRound(){
   const won=destroyed>=1; // a single kill already passes
-  reportMiniGameResult(game.id,{won,score:destroyed});
+  markMiniGamePlayed(game.id);
   if(won){
     bigText(`RC SMASH: ${destroyed} WRECKED`,'var(--gold)');
     message(`RC SMASH DONE - ${destroyed} WRECKED - BEST COMBO ${bestCombo}`,'var(--gold)');

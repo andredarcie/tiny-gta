@@ -52,34 +52,15 @@ export const genStoreFx: {
 export const generalStoreInterior=new THREE.Group();
 generalStoreInterior.visible=false;
 
-// ---- exterior textures (warm honey clapboards, porch boards) ----
-const plankExtTex=repeatTex(canvasTexture(128,128,(x,w,h)=>{
-  x.fillStyle='#c98a52';x.fillRect(0,0,w,h);
-  for(let y=0;y<h;y+=12){
-    x.fillStyle=(y/12)%2?'#cf905a':'#bd7e48';x.fillRect(0,y,w,11);   // clapboard courses
-    x.strokeStyle='rgba(70,42,20,.45)';x.lineWidth=1.5;
-    x.beginPath();x.moveTo(0,y+11.4);x.lineTo(w,y+11.4);x.stroke();
-  }
-  for(let k=0;k<48;k++){x.fillStyle=`rgba(80,48,22,${Math.random()*.16})`;
-    x.fillRect(Math.random()*w,Math.random()*h,Math.random()*20,1);}   // grain flecks
-}),2,1.5);
-const deckTex=repeatTex(canvasTexture(128,128,(x,w,h)=>{
-  x.fillStyle='#7a5232';x.fillRect(0,0,w,h);
-  for(let xx=0;xx<w;xx+=20){
-    x.fillStyle=(xx/20)%2?'#80582f':'#6e4a2a';x.fillRect(xx,0,19,h);
-    x.strokeStyle='rgba(35,22,10,.5)';x.lineWidth=1.5;
-    x.beginPath();x.moveTo(xx+19.4,0);x.lineTo(xx+19.4,h);x.stroke();
-  }
-}),3,3);
 
 // ---- exterior materials ----
-const bodyM=matte({map:plankExtTex,roughness:.92});
+const bodyM=matte({color:0xc98a52});   // flat honey clapboard
 const frontM=matte({color:0xb87a48,roughness:.95});       // false front (flat, darker)
 const roofM=matte({color:0x5b5048,roughness:.9});
 const trimM=matte({color:0x5e3c24,roughness:.85});
 const winM=matte({color:0x9ecbe0,roughness:.3,metalness:.1});
 const doorM=matte({color:0x6e4a32,roughness:.9});
-const deckM=matte({map:deckTex,roughness:.9});
+const deckM=matte({color:0x7a5232});   // flat porch boards
 const stoneM=matte({color:0x6f6a62,roughness:1});         // foundation course
 const barrelWoodM=matte({color:0x8a5a30,roughness:.9});
 const hoopM=matte({color:0x4a3320,roughness:.6,metalness:.3});
@@ -313,29 +294,10 @@ function canvasTexture(w: number,h: number,draw: (x: CanvasRenderingContext2D, w
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
-function repeatTex(t: THREE.Texture,x: number,y: number): THREE.Texture{t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(x,y);return t;}
 
-const plankFloorTex=repeatTex(canvasTexture(128,128,(x,w,h)=>{
-  x.fillStyle='#6e4a2c';x.fillRect(0,0,w,h);
-  for(let y=0;y<h;y+=16){
-    x.fillStyle=y/16%2?'#7a5331':'#684527';x.fillRect(0,y,w,15);
-    x.strokeStyle='rgba(40,24,12,.5)';x.lineWidth=1.5;
-    x.beginPath();x.moveTo(0,y+15.5);x.lineTo(w,y+15.5);x.stroke();
-  }
-  for(let k=0;k<40;k++){x.fillStyle=`rgba(40,24,10,${Math.random()*.18})`;
-    x.fillRect(Math.random()*w,Math.random()*h,Math.random()*22,1);}
-}),5,4);
-const plankWallTex=repeatTex(canvasTexture(128,128,(x,w,h)=>{
-  x.fillStyle='#caa06a';x.fillRect(0,0,w,h);
-  for(let xx=0;xx<w;xx+=18){
-    x.fillStyle=xx/18%2?'#d3a972':'#bf9560';x.fillRect(xx,0,17,h);
-    x.strokeStyle='rgba(70,44,22,.4)';x.lineWidth=1.5;
-    x.beginPath();x.moveTo(xx+17.5,0);x.lineTo(xx+17.5,h);x.stroke();
-  }
-}),4,2);
 
-const floorM=matte({map:plankFloorTex,roughness:.92});
-const intWallM=matte({map:plankWallTex,roughness:.95});
+const floorM=matte({color:0x6e4a2c});  // flat plank floor
+const intWallM=matte({color:0xcaa06a}); // flat plank wall
 const ceilM=matte({color:0x2a221a,roughness:.95});
 const counterBodyM=matte({color:0x6b4327,roughness:.85});
 const counterTopM=matte({color:0x8a5d34,roughness:.6});

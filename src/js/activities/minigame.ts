@@ -1,6 +1,6 @@
 import {state,refs} from '@/core/state.ts';
 import {getDay,setDay,getTod,restoreTod} from '@/world/daynight.ts';
-import {openMiniGameIntro} from '@/activities/minigame-leaderboard.ts';
+import {openMiniGameIntro} from '@/activities/minigame-intro.ts';
 import type {Blip} from '@/core/types.ts';
 
 // ============================================================================
@@ -42,9 +42,9 @@ export const MiniGameId=Object.freeze({
   HIDDEN_PACKAGES:'hidden-packages',
   STUNT_JUMPS:'stunt-jumps',
   OVERKILL:'overkill',
-  // mini-games próprios (overlay de interior / pickup): NÃO são instâncias de
-  // MiniGame nem entram na trava de sessão, mas têm o MESMO briefing de ranking
-  // (top 5) e enviam resultado ao backend. Ids só pro intro + envio.
+  // standalone mini-games (interior overlay / pickup): NOT MiniGame instances and
+  // outside the session lock, but they share the SAME briefing and the daily-lock
+  // bookkeeping. Ids only used for the intro + completion mark.
   GYM:'gym',
   DANCE:'dance',
   ROCKET_RAMPAGE:'rocket-rampage',
@@ -133,7 +133,7 @@ export class MiniGame{
     this._active=true;
     if(this.exclusive){
       state.activeMiniGame=this.id;
-      // briefing: mostra o ranking do mini game e congela até o jogador "passar"
+      // briefing: shows the mini game card and freezes until the player "passes"
       openMiniGameIntro(this.id,this.name);
     }
     return true;

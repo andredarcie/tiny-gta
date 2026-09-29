@@ -6,7 +6,6 @@ import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.ts';
 import {Npc} from '@/actors/npc.ts';
-import {setNpcGlbSeated,setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
 import {parks} from '@/world/world.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
@@ -14,7 +13,7 @@ import {Beacon} from '@/core/beacon.ts';
 import {message} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {Blip} from '@/core/types.ts';
 
 // Current ride: the passenger + origin/destination + payment and deadline. Extends
@@ -211,9 +210,7 @@ function boardFare(){
   clearMarker();
   const ped=fare!.ped;
   ped.rotation.set(0,0,0);
-  seatPassengerPose(ped);                 // procedural fallback pose (no-op for a GLB fare)
-  setNpcGlbGesture(ped,null);             // stop the hail wave
-  setNpcGlbSeated(ped);                   // rigged fare rides in the 'sit' clip (not "running" in the seat)
+  seatPassengerPose(ped);                 // sit in the passenger seat
   ped.position.set(.38,-.52,-.15); // banco do carona, ao lado do jogador
   taxi.g.add(ped); // reparenta da cena pro carro: anda junto, visível pelo vidro
   const[dx,dz]=pickSpot(80,fare!.x,fare!.z);
@@ -251,8 +248,8 @@ function dropPassenger(){
 function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
   if(phase==='pickup'&&fare){clearMarker();fare.despawn();} // removes the waiting fare from the scene + census
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
-  // ranking: o expediente inteiro conta como UMA sessão (ganho = total da corrida)
-  reportMiniGameResult(game.id,{won:shiftFares>0,score:shiftEarnings});
+  // session over: counts toward the once-per-day lock
+  markMiniGamePlayed(game.id);
   fare=null;phase='off';
   game.end(); // libera a trava do mundo
   hideTaxiHud();
@@ -329,7 +326,6 @@ export function updateTaxi(dt: number){
     // acenando pro táxi (braço pra cima balançando)
     const l=ped.userData.limbs;
     if(l){l.rightArm.rotation.x=-2.7;l.rightArm.rotation.z=Math.sin(state.time*7)*.18;} // procedural fallback
-    setNpcGlbGesture(ped,'wave');         // rigged fare: raised swinging arm to hail the cab
     const d=Math.hypot(taxi.g.position.x-fare!.x,taxi.g.position.z-fare!.z);
     if(d<26)ped.rotation.y=Math.atan2(taxi.g.position.x-fare!.x,taxi.g.position.z-fare!.z);
     if(d<3.4&&Math.abs(taxi.speed)<1.5)boardFare(); // parou do lado: embarca

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {clamp,RURAL_X0} from '@/core/constants.ts';
-import {scene,renderer,hemi,dlight,sunDir,clouds,camera} from '@/core/engine.ts';
+import {scene,renderer,hemi,dlight,sunDir,clouds,camera,setBloomStrength,setNightBloom} from '@/core/engine.ts';
 import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
 import {state,refs} from '@/core/state.ts';
 import {beamMat} from '@/core/entities.ts';
@@ -44,13 +44,13 @@ export const setDay=(n:number)=>{ if(Number.isFinite(n)) dayCount=Math.max(dayCo
 // sun = cor da luz direcional (vira luar à noite), win = brilho das janelas dos prédios.
 const KF=[
  {t:.00,sky:['#141e38','#1b2848','#26365c','#32466e','#405a7e'],fog:'#243652',
-  sun:'#c6d8ff',sunI:.72,hs:'#44587e',hg:'#242c3e',hI:.66,win:2.0,star:1,exp:1.14,cloud:'#5a688a'},
+  sun:'#c6d8ff',sunI:.9,hs:'#5a70a2',hg:'#3a4260',hI:1.0,win:2.0,star:1,exp:1.14,cloud:'#5a688a'},
  {t:.17,sky:['#141e38','#1b2848','#26365c','#32466e','#405a7e'],fog:'#243652',
-  sun:'#c6d8ff',sunI:.72,hs:'#44587e',hg:'#242c3e',hI:.66,win:2.0,star:1,exp:1.14,cloud:'#5a688a'},
+  sun:'#c6d8ff',sunI:.9,hs:'#5a70a2',hg:'#3a4260',hI:1.0,win:2.0,star:1,exp:1.14,cloud:'#5a688a'},
  {t:.215,sky:['#0b1430','#1c2048','#3c2a56','#7a3e4e','#c06a4a'],fog:'#503a44',
-  sun:'#ff9a5e',sunI:.5,hs:'#3a3658',hg:'#1e161e',hI:.4,win:1.7,star:.6,exp:1.0,cloud:'#8a5e66'},
+  sun:'#ff9a5e',sunI:.6,hs:'#4e4a74',hg:'#34283a',hI:.78,win:1.7,star:.6,exp:1.0,cloud:'#8a5e66'},
  {t:.26,sky:['#1a3a6c','#3a5c92','#9a6e8a','#ff9a56','#ffd28e'],fog:'#c08a62',
-  sun:'#ffae5e',sunI:1.3,hs:'#7a7494',hg:'#36282a',hI:.62,win:.8,star:.05,exp:1.08,cloud:'#ffb892'},
+  sun:'#ffae5e',sunI:1.3,hs:'#8a84a4',hg:'#54403e',hI:.86,win:.8,star:.05,exp:1.08,cloud:'#ffb892'},
  {t:.34,sky:['#2a6ec6','#4f9ade','#9ccfeb','#ffe2b8','#fff0d4'],fog:'#c6dcea',
   sun:'#ffe0ae',sunI:2.0,hs:'#aed1f4',hg:'#8a8078',hI:.98,win:.35,star:0,exp:1.2,cloud:'#fff6ea'},
  {t:.50,sky:['#2e7fd9','#5aa7e8','#a8d8f0','#d2eaf8','#eaf5fc'],fog:'#cfe2ee',
@@ -58,13 +58,13 @@ const KF=[
  {t:.66,sky:['#2e7fd9','#5aa7e8','#a8d8f0','#ffe7c4','#fff4dd'],fog:'#cfe2ee',
   sun:'#fff1d6',sunI:2.2,hs:'#bfdfff',hg:'#8a8078',hI:1.05,win:.3,star:0,exp:1.25,cloud:'#fff2e0'},
  {t:.735,sky:['#28509e','#5a5a96','#b06a78','#ff9450','#ffc878'],fog:'#d49a6a',
-  sun:'#ffa050',sunI:1.6,hs:'#8a7a8e',hg:'#4a342e',hI:.8,win:.6,star:0,exp:1.18,cloud:'#ffc09a'},
+  sun:'#ffa050',sunI:1.6,hs:'#9a8aa0',hg:'#6a4c44',hI:1.05,win:.6,star:0,exp:1.18,cloud:'#ffc09a'},
  {t:.77,sky:['#1c2a5e','#46336e','#9c4460','#ff6e3a','#ffb060'],fog:'#b06a4a',
-  sun:'#ff6a32',sunI:1.0,hs:'#5c4a6e',hg:'#2c2026',hI:.55,win:1.1,star:.12,exp:1.1,cloud:'#ff8e6a'},
+  sun:'#ff6a32',sunI:1.0,hs:'#6e5c86',hg:'#4a3444',hI:.88,win:1.1,star:.12,exp:1.1,cloud:'#ff8e6a'},
  {t:.81,sky:['#121a3e','#1c244e','#342c5e','#6a3856','#9a524e'],fog:'#3e3050',
-  sun:'#9aa8e0',sunI:.56,hs:'#3e4668',hg:'#202236',hI:.56,win:1.8,star:.65,exp:1.08,cloud:'#504a6a'},
+  sun:'#9aa8e0',sunI:.75,hs:'#52608c',hg:'#343a56',hI:.92,win:1.8,star:.65,exp:1.08,cloud:'#504a6a'},
  {t:.87,sky:['#141e38','#1b2848','#26365c','#32466e','#405a7e'],fog:'#243652',
-  sun:'#c6d8ff',sunI:.72,hs:'#44587e',hg:'#242c3e',hI:.66,win:2.0,star:1,exp:1.14,cloud:'#5a688a'}
+  sun:'#c6d8ff',sunI:.9,hs:'#5a70a2',hg:'#3a4260',hI:1.0,win:2.0,star:1,exp:1.14,cloud:'#5a688a'}
 ];
 // Pré-converte cores para THREE.Color (sem alocação por frame)
 const P=KF.map(k=>({t:k.t,sky:k.sky.map(c=>new THREE.Color(c)),fog:new THREE.Color(k.fog),
@@ -93,6 +93,7 @@ function sampleKeyframes(){
 // Céu completo. O grupo fica exportado por causa dos interiores off-map:
 // o domo tem raio 900 e pode atravessar salas como a loja de armas.
 const skyLayer=new THREE.Group();scene.add(skyLayer);
+let bloomNight=false; // is the night bloom pipeline on (see updateDayNight)
 export function setSkyHidden(hidden:boolean){skyLayer.visible=!hidden;}
 
 // --- Cúpula do céu (gradiente redesenhado conforme a hora) ---
@@ -207,8 +208,8 @@ export function updateDayNight(dt:number){
   // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
   // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
   // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
-  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the Stylized Nature
-  // MegaKit forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
+  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the dense
+  // rural forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
   // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
   // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
   // horizon from the mountaintop mirante.
@@ -228,6 +229,15 @@ export function updateDayNight(dt:number){
   // vertical + sol/lua manterem a direção de mundo certa conforme a hora do dia)
   skyLayer.position.copy(camera.position);
   renderer.toneMappingExposure=cur.exp*REAL_EXP;
+  // Bloom is a NIGHT-only effect (the neon glow — lit windows, signs, lamps, headlights,
+  // flashes): the post-processing pipeline switches on after dusk and off after dawn, with
+  // hysteresis so it never flickers, and its strength ramps up from ~0 at the switch so
+  // there is no visible pop. By day the game renders straight to the screen (cheaper).
+  {const nightF=clamp(1-(cur.sunI-.5)/1.3,0,1);
+   const on=nightF>(bloomNight?.45:.5);
+   if(on!==bloomNight){bloomNight=on;setNightBloom(on);}
+   const ramp=clamp((nightF-.45)/.2,0,1);
+   setBloomStrength((.3+nightF*1.1)*ramp,.92-nightF*.32);}
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;
   for(const m of buildingMats)m.emissiveIntensity=cur.win;

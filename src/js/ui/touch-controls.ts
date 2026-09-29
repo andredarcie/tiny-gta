@@ -217,10 +217,10 @@ export function setupTouchControls(): void {
     if(document.hidden)resetInput(true);
   });
 
-  // tocar pra jogar abre o modal de nickname (start acontece ao confirmar)
+  // tapping anywhere on the title screen starts the game
   $('title')?.addEventListener('pointerdown',e=>{
     if(state.started)return;
-    if((e.target as Element).closest('#play'))return; // o botão PLAY já trata o clique
+    if((e.target as Element).closest('#play'))return; // the PLAY button handles its own click
     requestStart();
   },{capture:true});
 }

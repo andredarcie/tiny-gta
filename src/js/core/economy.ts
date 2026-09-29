@@ -31,20 +31,15 @@ function clean(amount: unknown): number {
   return Number.isFinite(n)&&n>0?n:0;
 }
 
-// Allowed transaction id shape. Mirrors the backend's sanitizeTx; '#' is reserved
-// for the server hash's bookkeeping fields so it can never appear in a tx id.
+// Allowed transaction id shape.
 const ID_OK=/^[A-Za-z0-9:_-]{1,32}$/;
 
 // In-memory window bounds. Compaction folds older txs into `checkpoint` so the
 // array — and the persisted blob — stay small no matter how long the session runs.
 const MAX_LEDGER=120, KEEP=60;
-// How many recent txs the PERSISTED snapshot carries. Kept under the backend's
-// 64-item array cap (sanitizeValue); everything older is folded into `ckpt`.
+// How many recent txs the PERSISTED snapshot carries; everything older is folded
+// into `ckpt`, so the save blob stays small.
 const SAVE_TXS=40;
-// Soft cap on the unsynced queue (pathological offline play). When exceeded, the
-// oldest pendings are COLLAPSED into one synthetic tx so their net amount still
-// reaches the server (never silently dropped — that would lose money on restore).
-const PENDING_CAP=2000, PENDING_FOLD=1000;
 
 // Anti rapid-fire: minimum spacing (ms) between two POSITIVE credits from the SAME
 // mini-game source. Makes it IMPOSSIBLE for one mini-game to pay twice in quick
@@ -53,8 +48,7 @@ const PENDING_CAP=2000, PENDING_FOLD=1000;
 // real play, are always seconds apart, so the window only ever catches a duplicate.
 // Per-EVENT activities (rc-toyz kills, hidden-package clusters, loot, stunt jumps,
 // overkill per-second income) are deliberately OMITTED so legit rapid/simultaneous
-// earns are never blocked; those rely on the per-tx id dedupe instead. The server's
-// plausibility cap (~$200/s) is the anti-cheat backstop if the client is bypassed.
+// earns are never blocked; those rely on the per-tx id dedupe instead.
 const SOURCE_COOLDOWN_MS: Record<string, number> = {
   race:3000, 'boat-race':3000, offroad:3000, dance:3000,
   rampage:3000, 'rocket-rampage':3000,
@@ -71,8 +65,6 @@ class Economy{
   ckptSeq=0;                          // bumps on each compaction/import
   seq=0;                              // monotonic counter for auto tx ids
   salt=Math.random().toString(36).slice(2,8); // per-session id salt
-  pending: LedgerTx[]=[];             // txs not yet acked by the backend
-  pfoldSeq=0;                         // sequence for collapsed-pending ids
   lastEarnT: Record<string, number>=Object.create(null); // last credit time per guarded source
   blocked=0;                          // count of rapid-fire credits rejected (debug)
 
@@ -92,33 +84,21 @@ class Economy{
   _autoId(): string { return (this.seq++).toString(36)+'-'+this.salt+'-'+Math.random().toString(36).slice(2,6); }
 
   // Append a tx idempotently. Returns true if applied, false if the id was a dup.
-  // `track` flags a real session tx: it must survive a restore-rebase and be sent
-  // to the backend. Imported/base txs (server snapshot, genesis) pass track=false.
+  // `track` flags a real session tx: it must survive a restore-rebase. Imported/base
+  // txs (restored snapshot) pass track=false.
   _apply(tx: LedgerTx, {track=true}: {track?: boolean}={}): boolean {
     if(!tx||this.seen.has(tx.id))return false;
     this.seen.add(tx.id);
     tx.local=track;
     this.ledger.push(tx);
     this.sum+=tx.amt;
-    if(track)this._queue(tx);
     this._recompute();
     if(this.ledger.length>MAX_LEDGER)this._compact();
     return true;
   }
 
-  // Queue a tx for the next backend flush, collapsing the oldest if the queue
-  // grows pathologically large (keeps the net amount; nothing is ever dropped).
-  _queue(tx: LedgerTx): void {
-    this.pending.push({id:tx.id,amt:tx.amt,why:tx.why,t:tx.t});
-    if(this.pending.length>PENDING_CAP){
-      const old=this.pending.splice(0,PENDING_FOLD);
-      let net=0; for(const t of old)net+=t.amt;
-      this.pending.unshift({id:'pfold:'+(this.pfoldSeq++)+'-'+this.salt,amt:net,why:'fold',t:Date.now()});
-    }
-  }
-
-  // Seed the starting balance as a tx with a STABLE id ('genesis') so the client
-  // seed and the server's migration seed dedupe to a single entry per ledger.
+  // Seed the starting balance as a tx with a STABLE id ('genesis') so a restored
+  // snapshot that already contains it dedupes to a single entry.
   seedGenesis(): void { this._apply({id:'genesis',amt:INITIAL_MONEY,why:'start',t:Date.now()}); }
 
   // Credit money. Sanitizes the amount (no NaN/negative/Infinity ever lands) and
@@ -174,7 +154,7 @@ class Economy{
 
   // Fixed loss on death/arrest: lose exactly `amount` (capped at the balance so the
   // wallet never goes negative). Records the loss as a negative tx. Returns the
-  // amount actually lost (what the death-pool puddle carries).
+  // amount actually lost.
   flatPenalty(amount: number, reason=''): number {
     const lost=Math.min(state.money,clean(amount));
     if(lost>0){
@@ -235,8 +215,7 @@ class Economy{
     // starting balance whenever it was still in `txs` (young-ledger restore lost
     // $250). Applying `txs` as-is restores it correctly; `carry` already excludes
     // genesis, so the fresh-instance seed can never double-count.
-    this.pending=[];                   // rebuilt from carry below (server dedupes resends)
-    for(const t of txs){               // saved recent txs become base (not re-sent)
+    for(const t of txs){               // saved recent txs become base (not session-tracked)
       const tx=this._sanitize(t);
       if(tx)this._apply(tx,{track:false});
     }
@@ -252,17 +231,6 @@ class Economy{
     const amt=Math.floor(Number(r.amt));
     if(!id||!Number.isFinite(amt))return null;
     return {id,amt,why:String(r.why||'').slice(0,32),t:Math.floor(Number(r.t))||Date.now()};
-  }
-
-  // Unsynced txs to send on the next flush (copies; safe to resend on failure).
-  // Capped per flush so the request body stays well under the backend's 16KB
-  // limit; the queue drains over successive flushes (oldest first).
-  takeUnsynced(limit=60): LedgerTx[] { return this.pending.slice(0,limit).map(t=>({id:t.id,amt:t.amt,why:t.why,t:t.t})); }
-  // Drop txs the backend confirmed it stored.
-  ackSynced(ids: string[] | null | undefined): void {
-    if(!ids||!ids.length)return;
-    const ack=new Set(ids);
-    this.pending=this.pending.filter(t=>!ack.has(t.id));
   }
 
   // Recent transactions for the pause-menu wallet, NEWEST FIRST. This is the live
@@ -289,7 +257,6 @@ class Economy{
       balance:state.money,
       checkpoint:this.checkpoint,
       window:this.ledger.length,
-      pending:this.pending.length,
       blocked:this.blocked, // rapid-fire mini-game credits rejected this session
       last:this.ledger.slice(-5).map(t=>({why:t.why,amt:t.amt})),
     };
@@ -300,9 +267,7 @@ class Economy{
 export const economy=new Economy();
 
 // Expose the persistence hooks through refs (same late-binding pattern as
-// refs.collectSave) so save.js / leaderboard.js reach the live singleton.
+// refs.collectSave) so save.ts reaches the live singleton.
 refs.serializeLedger=()=>economy.serialize();
 refs.importLedger=s=>economy.importLedger(s);
-refs.takeUnsyncedTxs=()=>economy.takeUnsynced();
-refs.ackSyncedTxs=ids=>economy.ackSynced(ids);
 refs.debugLedger=()=>economy.debugLedger();

@@ -38,11 +38,6 @@ npx playwright test test/<your-spec>.spec.ts --reporter=list
 ## 1. One-time / per-environment setup
 
 - **Chromium present?** `npx playwright install chromium` (idempotent; skips if already there).
-- **Working in a git worktree?** Junction the shared `node_modules` in so `npx`, `tsc` and
-  `vite` resolve (PowerShell):
-  ```powershell
-  New-Item -ItemType Junction -Path "<worktree>\node_modules" -Target "<main-checkout>\node_modules"
-  ```
 - **Port 5173 must be free** before you run. Playwright auto-starts `npm run dev` on 5173 with
   `reuseExistingServer: true` — if a *foreign* dev server (another checkout/branch) is already
   squatting 5173, your tests will silently run against the **wrong code**. Check first:
@@ -59,13 +54,11 @@ it manually in *this* checkout beforehand is the safe way to guarantee the right
 
 ## 2. The boot trap (this is what bites every time)
 
-**Do not drive the title/login screen.** The shared harness used to click
-`#play → #nick-input → #nick-play`, but the login modal changed (it's now guest / login /
-register — there is no `#nick-play`), so that path **hangs forever** waiting for a hidden
-element. That stale flow was the "boot always fails" trap.
+**Do not drive the title screen.** The old harness clicked through a nickname/login modal
+that no longer exists, so that path **hangs forever** waiting for a missing element. That
+stale flow was the "boot always fails" trap.
 
-**What actually happens:** on `localhost` the game **auto-starts** with a fixed nickname (the
-dev shortcut in `js/core/input.ts` — `onLocalhost` → `beginRun()`). So there is no UI to drive.
+**What actually happens:** on `localhost` the game **auto-starts** (the dev shortcut in `js/core/input.ts` — `onLocalhost` → `beginRun()`). So there is no UI to drive.
 Just navigate and wait for the running game to report `started`:
 
 ```ts

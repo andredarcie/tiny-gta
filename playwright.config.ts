@@ -12,7 +12,6 @@ const headless = process.env.HEADLESS === '1';
 export default defineConfig({
   testDir: './test',
   testMatch: '**/*.spec.ts',
-  testIgnore: '**/*.online.spec.ts', // two-player online specs need the MP server → run via playwright.online.config.ts
   fullyParallel: false,    // the game is a singleton page; run specs serially
   workers: 1,
   retries: 0,
@@ -20,7 +19,9 @@ export default defineConfig({
   expect: { timeout: 15_000 },
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5173',
+    // BASE_URL points the run at another server, e.g. a production build served by
+    // `npx vite preview --port 4173` (BASE_URL=http://localhost:4173) for boot timing.
+    baseURL: process.env.BASE_URL || 'http://localhost:5173',
     headless,
     viewport: { width: 1280, height: 720 },
     actionTimeout: 20_000,
@@ -39,7 +40,7 @@ export default defineConfig({
   },
   projects: [{ name: 'chromium' }],
   // Auto-start the Vite dev server for the tests and reuse one if already up.
-  webServer: {
+  webServer: process.env.BASE_URL ? undefined : {
     command: 'npm run dev',
     url: 'http://localhost:5173',
     reuseExistingServer: true,

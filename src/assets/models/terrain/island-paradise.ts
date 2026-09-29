@@ -138,8 +138,7 @@ export function updateIslandFoam(foam: Foam[],time: number): void{
 
 // ===================== PROPS DE ALTA QUALIDADE ==============================
 
-// Palms/rocks/shrubs/grass now come from the Stylized Nature MegaKit (see
-// nature/kit.ts). The old procedural builders were removed with the swap.
+// Palms/rocks/shrubs/grass come from the code-built nature kit (nature/kit.ts).
 function addPalmAt(x: number,y: number,z: number): void{
   placeNature('palm',x,y,z,rand(5.8,8.2));
 }

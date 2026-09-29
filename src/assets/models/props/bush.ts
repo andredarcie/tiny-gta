@@ -25,7 +25,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Bush',build};
 
-// Bush → a random MegaKit shrub (Bush_Common / flowering bush / small plant).
+// Bush → a random code-built shrub (round bush / flowering bush / leafy plant), see nature/kit.ts.
 export function addBush(px: number,pz: number): void{
   placeNature('bush',px,groundHeight(px,pz)-.04,pz,rand(1.0,1.9));
 }

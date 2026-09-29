@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {clamp,wrapA,rand,irand,SWIM_BOUND,isLand} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makeBoat,makePed,attachHandGun,blinkBar,disposeGeometries,vehicleOccupants} from '@/core/entities.ts';
-import {setNpcGlbSeated} from '../../assets/models/characters/npc-glb.ts';
 import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 import {thud,gunshot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
@@ -47,7 +47,6 @@ let lastMsg=-99; // anti-spam do aviso "POLICE BOAT ON THE WATER!"
 // com pistola na mão pra disparar do barco
 function seatCop(boatG:THREE.Object3D):THREE.Object3D{
   const d=makePed(0x2a3f6e,0x1a2440);
-  setNpcGlbSeated(d);   // rigged helmsman pilots seated (the procedural limb pose is a no-op on GLB)
   d.traverse(o=>{if((o as THREE.Mesh).isMesh)o.castShadow=false;});
   const l=d.userData.limbs;
   if(l){
@@ -99,7 +98,7 @@ function boatShoot(b:PoliceBoat,pp:THREE.Vector3,dist:number){
   addTracer(from,to);
   gunshot(.32);
   if(hit){
-    state.health-=state.mode==='car'?irand(2,4):irand(3,7); // de lancha a lataria protege um pouco
+    state.health-=(state.mode==='car'?irand(2,4):irand(3,7))*PLAYER_DAMAGE_TAKEN; // de lancha a lataria protege um pouco
     state.shake=Math.max(state.shake,.1);
     refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,new THREE.Vector3(to.x-from.x,to.y-from.y,to.z-from.z).normalize(),7);
     if(state.health<=0){state.health=100;getWasted();}

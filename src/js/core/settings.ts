@@ -3,7 +3,7 @@
 // setters from engine / audio / radio (none of which import this back), so it never
 // forms an import cycle with the systems it configures. The pause menu
 // (js/ui/pause-menu.ts) renders the UI from a schema and writes back via setSetting().
-import {setShadowsEnabled,setBrightness} from '@/core/engine.ts';
+import {setShadowsEnabled,setBrightness,setBloomEnabled} from '@/core/engine.ts';
 import {setMasterVolume} from '@/audio/audio.ts';
 import {setMusicVolume} from '@/ui/radio.ts';
 
@@ -18,7 +18,7 @@ interface Settings {
   brightness: number;
   fps: boolean;
   aimAssist: boolean;
-  filmGrain: boolean;
+  bloom: boolean;
 }
 
 // Single source of truth for defaults. They are picked to REPRODUCE the game's
@@ -33,7 +33,7 @@ export const DEFAULTS: Settings={
   brightness:100, // 50..150 % -> toneMappingExposure (100 = the original 1.25)
   fps:true,       // show the FPS readout (top-left)
   aimAssist:true, // gentle aim assist while aiming/on touch (read live by weapons.ts)
-  filmGrain:!(matchMedia('(pointer: coarse)').matches||innerWidth<900), // on (desktop); OFF on mobile — fullscreen mix-blend-mode is costly there. Toggle in Settings → Graphics.
+  bloom:true,     // glow on neon / lit windows / lamps / flashes
 };
 
 export const settings: Settings={...DEFAULTS};
@@ -57,19 +57,16 @@ export function applyAudioSettings(){
 export function applyGraphicsSettings(){
   setShadowsEnabled(settings.shadows);
   setBrightness((settings.brightness/100)*1.25);
+  setBloomEnabled(settings.bloom);
 }
 export function applyFpsSetting(){
   const el=document.getElementById('fps');
   if(el)el.style.display=settings.fps?'':'none';
 }
-export function applyFilmGrain(){
-  document.body.classList.toggle('no-grain',!settings.filmGrain);
-}
 export function applySettings(){
   applyAudioSettings();
   applyGraphicsSettings();
   applyFpsSetting();
-  applyFilmGrain();
 }
 
 // Set one key, persist, and re-apply only the affected group (so dragging a slider
@@ -79,9 +76,8 @@ export function setSetting(key: string,val: number|boolean){
   (settings as unknown as Record<string, unknown>)[key]=val;
   persist();
   if(key==='master'||key==='music'||key==='muted')applyAudioSettings();
-  else if(key==='shadows'||key==='brightness')applyGraphicsSettings();
+  else if(key==='shadows'||key==='brightness'||key==='bloom')applyGraphicsSettings();
   else if(key==='fps')applyFpsSetting();
-  else if(key==='filmGrain')applyFilmGrain();
 }
 
 export function resetSettings(){

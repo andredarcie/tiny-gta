@@ -15,7 +15,7 @@ function build({scale=1.4}={}): THREE.Mesh{
 
 export default {category:'Terrain',label:'Mountain rock',build};
 
-// Mountain rock → a random MegaKit Rock_Medium boulder, sized from the old scale.
+// Mountain rock → a random code-built boulder (nature/kit.ts), sized from the old scale.
 export function addMountainRock(x: number,z: number,scale: number): void{
   placeNature('rock',x,groundHeight(x,z)-.1,z,scale*rand(1.3,1.8));
 }

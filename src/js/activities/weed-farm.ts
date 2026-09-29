@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import {state,refs} from '@/core/state.ts';
 import {scene} from '@/core/engine.ts';
-import {playerPos,player,idleCars,cameraRig,cur,getBusted,setPlayerAnimOverlay} from '@/actors/player.ts';
-import {AnimState} from '@/actors/anim-fsm.ts';
+import {playerPos,player,idleCars,cameraRig,cur,getBusted} from '@/actors/player.ts';
 import {economy} from '@/core/economy.ts';
 import {addWanted} from '@/core/physics.ts';
 import {groundHeight,TOWN_CX,RURAL_GAP} from '@/core/constants.ts';
@@ -15,7 +14,7 @@ import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HA
   makeWeedPlant,makeBud,makeBucket,makeWaterDrop} from '../../assets/models/rural/weed-farm.ts';
 import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import {getDay} from '@/world/daynight.ts';
 import {Npc} from '@/actors/npc.ts';
@@ -215,7 +214,7 @@ const WEED_BUYER_LINES=[
 
 let bucketObj: THREE.Object3D|null=null;       // the 3D bucket parented to the player's hand while carrying
 let pourT=0;              // pour-animation timer (>0 while tipping the bucket)
-let armPosed=false;       // true while the GLB hero's arm is overlaid (pour/deal) — so we only clear our own slot
+let armPosed=false;       // true while the hero's arm is posed (pour/deal)
 let pourSlot: Slot|null=null;        // the slot being watered during the pour
 let pourApplied=false;    // whether the water has landed (hyd set) this pour
 // live particles (water droplets + harvest bud burst)
@@ -398,7 +397,7 @@ function endRunCleanup(): void{
 }
 function finishRun(): void{
   const sold=pack.orig;
-  reportMiniGameResult(MiniGameId.WEED_FARM,{won:true,score:sold});
+  markMiniGamePlayed(MiniGameId.WEED_FARM);
   boxed+=sold;
   endRunCleanup();
   bigText('ALL DELIVERED','var(--gold)');setTimeout(hideBig,1100);
@@ -444,11 +443,11 @@ function faceForDeal(b: Buyer): void{
 function dealCutscene(b: Buyer,pay: number,after: ()=>void): void{
   faceForDeal(b);
   const l=playerLimbs();
-  if(l){l.rightArm.rotation.set(-1.25,0,-.2);l.rightForearm?.rotation.set(-.5,0,0);} // reach out (procedural)
-  setPlayerAnimOverlay(AnimState.WeedDeal);armPosed=true;                             // rigged hero: reach out
+  if(l){l.rightArm.rotation.set(-1.25,0,-.2);l.rightForearm?.rotation.set(-.5,0,0);} // reach out
+  armPosed=true;
   bigText(`+$${pay}`,'var(--gold)');
   state.mode='cut';state.cutT=1.8;
-  state.cutFn=()=>{state.mode='foot';setPlayerAnimOverlay(null);armPosed=false;after();};
+  state.cutFn=()=>{state.mode='foot';armPosed=false;after();};
 }
 
 function deliverTo(b: Buyer): void{
@@ -771,7 +770,7 @@ export function updateWeedFarm(dt: number): void{
     if(state.mode==='foot'){
       const l=playerLimbs();
       if(l){l.rightArm.rotation.set(-1.45,0,-.25);l.rightForearm?.rotation.set(-.55,0,0);}
-      setPlayerAnimOverlay(AnimState.WeedPour);armPosed=true;  // rigged hero: tip-the-bucket arm pose
+      armPosed=true;
       if(bucketObj)bucketObj.rotation.z=Math.min(2.1,(POUR_TIME-pourT)*4.5);
     }
     if(!pourApplied&&pourT<=POUR_TIME*.55){
@@ -782,9 +781,8 @@ export function updateWeedFarm(dt: number): void{
     }
     if(pourT<=0){pourT=0;waterCharges=Math.max(0,waterCharges-1);pourSlot=null;if(waterCharges<=0)detachBucket();}
   }
-  // pour finished (or got interrupted out of foot mode): drop the GLB arm overlay so the
-  // hero goes back to the normal walk/idle. The deal-reach clears itself in its cutFn.
-  if(armPosed&&pourT<=0&&state.mode==='foot'){setPlayerAnimOverlay(null);armPosed=false;}
+  // pour finished (or got interrupted out of foot mode): the walk cycle takes the arm back.
+  if(armPosed&&pourT<=0&&state.mode==='foot')armPosed=false;
   updateFx(dt);
 
   // Carry the water only AT the plot: wander off (or hop on a vehicle) and a filled
@@ -831,7 +829,7 @@ export function updateWeedFarm(dt: number): void{
   if(heat>0)heat=Math.max(0,heat-dt*3);
   if(heat>HEAT_HOT&&nearFarm()){
     farmLinger+=dt;
-    if(farmLinger>6){addWanted(3,'POLICE RAID ON THE FARM!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
+    if(farmLinger>6){addWanted(3.5,'POLICE RAID ON THE FARM!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
   }else farmLinger=0;
   updateWeedHud();
 

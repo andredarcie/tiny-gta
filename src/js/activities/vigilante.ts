@@ -13,7 +13,7 @@ import {blip,thud} from '@/audio/audio.ts';
 import {collideStatics} from '@/core/physics.ts';
 import {PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 
 // Vigilante estilo open-world clássico: uma viatura de polícia fica estacionada na
 // esquina ao lado do presídio. Entrou nela, começa a patrulha: a cada nível
@@ -174,8 +174,8 @@ function startDuty(){
 function endDuty(text='STREET JUSTICE OFF DUTY',col='var(--cyan)'){
   removeCriminal();
   const summary=busts>0?` - ${busts} BUSTS / LVL ${level}`:'';
-  // ranking: a patrulha inteira é UMA sessão; score = prisões feitas
-  reportMiniGameResult(game.id,{won:busts>0,score:busts});
+  // session over: counts toward the once-per-day lock
+  markMiniGamePlayed(game.id);
   phase='off';
   game.end(); // libera a trava do mundo
   hideVigHud();

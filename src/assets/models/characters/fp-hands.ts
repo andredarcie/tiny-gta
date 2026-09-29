@@ -1,60 +1,28 @@
 import * as THREE from 'three';
+import type {FpArmPose,FpHandsPose} from '@/combat/weapon-types.ts';
 
-// First-person hands. A single, more detailed hand (palm + curled fingers + thumb)
-// used ONLY in first person (the gun viewmodel and the car cockpit grip), so the
-// extra polys cost nothing in the third-person world. Built with the wrist at the
-// origin, palm facing -Z (toward what it grips) and fingers reaching +Y then curling
-// over the front; `side` (+1 right / -1 left) puts the thumb on the inner edge.
+// First-person hands — BOX style, like every NPC doll (assets/models/characters/
+// pedestrian.ts): the hand is one cube fist and the forearm one square sleeve. Used by
+// the gun viewmodel and the car cockpit grip. Built with the wrist at the origin, the
+// fist facing -Z (toward what it grips); `side` (+1 right / -1 left) is kept for the
+// callers' mirroring.
 
-const palmGeo  =new THREE.BoxGeometry(.068,.044,.022);
-const knuckGeo =new THREE.BoxGeometry(.065,.018,.024);
-const fingerGeo=new THREE.BoxGeometry(.013,.05,.019);
-const thumbGeo =new THREE.BoxGeometry(.016,.044,.02);
+const FIST=new THREE.BoxGeometry(.075,.075,.065);   // cube hand (the doll's hand is a .09 cube)
 
-// Small box helper (position + rotation) for the wrap-grip hand below.
-function bx(mat: THREE.Material,w: number,h: number,d: number,x: number,y: number,z: number,rx=0,ry=0,rz=0): THREE.Mesh{
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
-  m.position.set(x,y,z);m.rotation.set(rx,ry,rz);m.castShadow=false;
-  return m;
-}
-
-// A hand WRAPPED around a wheel rim (a real grip). Origin = the rim tube itself, so
-// callers just place this at the grip point on the rim. Local axes: +Z toward the
-// driver (back of hand + knuckles visible), +Y radially out (toward the rim's outer
-// edge), the rim running along X through the origin. The four fingers drape over the
-// rim and curl down/behind it in TWO segments each (proximal over the front, distal
-// hooking behind), and the thumb opposes on the near side — so the rim is enclosed by
-// the grip and partly hidden, exactly like a hand holding a wheel. FP-only, so the
-// extra segments are cheap. `side` (+1 right / -1 left) sets the thumb side.
-export function buildGripHand(skinMat: THREE.Material,side=1): THREE.Group{
+// A hand gripping a wheel rim: one cube fist centred on the rim tube (the rim runs along
+// X through the origin), so the rim disappears into the fist.
+export function buildGripHand(skinMat: THREE.Material,_side=1): THREE.Group{
   const h=new THREE.Group();
-  // ONE solid fist mass that ENCLOSES the rim tube (rim hidden inside the fist, so it
-  // reads as a single clean hand gripping — not a cluttered fan of separate fingers).
-  h.add(bx(skinMat,.072,.056,.056, 0,.008,.006));       // fist mass straddling the rim
-  h.add(bx(skinMat,.07,.016,.054,  0,.038,.006));       // knuckle ridge across the top
-  for(let i=0;i<4;i++)                                   // 4 short fingertips curling under the front
-    h.add(bx(skinMat,.013,.016,.022, (-1.5+i)*.0165,-.024,-.026, -.5));
-  h.add(bx(skinMat,.018,.044,.022, side*.044,.004,.016, .4,0,side*.7)); // thumb on the near side
+  const f=new THREE.Mesh(FIST,skinMat);f.position.set(0,.008,.006);f.castShadow=false;
+  h.add(f);
   return h;
 }
 
-// A bare hand (no sleeve). Reused by the gun viewmodel and the steering grip.
-export function buildHand(skinMat: THREE.Material,side=1): THREE.Group{
+// A bare hand (no sleeve): one cube fist. Reused by the gun viewmodel.
+export function buildHand(skinMat: THREE.Material,_side=1): THREE.Group{
   const h=new THREE.Group();
-  h.add(new THREE.Mesh(palmGeo,skinMat));                 // back of the hand, at the origin
-  const k=new THREE.Mesh(knuckGeo,skinMat);
-  k.position.set(0,.03,-.012);                            // knuckle ridge
-  h.add(k);
-  for(let i=0;i<4;i++){                                   // four fingers, curling over the front (-Z)
-    const f=new THREE.Mesh(fingerGeo,skinMat);
-    f.position.set((-1.5+i)*.017,.038,-.028);
-    f.rotation.x=-1.25;
-    h.add(f);
-  }
-  const t=new THREE.Mesh(thumbGeo,skinMat);               // thumb on the inner side
-  t.position.set(side*.04,0,-.006);
-  t.rotation.set(-.3,0,side*.8);
-  h.add(t);
+  const f=new THREE.Mesh(FIST,skinMat);f.position.set(0,.015,-.01);f.castShadow=false;
+  h.add(f);
   return h;
 }
 
@@ -65,8 +33,8 @@ function buildArm(skinMat: THREE.Material,sleeveMat: THREE.Material,side: number
   const hand=buildHand(skinMat,side);
   hand.position.set(0,0,-.02);
   arm.add(hand);
-  const fore=new THREE.Mesh(new THREE.CapsuleGeometry(.04,.26,6,12),sleeveMat);
-  fore.position.set(0,-.17,.02);
+  const fore=new THREE.Mesh(new THREE.BoxGeometry(.085,.3,.085),sleeveMat); // square sleeve
+  fore.position.set(0,-.19,.02);
   fore.castShadow=false;
   arm.add(fore);
   arm.rotation.set(-.5,0,side*.32);                       // down-back-outward toward the corner
@@ -85,6 +53,19 @@ export function makeFpHands({skin=0xd9a06b,sleeve=0x19e3ff}: {skin?: number; sle
   g.add(right,left);
   g.userData.right=right;g.userData.left=left;
   return g;
+}
+
+export function poseFpHands(hands: THREE.Group,pose: FpHandsPose):void{
+  const right=hands.userData.right as THREE.Group;
+  const left=hands.userData.left as THREE.Group;
+  applyArmPose(right,pose.right);
+  applyArmPose(left,pose.left);
+}
+
+function applyArmPose(arm: THREE.Group,pose: FpArmPose):void{
+  arm.position.set(...pose.position);
+  arm.rotation.set(...pose.rotation);
+  arm.visible=pose.visible!==false;
 }
 
 // Model-viewer descriptor (auto-discovered). Shows a hand straight-on for inspection.

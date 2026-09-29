@@ -1,6 +1,6 @@
 import {state,input,keys} from '@/core/state.ts';
 import {camera} from '@/core/engine.ts';
-import {player,cameraRig,posePlayerGlbDance} from '@/actors/player.ts';
+import {player,cameraRig} from '@/actors/player.ts';
 import {blip} from '@/audio/audio.ts';
 import {animatePed} from '@/core/entities.ts';
 import {clubFx} from '../../assets/models/city/nightclub.ts';
@@ -73,7 +73,7 @@ let best=0;
 try{best=+JSON.parse(localStorage.getItem('tinygta_dance')||'{}').best||0;}catch(e){}
 
 function zeroInput(){
-  input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+  input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
   input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
   input.moveActive=false;input.lookActive=false;input.brakeActive=false;input.hornActive=false;
   for(const k of Object.keys(keys))keys[k]=false;
@@ -313,9 +313,6 @@ function poseFor(lane:number){
 
 function applyDancePose(){
   const g=player.g;
-  // rigged hero: blend the neutral groove toward the hit pose for the current lane (the
-  // body bob/tilt below rides on the root group, so it applies to the GLB too).
-  posePlayerGlbDance(moveLane,moveT>0?Math.sin((1-moveT/MOVE_DUR)*Math.PI)*(moveStray?.5:1):0);
   const l=player.g.userData.limbs;if(!l)return;
   // embalo base no ritmo da música (sway de quadril + braços + bob)
   const ph=songTime/BEAT*Math.PI; // avança PI por tempo

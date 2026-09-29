@@ -236,44 +236,13 @@ function tex(w: number,h: number,draw: (x: CanvasRenderingContext2D, w: number, 
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
 
-// wood plank floor (tiled)
-const plankTex=tex(256,256,(x,w,h)=>{
-  const cols=['#9c7850','#8f6c47','#a47e56','#946e4a'],pw=64;
-  for(let i=0;i<w/pw;i++){
-    x.fillStyle=cols[i%cols.length];x.fillRect(i*pw,0,pw,h);
-    x.strokeStyle='rgba(60,40,24,.16)';x.lineWidth=1;
-    for(let k=0;k<5;k++){const gy=((i*53+k*97)%h);x.beginPath();x.moveTo(i*pw+4,gy);x.lineTo(i*pw+pw-4,gy+((k%2)?5:-4));x.stroke();}
-    x.strokeStyle='rgba(40,26,14,.5)';x.lineWidth=2;x.strokeRect(i*pw+1,1,pw-2,h-2);
-  }
-  x.strokeStyle='rgba(40,26,14,.4)';x.lineWidth=2;
-  for(let y=128;y<h;y+=128){x.beginPath();x.moveTo(0,y);x.lineTo(w,y);x.stroke();}
-});
-plankTex.wrapS=plankTex.wrapT=THREE.RepeatWrapping;plankTex.repeat.set(4,3);
-const floorWoodM=matte({color:0xffffff,map:plankTex});
+const floorWoodM=matte({color:0x987350});   // flat wood floor
 
 // subtle wallpaper (tiled), shared by shell + preview walls
-const wallTex=tex(128,128,(x,w,h)=>{
-  x.fillStyle='#e9ddc4';x.fillRect(0,0,w,h);
-  for(let i=0;i<w;i+=16){x.fillStyle=((i/16)%2)?'rgba(255,255,255,.10)':'rgba(150,130,95,.06)';x.fillRect(i,0,8,h);}
-  for(let i=0;i<260;i++){x.fillStyle='rgba(120,100,70,.05)';x.fillRect((i*53)%w,(i*97)%h,2,2);}
-});
-wallTex.wrapS=wallTex.wrapT=THREE.RepeatWrapping;wallTex.repeat.set(6,2);
 
 // kitchen backsplash tile
-const tileTex=tex(64,64,(x,w,h)=>{
-  x.fillStyle='#cfe3e6';x.fillRect(0,0,w,h);
-  x.strokeStyle='rgba(120,150,155,.6)';x.lineWidth=3;
-  for(let i=0;i<=w;i+=16){x.beginPath();x.moveTo(i,0);x.lineTo(i,h);x.moveTo(0,i);x.lineTo(w,i);x.stroke();}
-});
-tileTex.wrapS=tileTex.wrapT=THREE.RepeatWrapping;tileTex.repeat.set(8,1.4);
 
 // patterned area rug
-const rugTex=tex(96,72,(x,w,h)=>{
-  x.fillStyle='#7a3b3b';x.fillRect(0,0,w,h);
-  x.strokeStyle='#caa15a';x.lineWidth=5;x.strokeRect(7,7,w-14,h-14);
-  x.lineWidth=2;x.strokeRect(15,15,w-30,h-30);
-  x.fillStyle='#caa15a';x.beginPath();x.moveTo(w/2,h*.32);x.lineTo(w*.64,h/2);x.lineTo(w/2,h*.68);x.lineTo(w*.36,h/2);x.closePath();x.fill();
-});
 
 // faux daylight window view (sunny countryside)
 const windowViewM=new THREE.MeshBasicMaterial({map:tex(200,160,(x,w,h)=>{
@@ -303,12 +272,12 @@ const artAbstractM=new THREE.MeshBasicMaterial({map:tex(96,120,(x,w,h)=>{
 })});
 
 const counterM=matte({color:0xcdb594,roughness:.7});
-const tileM=matte({color:0xffffff,map:tileTex});
+const tileM=matte({color:0xcfe3e6});        // flat kitchen tile
 const stoveTopM=matte({color:0x232323,roughness:.45,metalness:.4});
 const curtainM=matte({color:0xb8553f,roughness:.9});
 const fireM=new THREE.MeshBasicMaterial({color:0xff8a2a,transparent:true,opacity:.9});
 const emberM=new THREE.MeshBasicMaterial({color:0xffd060,transparent:true,opacity:.55,depthWrite:false});
-const rugLivingM=matte({color:0xffffff,map:rugTex});
+const rugLivingM=matte({color:0x7a3b3b});   // flat rug
 const rugBedM=matte({color:0x5d6b7a,roughness:.95});
 const rugDiningM=matte({color:0x6f5f43,roughness:.95});
 
@@ -687,7 +656,7 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   // ===== INTERIOR (sala a ~600m, no Group liga/desliga) =====
   const ix=INT_CENTER.x,iz=INT_CENTER.z;
   const shell=new THREE.Mesh(new THREE.BoxGeometry(16,4.4,12),
-    matte({color:0xffffff,map:wallTex,side:THREE.BackSide}));
+    matte({color:0xe9ddc4,side:THREE.BackSide}));
   shell.position.set(ix,2.2,iz);ranchInterior.add(shell);
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),floorWoodM);
   floor.rotation.x=-Math.PI/2;floor.position.set(ix,.02,iz);ranchInterior.add(floor);
@@ -829,7 +798,7 @@ function buildInteriorPreview(): THREE.Group{
   const g=new THREE.Group(),ix=0,iz=0;
   const floor=new THREE.Mesh(new THREE.PlaneGeometry(15.6,11.6),floorWoodM);
   floor.rotation.x=-Math.PI/2;floor.position.set(ix,.02,iz);g.add(floor);
-  const wallMat=matte({color:0xffffff,map:wallTex});
+  const wallMat=matte({color:0xe9ddc4});
   for(const[x,z,w,d]of[
     [ix,iz-5.95,15.6,.18],
     [ix-7.9,iz,.18,11.6],

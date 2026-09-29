@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {state,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN,NPC_HP_CIVILIAN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {rand,irand,clamp,groundHeight} from '@/core/constants.ts';
 import {makePed,attachHandGun,poseAiming} from '@/core/entities.ts';
@@ -24,11 +25,6 @@ import {makeGangTracerLine} from '../../assets/models/effects/gang-tracer.ts';
 // come. Win by wiping the enemy side — every fighter (roster + alive) AND both
 // towers — and you reappear outside the gate with the round win (+ prize).
 // Losing your life ends the round (normal WASTED flow) — the arena cleans up.
-//
-// ONLINE: the arena is a real place in the single shared world, so other
-// players who enter are visible and PvP works exactly like anywhere else —
-// friends can fight for the same party or against each other. (Fighters and
-// towers are simulated per-client, like all NPCs in this game.)
 // ============================================================================
 
 const ROSTER=8;        // fighters per party per round (spawned in waves)
@@ -259,7 +255,7 @@ function spawnFighter(side:SideState){
   const g=makePed(def.color,def.pants);
   g.position.set(side.base.x+rand(-3,3),arenaGroundY(side.base.x,side.base.z),side.base.z+rand(-3,3));
   const f=new ArenaFighter(g,{
-    kind:'arena',hp:1,drop:null,wanted:0,punchToDown:3,showLabel:true,
+    kind:'arena',hp:NPC_HP_CIVILIAN,drop:null,wanted:0,punchToDown:3,showLabel:true,
     area:'Party Arena',dialogues:def.lines,
   });
   f.team=side.team;
@@ -284,6 +280,7 @@ function makeTower(team:PartyId,x:number,z:number):ArenaTower{
   // hit can't fling a head gib off it (gore.ts severHead checks these)
   g.userData.headless=true;
   g.userData.lostArm={L:true,R:true};
+  g.userData.lostLeg={L:true,R:true};g.userData.gibbed=true;
   t.team=team;t.shootT=rand(.5,1.5);
   t.onDeath=()=>{
     const p=t.g.position;
@@ -390,7 +387,7 @@ function shootPlayer(from:THREE.Vector3,pp:THREE.Vector3,dist:number,dmgLo:numbe
   addTracer(from,to);
   gunshot(.3);
   if(hit){
-    state.health-=irand(dmgLo,dmgHi);
+    state.health-=irand(dmgLo,dmgHi)*PLAYER_DAMAGE_TAKEN;
     state.shake=Math.max(state.shake,.14);
     refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,_dir.subVectors(to,from).normalize(),7);
     if(state.health<=0)respawnAtBase();
@@ -447,7 +444,7 @@ export function updatePartyArena(dt:number){
   matchAge+=dt;
   const pp=playerPos();
   // safety: the player left the pitch through some other flow (busted, hospital,
-  // remote-PvP death, ...) — tear the round down silently
+  // ...) — tear the round down silently
   if(Math.hypot(pp.x-ARENA_STAGE.x,pp.z-ARENA_STAGE.z)>ARENA_W){cleanup();return;}
   pp.x=clamp(pp.x,ARENA_STAGE.x-FIELD_W/2-ARENA_PAD,ARENA_STAGE.x+FIELD_W/2+ARENA_PAD);
   pp.z=clamp(pp.z,ARENA_STAGE.z-FIELD_D/2-ARENA_PAD,ARENA_STAGE.z+FIELD_D/2+ARENA_PAD);

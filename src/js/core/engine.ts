@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {EffectComposer,RenderPass,EffectPass,BloomEffect,ToneMappingEffect,ToneMappingMode,SMAAEffect,SMAAPreset} from 'postprocessing';
 import {makeSea} from '../../assets/models/environment/sea.ts';
 import {makeClouds} from '../../assets/models/environment/clouds.ts';
 
@@ -30,6 +31,8 @@ export function setRenderScale(s:number){
   if(Math.abs(s-renderScale)<.015)return false;
   renderScale=s;
   renderer.setPixelRatio(basePR*renderScale);
+  const {w,h}=viewportSize();
+  composer.setSize(w,h,false); // keep the pipeline buffers at the new internal resolution
   return true;
 }
 export const getRenderScale=()=>renderScale;
@@ -48,8 +51,9 @@ export function setBrightness(exposure:number){
 }
 
 renderer.shadowMap.enabled=true;
-// PCF simples: o PCFSoft fazia várias leituras extras da shadow map por pixel
-renderer.shadowMap.type=THREE.PCFShadowMap;
+// Soft shadows (PCFSoft) on desktop for smooth penumbras; phones keep plain PCF,
+// whose single tap per pixel is much cheaper on mobile GPUs.
+renderer.shadowMap.type=isMobileLike()?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;
 // Sombra throttlada: a luz direcional é fixa (só a POSIÇÃO segue o jogador),
 // então o depth map não precisa ser redesenhado todo frame. main.js liga
 // needsUpdate 1 frame sim / 1 não (~30fps de sombra), cortando ~metade do
@@ -85,15 +89,16 @@ export const hemi=new THREE.HemisphereLight(0xbfdfff,0x8a8078,1.05);scene.add(he
 export const sunDir=new THREE.Vector3(-.45,.9,-.55).normalize();
 export const dlight=new THREE.DirectionalLight(0xfff1d6,2.2);
 dlight.castShadow=true;
-// Resolução reduzida do shadow map (era 1024/2048): sombra mais "blocky", mais barata.
-// Perf: desktop 1024→768 (menos depth-fill no shadow pass; com o frustum apertado a
-// densidade de texel se mantém boa).
-dlight.shadow.mapSize.set(isMobileLike()?512:768,isMobileLike()?512:768);
+// Shadow map resolution: 2048 on desktop (crisp contact shadows under cars, people and
+// props), 1024 on phones. The shadow pass is throttled (see main.ts), so the extra
+// resolution costs little per frame.
+dlight.shadow.mapSize.set(isMobileLike()?1024:2048,isMobileLike()?1024:2048);
 // Frustum mais apertado (era ±95→±80→±66): foca a sombra perto do jogador, melhora a
 // densidade de texel e reduz a área rasterizada + casters incluídos no shadow pass.
 dlight.shadow.camera.left=-66;dlight.shadow.camera.right=66;
 dlight.shadow.camera.top=66;dlight.shadow.camera.bottom=-66;
-dlight.shadow.camera.far=420;dlight.shadow.bias=-.0015;
+dlight.shadow.camera.far=420;dlight.shadow.bias=-.0004;dlight.shadow.normalBias=.04;
+dlight.shadow.radius=3; // PCFSoft kernel spread
 scene.add(dlight);scene.add(dlight.target);
 
 // O mar é um disco GIGANTE (raio 1400) centrado na origem — ele se estende por
@@ -107,3 +112,82 @@ export const clouds:THREE.Sprite[]=[];
   clouds.push(...makeClouds(10));
   for(const sp of clouds)scene.add(sp);
 }
+
+// ---- Post-processing: the quality render pipeline ----------------------------------
+// The scene renders into an HDR (half-float) buffer, then ONE merged effect chain:
+//   Bloom — only HDR-bright pixels glow (neon, lit windows, lamps, headlights, muzzle
+//           flashes, the sun's glint); tuned per time of day by daynight.ts.
+//   SMAA  — edge anti-aliasing.
+//   ACES  — the same filmic tone mapping as before (exposure from
+//           renderer.toneMappingExposure, so daynight + the Brightness setting still work).
+// No ambient occlusion and no film overlays: its noise pattern and corner darkening read
+// as dirt on the flat-colour world.
+// The pipeline only runs AT NIGHT (daynight.ts -> setNightBloom), when the neon glow is the
+// point. By day — or with Bloom off in the settings — the game renders straight to the
+// screen (the renderer's own ACES + MSAA), skipping the HDR buffer and every full-screen pass.
+const mobilePipe=isMobileLike();
+export const composer=new EffectComposer(renderer,{
+  frameBufferType:THREE.HalfFloatType,
+  multisampling:0,
+});
+composer.addPass(new RenderPass(scene,camera));
+export const bloom=new BloomEffect({
+  mipmapBlur:true,
+  luminanceThreshold:.82,
+  luminanceSmoothing:.18,
+  intensity:.55,
+  radius:.72,
+});
+const toneMap=new ToneMappingEffect({mode:ToneMappingMode.ACES_FILMIC});
+const effects=[bloom,new SMAAEffect({preset:mobilePipe?SMAAPreset.MEDIUM:SMAAPreset.HIGH}),toneMap];
+export const effectPass=new EffectPass(camera,...effects);
+composer.addPass(effectPass);
+
+let bloomOn=true,night=false;
+function pipelineOn(){return bloomOn&&night;}
+// Day/night switch for the pipeline (daynight.ts, with hysteresis so dusk never flickers).
+export function setNightBloom(on:boolean){night=!!on;}
+function syncPipeline(){
+  bloom.blendMode.opacity.value=bloomOn?1:0;
+}
+syncPipeline();
+export function setBloomEnabled(on:boolean){bloomOn=!!on;syncPipeline();}
+// Time-of-day bloom strength (daynight.ts): subtle by day, strong for the neon night.
+export function setBloomStrength(intensity:number,threshold:number){
+  bloom.intensity=intensity;
+  bloom.luminanceMaterial.threshold=threshold;
+}
+
+// While the boot shader compile is still running in the background (js/core/warmup.ts),
+// 3D drawing is held so the first frames don't compile every program synchronously
+// (a ~1.5 s freeze). The game loop keeps running; the canvas just isn't redrawn yet.
+let renderHeld=false,firstRenderMarked=false;
+export function holdRendering(on:boolean){renderHeld=on;}
+
+// Draw one frame: through the pipeline, or straight to the screen when it's off.
+export function renderFrame(dt=0){
+  if(renderHeld)return;
+  if(!firstRenderMarked){firstRenderMarked=true;performance.mark('tg:first-render-start');}
+  if(pipelineOn())composer.render(dt);
+  else renderer.render(scene,camera);
+  if(firstRenderMarked&&!performance.getEntriesByName('tg:first-render-end').length)performance.mark('tg:first-render-end');
+}
+// The render target the scene is drawn into. Shader programs differ between drawing to a
+// target and to the screen, so the boot warmup (warmup.ts) compiles with this bound —
+// otherwise every material would recompile (and hitch) on first sight in game.
+export function sceneTarget():THREE.WebGLRenderTarget|null{
+  return pipelineOn()?composer.inputBuffer:null;
+}
+// The target NOT in use right now: the pipeline flips at dusk/dawn, so the warmup compiles
+// this variant too (in the background), or the switch would recompile everything at once.
+export function otherSceneTarget():THREE.WebGLRenderTarget|null{
+  return pipelineOn()?null:composer.inputBuffer;
+}
+function resizeComposer(){
+  const {w,h}=viewportSize();
+  composer.setSize(w,h,false);
+}
+addEventListener('resize',resizeComposer);
+addEventListener('orientationchange',resizeComposer);
+window.visualViewport?.addEventListener?.('resize',resizeComposer);
+resizeComposer();

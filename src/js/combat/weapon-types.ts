@@ -26,7 +26,21 @@ export interface Hold{
   rz?: number;
   scale?: number;
   grip?: string;
+  fpHands?: FpHandsPose;
   [k: string]: unknown;
+}
+
+export interface FpArmPose{
+  position: [number,number,number];
+  rotation: [number,number,number];
+  visible?: boolean;
+}
+
+// Camera-local wrist anchors for the first-person rig. Each weapon declares where
+// both wrists actually meet its grip/foregrip instead of sharing a generic pose.
+export interface FpHandsPose{
+  right: FpArmPose;
+  left: FpArmPose;
 }
 
 // Descritor declarativo passado ao construtor de cada arma.

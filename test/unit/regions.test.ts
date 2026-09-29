@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { regionAt, mapRegionLabels } from '@/world/regions.ts';
+import { regionAt, mapRegionLabels, isRuralAt } from '@/world/regions.ts';
 import { MOUNT_X, TOWN_CX, ISLAND_CX, ISLAND_CZ } from '@/core/constants.ts';
 
 describe('regionAt — named world regions', () => {
@@ -31,5 +31,19 @@ describe('regionAt — named world regions', () => {
     for (let x = -170; x <= 170; x += 20)
       for (let z = -170; z <= 170; z += 20)
         expect(typeof regionAt(x, z)).toBe('string');
+  });
+});
+
+describe('isRuralAt — the countryside (random gunfire there brings no police)', () => {
+  it('is true on the peninsula and false in the city, on the island and at sea', () => {
+    expect(isRuralAt(196, 4)).toBe(true);          // open prairie
+    expect(isRuralAt(MOUNT_X, 0)).toBe(true);
+    expect(isRuralAt(TOWN_CX, 0)).toBe(true);
+    expect(isRuralAt(0, 0)).toBe(false);           // Downtown
+    expect(isRuralAt(ISLAND_CX, ISLAND_CZ)).toBe(false);
+    expect(isRuralAt(1000, 1000)).toBe(false);
+  });
+  it('agrees with regionAt on every map label', () => {
+    for (const r of mapRegionLabels) expect(isRuralAt(r.cx, r.cz)).toBe(r.kind === 'rural' && r.name !== 'Paradise Isle');
   });
 });

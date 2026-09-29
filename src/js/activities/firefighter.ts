@@ -14,7 +14,7 @@ import {Beacon} from '@/core/beacon.ts';
 import {makeBlazeModel} from '../../assets/models/effects/blaze.ts';
 import {makeFireTruck} from '../../assets/models/vehicles/fire-truck.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {ZoneAction} from '@/core/types.ts';
 
 // ============================================================================
@@ -276,8 +276,8 @@ function endDuty(text='FIRE BRIGADE OVER',col='var(--cyan)'){
   setFireSiren(false);
   if(cannon)cannon.rotation.y=0;
   const summary=fires>0?` - ${fires} FIRES / LVL ${level}`:'';
-  // ranking: o plantão inteiro é UMA sessão; score = incêndios apagados
-  reportMiniGameResult(game.id,{won:fires>0,score:fires});
+  // session over: counts toward the once-per-day lock
+  markMiniGamePlayed(game.id);
   phase='off';
   game.end(); // libera a trava do mundo
   hideFfHud();

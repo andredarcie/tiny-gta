@@ -1,17 +1,17 @@
 import * as THREE from 'three';
 import {state,input,refs,keys} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts'; // money ledger — imported here so the genesis tx seeds at boot
-import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale} from '@/core/engine.ts';
+import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale,renderFrame} from '@/core/engine.ts';
 import {updateAudio} from '@/audio/audio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
-import {player,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx,updatePlayerAnim,hasPlayerGlb} from '@/actors/player.ts';
+import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts';
 import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collects dead NPCs → hospital
 import {updateGangs,gangs,gangPeds,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
-import {updateNpcLabels,reconcileVehicleNpcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
+import {updateNpcLabels,reconcileVehicleNpcs,npcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
 import {updateRuralFolk,folk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
 import {updateRuralTraffic,ruralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
 import {updateBeach,solids} from '@/world/world.ts';
@@ -35,17 +35,14 @@ import {updateBombShop} from '@/activities/bomb-shop.ts';             // Open-wo
 import {updateRcToyz} from '@/activities/rc-toyz.ts';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: as 12 armas escondidas pelo mapa
 import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
-import {updateBloodstains} from '@/loot/bloodstains.ts';       // Multiplayer assíncrono: poças de morte (estilo Souls)
 import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
 import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
 import {updatePartyHq,updatePartyUi,getPartyState} from '@/places/party-hq.ts';
 import {updatePartyArena,getPartyArenaState} from '@/activities/party-arena.ts';
 import {blinkBar} from '@/core/entities.ts';
-import {preloadNpcModels,updateNpcGlb} from '../../assets/models/characters/npc-glb.ts';
-preloadNpcModels(); // start loading the rigged NPC models ASAP; NPCs swap from the procedural ped when ready
 import {preloadNature} from '../../assets/models/nature/kit.ts';
 import {finalizeNature,updateNatureCulling} from '../../assets/models/nature/batch.ts';
-// Load the Stylized Nature MegaKit glTF, then bake every placement world.ts already
+// Generate the code-built nature kit, then bake every placement world.ts already
 // recorded (trees/pines/palms/bushes/ferns/mushrooms/rocks + grass/flowers) into merged
 // chunks. Runs after the whole world import graph, so all placements are present.
 preloadNature().then(()=>{try{finalizeNature();}catch(e){console.warn('[nature] finalize failed',e);}});
@@ -53,10 +50,9 @@ import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/cor
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
 import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
-import {initOnline,updateOnline,remoteSnapshot} from '@/net/online.ts'; // shared-world presence (other players' avatars)
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
-  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById} from '@/combat/weapons.ts';
+  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest,viewmodelArms} from '@/combat/weapons.ts';
 import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
 import {updateDayNight} from '@/world/daynight.ts';
 import {updateInteriors,interiors} from '@/world/interior.ts';
@@ -75,7 +71,6 @@ import {hospitalAdmit} from '@/places/hospital.ts';
 import {prisonAdmit} from '@/places/prison.ts';
 import {gunShopState,gunShopBuy,gunShopTargets,inGunShopRange} from '@/places/gun-shop.ts';
 import {clothesShopState,clothesShopInteract,updateClothesShop} from '@/places/clothing-store.ts';
-import {scheduleFlush} from '@/ui/leaderboard.ts';
 import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from '@/places/property.ts';
 import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.ts';
 import {updateDoors} from '@/world/doors.ts';
@@ -85,8 +80,9 @@ import {updatePropCulling,propChunks} from '../../assets/models/props/prop-merge
 import {updateLotCulling,lotChunks} from '../../assets/models/city/abandoned-lot.ts';
 import {updateRuralCulling} from '@/world/rural-cull.ts'; // grandes marcos rurais (rancho/celeiro): corte por névoa
 import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
-import {warmupShaders} from '@/core/warmup.ts'; // pré-compila shaders no boot (anti-hitch)
+import {startWarmup} from '@/core/warmup.ts'; // background shader/geometry warmup (anti-hitch, non-blocking)
 import {validateRefs,auditRefs} from '@/core/refs.ts'; // boot-time check of the late-binding ref contract
+performance.mark('tg:modules-evaluated'); // every module (incl. the whole world build) has run
 
 // Dev/test-only hooks attached to window (see DEBUG_HOOKS block below). Declared
 // here so the assignments type-check without `any`.
@@ -97,6 +93,7 @@ declare global {
     __renderScale?: () => number;
     __test?: {
       enterCar: () => string;
+      enterPrimaryCar: () => string;
       exitCar: () => string;
       interact: () => string;
       setKey: (code: string, down: boolean) => void;
@@ -105,8 +102,11 @@ declare global {
       teleport: (x: number, z: number, fx: number, fz: number) => boolean;
       attack: () => string;
       giveGun: () => string;
+      startRampage: () => boolean;
       equipWeapon: (id: string) => boolean;
       setHealth: (hp: number) => number;
+      vmArms: () => {x: number; y: number; z: number; visible: boolean};
+      gore: (kind: string) => {kind: string; name: string; dead: boolean; dist: number} | null;
       raceTarget: () => { x: number; z: number } | null;
     };
   }
@@ -301,14 +301,13 @@ initPolice(); // the fixed pool of named patrol cops exists from the start (no s
 initArmy();   // the fixed named squad exists (stationed) from the start too
 
 setupInput();
-setupPauseMenu(); // in-game pause menu (leaderboard / transactions / settings / quit)
+setupPauseMenu(); // in-game pause menu (transactions / settings / quit)
 setupTouchControls();
 setupNative(); // hardware back button on Android; no-op in the browser
 setupWheel(); // roda de seleção de armas (overlay próprio; ver js/combat/weapon-wheel.ts)
 // Apply saved graphics/FPS settings at boot (audio is re-applied after initAudio,
 // from startGameFromUserGesture); the audio setters no-op until the graph exists.
 applySettings();
-initOnline(); // shared-world presence: connects after the run starts; offline fallback if full/down
 
 const clock=new THREE.Clock();
 let shadowTick=0;
@@ -330,21 +329,19 @@ function step(dt: number){
   // que se movem (jogador/NPC) ficam mais "atrasadas" — trade-off aceito. Antes
   // de qualquer render abaixo.
   if(shadowTick++%SHADOW_EVERY===0){renderer.shadowMap.needsUpdate=true;P.markShadow();}
-  P.begin('online');updateOnline(dt);P.end(); // keep remotes/socket alive even while local overlays freeze the world
-  if(updateHouseTv()){renderer.render(scene,camera);return;}
-  if(updateGymGame(dt)){renderer.render(scene,camera);return;} // mini-game do supino congela o mundo
-  if(updateDanceGame(dt)){renderer.render(scene,camera);return;} // mini-game da dança congela o mundo
-  if(updateModShop(dt)){renderer.render(scene,camera);return;} // oficina de custom congela o mundo
-  if(updateClothesShop(dt)){renderer.render(scene,camera);return;} // provador da loja de roupas congela o mundo
-  if(updatePartyUi()){renderer.render(scene,camera);return;} // party sign-up sheet freezes the world
+  if(updateHouseTv()){renderFrame(dt);return;}
+  if(updateGymGame(dt)){renderFrame(dt);return;} // mini-game do supino congela o mundo
+  if(updateDanceGame(dt)){renderFrame(dt);return;} // mini-game da dança congela o mundo
+  if(updateModShop(dt)){renderFrame(dt);return;} // oficina de custom congela o mundo
+  if(updateClothesShop(dt)){renderFrame(dt);return;} // provador da loja de roupas congela o mundo
+  if(updatePartyUi()){renderFrame(dt);return;} // party sign-up sheet freezes the world
   // Mapa completo (tecla M): congela o mundo — EXCETO quando o overlay "Show NPCs"
   // está ligado, daí o mundo continua simulando pros pontinhos se moverem em tempo
   // real (o jogador segue bloqueado por isBlocked). O mapa é redesenhado ao final do
   // step. Sem o overlay, mantém o congelamento estático de sempre.
-  if(state.mapOpen&&!mapNpcsShown()){renderer.render(scene,camera);return;}
-  if(state.adminOpen){renderer.render(scene,camera);return;} // dashboard de admin (tecla Y) congela o mundo
-  if(state.mgIntro){renderer.render(scene,camera);return;} // briefing/ranking de mini game: congela até "passar"
-  if(state.paused||state.orientationBlocked){renderer.render(scene,camera);return;}
+  if(state.mapOpen&&!mapNpcsShown()){renderFrame(dt);return;}
+  if(state.mgIntro){renderFrame(dt);return;} // mini-game briefing: frozen until the player "passes"
+  if(state.paused||state.orientationBlocked){renderFrame(dt);return;}
   state.time+=dt;
 
   for(const c of clouds){
@@ -362,7 +359,7 @@ function step(dt: number){
     camera.position.set(Math.cos(a)*140,65,Math.sin(a)*140);
     camera.lookAt(0,6,0);
     updateTraffic(dt);updatePeds(dt);updateGangs(dt);
-    renderer.render(scene,camera);return;
+    renderFrame(dt);return;
   }
 
   const arenaActive=!!refs.isPartyArenaActive?.();
@@ -373,7 +370,6 @@ function step(dt: number){
     if(state.cutT<=0){hideBig();const fn=state.cutFn;state.cutFn=null;fn&&fn();}
   }else if(state.mode==='car')updateCar(dt);
   else updateFoot(dt);
-  updatePlayerAnim(dt); // advance the rigged-glTF avatar mixer + pick the clip from state
   P.end();
 
   P.begin('traffic');if(!arenaActive)updateTraffic(dt);P.end();
@@ -385,7 +381,6 @@ function step(dt: number){
   const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
   P.begin('cops');if(combatOn&&!arenaActive){updateCops(dt);updatePoliceBoats(dt);}P.end();
   P.begin('army');if(combatOn&&!arenaActive)updateArmy(dt);P.end(); // ★6: the army
-  P.begin('npc-glb');updateNpcGlb(dt,camera);P.end(); // rigged-NPC mixers/clips: off-cull frozen, off-frustum skipped, distant LOD-throttled
   P.begin('misc');
   if(!arenaActive){
     updateHeli(dt);
@@ -410,7 +405,6 @@ function step(dt: number){
     updateWeedFarm(dt); // plantação de erva: planta/rega/cresce/colhe no mundo
     updatePartyHq(dt); // party desks + the plaza membership banner
     updateIslandLoot(dt);  // secret heavy-weapon + cash cache on the far island
-    updateBloodstains(dt); // poças de morte de outros jogadores (multiplayer assíncrono)
   }
   updateWeaponPickups(dt); // includes arena-only weapons when a round is active
   updatePartyArena(dt); // isolated Party Arena battle rounds
@@ -443,7 +437,6 @@ function step(dt: number){
   }
   P.end();
   P.begin('hud');updateHUD(dt);P.end();
-  scheduleFlush(); // mantém o envio agendado (ranking = dinheiro atual + save)
   P.begin('audio');updateAudio();P.end();
   // Radar redesenhado a ~22fps (ver MM_INTERVAL): liberar a main thread sem
   // impacto visual perceptível.
@@ -488,7 +481,7 @@ function step(dt: number){
   dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
   dlight.target.position.set(pp.x,0,pp.z);
 
-  P.begin('render');renderer.render(scene,camera);P.end();
+  P.begin('render');renderFrame(dt);P.end();
   // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),
   // redraw the full map every frame so the NPC dots/trails move in real time.
   // "Show NPCs" map overlay: redraw the full map only while the toggle is on (the
@@ -559,7 +552,7 @@ window.render_game_to_text=()=>{
     started:state.started,
     paused:state.paused,
     mode:state.mode,
-    firstPerson:!!state.firstPerson, // câmera em primeira pessoa (tecla C) ligada
+    firstPerson:!!state.firstPerson, // always true: first-person only
     aiming:!!state.aiming, // GTA-style aim mode active (RMB / mobile AIM)
     activeMiniGame:state.activeMiniGame, // mini game em curso (trava "um por vez")
     interior:state.interior?.constructor?.name||null,
@@ -567,7 +560,6 @@ window.render_game_to_text=()=>{
     ledger:economy.debugLedger(), // {balance,checkpoint,window,pending,last[]} — money as a tx ledger
     wanted:state.wanted,
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},
-    avatar:hasPlayerGlb()?'glb':'proc', // which player model is live (rigged glTF vs procedural fallback)
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
@@ -589,10 +581,7 @@ window.render_game_to_text=()=>{
     fertilizer:state.fertilizer|0, // plant-food charges
     generalStore:refs.getGeneralStoreState?.()||null,
     overkill:refs.getOverkillState?.()||null,
-    bloodstains:refs.getBloodstainsState?.()||null, // poças de morte ativas no mundo (multiplayer)
-    online:refs.getOnlineState?.()||null, // shared-world presence: phase/remotes (js/net/online.ts)
-    onlineRemotes:remoteSnapshot(), // dev/test: rendered pose of each remote avatar (position/vehicle/death sync)
-    health:state.health, // dev/test: local player HP (online PvP death assertions)
+    health:state.health, // dev/test: local player HP
     delivery:delivery?{x:delivery.x,z:delivery.z}:null,
     interiorBlips:refs.interiorBlips?.()||[],
     storyBlips:refs.storyBlips?.()||[],
@@ -616,6 +605,13 @@ window.__test={
     enterCar();                              // the real entry (walk-to-door anim + seat)
     return state.mode;
   },
+  enterPrimaryCar:()=>{
+    if(state.mode!=='foot')return state.mode;
+    const carPosition=playerCar.g.position;
+    player.g.position.set(carPosition.x-1.5,carPosition.y,carPosition.z+.35);
+    enterCar();
+    return state.mode;
+  },
   exitCar:()=>{exitCar();return state.mode;},
   // Trigger the context action (same as pressing E): enter/exit car, start a race
   // under a gate, pick up, etc. Reliable regardless of OS keyboard focus.
@@ -635,8 +631,7 @@ window.__test={
     return true;
   },
   // Foot analog of placeVehicle: teleport the on-foot player to (x,z) facing
-  // (fx,fz), stopped. Used by the two-player online harness to line the players
-  // up at a known separation for a deterministic PvP-melee test.
+  // (fx,fz), stopped.
   teleport:(x: number,z: number,fx: number,fz: number)=>{
     if(state.mode!=='foot')return false;
     const h=Math.atan2(fx-x,fz-z);
@@ -645,19 +640,36 @@ window.__test={
     return true;
   },
   // Fire the current weapon once through the real fire path (same as a click).
-  // On foot with fists it is a melee swing; the online layer reports the attack
-  // and the SERVER decides any PvP hit. Returns the move mode for convenience.
+  // On foot with fists it is a melee swing. Returns the move mode for convenience.
   attack:()=>{performShoot();return state.mode;},
   // Arm the player with the full arsenal (equips the pistol) — the real grant
-  // path. Lets the online harness exercise gun/blast/flame PvP, not just fists.
+  // path.
   giveGun:()=>{grantWeapon();return state.weaponName||'';},
+  startRampage:()=>startRocketRampageForTest(),
   // Switch to a specific owned weapon by id (e.g. 'flame','grenade') so the
-  // harness can drive each attack kind's online path deterministically.
+  // harness can drive each attack kind deterministically.
   equipWeapon:(id: string)=>equipWeaponById(id),
-  // Set the local PvP HP directly. Raising it exercises the heal-sync path
-  // (online.ts syncLocalHeal → server HP restored); used to give each serial
-  // online combat test a clean, survivable target. Returns the applied value.
+  // Set the local player's HP directly. Returns the applied value.
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
+  vmArms:()=>viewmodelArms(), // FP arms' camera-space offset (arm-motion test)
+  // Gore test: dismember the nearest living outdoor NPC ('head'|'arm'|'leg'|'gib'),
+  // first placing the player 5 m away facing it so the result is on screen. Returns what
+  // it did (or null) — lets the harness exercise the gore layer directly.
+  gore:(kind: string)=>{
+    const pp=playerPos();let best=null as null|typeof npcs[number],bd=1e9;
+    for(const n of npcs){if(n.dead||Math.abs(n.g.position.x)>600)continue;const d=n.g.position.distanceTo(pp);if(d<bd){bd=d;best=n;}}
+    if(!best||state.mode!=='foot')return null;
+    const b=best.g.position;
+    player.g.position.set(b.x-5,groundHeight(b.x-5,b.z),b.z);
+    player.heading=Math.PI/2;cameraRig.yaw=Math.PI/2;cameraRig.fpPitch=.12;
+    best.g.visible=true;
+    const dir=new THREE.Vector3(1,0,0);
+    if(kind==='head')refs.severHead?.(best,dir);
+    else if(kind==='arm')refs.severArm?.(best,'R',dir);
+    else if(kind==='leg')refs.severLeg?.(best,'L',dir);
+    else refs.gibNpc?.(best,dir,1.5);
+    return {kind,name:best.name,dead:best.dead,dist:Math.round(bd)};
+  },
   // Current race checkpoint world coords (street / boat / off-road), for autopilots.
   raceTarget:()=>{
     const b=MiniGame.activeBlips?.()||[];
@@ -672,23 +684,9 @@ window.__test={
 // instead of a silent in-game no-op that ships unseen. See js/refs.ts.
 validateRefs();
 auditRefs();
-// Pré-compila TODOS os shaders ANTES do loop: tanto os materiais da cena montada
-// (chunks da cidade revelados ao andar) quanto os modelos que só nascem em jogo
-// (efeitos de combate, arma na mão, heli, props de minigame). Sem isso o THREE
-// compila o programa na 1ª aparição de cada material — síncrono no render — e o
-// frame congela centenas de ms ("grandes quedas de FPS do nada"; ver warmup.js).
-// O custo migra pro boot (tela de título), onde é invisível.
-try{warmupShaders();}catch(e){}
+// Start the loop NOW and warm the GPU in the background (shaders compile in parallel, then
+// geometry/interiors upload one idle slot at a time) — see js/core/warmup.ts. No loading
+// screen: the player sees the title/game immediately.
+startWarmup();   // issue every shader compile in parallel FIRST (drawing is held until ready)
 frame();
-
-// World built + first frame rendering: the menu behind the splash is ready, so fade the
-// intro now — but hold it for a minimum so the reveal animation plays. Gating the fade on
-// THIS point (not a fixed timer) means the splash only lifts once the game is actually
-// loaded, even on a slow connection. boot.ts armed the skip + a long safety fallback.
-{
-  const introEl=document.getElementById('intro');
-  if(introEl){
-    const fade=()=>{introEl.classList.add('intro-gone');setTimeout(()=>introEl.remove(),800);};
-    setTimeout(fade,Math.max(0,3000-performance.now()));
-  }
-}
+performance.mark('tg:first-frame');

@@ -1,5 +1,7 @@
 import * as THREE from 'three';
+import {isRuralAt} from '@/world/regions.ts';
 import {state,input,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK,LIMB_HIT_DAMAGE,MELEE_DAMAGE} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
 import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
@@ -10,8 +12,7 @@ import {blip,thud,gunshot,pistolShot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
 import {settings} from '@/core/settings.ts';
-import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson,triggerGlbPunch,hasPlayerGlb} from '@/actors/player.ts';
-import {glbGunHand} from '../../assets/models/characters/mixamo-rig.ts';
+import {player,playerPos,cameraRig,idleCars,cur,getWasted,isFirstPerson} from '@/actors/player.ts';
 import {traffic,spawnTraffic} from '@/world/traffic.ts';
 import {cops} from '@/actors/police.ts';
 import {updateGore} from '@/combat/gore.ts';
@@ -27,11 +28,11 @@ import {makeBulletModel} from '../../assets/models/effects/bullet.ts';
 import {makeFireModel} from '../../assets/models/effects/fire.ts';
 import {makeFlameJetModel} from '../../assets/models/effects/flame-jet.ts';
 import {makeWeaponTracerLine} from '../../assets/models/effects/weapon-tracer.ts';
-import {makeFpHands} from '../../assets/models/characters/fp-hands.ts';
-import {WEAPONS,ARSENAL,FIST,bySlot} from '@/combat/weapon-catalog.ts';
-import type {Weapon,WeaponApi,Recoil,Hold} from '@/combat/weapon-types.ts';
+import {makeFpHands,poseFpHands} from '../../assets/models/characters/fp-hands.ts';
+import {WEAPONS,ARSENAL,FIST,ROCKET_HANDS,bySlot} from '@/combat/weapon-catalog.ts';
+import type {Weapon,WeaponApi,Recoil,Hold,FpHandsPose} from '@/combat/weapon-types.ts';
 import type {Vehicle} from '@/core/types.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // ----- shared local types ----------------------------------------------------
@@ -206,12 +207,17 @@ function beginRampage(){
   blip([220,330,440,660],.09,'square',.2);
 }
 
+export function startRocketRampageForTest():boolean{
+  beginRampage();
+  return rampage.active;
+}
+
 function endRampage(won: boolean){
   if(!rampage.active)return;            // guarda: nunca finaliza duas vezes
   rampage.active=false;
   if(rampageEl)rampageEl.style.display='none';
   rocketRespawnAt=state.time+75; // a lança-foguetes volta pro pasto um tempo depois
-  reportMiniGameResult(rampageGame.id,{won,score:rampage.kills}); // ranking (top 5)
+  markMiniGamePlayed(rampageGame.id);
   rampageGame.end();                   // libera a trava do mundo (idempotente)
   if(won){
     economy.earn(RAMPAGE_REWARD,'rocket-rampage');
@@ -540,27 +546,7 @@ function getMuzzleWorldPosition(out: THREE.Vector3): THREE.Vector3{
     .setY(pp.y+1.12);
 }
 
-// GLB hero: a held weapon has no procedural arm to ride, so anchor heldHolder on the
-// rigged right-hand bone (it follows the gun-hold posture + walk cycle), barrel forward
-// (the pistol's bore is +Z = the body's facing). Offsets seat the grip in the palm;
-// tune these if it drifts. heldHolder is a child of player.g (normal scale), so the
-// weapon renders at its own hold.scale — no bone-scale compensation needed.
-const GLB_GUN_OFF: [number, number, number] = [0.02, -0.03, 0.10];
-const GLB_GUN_ROT_AIM: [number, number, number] = [0, 0, 0];
-const GLB_GUN_ROT_CARRY: [number, number, number] = [0.45, 0, 0];
-function placeGlbHeldGun(aiming: boolean){
-  const hand=glbGunHand();if(!hand)return;
-  player.g.updateWorldMatrix(true,true);
-  _hand.setFromMatrixPosition(hand.matrixWorld);
-  player.g.worldToLocal(_hand);
-  heldHolder.position.set(_hand.x+GLB_GUN_OFF[0],_hand.y+GLB_GUN_OFF[1],_hand.z+GLB_GUN_OFF[2]-(aiming?gunKick*.75:0));
-  const r=aiming?GLB_GUN_ROT_AIM:GLB_GUN_ROT_CARRY;
-  heldHolder.rotation.set(r[0]-(aiming?gunKick*.9:0),r[1],r[2]);
-  heldHolder.scale.setScalar(heldBaseScale);
-}
-
 function posePlayerWithGun(){
-  if(hasPlayerGlb()){placeGlbHeldGun(true);return;}   // GLB hero: anchor on the rigged hand
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
   poseAiming(player.g,gunKick); // base aiming pose (shared with NPCs/police)
@@ -650,7 +636,6 @@ function applyGripPose(grip: string|undefined,l: any){
 // Porte parado (arma melee não erguida): segura a arma baixa junto ao corpo e
 // NÃO mexe nos braços, pra animação de andar continuar normal.
 function carryPose(){
-  if(hasPlayerGlb()){placeGlbHeldGun(false);return;}   // GLB hero: anchor on the rigged hand
   const limbs=player.g.userData.limbs;
   if(!limbs?.rightArm)return;
   const h: Hold=curWeapon.hold||{};
@@ -677,14 +662,11 @@ const VM_SCALE=.6;              // shrink vs. the body-held scale (a gun fills l
 const VM_POS=[.21,-.135,-.52];  // camera-local anchor: right / down / forward
 const VM_ROCKET_BODY={pos:[.43,1.48,.15],rot:[0,0,0]}; // heldRocket's static body pose
 
-// FP viewmodel hands: two arms gripping the gun. Parented to heldHolder so they
-// recoil/bob WITH the weapon; a Y-flip cancels the holder's own flip so the arms
-// sit in camera-aligned space, and a counter-scale keeps them unit-sized whatever
-// the gun's hold.scale is. Hidden unless first person is the active view.
+// FP hands are direct camera children. They stay at unit scale regardless of a
+// weapon's model scale and can therefore also hold fists and the rampage launcher.
 const fpHands=makeFpHands({sleeve:0x19e3ff}); // matches the player's cyan shirt
-fpHands.rotation.y=Math.PI;
 fpHands.visible=false;
-heldHolder.add(fpHands);
+camera.add(fpHands);
 
 const fpHolderActive=()=>isFirstPerson()&&state.mode==='foot';
 
@@ -706,40 +688,66 @@ function syncViewModel(){
   const onCam=fpHolderActive();
   syncHolderParent(heldHolder,onCam,heldBaseScale,null); // body pose resets it each frame
   syncHolderParent(heldRocket,onCam,1,VM_ROCKET_BODY);   // static on the shoulder in 3rd person
-  // hands only in FP; the parent heldHolder's own visibility still gates them (no
-  // hands for fists/rampage, where heldHolder is hidden)
   fpHands.visible=onCam;
 }
 
-// Place the active viewmodel in view space (after the body pose ran). Adds walk bob,
-// idle breathing, the recoil kick (gunKick) and a forward jab for a melee swing.
+// Place the active viewmodel in view space (after the body pose ran). The gun AND the arms
+// share the same motion, so the hands never float still while the weapon moves:
+//  - walk: DOOM's weapon sway (A_WeaponReady: x = bob·cos, y = bob·|sin| of a 128/8192
+//    per-tic phase ≈ one cycle per 1.8 s), ramping in while moving;
+//  - idle: a gentle breathing drift;
+//  - fire: the recoil kick (gunKick) pushes gun and both arms back and tips them up,
+//    pivoting at the gun anchor;
+//  - melee: the striking arm (and the bat/knife, if any) thrusts forward.
+const VM_SWAY=2*Math.PI*35*128/8192;     // rad/s — DOOM's weapon-bob phase speed
+let vmMove=0,vmLastT=0;
+const _vmPivot=new THREE.Vector3(),_vmRot=new THREE.Vector3();
 function applyViewModel(){
   if(!fpHolderActive())return;
+  const dt=Math.min(.05,Math.max(0,state.time-vmLastT));vmLastT=state.time;
+  const moving=!!(input.moveX||input.moveY);
+  vmMove+=((moving?1:0)-vmMove)*Math.min(1,dt*6);  // sway fades in/out with walking
+  // shared motion offsets (camera space)
+  const ph=state.time*VM_SWAY;
+  let bx=Math.cos(ph)*.05*vmMove, by=-Math.abs(Math.sin(ph))*.035*vmMove, bz=0, brx=0;
+  by+=Math.sin(state.time*1.6)*.004*(1-vmMove);   // breathing when standing still
+  bx+=Math.sin(state.time*.9)*.003*(1-vmMove);
+  bz+=gunKick*.6;brx-=gunKick*.8;by+=gunKick*.12;   // recoil: back toward the viewer + muzzle up
+  let strike=0;
+  if(meleeAnim){
+    const p=clamp01(meleeAnim.t/meleeAnim.dur);
+    strike=Math.sin(clamp01((p-.06)/.5)*Math.PI);
+  }
+
   const holder=heldRocket.visible?heldRocket:(heldHolder.visible?heldHolder:null);
+  const handPose: FpHandsPose|undefined=heldRocket.visible?ROCKET_HANDS:curWeapon.hold?.fpHands;
+  if(handPose){
+    poseFpHands(fpHands,handPose);
+    fpHands.visible=true;
+    // move the whole pair of arms like the gun: rotate about the gun anchor, then offset
+    fpHands.rotation.set(brx,0,0);
+    _vmPivot.set(VM_POS[0],VM_POS[1],VM_POS[2]);
+    _vmRot.copy(_vmPivot).applyEuler(fpHands.rotation);
+    fpHands.position.set(_vmPivot.x-_vmRot.x+bx,_vmPivot.y-_vmRot.y+by,_vmPivot.z-_vmRot.z+bz);
+    if(strike&&meleeAnim){                         // the striking arm thrusts forward
+      const arm=(meleeAnim.side<0?fpHands.userData.left:fpHands.userData.right) as THREE.Object3D|undefined;
+      if(arm){arm.position.z-=strike*.3;arm.position.x-=strike*.08*meleeAnim.side;arm.rotation.x-=strike*.5;}
+    }
+  }else fpHands.visible=false;
   if(!holder)return;
   const gunScale=(holder===heldRocket?1:heldBaseScale)*VM_SCALE;
   holder.scale.setScalar(gunScale);
-  // keep the hands unit-sized regardless of the gun's hold.scale (they ride heldHolder)
-  fpHands.scale.setScalar(1/(heldBaseScale*VM_SCALE));
   const fp=(curWeapon.hold?.fp||null) as {x?: number;y?: number;z?: number;rx?: number;ry?: number;rz?: number}|null; // optional per-weapon nudge (none defined yet)
-  let px=VM_POS[0]+(fp?.x||0),py=VM_POS[1]+(fp?.y||0),pz=VM_POS[2]+(fp?.z||0);
-  let rx=fp?.rx||0,ry=Math.PI+(fp?.ry||0),rz=fp?.rz||0;
-  if(input.moveX||input.moveY){           // walk bob: sways with the stride (player.bob)
-    px+=Math.sin(player.bob)*.012;
-    py-=Math.abs(Math.sin(player.bob))*.014;
-  }else{                                  // idle: a gentle breathing drift
-    py+=Math.sin(state.time*1.6)*.004;
-    px+=Math.sin(state.time*.9)*.003;
-  }
-  if(meleeAnim){                          // melee swing: thrust the viewmodel forward
-    const p=clamp01(meleeAnim.t/meleeAnim.dur);
-    const strike=Math.sin(clamp01((p-.06)/.5)*Math.PI);
-    pz-=strike*.34;rx-=strike*.45;px-=strike*.1*meleeAnim.side;
-  }
-  pz+=gunKick*.3;                         // recoil: kick back toward the viewer...
-  rx-=gunKick*.5;                         // ...and tip the muzzle up
+  let px=VM_POS[0]+(fp?.x||0)+bx,py=VM_POS[1]+(fp?.y||0)+by,pz=VM_POS[2]+(fp?.z||0)+bz;
+  let rx=(fp?.rx||0)+brx;
+  const ry=Math.PI+(fp?.ry||0),rz=fp?.rz||0;
+  if(strike&&meleeAnim){pz-=strike*.34;rx-=strike*.45;px-=strike*.1*meleeAnim.side;} // bat/knife thrust
   holder.position.set(px,py,pz);
   holder.rotation.set(rx,ry,rz);
+}
+// Test/debug: the FP arms' current camera-space offset (window.__test.vmArms).
+export function viewmodelArms(): {x:number;y:number;z:number;visible:boolean}{
+  return {x:fpHands.position.x,y:fpHands.position.y,z:fpHands.position.z,visible:fpHands.visible};
 }
 const clamp01=(v: number)=>Math.max(0,Math.min(1,v));
 const easeInOut=(t: number)=>t*t*(3-2*t);
@@ -780,7 +788,6 @@ function startMeleeAnimation(range: number|undefined,knock: number|undefined,let
     lethal:lethal!==false
   };
   spawnMeleeTrail(curWeapon.id!,side);
-  triggerGlbPunch();   // 3rd-person hero plays the 'punch' clip in sync with the swing
 }
 
 // Non-lethal melee (FISTS): a punch only staggers + knocks back; it takes several
@@ -816,7 +823,12 @@ function resolveMeleeImpact(a: MeleeAnim){
     if(tallyPunch(hit.target,hit.target.punchToDown))hit.target.kill(dir);
     return;
   }
-  if(hit.kind==='npc')hit.target.takeDamage(dir);
+  if(hit.kind==='npc'){
+    const npc=hit.target,wasAlive=!npc.dead;
+    npc.takeDamage(dir,MELEE_DAMAGE);
+    // a lethal bat swing caves the head clean off, or tears a limb away
+    if(wasAlive&&npc.dead){if(Math.random()<.6)refs.severHead?.(npc,dir);else refs.maimRandom?.(npc,dir);}
+  }
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
@@ -946,7 +958,12 @@ function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
   const bp=pos.clone().setY(.6);
   const pp=playerPos();
   if(!opts?.noSelf&&pp.distanceTo(pos)<5){
-    if(state.mode==='foot')getWasted();
+    // on foot: a heavy hit that falls off with distance (not an instant death)
+    if(state.mode==='foot'){
+      state.health-=EXPLOSION_DAMAGE*(1-pp.distanceTo(pos)/5*.6)*PLAYER_DAMAGE_TAKEN;
+      state.shake=Math.max(state.shake,.9);
+      if(state.health<=0){state.health=100;getWasted();}
+    }
     else if(cur){
       const dir=new THREE.Vector3().subVectors((cur as Vehicle).g.position,pos).setY(0).normalize();
       dentCar((cur as Vehicle).g,bp,dir,.3);(cur as Vehicle).speed*=.5;state.shake=.9;
@@ -954,9 +971,13 @@ function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
   }
   // Unified registry: pedestrians, gang members, foot officers and rural folk are
   // all Npc instances, so one loop catches everyone in the blast radius.
+  // Everyone near the blast is blown apart; further out they're maimed.
   for(const n of npcs){
-    if(!n.dead&&n.g.position.distanceTo(pos)<5)
-      n.takeDamage(new THREE.Vector3().subVectors(n.g.position,pos).setY(0).normalize());
+    const d=n.g.position.distanceTo(pos);
+    if(n.dead||d>=5)continue;
+    const away=new THREE.Vector3().subVectors(n.g.position,pos).setY(0).normalize();
+    if(d<3.2)refs.gibNpc?.(n,away,1.9-d*.15);
+    else{n.takeDamage(away);refs.maimRandom?.(n,away);}
   }
   refs.blastArmy?.(pos); // army soldiers (★6) caught in the blast
   for(const arr of[traffic,idleCars,cops] as Vehicle[][]){
@@ -1046,14 +1067,31 @@ function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,da
     // Hit LOCATION from the 3D impact point: high = head (decapitate), upper + off-centre =
     // an arm (tear it off). The doll's head sits ~1.66 above the feet, shoulders ~1.44, arms
     // at local ±0.22. Dismember BEFORE the killing hit so the body ragdolls already maimed.
+    // Legs (below the hips) are blown off too — always by rifles/sniper, often by the rest.
+    // Only the HEAD is a one-shot kill; a hit on an arm or a leg does reduced damage (it
+    // tears the limb off instead), so a body-shot victim is taken apart piece by piece.
     const npc=hit.target, fy=npc.g.position.y, relY=pos.y-fy;
+    let dmg=damage;
+    const wasAlive=!npc.dead, heavy=damage>=2;
+    const ry=npc.g.rotation.y;
+    const localX=(pos.x-npc.g.position.x)*Math.cos(ry)-(pos.z-npc.g.position.z)*Math.sin(ry);
+    const side:'L'|'R'=localX<0?'L':'R';
     if(relY>1.45)refs.severHead?.(npc,dir);
     else if(relY>1.0){
-      const ry=npc.g.rotation.y;
-      const localX=(pos.x-npc.g.position.x)*Math.cos(ry)-(pos.z-npc.g.position.z)*Math.sin(ry);
-      if(Math.abs(localX)>0.16)refs.severArm?.(npc,localX<0?'L':'R',dir);
+      if(Math.abs(localX)>0.16){dmg*=LIMB_HIT_DAMAGE;refs.severArm?.(npc,side,dir);}
+      else if(heavy&&Math.random()<.4)refs.severArm?.(npc,side,dir);
+    }else if(relY<.9){
+      dmg*=LIMB_HIT_DAMAGE;
+      if(heavy||Math.random()<.45)refs.severLeg?.(npc,side,dir);
     }
-    npc.takeDamage(dir,damage,pos);
+    npc.takeDamage(dir,dmg,pos);
+    // A killing shot tears the body up: the sniper blows it apart, a close shotgun blast
+    // usually does too, and any other lethal hit often takes a limb with it.
+    if(wasAlive&&npc.dead){
+      const close=pos.distanceTo(playerPos())<6;
+      if(damage>=4||(curWeapon.id==='shotgun'&&close&&Math.random()<.75))refs.gibNpc?.(npc,dir,damage>=4?1.8:1.4);
+      else if(Math.random()<.35)refs.maimRandom?.(npc,dir);
+    }
   }
   else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
@@ -1096,7 +1134,6 @@ function missileBlast(pos: THREE.Vector3,hit: WeaponHit|null){
     if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
   }
   if(hit&&hit.kind==='story')hit.target.kill();
-  if(!refs.inGunShopRange?.())refs.onlineBlast?.(pos,3,6);
   state.shake=Math.max(state.shake,.4);
 }
 
@@ -1114,17 +1151,12 @@ function fireOneBullet({range=52,speed=86,damage=1,spread=0}: {range?: number;sp
   if(s>0){dir.applyAxisAngle(_up,(Math.random()*2-1)*s);dir.normalize();}
   makeBullet(origin,dir,{speed,range,damage});
   addTracer(origin,origin.clone().addScaledVector(dir,3.2));
-  // Online: share this bullet — any PvP hit is decided by the SERVER, never
-  // here (js/net/online.ts). Practice-range shots stay local.
-  if(!refs.inGunShopRange?.())refs.onlineShot?.(origin,dir,damage,range);
 }
 
 // Golpe corpo a corpo: acerta o alvo mais próximo logo à frente.
 function meleeAttack(range: number,knock: number,lethal: boolean){
   startMeleeAnimation(range,knock,lethal);
   state.crosshairKick=1;
-  // Online: share the swing — any PvP hit is decided by the SERVER (~2m reach).
-  if(!refs.inGunShopRange?.())refs.onlineMelee?.(range,lethal);
 }
 
 // Jato do lança-chamas: efeito de cone + dano de curto alcance.
@@ -1147,7 +1179,6 @@ function flameAttack(range: number){
       if(ud.bulletHits>=4)explodeCar(c,arr);
     }
   }
-  if(!refs.inGunShopRange?.())refs.onlineFlame?.(origin,dir,1,range);
 }
 
 // Arremesso em arco (granada/molotov).
@@ -1165,7 +1196,6 @@ function grenadeExplode(pos: THREE.Vector3){
   makeExplosion(pos.clone());
   blastDamage(pos);
   if(!refs.inGunShopRange?.()){
-    refs.onlineBlast?.(pos,3,5);
     addWanted(1,'EXPLOSION!','explosion');
   }
   state.shake=Math.max(state.shake,.4);
@@ -1175,7 +1205,6 @@ function molotovImpact(pos: THREE.Vector3){
   addFirePool(pos);
   blastDamage(pos);            // estouro inicial pega quem está bem perto
   if(!refs.inGunShopRange?.()){
-    refs.onlineBlast?.(pos,2,4);
     addWanted(1,'EXPLOSION!','explosion');
   }
   thud(10);blip([120,80],.18,'sawtooth',.22);
@@ -1232,8 +1261,11 @@ const api: WeaponApi={
     // firearm keeps the synthesized shot. pistolShot() returns false until the
     // sample is decoded (or if it failed to load), so we fall back to gunshot().
     if(curWeapon?.id!=='pistol'||!pistolShot(v))gunshot(v);
-    const pp=playerPos();state.shotT=state.time;state.myShotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
-    if(!refs.inGunShopRange?.()){
+    const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
+    // Random shooting in the COUNTRYSIDE is nobody's business: no heat and no radio call.
+    // Only hitting someone or a vehicle there brings the police (those crimes add heat
+    // on their own: ped kills, vehicle shots, explosions…).
+    if(!refs.inGunShopRange?.()&&!isRuralAt(pp.x,pp.z)){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
       // no radio dispatch from the isolated Party Arena: addWanted already no-ops
       // there (physics.ts), and a dispatch would send a cruiser toward the
@@ -1536,7 +1568,6 @@ export function updateWeapons(dt: number){
     if(fp.nextTick<=0){
       fp.nextTick=.5;
       const c=fp.g.position;
-      if(!refs.inGunShopRange?.())refs.onlineBlast?.(c,1,fp.radius);
       const near=(p: any)=>Math.hypot(p.g.position.x-c.x,p.g.position.z-c.z)<fp.radius;
       for(const n of npcs)if(!n.dead&&near(n))n.takeDamage(_up); // unified: peds+gang+officers+rural
 
@@ -1545,7 +1576,10 @@ export function updateWeapons(dt: number){
         const ud=car.g.userData;ud.bulletHits=(ud.bulletHits||0)+1;
         if(ud.bulletHits>=4)explodeCar(car,arr);
       }
-      if(state.mode==='foot'&&playerPos().distanceTo(c)<fp.radius)getWasted();
+      if(state.mode==='foot'&&playerPos().distanceTo(c)<fp.radius){ // burns, doesn't insta-kill
+        state.health-=FIRE_DAMAGE_TICK*PLAYER_DAMAGE_TAKEN;
+        if(state.health<=0){state.health=100;getWasted();}
+      }
     }
     if(fp.t>fp.life-1)
       fp.g.traverse(o=>{const m=(o as THREE.Mesh).material as THREE.Material&{opacity: number};if(m&&m.opacity!=null)

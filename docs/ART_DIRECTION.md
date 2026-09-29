@@ -8,8 +8,8 @@
 ## The thesis
 
 Tiny Theft Auto is a **living diorama** of a coastal city: sun-faded stucco by
-day, Vice-City neon by night, seen through a retro film "camera" (grain,
-scanlines, vignette, letterbox). The miniature look is the aesthetic, not a
+day, Vice-City neon by night, shown CLEAN: flat colours, no film grain, scanlines,
+vignette or ambient-occlusion smudges. The miniature look is the aesthetic, not a
 technical limitation — the name says *Tiny*. Saturated color is reserved for
 things that carry gameplay meaning.
 
@@ -29,15 +29,16 @@ things that carry gameplay meaning.
 4. **One palette from HUD to asphalt.** The UI's neon family (`--pink #ff2e88`,
    `--cyan`, `--gold`, `--cream` in `css/style.css`) is the same `NEON` family
    used in the world. `js/core/palette.ts` is the single source; the informal
-   arrays (`facadePalette`, `carColors`, `shirtColors`, Mixamo look pools) now
+   arrays (`facadePalette`, `carColors`, `shirtColors`, the doll skin/hair/pants pools) now
    live there.
-5. **Characters are figurines.** Flat per-region vertex colors on the shared
-   Mixamo rig — no skin/cloth textures. NPC shirts deliberately share the
+5. **Characters are figurines.** Box dolls built in code
+   (`assets/models/characters/pedestrian.ts`) with flat vertex colours and simple
+   procedural animation — no skin/cloth textures, no downloaded models or clips. NPC shirts deliberately share the
    vehicle paint family so people and traffic read as one world.
-6. **Retro film on top.** The CSS overlay stack (grain, scanlines, vignette,
-   cutscene letterbox) plus the global filmic grade (`REAL_DESAT`/`REAL_EXP`
-   in `daynight.ts`) is what makes the game "gritty" — the world itself never
-   chases realism.
+6. **Clean image.** No dirt anywhere: no film grain, scanlines or vignette overlays and
+   no ambient occlusion — their noise and corner darkening read as grime. The only
+   grade is the global one in `daynight.ts` (`REAL_DESAT`/`REAL_EXP`); cut-scenes keep
+   their letterbox bars.
 
 ## Working rules
 
@@ -49,13 +50,14 @@ things that carry gameplay meaning.
 - Keep the filmic grade global and singular; don't add per-feature grades.
 
 **Don't**
-- No photo textures on any surface (facades included) — it breaks the maquette
-  and the zero-binary-assets pillar. **Exception (owner-approved 2026-07-07):** all
-  natural vegetation and rocks now come from the Quaternius *Stylized Nature MegaKit*
-  (CC0) with its hand-painted stylized textures (loaded via glTF — see
-  `assets/models/nature/kit.ts`). These are painterly, not photographic, so they read
-  as diorama foliage; the rest of the world (buildings, vehicles, props) stays
-  primitive + palette-flat. Don't extend the texture exception beyond nature.
+- No photo textures, image textures or loaded model files on any surface — vegetation and
+  rocks included (they are generated in code too, `assets/models/nature/kit.ts`). It breaks
+  the maquette and the zero-binary-assets pillar.
+- **Flat colours only.** Every surface is a solid colour — no painted noise, grain, stains,
+  cracks, grout, wood grain, mowing stripes, gradients or metallic flake. A canvas texture is
+  allowed only for GRAPHICS that carry information or light: text on signs/boards, road and
+  pitch markings, race checkers and hazard stripes, windows on facades (flat panes), screens
+  and pictures, and light/sky sprites (sun, moon, glow, sky gradient, clouds, beams).
 - No saturated cartoon pastels in the environment (pool-cyan, lime green) —
   those are leftovers from the old look; pull them toward the muted base when touched.
 - No saturated color without gameplay meaning.

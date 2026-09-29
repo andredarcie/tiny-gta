@@ -45,10 +45,6 @@ export interface GameState {
   shotT?: number;
   shotX?: number;
   shotZ?: number;
-  /** my OWN last gunshot. Police resist-arrest keys on THIS — state.shotT is
-   * also set by REMOTE players' shots (online), which must never mark you as
-   * resisting. */
-  myShotT?: number;
   crosshairKick: number;
   crosshairTarget: boolean;
   mobile: boolean;
@@ -72,7 +68,6 @@ export interface GameState {
   danceActive: boolean;
   modShopActive: boolean;
   mapOpen: boolean;
-  adminOpen: boolean;
   firstPerson: boolean;
   aiming: boolean; // GTA-style aim mode (RMB toggle / mobile AIM): closer cam + reticle + tight spread
   clothing: { shirt: number; pants: number; shoe: number; hat: number; glasses: number }; // player outfit (clothing store)
@@ -89,6 +84,8 @@ export interface GameState {
 export interface InputState {
   moveX: number;
   moveY: number;
+  /** keyboard turn (arrow keys on foot, DOOM-style): +1 right, -1 left */
+  turnX: number;
   lookX: number;
   lookY: number;
   run: boolean;
@@ -128,12 +125,11 @@ export interface EconomyDebug {
   balance: number;
   checkpoint: number;
   window: number;
-  pending: number;
   blocked: number;
   last: { why: string; amt: number }[];
 }
 
-/** Progress blob persisted to / restored from the backend (js/core/save.ts). */
+/** Progress blob persisted to / restored from localStorage (js/core/save.ts). */
 export interface SaveBlob {
   v: number;
   money: number;
@@ -223,19 +219,12 @@ export interface Refs {
   getCur?: () => Vehicle | null;
   getPlayerHeading?: () => number | undefined;
   isWasted?: () => boolean;
-  getOnlineState?: () => Record<string, unknown>; // shared-world presence debug snapshot (js/net/online.ts)
-  onlineShot?: (origin: THREE.Vector3, dir: THREE.Vector3, damage: number, range: number) => void; // combat v1: weapons.ts reports each fired bullet; the server decides hits
-  onlineMelee?: (range: number, lethal: boolean) => void; // combat: weapons.ts reports each melee swing; the server decides PvP hits
-  onlineBlast?: (origin: THREE.Vector3, damage: number, radius: number) => void; // combat: radial blast/fire-pool tick
-  onlineFlame?: (origin: THREE.Vector3, dir: THREE.Vector3, damage: number, range: number) => void; // combat: flamethrower cone
   getRadarHeading?: () => number;
   nearestCar?: (maxDist: number) => { c: Vehicle; kind: string } | null;
 
-  // economy / save / leaderboard
+  // economy / save
   serializeLedger?: () => LedgerSnapshot;
   importLedger?: (s: LedgerSnapshot | null) => void;
-  takeUnsyncedTxs?: () => LedgerTx[];
-  ackSyncedTxs?: (ids: string[]) => void;
   debugLedger?: () => EconomyDebug;
   collectSave?: () => SaveBlob;
   applySave?: (blob: unknown) => void;

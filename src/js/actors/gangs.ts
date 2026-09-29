@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {rand,irand,clamp,nodeX,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
+import {PLAYER_DAMAGE_TAKEN,NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
 import {makePed,attachHandGun,poseAiming} from '@/core/entities.ts';
 import * as Entities from '@/core/entities.ts';
@@ -131,7 +132,7 @@ function spawnMember(gang:Gang){
   collideStatics(g.position,.4);
   repelFromZones(g.position);
   const m=new GangMember(g,{
-    kind:'gang',hp:1,drop:[25,90],wanted:0.4,wantedMsg:'',crime:'ped_shot',
+    kind:'gang',hp:NPC_HP_TOUGH,drop:[25,90],wanted:0.4,wantedMsg:'',crime:'ped_shot',
     punchToDown:4,showLabel:true,area:gang.name+' turf',
     dialogues:PARTIES[gang.party].lines, // satirical party chatter (speakLine)
   });
@@ -193,7 +194,7 @@ function memberShoot(m:GangMember,pp:THREE.Vector3,dist:number){
   addTracer(from,to);
   gunshot(.35);
   if(hit){
-    state.health-=state.mode==='car'?irand(2,5):irand(5,10);
+    state.health-=(state.mode==='car'?irand(2,5):irand(5,10))*PLAYER_DAMAGE_TAKEN;
     state.shake=Math.max(state.shake,.14);
     refs.spawnBlood?.(pp.x,pp.y+1.1,pp.z,new THREE.Vector3(to.x-from.x,to.y-from.y,to.z-from.z).normalize(),7);
     if(state.health<=0){state.health=100;getWasted();}
@@ -245,6 +246,8 @@ export function updateGangs(dt:number){
       const mw=m.wanted;m.wanted=0; // hit-and-run heat is the single +1 below, not the base kill()'s 0.4
       m.kill(new THREE.Vector3(Math.sin(c!.heading),0,Math.cos(c!.heading)).multiplyScalar(c!.speed*.4));
       m.wanted=mw;
+      {const hd=new THREE.Vector3(Math.sin(c!.heading),0,Math.cos(c!.heading));
+       if(Math.abs(c!.speed)>24)refs.gibNpc?.(m,hd,1.3);else refs.maimRandom?.(m,hd);}
       addWanted(1,'HIT AND RUN!','hit_run');
       thud(Math.abs(c!.speed));state.shake=.35;
       continue;

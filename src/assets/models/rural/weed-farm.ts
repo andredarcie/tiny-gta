@@ -82,24 +82,6 @@ const leafDarkM=matte({color:0x3c7a30,roughness:.85});
 const colaM=matte({color:0x9fd36a,roughness:.7});
 
 // ---- canvas textures (no binary assets; drawn at load) ----
-let yardTex: THREE.CanvasTexture|null=null;
-function yardTexture(): THREE.CanvasTexture {
-  if(yardTex)return yardTex;
-  const c=document.createElement('canvas');c.width=256;c.height=256;
-  const x=c.getContext('2d')!;
-  x.fillStyle='#5a4632';x.fillRect(0,0,256,256);                 // packed dirt
-  for(let i=0;i<1400;i++){                                        // gravel speckle
-    const g=40+Math.random()*120|0;
-    x.fillStyle=`rgba(${g+30},${g+18},${g},${.25+Math.random()*.4})`;
-    const r=Math.random()*2.2;
-    x.beginPath();x.arc(Math.random()*256,Math.random()*256,r,0,7);x.fill();
-  }
-  x.strokeStyle='rgba(30,20,12,.35)';x.lineWidth=7;              // tyre tracks
-  for(const ty of[96,150]){x.beginPath();x.moveTo(0,ty);x.bezierCurveTo(80,ty-12,170,ty+14,256,ty);x.stroke();}
-  yardTex=new THREE.CanvasTexture(c);yardTex.colorSpace=THREE.SRGBColorSpace;
-  yardTex.wrapS=yardTex.wrapT=THREE.RepeatWrapping;yardTex.repeat.set(5,4);
-  return yardTex;
-}
 let signTex: THREE.CanvasTexture|null=null;
 function signTexture(): THREE.CanvasTexture {
   if(signTex)return signTex;
@@ -521,7 +503,7 @@ function build(): THREE.Group {
 
   // dirt yard floor
   const yard=new THREE.Mesh(new THREE.PlaneGeometry(HALF_W*2,HALF_D*2),
-    matte({color:0x5a4632,roughness:1,map:yardTexture()}));
+    matte({color:0x5a4632}));                                     // flat packed dirt
   yard.rotation.x=-Math.PI/2;yard.position.y=.02;yard.receiveShadow=true;g.add(yard);
 
   // perimeter walls (gate opening on +z / north)

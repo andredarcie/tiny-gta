@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MAX_STARS, LETHAL_AT, HELI_AT, ROCKET_AT, ARMY_AT,
   WANTED_GRACE, WANTED_COOL, SIX_STAR_HOLD, ARMY_BLOCK_DIST,
-  CRIME_HEAT,
+  CRIME_HEAT, WANTED_HEAT_SCALE, STAR_CLIMB_DAMP, heatGain, responseDelay, SHOT_DISPATCH_DELAY,
   clampStars, addStars, starLevel, starResponse, coolWanted,
 } from '@/core/wanted.ts';
 
@@ -26,8 +26,9 @@ describe('wanted — escalation constants', () => {
   });
 
   it('exposes the cooldown tuning', () => {
-    expect(WANTED_GRACE).toBe(24);
-    expect(WANTED_COOL).toBe(10);
+    expect(WANTED_GRACE).toBe(16);
+    expect(WANTED_COOL).toBe(7);
+    expect(WANTED_HEAT_SCALE).toBe(0.3);
     expect(SIX_STAR_HOLD).toBe(30);
     expect(ARMY_BLOCK_DIST).toBe(90);
   });
@@ -208,5 +209,41 @@ describe('coolWanted — star decay after the heat is lost', () => {
   });
   it('the ★6 hold applies only at the cap (★5 cools regardless of sinceSixStar)', () => {
     expect(coolWanted(5, 1, { ...clear, sinceSixStar: 0 })).toBeCloseTo(5 - 1 / WANTED_COOL);
+  });
+});
+
+describe('WANTED_HEAT_SCALE — stars climb slower', () => {
+  it('needs several public gunshots for the first star', () => {
+    let w = 0, shots = 0;
+    while (starLevel(w) < 1) { w = addStars(w, heatGain(w, CRIME_HEAT.gunfire)); shots++; }
+    expect(shots).toBe(9);
+  });
+  it('needs more than two pedestrian kills for the first star', () => {
+    let w = 0;
+    for (let i = 0; i < 3; i++) w = addStars(w, heatGain(w, CRIME_HEAT.ped_shot));
+    expect(starLevel(w)).toBe(0);
+    w = addStars(w, heatGain(w, CRIME_HEAT.ped_shot));
+    expect(starLevel(w)).toBe(1);
+  });
+  it('each star held makes the next one harder to earn', () => {
+    expect(heatGain(0, 1)).toBeCloseTo(WANTED_HEAT_SCALE);
+    expect(heatGain(1.2, 1)).toBeCloseTo(WANTED_HEAT_SCALE / (1 + STAR_CLIMB_DAMP));
+    expect(heatGain(5.5, 1)).toBeCloseTo(WANTED_HEAT_SCALE / (1 + 5 * STAR_CLIMB_DAMP));
+    expect(heatGain(3, 1)).toBeLessThan(heatGain(2, 1));
+  });
+});
+
+describe('police response delay', () => {
+  it('is long at ★1 and shrinks as the stars climb', () => {
+    expect(responseDelay(0)).toBe(0);
+    expect(responseDelay(1)).toBe(15);
+    expect(responseDelay(2)).toBeLessThan(responseDelay(1));
+    expect(responseDelay(3)).toBeLessThan(responseDelay(2));
+    expect(responseDelay(4)).toBeLessThanOrEqual(responseDelay(3));
+    expect(responseDelay(9)).toBe(responseDelay(6)); // clamps above the cap
+  });
+  it('a lone gunshot dispatches a unit only after a real delay', () => {
+    expect(SHOT_DISPATCH_DELAY[0]).toBeGreaterThanOrEqual(10);
+    expect(SHOT_DISPATCH_DELAY[1]).toBeGreaterThan(SHOT_DISPATCH_DELAY[0]);
   });
 });

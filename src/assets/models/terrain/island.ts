@@ -1,10 +1,7 @@
 import * as THREE from 'three';
-import {scene,renderer} from '@/core/engine.ts';
+import {scene} from '@/core/engine.ts';
 import {cityCoastR,ruralHalf,RURAL_X0,RURAL_TIP,RIVER_CX,RIVER_HW}
   from '@/core/constants.ts';
-import {makeRng} from '@/core/rng.ts';
-// Seeded so the coast sand-speckle texture is identical every load.
-const {random,irand,pick}=makeRng(0x15a4e);
 
 // ====== Ilha: areia + raso + espuma seguindo a costa irregular ==============
 // Substitui as peças QUADRADAS antigas (praia da cidade, anéis de shallows, bordas
@@ -22,26 +19,6 @@ const NA=168;                       // amostras angulares da costa da cidade (su
 
 interface Foam{m: THREE.Mesh; ph: number; spd: number; amp: number; polar: boolean;}
 
-// textura de areia tileável (grão + manchas), parecida com a praia antiga porém
-// SEM a moldura de espuma quadrada — a espuma agora é uma faixa que segue a costa
-function sandTexture(): THREE.CanvasTexture{
-  const c=document.createElement('canvas');c.width=c.height=256;
-  const x=c.getContext('2d')!;
-  x.fillStyle='#e7d29a';x.fillRect(0,0,256,256);
-  for(let k=0;k<2200;k++){
-    x.fillStyle=`rgba(${irand(195,238)},${irand(168,208)},${irand(118,158)},.18)`;
-    x.fillRect(random()*256,random()*256,irand(2,5),irand(2,5));
-  }
-  // conchinhas/estrelas esparsas
-  for(let k=0;k<70;k++){
-    x.fillStyle=pick(['rgba(255,244,235,.8)','rgba(255,170,185,.7)','rgba(255,214,140,.7)','rgba(190,235,255,.65)']);
-    x.fillRect(random()*256,random()*256,irand(1,3),irand(1,3));
-  }
-  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;
-  t.anisotropy=renderer.capabilities.getMaxAnisotropy();
-  return t;
-}
 
 // ShapeGeometry deita-se no plano (giro -90° no X) e ganha UV = (x,y) local.
 // Pra textura repetir num tamanho de mundo fixo, escalo o repeat.
@@ -136,9 +113,7 @@ function ruralEdgeStrip(rOut: number,thick: number,sign: number): THREE.ShapeGeo
 
 // Monta toda a ilha. Retorna os objetos de espuma p/ updateCoastFoam.
 export function buildIsland(): Foam[]{
-  const sandMat=new THREE.MeshLambertMaterial({map:sandTexture()});
-  const TILE=70;                          // 1 tile de areia cobre 70 un de mundo
-  for(const map of[sandMat.map!]){map.repeat.set(1/TILE,1/TILE);}
+  const sandMat=new THREE.MeshLambertMaterial({color:0xe7d29a}); // flat sand
 
   // 1) AREIA: disco irregular da cidade + franja da península (preenchidos; o
   //    chão/gramado cobrem o miolo, a areia só assoma na orla)

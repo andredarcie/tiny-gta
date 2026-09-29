@@ -11,7 +11,6 @@ import {scene,renderer} from '@/core/engine.ts';
 // with `npm run bake` (js/world/world-gen.ts). Terrain heightfields and the hand-authored
 // landmarks (named buildings, village, fences, fort) still come from the code below.
 import worldData from '../../data/world.json';
-import {makeRng} from '@/core/rng.ts';
 import {addPalm} from '../../assets/models/props/palm.ts';
 import {addUmbrella} from '../../assets/models/props/umbrella.ts';
 import {addChair} from '../../assets/models/props/chair.ts';
@@ -91,42 +90,16 @@ const groundTexRedraws:(()=>void)[]=[];
 const groundCv=document.createElement('canvas');
 {
   const mobile=matchMedia('(pointer: coarse)').matches||innerWidth<900;
-  groundCv.width=groundCv.height=Math.min(mobile?2048:4096,renderer.capabilities.maxTextureSize);
+  // 2048 everywhere: the ground is flat colours + road paint now, so 4096 (64 MB + mips,
+  // ~0.6 s to upload at boot) bought nothing visible.
+  groundCv.width=groundCv.height=Math.min(2048,renderer.capabilities.maxTextureSize);
 }
 function paintCityGround(){
-  // GSIZE segue o canvas; s = px por unidade de mundo; SC = escala vs. o design
-  // original 2048 (1 no mobile, 2 a 4096) — px do DETALHE (ruído, trincas, remendos)
-  // multiplicam por SC e as contagens por SC², então a densidade/tamanho do grão fica
-  // IGUAL em qualquer resolução (só mais nítido). As faixas usam M()/s e já escalam.
+  // FLAT COLOURS ONLY: asphalt, pavement, lots and road paint are solid fills — no
+  // noise, cracks, stains or grain. s = px per world unit.
   const x=groundCv.getContext('2d')!,GSIZE=groundCv.width,s=GSIZE/GROUND,
-    SC=GSIZE/2048,M=(v:number):number=>(v+GROUND/2)*s;
-  // Re-seeded each call so the speckle/debris noise is deterministic AND identical
-  // on every repaint (the mobile context-restore redraw, see groundTexRedraws).
-  const {random:rnd,irand}=makeRng(0x6017c1);
-  // Asfalto: base + textura realista. Pintado no canvas INTEIRO primeiro; o loop de
-  // quarteirões/lotes abaixo cobre calçadas e lotes, então o detalhe sobrevive só nas
-  // RUAS. Usa um RNG PRÓPRIO (não desloca o grão determinístico dos lotes/grão final).
-  x.fillStyle='#45454b';x.fillRect(0,0,GSIZE,GSIZE);              // asfalto base
-  {
-    const {random:ar,irand:ai}=makeRng(0x4a5fa1);
-    const A=SC*SC; // densidade independente de resolução (contagens ∝ área)
-    // manchas tonais largas e SUAVES (elipses, sem contorno): trechos desbotados pelo
-    // sol (claros) e oleosos (escuros). Não formam quadrados — só variação de tom.
-    for(let k=0;k<150*A;k++){
-      x.fillStyle=ar()<.5?`rgba(98,100,108,${(.04+ar()*.05).toFixed(3)})`
-                         :`rgba(22,22,28,${(.04+ar()*.06).toFixed(3)})`;
-      const r=ai(40,180)*SC;
-      x.beginPath();x.ellipse(ar()*GSIZE,ar()*GSIZE,r,r*(.5+ar()*.7),ar()*Math.PI,0,7);x.fill();
-    }
-    // trincas finas e quebradas espalhadas pelo asfalto
-    x.strokeStyle='rgba(12,12,16,.4)';x.lineWidth=Math.max(1,SC);
-    for(let k=0;k<110*A;k++){
-      let cx0=ar()*GSIZE,cy0=ar()*GSIZE;
-      x.beginPath();x.moveTo(cx0,cy0);
-      for(let s2=0;s2<ai(2,5);s2++){cx0+=ai(-30,30)*SC;cy0+=ai(-30,30)*SC;x.lineTo(cx0,cy0);}
-      x.stroke();
-    }
-  }
+    M=(v:number):number=>(v+GROUND/2)*s;
+  x.fillStyle='#45454b';x.fillRect(0,0,GSIZE,GSIZE);              // asphalt
   for(let i=0;i<N;i++)for(let j=0;j<N;j++){
     const x0=nodeX(i)+ROAD/2,z0=nodeX(j)+ROAD/2;
     x.fillStyle='#bcb6a8';x.fillRect(M(x0),M(z0),BLOCK*s,BLOCK*s); // calçadão claro
@@ -149,39 +122,29 @@ function paintCityGround(){
       x.moveTo(M(x0+BLOCK/2),M(z0+SIDE));x.lineTo(M(x0+BLOCK/2),M(z0+BLOCK-SIDE));x.stroke();
     }
   }
-  // lotes abandonados: terra batida com manchas de entulho e mato ralo
+  // abandoned lots: flat packed-dirt fill
   for(const lot of cityLots){
     if(!lot.empty)continue;
     // party plaza blocks lost their lots — keep their floor clean
     if(partyBlockAt(Math.floor((lot.cx+HALF)/CELL),Math.floor((lot.cz+HALF)/CELL)))continue;
     const lx=M(lot.cx-lot.w/2),lz=M(lot.cz-lot.d/2),lw=lot.w*s,ld=lot.d*s;
     x.fillStyle='#8a7a62';x.fillRect(lx,lz,lw,ld);
-    for(let k=0;k<46;k++){
-      x.fillStyle=rnd()<.3
-        ?`rgba(${irand(80,110)},${irand(120,150)},${irand(60,85)},.5)`
-        :`rgba(${irand(125,165)},${irand(108,140)},${irand(82,112)},.5)`;
-      x.fillRect(lx+rnd()*lw,lz+rnd()*ld,irand(2,6),irand(2,6));
-    }
   }
   for(let i=0;i<=N;i++){
     const r=nodeX(i);
     for(let j=0;j<N;j++){
       const a=nodeX(j)+ROAD/2+2.5,b=nodeX(j+1)-ROAD/2-2.5;
-      // contorno escuro sob a linha central: faz o amarelo "saltar" e ficar definido
-      x.fillStyle='rgba(16,16,12,.45)';
-      x.fillRect(M(r-.66),M(a),.54*s,(b-a)*s);x.fillRect(M(r+.12),M(a),.54*s,(b-a)*s);
-      x.fillRect(M(a),M(r-.66),(b-a)*s,.54*s);x.fillRect(M(a),M(r+.12),(b-a)*s,.54*s);
-      // linha central dupla amarela (tom de tinta de via, levemente mais saturado)
+      // double yellow centre line
       x.fillStyle='#f3c233';
       x.fillRect(M(r-.55),M(a),.32*s,(b-a)*s);x.fillRect(M(r+.23),M(a),.32*s,(b-a)*s);
       x.fillRect(M(a),M(r-.55),(b-a)*s,.32*s);x.fillRect(M(a),M(r+.23),(b-a)*s,.32*s);
-      // bordas brancas (linhas de bordo) — um pouco mais nítidas
-      x.fillStyle='rgba(242,242,247,.82)';
+      // white edge lines
+      x.fillStyle='#e8e8ec';
       x.fillRect(M(r-ROAD/2+.5),M(a),.22*s,(b-a)*s);x.fillRect(M(r+ROAD/2-.72),M(a),.22*s,(b-a)*s);
       x.fillRect(M(a),M(r-ROAD/2+.5),(b-a)*s,.22*s);x.fillRect(M(a),M(r+ROAD/2-.72),(b-a)*s,.22*s);
     }
   }
-  x.fillStyle='rgba(235,235,240,.75)';
+  x.fillStyle='#e0e0e4';                                          // crosswalks
   for(let i=0;i<=N;i++)for(let j=0;j<=N;j++){
     const cx=nodeX(i),cz=nodeX(j);
     for(let k=-2;k<=2;k++){
@@ -190,10 +153,6 @@ function paintCityGround(){
       x.fillRect(M(cx-ROAD/2-2.2),M(cz+k*2.4-.7),1.6*s,1.4*s);
       x.fillRect(M(cx+ROAD/2+.6),M(cz+k*2.4-.7),1.6*s,1.4*s);
     }
-  }
-  for(let k=0;k<5000*SC*SC;k++){
-    x.fillStyle=`rgba(${irand(120,200)},${irand(120,190)},${irand(130,200)},.1)`;
-    x.fillRect(rnd()*GSIZE,rnd()*GSIZE,irand(2,7)*SC,irand(2,7)*SC);
   }
 }
 {
@@ -314,22 +273,14 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
   const u=(v:number):number=>(v-RURAL_X0)/RW*1024,w=(v:number):number=>(v+RURAL_HALF)/RD*512;
   // Painted into a function so it can be re-run after a context loss (see groundTexRedraws).
   const paintRural=()=>{
-  const {random:rnd,rand,irand}=makeRng(0x73a17e); // deterministic, repaint-stable noise
-  x.fillStyle='#33500f';x.fillRect(0,0,1024,512);   // deep forest green — reads AS DARK as the MegaKit tree foliage once the floor catches full sun (base sits well below the canopy hex to compensate)
-  // Subtle two-tone mottling, BOTH greens so it never reads pale: deep shadow patches +
-  // a medium leaf-green like the canopy (~#577a00). No dry/yellow highlights.
-  for(let k=0;k<3200;k++){
-    x.fillStyle=rnd()<.7
-      ? `rgba(${irand(20,44)},${irand(40,66)},${irand(6,22)},.36)`      // deep shadow
-      : `rgba(${irand(74,104)},${irand(104,134)},${irand(6,34)},.22)`;   // leaf-green patch (~canopy tone)
-    x.fillRect(rnd()*1024,rnd()*512,irand(2,8),irand(2,8));
-  }
+  // FLAT COLOURS ONLY: grass, fields, dirt road and the town square are solid fills.
+  x.fillStyle='#33500f';x.fillRect(0,0,1024,512);   // deep forest green grass
   // roças: terra arada com linhas de plantação
   const fields=[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
     .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]);
   for(const[fx0,fx1,fz0,fz1]of fields){
     x.fillStyle='#8a6a3e';x.fillRect(u(fx0),w(fz0),u(fx1)-u(fx0),w(fz1)-w(fz0));
-    x.strokeStyle='rgba(120,185,90,.9)';x.lineWidth=3;
+    x.strokeStyle='#78b95a';x.lineWidth=3;
     for(let r=w(fz0)+5;r<w(fz1)-2;r+=7){
       x.beginPath();x.moveTo(u(fx0)+3,r);x.lineTo(u(fx1)-3,r);x.stroke();
     }
@@ -366,22 +317,6 @@ for(const p of worldData.beachChairs)addChair(p.x,p.z);
       x.lineTo(u(TOWN_CX+Math.cos(a)*11),w(czCor+Math.sin(a)*11));x.stroke();}
     x.lineWidth=2.6*s;                                       // anel em volta do coreto
     x.beginPath();x.ellipse(u(TOWN_CX),w(czCor),6*sx0,6*sz0,0,0,Math.PI*2);x.stroke();
-  }
-  // poeira ao longo da estrada
-  for(let k=0;k<420;k++){
-    const seg=rp[irand(0,rp.length-1)];
-    x.fillStyle=`rgba(${irand(140,180)},${irand(105,135)},${irand(70,95)},.45)`;
-    x.fillRect(u(seg[0])+rand(-roadW/2,roadW/2),w(seg[1])+rand(-roadW/2,roadW/2),irand(2,6),irand(1,3));
-  }
-  // A orla irregular (areia/raso/espuma) agora vem da ilha (island.js); o pasto
-  // só leva uma transição suave de grama mais clara/seca na linha de vegetação,
-  // pra casar com a faixa de praia que assoma além da borda do gramado.
-  for(let k=0;k<900;k++){
-    x.fillStyle=`rgba(${irand(150,195)},${irand(168,205)},${irand(110,150)},.5)`;
-    const e=irand(0,2);
-    if(e===0)x.fillRect(rnd()*1024,rnd()*16,irand(3,8),irand(2,5));
-    else if(e===1)x.fillRect(rnd()*1024,512-16+rnd()*16,irand(3,8),irand(2,5));
-    else x.fillRect(1024-16+rnd()*16,rnd()*512,irand(2,5),irand(3,8));
   }
   };
   paintRural();
@@ -462,7 +397,7 @@ addWeedFarm(solids);
   for(const o of f.bushes)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addBush(o.x,o.z);
   for(const o of f.ferns)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))addFern(o.x,o.z);
   for(const o of f.details)if(!inRiverGap(o.x,o.z)&&!inStadiumClearing(o.x,o.z,34))plantSmall(o.t,o.x,o.z);  // 'mushroom' | 'log'
-  // ----- lush ground cover (Stylized Nature MegaKit): grass tufts, wildflowers and
+  // ----- lush ground cover (code-built nature kit): grass tufts, wildflowers and
   // clover scattered around the existing forest foliage so the peninsula reads as a
   // living meadow (like the kit's own scenes). Purely visual, baked into the merged
   // nature chunks; anchored to vetted forest points so nothing lands on water/roads.

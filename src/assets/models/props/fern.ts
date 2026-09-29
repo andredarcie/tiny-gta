@@ -27,7 +27,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Fern',build};
 
-// Fern → the MegaKit Fern_1 frond rosette, scaled to ankle/knee height.
+// Fern → a code-built frond rosette (nature/kit.ts), scaled to ankle/knee height.
 export function addFern(px: number,pz: number): void{
   placeNature('fern',px,groundHeight(px,pz),pz,rand(0.8,1.4));
 }

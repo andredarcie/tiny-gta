@@ -4,25 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Tiny Theft Auto</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bowlby+One+SC&family=IBM+Plex+Mono:wght@400;600;700&family=Press+Start+2P&family=Yellowtail&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/css/style.css">
 </head>
 <body>
 <canvas id="game"></canvas>
-<div class="vignette"></div><div class="scanlines"></div><div id="grain" aria-hidden="true"></div>
 
-<div id="intro" aria-hidden="true">
-  <div id="intro-name">André N. Darcie</div>
-  <div id="intro-presents">presents</div>
-  <div id="intro-wipe"></div>
-</div>
 
 <div id="hud">
   <div id="fps" style="position:absolute;top:max(10px,env(safe-area-inset-top));left:max(14px,env(safe-area-inset-left));font:600 11px 'IBM Plex Mono',monospace;letter-spacing:1px;opacity:.85;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000"></div>
-  <div id="online-players" style="position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 16px);left:max(14px,env(safe-area-inset-left));font:600 11px 'IBM Plex Mono',monospace;letter-spacing:1px;opacity:.85;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000"></div>
-  <div id="online-ping" style="position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 32px);left:max(14px,env(safe-area-inset-left));font:600 11px 'IBM Plex Mono',monospace;letter-spacing:1px;opacity:.85;text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000"></div>
   <div id="vchud">
     <div id="vc-stack">
       <div id="clock">08:00</div>
@@ -92,8 +81,6 @@
   <div class="mgi-box">
     <div class="mgi-sub">MINI GAME</div>
     <div id="mgi-title">MINI GAME</div>
-    <div class="lb-head">TOP 5</div>
-    <ol id="mgi-list"><li class="lb-empty">Loading…</li></ol>
     <div id="mgi-desc" class="mgi-desc"></div>
     <button id="mgi-go" type="button">PLAY ▶</button>
     <div class="mgi-hint">Press any key or tap to play</div>
@@ -205,41 +192,9 @@
   </div>
 </div>
 
-<div id="admin-dash" aria-hidden="true">
-  <div class="admin-box">
-    <div class="admin-head">
-      <div class="admin-title">ADMIN DASHBOARD</div>
-      <button id="admin-close" type="button" aria-label="Close">&#10005;</button>
-    </div>
-    <div id="admin-body"><div class="admin-msg">Loading…</div></div>
-    <div class="admin-hint">Press <b>Y</b> or <b>ESC</b> to close</div>
-  </div>
-</div>
-
 <div id="title">
   <div id="logo"><span>TINY</span><span>THEFT</span><span>AUTO</span></div>
-  <div id="leaderboard">
-    <div class="lb-head">TOP PLAYERS</div>
-    <ol id="lb-list"><li class="lb-empty">Loading…</li></ol>
-    <div id="lb-total" class="lb-total"></div>
-    <div class="lb-prize">The player ranked <b>#1</b> at the end of the month gets a <b>statue</b> built in their honor in the city.</div>
-  </div>
   <button id="play" type="button">Play</button>
-</div>
-
-<div id="nickmodal" aria-hidden="true">
-  <div class="nick-box">
-    <div class="nick-title">PLAY TINY THEFT AUTO</div>
-    <input id="nick-input" type="text" maxlength="12" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="NICKNAME">
-    <input id="nick-pass" type="password" maxlength="64" autocomplete="current-password" spellcheck="false" placeholder="PASSWORD">
-    <div class="nick-note">Create an account to <b>keep your progress on any device</b>. Your nickname shows on the <b>global leaderboard</b>.</div>
-    <div id="nick-status" aria-live="polite"></div>
-    <div class="nick-btns">
-      <button id="nick-login" type="button" class="nick-alt">LOG IN</button>
-      <button id="nick-register" type="button">CREATE ACCOUNT</button>
-    </div>
-    <button id="nick-guest" type="button" class="nick-secondary">Play as guest (progress may be lost)</button>
-  </div>
 </div>
 
 <script type="module" src="src/js/core/boot.ts"></script>

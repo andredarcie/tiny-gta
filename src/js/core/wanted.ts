@@ -17,8 +17,35 @@ export const ROCKET_AT = 5; // ★5+: foot officers carry rocket launchers
 export const ARMY_AT = 6;   // ★6:  the army responds (and cruisers stop chasing)
 
 // Cooldown tuning (seconds / metres).
-export const WANTED_GRACE = 24;    // out of sight this long before the star starts cooling
-export const WANTED_COOL = 10;     // seconds to shed ONE star once it is cooling
+export const WANTED_GRACE = 16;    // out of sight this long before the star starts cooling
+export const WANTED_COOL = 7;      // seconds to shed ONE star once it is cooling
+
+/** Global multiplier on every crime's heat (applied in addWanted via heatGain). Below 1 =
+ *  stars climb slower: at 0.3 the first star takes ~9 public gunshots or ~3 murders. */
+export const WANTED_HEAT_SCALE = 0.3;
+/** Each star already held makes the next one harder to earn: heat is divided by
+ *  (1 + star*STAR_CLIMB_DAMP) — ★1→★2 costs 1.6x the heat of ★0→★1, ★5→★6 costs 4x. */
+export const STAR_CLIMB_DAMP = 0.6;
+/** Public gunfire adds heat at most once per this many seconds, so automatic weapons don't
+ *  rack up stars by fire rate alone. */
+export const GUNFIRE_HEAT_GAP = 0.6;
+
+/** The heat a crime of raw size `raw` actually adds at the current wanted level. */
+export function heatGain(current: number, raw: number): number {
+  return raw * WANTED_HEAT_SCALE / (1 + starLevel(current) * STAR_CLIMB_DAMP);
+}
+
+// Police response timing. A gunshot at ★0 only makes the dispatcher send ONE unit, which
+// rolls after SHOT_DISPATCH_DELAY seconds. Once the player HAS stars, cruisers only start
+// the chase after responseDelay(star) seconds since the stars first appeared — long at ★1,
+// near-instant at ★4+, so a quick crime can still be escaped before the sirens arrive.
+export const SHOT_DISPATCH_DELAY: [number, number] = [14, 22]; // seconds, random in range
+const RESPONSE_DELAYS = [0, 15, 9, 5, 2, 2, 2];                // index = star
+/** Seconds after the wanted level first appears before cruisers chase at this star. */
+export function responseDelay(star: number): number {
+  const s = Math.max(0, Math.min(MAX_STARS, Math.floor(star)));
+  return RESPONSE_DELAYS[s];
+}
 export const SIX_STAR_HOLD = 30;   // ★6 is held at least this long before it can cool
 export const ARMY_BLOCK_DIST = 90; // stars won't cool while the army is within this many metres
 

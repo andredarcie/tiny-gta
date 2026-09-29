@@ -3,9 +3,9 @@ import {makeRedneck} from '../../assets/models/characters/redneck.ts';
 import * as Entities from '@/core/entities.ts';
 import {collideStatics} from '@/core/physics.ts';
 import {state} from '@/core/state.ts';
+import {NPC_HP_CIVILIAN} from '@/core/difficulty.ts';
 import {playerPos,cur} from '@/actors/player.ts';
 import {Npc,NPC_SEED} from '@/actors/npc.ts';
-import {setNpcGlbGesture} from '../../assets/models/characters/npc-glb.ts';
 import {makeRng} from '@/core/rng.ts';
 import {npcDefsByKind} from '@/core/npc-defs.ts';
 import type * as THREE from 'three';
@@ -40,7 +40,7 @@ class RuralFolk extends Npc{
 
   constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string,likes?:string[],dialogues?:string[]){
     // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
-    super(g,{kind:'rural',hp:1,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
+    super(g,{kind:'rural',hp:NPC_HP_CIVILIAN,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
       area:role==='town'?'Pine Hollow':'Countryside',gender,name,likes,dialogues});
     this.role=role;
     this.home={x:g.position.x,z:g.position.z};
@@ -175,7 +175,6 @@ export function updateRuralFolk(dt:number){
     if(dx*dx+dz*dz>CULL2){f.g.visible=false;continue;}
     f.g.visible=true;
     f.bob+=dt*1.6;
-    setNpcGlbGesture(f.g,null);   // clear last frame's gesture; the work/wave branches re-set it
 
     // Reactive: a fast car coming close scatters everyone (no matter what they were
     // doing). Triggered once; the flee state then plays out on its own timer.
@@ -225,7 +224,6 @@ export function updateRuralFolk(dt:number){
       turnTo(f,f.face,3,dt);
       f.phase+=dt*4.5;
       poseWork(f.g,f.phase);
-      setNpcGlbGesture(f.g,'work');   // rigged folk: the farm-chop (procedural pose is invisible on GLB)
       f.g.position.y=groundHeight(f.g.position.x,f.g.position.z);
       if(f.stateT<=0)startIdle(f);
       continue;
@@ -235,7 +233,6 @@ export function updateRuralFolk(dt:number){
       turnTo(f,Math.atan2(pp.x-f.g.position.x,pp.z-f.g.position.z),8,dt);
       f.phase+=dt;
       poseWave(f.g,f.phase);
-      setNpcGlbGesture(f.g,'wave');   // rigged folk: greeting wave
       f.g.position.y=groundHeight(f.g.position.x,f.g.position.z)+Math.abs(Math.sin(f.bob))*.012;
       if(f.stateT<=0)startIdle(f);
       continue;

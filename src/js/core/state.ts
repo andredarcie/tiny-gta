@@ -25,8 +25,7 @@ export const state: GameState = {
   danceActive:false, // mini-game da dança aberto (ver js/places/dance-game.ts)
   modShopActive:false, // menu da oficina de custom aberto (ver js/places/mod-shop.ts)
   mapOpen:false, // mapa completo (tecla M) aberto — congela o mundo enquanto visível
-  adminOpen:false, // dashboard de admin (tecla Y, só p/ o dono 'REI') aberto — congela o mundo
-  firstPerson:false, // first-person camera (key C) — see js/actors/player.ts updateCamera
+  firstPerson:true, // ALWAYS true: the game is first-person only (see js/actors/player.ts updateCamera)
   aiming:false, // GTA-style aim mode toggle — see weapons.toggleAim / player.updateCamera
   clothing:{shirt:0x19e3ff,pants:0x202435,shoe:0x111117,hat:0,glasses:0}, // player outfit (clothing store) — see js/places/clothing-store.ts
   party:null, // political party membership ('red'|'blue'|null) — see js/places/party-hq.ts
@@ -34,15 +33,15 @@ export const state: GameState = {
   activeMiniGame:null, // id (MiniGameId) do mini game em curso, ou null — trava "um por vez"
                        // (ver js/activities/minigame.ts); enquanto setado o mapa fica sem outros
                        // POIs/atividades e não dá pra entrar noutro mini game
-  mgIntro:null,        // id do mini game cujo briefing/ranking está aberto (congela o
-                       // mundo até o jogador "passar"); ver js/activities/minigame-leaderboard.ts
+  mgIntro:null,        // id of the mini game whose briefing is open (freezes the world
+                       // until the player "passes"); see js/activities/minigame-intro.ts
   onRoof:null, // registro da porta do prédio em cujo telhado o jogador está
   mgDays:{}, // {minigameId: último dia in-game concluído} — regra "1x por dia" (ver js/activities/minigame.ts)
   mgReal:{} // {minigameId: Date.now() da última conclusão} — destrava a trava após ~30 min reais (ver minigame.ts)
 };
 
 export const input: InputState = {
-  moveX:0,moveY:0,lookX:0,lookY:0,
+  moveX:0,moveY:0,turnX:0,lookX:0,lookY:0,
   run:false,brake:false,horn:false,shootHeld:false,
   touchActive:false,moveActive:false,lookActive:false,
   brakeActive:false,hornActive:false,lastInput:'keyboard'

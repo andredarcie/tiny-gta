@@ -11,7 +11,7 @@ import {grantWeapon,snapshotArsenal,restoreArsenal} from '@/combat/weapons.ts';
 import {makeRampageSkull} from '../../assets/models/props/rampage-skull.ts';
 import {inGangTerritory} from '@/actors/gangs.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 
 // ============================================================================
 // MINIGAME FRENZY (clássico do open-world)
@@ -106,8 +106,8 @@ function finishRampage(success: boolean,silent=false){
   // mantinha o arsenal e munição cheia de graça após uma única chacina.
   restoreArsenal(arsenalSnapshot);
   arsenalSnapshot=null;
-  // ranking: cada chacina é UMA sessão; vitória = meta batida, score = kills feitas
-  reportMiniGameResult(game.id,{won:success,score:killed});
+  // session over: counts toward the once-per-day lock
+  markMiniGamePlayed(game.id);
   game.end();                          // libera a trava do mundo (idempotente)
   endFlash=success?1.4:.9;             // dispara o flourish (halo pulsa no fim)
   endOk=success;

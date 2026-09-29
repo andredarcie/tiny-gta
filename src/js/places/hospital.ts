@@ -8,7 +8,6 @@ import {Interior} from '@/world/interior.ts';
 import {HOSP_DOOR,HOSP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,HOSP_HEAL,HOSP_BED,
   hospFx,hospInterior} from '../../assets/models/city/hospital.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
-import {setNpcGlbLying} from '../../assets/models/characters/npc-glb.ts';
 
 // Hospital "SANTA CASA": estende a classe base de interiores (js/world/interior.ts).
 // Particularidades: é pra onde o jogador acorda quando morre (admit(), chamada
@@ -82,7 +81,6 @@ export const hospital=new HospitalInterior({
 // 'Hospital' entries in npcs.json (a lying patient must not be a standing female).
 for(const p of hospFx.peds){
   nameInteriorNpc(p.g,p.kind==='lie'?'patient':'medic','Hospital');
-  if(p.kind==='lie')setNpcGlbLying(p.g,true); // rigged bed-ridden patient lies (not standing-idle)
 }
 
 // Acordar no hospital depois de morrer (js/actors/player.ts chama via refs.hospitalAdmit):

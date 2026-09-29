@@ -35,8 +35,8 @@ export const AWNINGS=[0xc85d77,0x3f9a96,0xd7af4f,0xc7783c,0x90699e];
 export const CAR_COLORS=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x5b5f6b,0x7a4f9e,0x3aa06b,0xd96fae,0xc4c8cf];
 
 // --- WARDROBE — NPC looks. Shirts deliberately share the FLEET family so ---
-// people and traffic read as one world. Skin/hair/pants feed the Mixamo
-// region-recolor system (assets/models/characters/mixamo-rig.ts).
+// people and traffic read as one world. Skin/hair/pants colour the box dolls
+// (assets/models/characters/pedestrian.ts).
 export const SHIRT_COLORS=[0xc23b4e,0x3b7ac2,0xcf9a3a,0x3aa06b,0xd96fae,0xe8e3d2,0x7a4f9e,0x40c8c0];
 export const SKIN_TONES=[0xeec2a0,0xd9a06b,0xb8754c,0x8f5637,0x6f3e2a,0xf0c8a0];
 export const HAIR_COLORS=[0x2e2018,0x14100c,0x4a2b18,0x6b5137,0x0d0d12,0x7a5a3a,0x9a9a9a];
@@ -49,7 +49,7 @@ export const PANTS_COLORS=[0x202435,0x263454,0x2e2a24,0x3d3f46,0x18191f,0xe7dec9
 export const GROUND={
   asphalt:'#45454b',
   sidewalk:'#bcb6a8',
-  grass:'#33500f',     // deep forest green — as dark as the Stylized Nature MegaKit tree foliage; also mountain grass (assets/models/terrain/mountain.ts)
+  grass:'#33500f',     // deep forest green — as dark as the forest foliage; also mountain grass (assets/models/terrain/mountain.ts)
   parkGrass:'#5fae62',
   dirt:'#8a7a52',
   ruralRoad:'#b08a5e', // dirt roads + mountain trail
@@ -61,5 +61,11 @@ export const NATURE={
   treeLeaf:0x4f9a3e, treeLeafDark:0x3c7d36, trunk:0x6b4a32,
   bush:0x437a32, bushDark:0x356b2c,
   palmLeaf:0x3aa856, palmTrunk:0x96704e,
+  pineLeaf:0x2f6a36, pineLeafDark:0x24532c,
+  grass:0x5d8a36, grassDry:0x8a9a4a, clover:0x4f8a3a,
+  rock:0x8d8f99, rockDark:0x6c6e78, rockWarm:0x9a8f80,
+  mushroomCap:0xb8412f, mushroomStem:0xe8dcc0, shelfFungus:0xd9822c,
+  coconut:0x5a3f24,
+  petals:[0xd8c24a,0xc05a7a,0xe8e0d0,0x8a6ac0,0xd9743a] as number[],
   sea:0x2e9ec4,
 };

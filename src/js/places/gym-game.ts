@@ -1,9 +1,9 @@
 import {state,input,keys} from '@/core/state.ts';
 import {camera} from '@/core/engine.ts';
-import {player,cameraRig,posePlayerGlbBench} from '@/actors/player.ts';
+import {player,cameraRig} from '@/actors/player.ts';
 import {blip} from '@/audio/audio.ts';
 import {GYM_TRAIN,gymFx} from '../../assets/models/city/gym.ts';
-import {reportMiniGameResult} from '@/activities/minigame-leaderboard.ts';
+import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
 
 // ============================================================================
@@ -72,7 +72,7 @@ const LEG_X=0.42,CALF_X=0.62;            // joelhos meio dobrados (pés pro chã
 const EYE=[BENCH_X+4.6,1.95,BENCH_Z-0.30];
 const LOOK=[BENCH_X-0.20,1.12,BENCH_Z-0.42];
 
-let active=false,onWin:(()=>void)|null=null,runScore=0; // runScore = pontos da sessão (rep/perfect) p/ o ranking
+let active=false,onWin:(()=>void)|null=null;
 let phase='ready',setNum=1,reps=0,stamina=STAM_START;
 let needle=.5,vel=START_SPEED,speed=START_SPEED,zoneCenter=.5,zoneHalf=START_HALF;
 let pressPhase=1,repAnimT=0,repFail=false; // animação do levante (1=lockout, 0=peito)
@@ -86,7 +86,7 @@ const ctx=canvas&&canvas.getContext('2d')!;
 let cw=0,ch=0,dpr=1;
 
 function zeroInput(){
-  input.moveX=0;input.moveY=0;input.lookX=0;input.lookY=0;
+  input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
   input.run=false;input.brake=false;input.horn=false;input.shootHeld=false;
   input.moveActive=false;input.lookActive=false;input.brakeActive=false;input.hornActive=false;
   for(const k of Object.keys(keys))keys[k]=false;
@@ -112,7 +112,7 @@ export function gymGameActive(){return active;}
 export function openGymGame(cfg:{onWin?:(()=>void)|null}={}){
   if(active||!overlay)return true;
   onWin=cfg.onWin||null;
-  setNum=1;reps=0;runScore=0;result=null;resultT=0;
+  setNum=1;reps=0;result=null;resultT=0;
   flashText='';flashT=0;shakeT=0;
   active=true;state.gymActive=true;
   prevControlsLocked=state.controlsLocked;prevFov=camera.fov;
@@ -146,7 +146,7 @@ export function closeGymGame(){
 
 function finish(){
   const cb=onWin,won=result==='win';
-  reportMiniGameResult(MiniGameId.GYM,{won,score:runScore}); // ranking do supino (top 5)
+  markMiniGamePlayed(MiniGameId.GYM);
   closeGymGame();
   if(won)cb?.();
 }
@@ -177,7 +177,6 @@ export function gymGamePress(){
   if(d<=zoneHalf){
     reps++;
     const perfect=d<=zoneHalf*PERFECT_FRAC;
-    runScore+=perfect?150:100; // pontos da sessão (PERFECT vale mais) p/ o ranking
     stamina=Math.min(STAM_MAX,stamina+(perfect?PERFECT_GAIN:HIT_GAIN));
     flash(perfect?'PERFECT!':'REP!',perfect?'#ffd24a':'#ffe9c9');
     repAnimT=REP_ANIM;repFail=false; // dispara o levante completo
@@ -227,9 +226,8 @@ function restorePose(){
 
 // p: 1=lockout (barra em cima), 0=barra no peito. Move braços + a barra.
 function applyBenchPose(p:number){
-  posePlayerGlbBench(p);                 // rigged hero: drive the press on the GLB rig
   if(gymFx.barbell)gymFx.barbell.position.set(BAR_X,lerp(BAR_BOTTOM_Y,BAR_TOP_Y,p),BAR_Z);
-  const l=player.g.userData.limbs;if(!l)return; // procedural fallback below (doll hidden under the GLB)
+  const l=player.g.userData.limbs;if(!l)return;
   const armX=lerp(ARM_BOTTOM,ARM_TOP,p),foreX=lerp(FORE_BOTTOM,FORE_TOP,p);
   l.leftArm.rotation.set(armX,0,ARM_SPLAY);
   l.rightArm.rotation.set(armX,0,-ARM_SPLAY);

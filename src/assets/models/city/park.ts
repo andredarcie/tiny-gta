@@ -18,58 +18,13 @@ import {groundHeight,rand,irand} from '@/core/constants.ts';
 
 type Solid = { x0:number; x1:number; z0:number; z1:number; h:number };
 
-// ---- procedural textures (one <canvas> each; no image assets at runtime) ----
-function canvasTex(s:number,draw:(x:CanvasRenderingContext2D,s:number)=>void):THREE.CanvasTexture{
-  const c=document.createElement('canvas');c.width=c.height=s;
-  draw(c.getContext('2d')!,s);
-  const t=new THREE.CanvasTexture(c);
-  t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;
-  return t;
-}
-const grassTex=canvasTex(256,(x,s)=>{
-  x.fillStyle='#4d8c3c';x.fillRect(0,0,s,s);
-  for(let i=0;i<48;i++){x.fillStyle=`rgba(${irand(58,92)},${irand(120,160)},${irand(48,80)},.5)`;
-    x.beginPath();x.arc(Math.random()*s,Math.random()*s,irand(10,30),0,7);x.fill();}
-  for(let i=0;i<1100;i++){const gx=Math.random()*s,gy=Math.random()*s,c=irand(80,160);
-    x.strokeStyle=`rgba(${c-46},${c},${c-62},.65)`;x.lineWidth=1;
-    x.beginPath();x.moveTo(gx,gy);x.lineTo(gx+rand(-2,2),gy-rand(3,8));x.stroke();}
-});
-function drawStone(x:CanvasRenderingContext2D,s:number){
-  x.fillStyle='#5e574c';x.fillRect(0,0,s,s);                 // grout
-  const n=4,ts=s/n;
-  for(let i=0;i<n;i++)for(let j=0;j<n;j++){
-    const sh=irand(-12,12);
-    x.fillStyle=`rgb(${168+sh},${162+sh},${150+sh})`;
-    x.fillRect(i*ts+2,j*ts+2,ts-4,ts-4);                     // paver
-    for(let k=0;k<14;k++){x.fillStyle=`rgba(0,0,0,${Math.random()*.12})`;
-      x.fillRect(i*ts+Math.random()*ts,j*ts+Math.random()*ts,2,2);}
-  }
-}
-const stoneTex=canvasTex(256,drawStone);        // walkways / plaza (tiled via world UVs)
-const stoneBoxTex=canvasTex(256,drawStone);     // curbs / planters (tiled via map.repeat)
-stoneBoxTex.repeat.set(2,2);
-const soilTex=canvasTex(128,(x,s)=>{
-  x.fillStyle='#4a3829';x.fillRect(0,0,s,s);
-  for(let i=0;i<300;i++){const c=irand(-30,42);x.fillStyle=`rgba(${92+c},${66+c},${44+c},.6)`;
-    x.beginPath();x.arc(Math.random()*s,Math.random()*s,irand(1,4),0,7);x.fill();}
-  for(let i=0;i<16;i++){x.fillStyle=`rgba(${irand(120,160)},${irand(110,140)},${irand(95,120)},.85)`;
-    x.beginPath();x.arc(Math.random()*s,Math.random()*s,irand(2,4),0,7);x.fill();}
-});
-soilTex.repeat.set(2,2);
-const hedgeTex=canvasTex(128,(x,s)=>{
-  x.fillStyle='#2c6330';x.fillRect(0,0,s,s);
-  for(let i=0;i<820;i++){const c=irand(-26,48);x.fillStyle=`rgba(${40+c},${112+c},${48+c},.72)`;
-    x.beginPath();x.arc(Math.random()*s,Math.random()*s,irand(2,5),0,7);x.fill();}
-  for(let i=0;i<140;i++){x.fillStyle=`rgba(8,28,10,${Math.random()*.4})`;
-    x.fillRect(Math.random()*s,Math.random()*s,irand(1,3),irand(1,3));}
-});
-hedgeTex.repeat.set(2.4,1.2);
 
-const grassMat = matte({ map:grassTex, roughness:1 });
-const pathMat  = matte({ map:stoneTex, roughness:.9 });   // flat walkways/plaza (world-UV tiled)
-const stoneMat = matte({ map:stoneBoxTex, roughness:.9 }); // box curbs/rims/planter bodies
-const soilMat  = matte({ map:soilTex, roughness:1 });
-const hedgeMat = matte({ map:hedgeTex, roughness:1 });
+// Flat colours only (no textures).
+const grassMat = matte({ color:0x4d8c3c });
+const pathMat  = matte({ color:0xa8a296 });   // walkways / plaza
+const stoneMat = matte({ color:0x9c968a });   // box curbs / rims / planter bodies
+const soilMat  = matte({ color:0x4a3829 });
+const hedgeMat = matte({ color:0x2c6330 });
 const stemM    = matte({ color:0x3a7a34, roughness:1 });
 const FLOWERS = [0xe23b4e,0xf4c534,0xede7d6,0xd96fae,0x8a5cf0,0xff7a1e].map(
   c => matte({ color:c, roughness:.7, flatShading:true }));

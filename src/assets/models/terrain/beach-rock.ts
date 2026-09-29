@@ -15,7 +15,7 @@ function build({scale=1.4}={}): THREE.Mesh{
 
 export default {category:'Terrain',label:'Beach rock',build};
 
-// Beach rock → a random MegaKit Rock_Medium, half-sunk in the sand at shore level.
+// Beach rock → a random code-built boulder (nature/kit.ts), half-sunk in the sand at shore level.
 export function addBeachRock(x: number,z: number,scale: number): void{
   placeNature('rock',x,-.12,z,scale*rand(0.85,1.25));
 }

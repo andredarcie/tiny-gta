@@ -28,7 +28,7 @@ function build(): THREE.Group{
 
 export default {category:'Props',label:'Pine tree',build};
 
-// Pine → a random MegaKit Pine model, baked into the merged nature chunks.
+// Pine → a random code-built pine (stacked cones, nature/kit.ts), baked into the merged nature chunks.
 export function addPine(px: number,pz: number): void{
   placeNature('pine',px,groundHeight(px,pz)-.02,pz,rand(4.6,7.4));
 }

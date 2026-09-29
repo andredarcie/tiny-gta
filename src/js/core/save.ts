@@ -1,48 +1,48 @@
 import { state, refs } from '@/core/state.ts';
 import type { SaveBlob, LedgerSnapshot } from '@/core/types.ts';
 
-// SAVE DE PROGRESSO — ponte entre o estado vivo do jogo e o blob que vai/vem do
-// backend (js/ui/leaderboard.ts). Mantém este módulo "burro": ele só monta/aplica o
-// blob lendo getters/setters que cada sistema registra em `refs` (mesmo padrão
-// de refs.miniBlips/zoneActions), sem importar weapons/gym/property/... direto —
-// assim não cria ciclos e novos slots entram só registrando o seu par em refs.
+// PROGRESS SAVE — the bridge between the live game state and the save blob, which
+// is persisted ONLY in this browser's localStorage (the game is fully offline).
+// This module stays "dumb": it builds/applies the blob by reading getters/setters
+// each system registers in `refs` (same pattern as refs.miniBlips/zoneActions),
+// without importing weapons/gym/property/... directly — so it creates no import
+// cycles and a new slot only has to register its pair in refs.
 //
-// O DINHEIRO agora é um LEDGER de transações (ver js/core/economy.ts): o saldo é a soma
-// das transações. O save carrega o snapshot do ledger (`blob.ledger`) e o restore
-// é IDEMPOTENTE — re-aplicar o mesmo snapshot não dobra nem perde dinheiro (dedupe
-// por id). `blob.money` continua presente como ESPELHO derivado (HUD/ranking/legado
-// e fallback para saves antigos que ainda não têm `ledger`).
+// MONEY is a transaction LEDGER (see js/core/economy.ts): the balance is the sum of
+// the transactions. The save carries the ledger snapshot (`blob.ledger`) and the
+// restore is IDEMPOTENT — re-applying the same snapshot never doubles or loses
+// money (dedupe by id). `blob.money` stays as a derived MIRROR (HUD / legacy
+// fallback for old saves that have no `ledger`).
 
-// Monta o blob a partir do estado atual. Slots ausentes viram vazio/null.
+// Builds the blob from the current state. Missing slots become empty/null.
 export function collectSave(): SaveBlob {
   return {
     v: 2,
-    money: Math.max(0, Math.floor(state.money) || 0), // espelho derivado do ledger
-    ledger: refs.serializeLedger?.() || null,         // {ckpt, seq, txs[]} — fonte da verdade do saldo
+    money: Math.max(0, Math.floor(state.money) || 0), // derived mirror of the ledger
+    ledger: refs.serializeLedger?.() || null,         // {ckpt, seq, txs[]} — source of truth for the balance
     weapons: refs.getWeaponsSave?.() || [],
     arm: refs.getGymSave?.() || null,
     house: refs.getPropertySave?.() || null,
     pkg: refs.getPackagesSave?.() || [],
     stunts: refs.getStuntsSave?.() || [],
-    daily: refs.getDailySave?.() || null, // dia in-game + travas "1x por dia" dos mini-games
+    daily: refs.getDailySave?.() || null, // in-game day + the mini-games' "once per day" locks
     farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
     clothing: refs.getClothingSave?.() || null, // player outfit: shirt/pants/shoe colours + accessories
-    // Political party membership. 'none' (not null) encodes de-affiliation: the
-    // backend's sanitizeValue DROPS null-valued keys, so a null would vanish from
-    // the stored blob and a de-affiliation could never overwrite an old 'red'.
+    // Political party membership. 'none' (not null) encodes de-affiliation, so
+    // an explicit "left the party" is distinguishable from an old save that
+    // predates the field.
     party: state.party ?? 'none',
   };
 }
 
-// Aplica um blob restaurado do backend ao jogo. Pode ser chamado mais de uma vez
-// na mesma run (ex.: duplo-toque no LOGIN, reconciliação com o espelho local) —
-// todos os caminhos abaixo são IDEMPOTENTES: o dinheiro via ledger (dedupe por id)
-// e os itens via restore que checa posse antes de aplicar (weapons/property/...).
+// Applies a restored blob to the game. Safe to call more than once in the same
+// run — every path below is IDEMPOTENT: money via the ledger (dedupe by id) and
+// items via restores that check ownership before applying (weapons/property/...).
 export function applySave(blob: unknown): void {
   if (!blob || typeof blob !== 'object') return;
   const b = blob as Partial<SaveBlob>;
-  // Dinheiro: usa o snapshot do ledger quando existir; senão sintetiza um a partir
-  // do `money` (save antigo, v1) — migração transparente no cliente.
+  // Money: use the ledger snapshot when present; otherwise synthesize one from
+  // `money` (old v1 save) — a transparent client-side migration.
   const ledger = (b.ledger && typeof b.ledger === 'object')
     ? b.ledger
     : (Number.isFinite(b.money) && (b.money as number) >= 0 ? { ckpt: Math.floor(b.money as number), txs: [] } : null);
@@ -55,12 +55,54 @@ export function applySave(blob: unknown): void {
   refs.restoreDaily?.(b.daily);
   refs.restoreFarm?.(b.farm);
   refs.restoreClothing?.(b.clothing);
-  // Party membership: last-write-wins. 'none' (or a literal null from the local
-  // mirror) means the player de-affiliated and must stay unaffiliated; old saves
-  // without the field are left untouched.
+  // Party membership: 'none' (or a literal null) means the player de-affiliated
+  // and must stay unaffiliated; old saves without the field are left untouched.
   if (b.party === 'red' || b.party === 'blue') state.party = b.party;
   else if (b.party === 'none' || b.party === null) state.party = null;
 }
 
+// ---- local persistence (localStorage) ---------------------------------------
+// Same key older builds used for their local save copy, so progress already on
+// this device carries over. That copy was stored as {pid, save}; new writes
+// store the blob itself — loadLocalSave() accepts both shapes.
+const SAVE_KEY = 'tinygta_save';
+// Saving is armed only AFTER the stored save was restored (startLocalSave), so the
+// fresh boot state can never overwrite real progress before it is loaded.
+let armed = false, lastJson = '';
+
+// Reads the stored save blob, or null when there is none / it is unreadable.
+export function loadLocalSave(): Partial<SaveBlob> | null {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null') as Record<string, unknown> | null;
+    if (!raw || typeof raw !== 'object') return null;
+    const blob = ('save' in raw && raw.save && typeof raw.save === 'object') ? raw.save : raw;
+    return blob as Partial<SaveBlob>;
+  } catch { return null; }
+}
+
+// Writes the current state to localStorage (skipped when nothing changed).
+export function saveNow(): void {
+  if (!armed) return;
+  try {
+    const json = JSON.stringify(collectSave());
+    if (json === lastJson) return;
+    localStorage.setItem(SAVE_KEY, json);
+    lastJson = json;
+  } catch { /* storage full / blocked: keep playing, retry on the next tick */ }
+}
+
+// Arms persistence for this run: periodic autosave plus a save whenever the tab
+// is hidden/closed. Call once, right after the stored save has been applied.
+export function startLocalSave(): void {
+  if (armed) return;
+  armed = true;
+  saveNow();
+  setInterval(saveNow, 3000);
+  addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+  addEventListener('pagehide', saveNow);
+}
+
 refs.collectSave = collectSave;
 refs.applySave = applySave;
+// economy.ts calls this on every money change so a payout is persisted right away.
+refs.backupSave = saveNow;
