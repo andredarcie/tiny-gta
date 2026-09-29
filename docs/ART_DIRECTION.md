@@ -53,6 +53,11 @@ things that carry gameplay meaning.
 - No photo textures, image textures or loaded model files on any surface — vegetation and
   rocks included (they are generated in code too, `assets/models/nature/kit.ts`). It breaks
   the maquette and the zero-binary-assets pillar.
+- **Flat colours only.** Every surface is a solid colour — no painted noise, grain, stains,
+  cracks, grout, wood grain, mowing stripes, gradients or metallic flake. A canvas texture is
+  allowed only for GRAPHICS that carry information or light: text on signs/boards, road and
+  pitch markings, race checkers and hazard stripes, windows on facades (flat panes), screens
+  and pictures, and light/sky sprites (sun, moon, glow, sky gradient, clouds, beams).
 - No saturated cartoon pastels in the environment (pool-cyan, lime green) —
   those are leftovers from the old look; pull them toward the muted base when touched.
 - No saturated color without gameplay meaning.

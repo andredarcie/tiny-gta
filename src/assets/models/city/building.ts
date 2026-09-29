@@ -15,50 +15,26 @@ const facadePalette=FACADES;
 // Altura do térreo (faixa sólida sem janela): janelas só do 1º andar pra cima.
 const BASE_H=3.2;
 
+// Facade texture: FLAT COLOURS ONLY — a solid wall colour with a grid of flat window
+// panes (a dark frame + one flat glass tone, or a flat warm/cool pane when lit). The
+// matching emissive map lights only the lit panes at night.
 function windowTexPair(base:string):{map:THREE.CanvasTexture,emis:THREE.CanvasTexture}{
   const c=document.createElement('canvas');c.width=256;c.height=512;
   const e=document.createElement('canvas');e.width=256;e.height=512;
   const cx=c.getContext('2d')!,ex=e.getContext('2d')!;
   cx.fillStyle=base;cx.fillRect(0,0,256,512);
   ex.fillStyle='#000';ex.fillRect(0,0,256,512);
-  for(let q=0;q<8;q+=2){cx.fillStyle='rgba(0,0,0,.05)';cx.fillRect(q*32,0,32,512);}
-  for(let r=0;r<16;r++){
-    cx.fillStyle='rgba(0,0,0,.16)';cx.fillRect(0,r*32,256,3);
-    cx.fillStyle='rgba(255,255,255,.08)';cx.fillRect(0,r*32+3,256,2);
-  }
-  // Vidro de fachada realista: tons frios DESSATURADOS (azul-cinza-aço, leve
-  // verde) — reflexo de céu/entorno, não o cyan de desenho de antes.
-  const glassCols=['#79868c','#6c7c84','#84908f','#717f81','#67767c','#8b9390'];
+  const glassCols=['#6f7d84','#76858a','#6a787d'];
   for(let r=0;r<16;r++)for(let q=0;q<8;q++){
     const wx=q*32+7,wy=r*32+9,ww=18,wh=17;
-    cx.fillStyle='rgba(18,20,28,.55)';cx.fillRect(wx-2,wy-2,ww+4,wh+4);
-    cx.fillStyle='rgba(220,228,232,.16)';cx.fillRect(wx-3,wy+wh+2,ww+6,2);
+    cx.fillStyle='#2a2d36';cx.fillRect(wx-2,wy-2,ww+4,wh+4);   // flat frame
     if(Math.random()<.12){
-      // Janela acesa: mistura de luz quente (residencial) e branca-fria
-      // (escritório/fluorescente), em vez de só o creme saturado de antes.
-      const col=pick(['#ffe8c2','#ffeed0','#f3e2bd','#e9eeec','#dfe8ea']);
-      const g=cx.createLinearGradient(0,wy,0,wy+wh);
-      g.addColorStop(0,col);g.addColorStop(1,'#c89a5e');
-      cx.fillStyle=g;cx.fillRect(wx,wy,ww,wh);
+      const col=pick(['#ffe8c2','#f3e2bd','#e9eeec']);          // lit pane
+      cx.fillStyle=col;cx.fillRect(wx,wy,ww,wh);
       ex.fillStyle=col;ex.fillRect(wx,wy,ww,wh);
-      if(Math.random()<.3){
-        const px=wx+irand(2,11);
-        cx.fillStyle='rgba(40,30,45,.6)';cx.fillRect(px,wy+6,5,11);
-        ex.fillStyle='rgba(0,0,0,.6)';ex.fillRect(px,wy+6,5,11);
-      }
     }else{
-      // Vidro apagado: reflexo de céu dessaturado no topo, corpo do vidro
-      // tingido no meio, e o interior escuro embaixo (dá profundidade).
-      const g=cx.createLinearGradient(0,wy,0,wy+wh);
-      g.addColorStop(0,'#aeb9bd');g.addColorStop(.45,pick(glassCols));g.addColorStop(1,'#2c373d');
-      cx.fillStyle=g;cx.fillRect(wx,wy,ww,wh);
-      if(Math.random()<.3){cx.fillStyle='rgba(206,216,220,.5)';cx.fillRect(wx,wy,ww,irand(4,10));}
-      cx.fillStyle='rgba(18,20,28,.45)';cx.fillRect(wx+ww/2-1,wy,2,wh);
+      cx.fillStyle=pick(glassCols);cx.fillRect(wx,wy,ww,wh);    // unlit pane
     }
-  }
-  for(let k=0;k<10;k++){
-    cx.fillStyle='rgba(18,18,26,.05)';
-    cx.fillRect(Math.random()*256,Math.random()*60,irand(2,5),512);
   }
   const mk=(cv:HTMLCanvasElement):THREE.CanvasTexture=>{const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;
     t.wrapS=t.wrapT=THREE.RepeatWrapping;return t};

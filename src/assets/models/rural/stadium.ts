@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {bakeProp} from '../props/prop-merge.ts';
-import {groundHeight,irand} from '@/core/constants.ts';
+import {groundHeight} from '@/core/constants.ts';
 
 // PARTY ARENA STADIUM - compact municipal stadium portal in the rural world,
 // with the real football arena isolated off the open-world landmass for perf.
@@ -183,16 +183,8 @@ function pitchTexture():THREE.CanvasTexture{
   const W=1024,H=672;
   const c=document.createElement('canvas');c.width=W;c.height=H;
   const x=c.getContext('2d')!;
-  x.fillStyle='#5fae62';x.fillRect(0,0,W,H);
-  for(let i=0;i<8;i++){
-    x.fillStyle=i%2?'rgba(0,0,0,.05)':'rgba(255,255,255,.04)';
-    x.fillRect(i*(W/8),0,W/8,H);
-  }
-  for(let i=0;i<900;i++){
-    x.fillStyle=`rgba(${irand(60,95)},${irand(130,170)},${irand(60,95)},.35)`;
-    x.fillRect(Math.random()*W,Math.random()*H,3,3);
-  }
-  x.strokeStyle='rgba(255,255,255,.9)';x.lineWidth=6;
+  x.fillStyle='#5fae62';x.fillRect(0,0,W,H);          // flat grass (no mowing stripes / noise)
+  x.strokeStyle='#f2f2f2';x.lineWidth=6;               // flat pitch markings
   x.strokeRect(24,24,W-48,H-48);
   x.beginPath();x.moveTo(W/2,24);x.lineTo(W/2,H-24);x.stroke();
   x.beginPath();x.arc(W/2,H/2,86,0,Math.PI*2);x.stroke();

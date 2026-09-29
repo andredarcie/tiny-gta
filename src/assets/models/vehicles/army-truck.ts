@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {applyVehicleEnv} from './vehicle-env.ts';
 
 // ARMY truck (military transport style): low cab up front + open bed at the back with
 // side lockers and canvas bows, GREEN CAMO paint (procedural <canvas> texture),
@@ -17,35 +16,9 @@ import {applyVehicleEnv} from './vehicle-env.ts';
 // Axes (same as the other vehicles): +z = front, x = width, y = height off ground.
 
 // ---------- camo texture (canvas -> map) ----------
-// Military blobs (olive/dark-green/khaki/black). Deterministic apart from the
-// blobs (cosmetic) and cheap: one small repeated canvas.
-function camoTexture(): THREE.CanvasTexture{
-  const c=document.createElement('canvas');c.width=c.height=128;
-  const x=c.getContext('2d')!;
-  x.fillStyle='#4b5320';x.fillRect(0,0,128,128);            // olive base
-  const blobs: [string, number][]=[['#3a4017',46],['#5e6b2f',40],['#2b2f14',30],['#7a7142',24]];
-  for(const[col,n]of blobs){
-    x.fillStyle=col;
-    for(let i=0;i<n;i++){
-      const bx=Math.random()*128,by=Math.random()*128,r=6+Math.random()*16;
-      x.beginPath();
-      for(let a=0;a<7;a++){ // irregular polygon = blob
-        const th=a/7*Math.PI*2,rr=r*(.6+Math.random()*.6);
-        const px=bx+Math.cos(th)*rr,py=by+Math.sin(th)*rr;
-        a?x.lineTo(px,py):x.moveTo(px,py);
-      }
-      x.closePath();x.fill();
-    }
-  }
-  const t=new THREE.CanvasTexture(c);
-  t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,2);
-  t.colorSpace=THREE.SRGBColorSpace;
-  return t;
-}
 
 // ---------- materials (shared; color is NOT mutated at runtime) ----------
-const camoMap=camoTexture();
-const camoM=new THREE.MeshStandardMaterial({map:camoMap,roughness:.85,metalness:.1}); // camo body
+const camoM=new THREE.MeshStandardMaterial({color:0x4b5320,roughness:.85,metalness:.1}); // flat olive body
 const canvasM=new THREE.MeshStandardMaterial({color:0x3e4626,roughness:.95});          // dark-olive canvas/bows
 const darkM=new THREE.MeshStandardMaterial({color:0x14140f,roughness:.7,metalness:.2}); // details/grille/lockers
 const glassM=new THREE.MeshStandardMaterial({color:0x14201a,roughness:.55,metalness:.15,
@@ -157,6 +130,6 @@ function buildArmyTruck(): THREE.Group{
   return g;
 }
 
-export function makeArmyTruck(): THREE.Group{const g=buildArmyTruck();applyVehicleEnv(g);return g;}
+export function makeArmyTruck(): THREE.Group{const g=buildArmyTruck();return g;}
 
 export default {category:'Vehicles',label:'Army truck',build:buildArmyTruck,zoom:.55,yaw:-.6};

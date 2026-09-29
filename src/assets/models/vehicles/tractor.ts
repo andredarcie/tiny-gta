@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import {scene} from '@/core/engine.ts';
-import {applyVehicleEnv} from './vehicle-env.ts';
 import {mergeRigid} from '../props/prop-merge.ts';
 
 // Classic farm TRACTOR — a slow, chunky utility vehicle for the rural area. Detailed:
@@ -126,15 +125,13 @@ export function buildTractor(): THREE.Group{
   // rodas detalhadas). Cada roda é um conjunto RÍGIDO que gira junto, então fundo os
   // ~20 meshes de cada roda em uns poucos; e fundo o CORPO inteiro preservando as
   // rodas + o volante (que animam). ~117 -> ~30 draws por tractor, VISUAL-NEUTRO.
-  // (Feito no build, antes do applyVehicleEnv: ele aplica o mapa de pintura nos
-  // materiais COMPARTILHADOS depois, então os meshes fundidos herdam o acabamento.)
   for(const w of g.userData.wheels as THREE.Group[])mergeRigid(w);
   mergeRigid(g,new Set<THREE.Object3D>([...(g.userData.wheels as THREE.Group[]),steer]));
   return g;
 }
 
 // Back-compat factory: build + add to the scene (mirrors makeCar/makeMotorcycle).
-export function makeTractor(): THREE.Group{const g=buildTractor();applyVehicleEnv(g);scene.add(g);return g;}
+export function makeTractor(): THREE.Group{const g=buildTractor();scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered).
 export default {category:'Vehicles',label:'Tractor',build:buildTractor};

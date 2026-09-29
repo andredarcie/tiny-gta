@@ -16,52 +16,19 @@ function makeTex(w: number,h: number,draw: (x: CanvasRenderingContext2D,w: numbe
   return t;
 }
 
-// Banknote face: green gradient, guilloché waves, double frame, central seal
-// with a big "$", and "100" in the four corners.
+// Banknote face: FLAT green with a flat frame and a big "$".
 const faceTex=makeTex(320,140,(x,w,h)=>{
-  const g=x.createLinearGradient(0,0,0,h);
-  g.addColorStop(0,'#4ea877');g.addColorStop(.5,'#3c9163');g.addColorStop(1,'#2f7a51');
-  x.fillStyle=g;x.fillRect(0,0,w,h);
-  // fine guilloché line-work
-  x.strokeStyle='rgba(255,255,255,0.07)';x.lineWidth=1;
-  for(let i=4;i<h;i+=6){
-    x.beginPath();
-    for(let px=0;px<=w;px+=4){const y=i+Math.sin((px/w)*Math.PI*7+i)*2.2;px?x.lineTo(px,y):x.moveTo(px,y);}
-    x.stroke();
-  }
-  // double frame
+  x.fillStyle='#3c9163';x.fillRect(0,0,w,h);
   x.strokeStyle='#e9f5ec';x.lineWidth=4;x.strokeRect(9,9,w-18,h-18);
-  x.strokeStyle='rgba(233,245,236,.45)';x.lineWidth=1.5;x.strokeRect(17,17,w-34,h-34);
-  // central seal
-  x.fillStyle='rgba(255,255,255,0.10)';x.beginPath();x.ellipse(w/2,h/2,36,42,0,0,Math.PI*2);x.fill();
-  x.strokeStyle='#dff3e4';x.lineWidth=2;x.stroke();
-  // big dollar sign
   x.fillStyle='#eafaef';x.textAlign='center';x.textBaseline='middle';
   x.font='bold 70px Georgia, serif';x.fillText('$',w/2,h/2+3);
-  // corner denominations
-  x.font='bold 22px Georgia, serif';
-  x.fillText('100',42,30);x.fillText('100',w-42,30);
-  x.fillText('100',42,h-28);x.fillText('100',w-42,h-28);
 });
 
-// Cut-paper edge: cream stock with thin horizontal lines = individual bill
-// layers seen edge-on (V runs along the stack axis on every box side face).
-const edgeTex=makeTex(48,128,(x,w,h)=>{
-  const g=x.createLinearGradient(0,0,w,0);
-  g.addColorStop(0,'#d8cca6');g.addColorStop(.5,'#efe6c9');g.addColorStop(1,'#d2c6a0');
-  x.fillStyle=g;x.fillRect(0,0,w,h);
-  for(let y=0;y<h;y+=3){
-    x.strokeStyle=(y%6)?'rgba(120,104,70,0.30)':'rgba(150,135,95,0.18)';
-    x.lineWidth=1;x.beginPath();x.moveTo(0,y+.5);x.lineTo(w,y+.5);x.stroke();
-  }
-  // faint green bleed from the printed faces at top and bottom edges
-  x.fillStyle='rgba(70,150,100,0.22)';x.fillRect(0,0,w,4);x.fillRect(0,h-4,w,4);
-});
 
 const faceMat=new THREE.MeshStandardMaterial({
   map:faceTex,roughness:.85,metalness:0,
   emissive:0x2f5d40,emissiveMap:faceTex,emissiveIntensity:.28}); // gentle self-glow so cash reads in shadow
-const edgeMat=new THREE.MeshStandardMaterial({map:edgeTex,roughness:.95,metalness:0});
+const edgeMat=new THREE.MeshStandardMaterial({color:0xe6dcbc,roughness:.95,metalness:0}); // flat paper edge
 const bandMat=new THREE.MeshStandardMaterial({color:0xc99a5b,roughness:.8,metalness:0}); // kraft bank strap
 const glowMat=new THREE.MeshBasicMaterial({color:0x4dff7a,transparent:true,opacity:.28,depthWrite:false});
 

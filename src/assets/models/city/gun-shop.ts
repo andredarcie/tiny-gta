@@ -57,32 +57,7 @@ function canvasTexture(w:number,h:number,draw:(x:CanvasRenderingContext2D,w:numb
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
-function repeatTex(t:THREE.Texture,x:number,y:number):THREE.Texture{t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(x,y);return t;}
 
-const floorTex=repeatTex(canvasTexture(128,128,(x,w,h)=>{
-  x.fillStyle='#171411';x.fillRect(0,0,w,h);
-  x.fillStyle='#211d18';x.fillRect(0,0,w/2,h/2);x.fillRect(w/2,h/2,w/2,h/2);
-  x.strokeStyle='#3a3127';x.lineWidth=3;
-  x.strokeRect(0,0,w,h);x.beginPath();x.moveTo(w/2,0);x.lineTo(w/2,h);
-  x.moveTo(0,h/2);x.lineTo(w,h/2);x.stroke();
-  for(let k=0;k<30;k++){
-    x.fillStyle=`rgba(255,220,150,${Math.random()*.07})`;
-    x.fillRect(Math.random()*w,Math.random()*h,1,1);
-  }
-}),8,6);
-const pegTex=repeatTex(canvasTexture(128,128,(x,w,h)=>{
-  x.fillStyle='#7a5738';x.fillRect(0,0,w,h);
-  x.fillStyle='#8f6a44';
-  for(let y=8;y<h;y+=16)for(let xx=8;xx<w;xx+=16){
-    x.beginPath();x.arc(xx,y,2.2,0,Math.PI*2);x.fill();
-  }
-  x.strokeStyle='rgba(40,24,12,.35)';x.strokeRect(1,1,w-2,h-2);
-}),4,3);
-const rubberTex=repeatTex(canvasTexture(96,96,(x,w,h)=>{
-  x.fillStyle='#111';x.fillRect(0,0,w,h);
-  x.strokeStyle='#292929';x.lineWidth=3;
-  for(let i=-w;i<w*2;i+=18){x.beginPath();x.moveTo(i,0);x.lineTo(i+w,h);x.stroke();}
-}),2,2);
 
 const wallM=matte({color:0x2b2622,roughness:.96});
 const darkM=matte({color:0x16140f,roughness:.85});
@@ -90,11 +65,11 @@ const steelM=matte({color:0x6b7079,metalness:.85,roughness:.35});
 const accentM=new THREE.MeshBasicMaterial({color:0xf5c518}); // amarelo do AMMO DEPOT
 const counterBodyM=matte({color:0x20242b,roughness:.82});
 const counterTopM=matte({color:0x3a2c20,roughness:.6});
-const floorM=matte({map:floorTex,roughness:.94});
-const pegM=matte({map:pegTex,roughness:.86,side:THREE.DoubleSide});
+const floorM=matte({color:0x1c1814});   // flat dark floor
+const pegM=matte({color:0x7a5738,side:THREE.DoubleSide}); // flat pegboard
 const glassM=matte({color:0x9fdaf1,roughness:.05,metalness:.05,
   transparent:true,opacity:.24,depthWrite:false});
-const rubberM=matte({map:rubberTex,roughness:.9});
+const rubberM=matte({color:0x151515});  // flat rubber mat
 const shelfM=matte({color:0x35291c,roughness:.72});
 const brassM=matte({color:0xc89536,metalness:.35,roughness:.34});
 const greenM=matte({color:0x29412f,roughness:.82});

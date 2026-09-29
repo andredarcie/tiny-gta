@@ -75,19 +75,7 @@ function signTexture():THREE.CanvasTexture{
   });
 }
 
-// Clinical vinyl floor: speckled tiles with grout lines (tiled via repeat).
-const floorTex=tex(256,256,(x,w,h)=>{
-  x.fillStyle='#ccd7da';x.fillRect(0,0,w,h);
-  for(let i=0;i<1600;i++){
-    const g=120+((i*53)%90);
-    x.fillStyle=`rgba(${g},${g+10},${g+12},.35)`;
-    x.fillRect((i*97)%w,(i*131)%h,2,2);
-  }
-  x.strokeStyle='rgba(108,124,130,.55)';x.lineWidth=2;
-  for(let i=0;i<=w;i+=64){x.beginPath();x.moveTo(i,0);x.lineTo(i,h);x.moveTo(0,i);x.lineTo(w,i);x.stroke();}
-});
-floorTex.wrapS=floorTex.wrapT=THREE.RepeatWrapping;floorTex.repeat.set(8,5);
-const floorM=matte({color:0xffffff,map:floorTex});
+const floorM=matte({color:0xccd7da});   // flat clinical floor
 
 // Heart monitor screen: green ECG trace + vitals on a faint grid.
 const ekgM=new THREE.MeshBasicMaterial({map:tex(256,128,(x,w,h)=>{
