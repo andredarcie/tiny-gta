@@ -16,6 +16,7 @@
     "test:unit:watch": "vitest",
     "test:unit:coverage": "vitest run --coverage",
     "test:report": "playwright show-report",
+    "video": "node tools/video.mjs",
     "android:sync": "vite build && cap sync android",
     "android:open": "cap open android",
     "android:run": "vite build && cap sync android && cap run android"

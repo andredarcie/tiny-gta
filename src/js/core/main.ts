@@ -106,6 +106,7 @@ declare global {
       setHealth: (hp: number) => number;
       vmArms: () => {x: number; y: number; z: number; visible: boolean};
       farm: (cmd: string) => unknown;
+      aimAtNpc: (dist: number, part: string) => {name: string; dist: number} | null;
       gore: (kind: string) => {kind: string; name: string; dead: boolean; dist: number} | null;
       raceTarget: () => { x: number; z: number } | null;
     };
@@ -654,6 +655,26 @@ window.__test={
     else if(kind==='leg')refs.severLeg?.(best,'L',dir);
     else refs.gibNpc?.(best,dir,1.5);
     return {kind,name:best.name,dead:best.dead,dist:Math.round(bd)};
+  },
+  // Video/test: stand `dist` m from the nearest living outdoor pedestrian and aim the
+  // first-person view at its head/body/legs (the next attack() fires there). Returns
+  // who, or null. Used by the video scenes (test/video) to film real shots.
+  aimAtNpc:(dist: number,part: string)=>{
+    const pp=playerPos();let best=null as null|typeof npcs[number],bd=1e9;
+    for(const n of npcs){
+      if(n.dead||(n as {kind?:string}).kind!=='ped'||Math.abs(n.g.position.x)>600)continue;
+      const d=n.g.position.distanceTo(pp);if(d<bd){bd=d;best=n;}
+    }
+    if(!best||state.mode!=='foot'||bd>90)return null;
+    const b=best.g.position,a=Math.atan2(pp.x-b.x,pp.z-b.z);  // come in from where we already are
+    const x=b.x+Math.sin(a)*dist,z=b.z+Math.cos(a)*dist;
+    player.g.position.set(x,groundHeight(x,z),z);
+    const yaw=Math.atan2(b.x-x,b.z-z);
+    player.heading=yaw;cameraRig.yaw=yaw;
+    const eyeY=player.g.position.y+1.56,ty=b.y+(part==='head'?1.66:part==='legs'?.55:1.2);
+    cameraRig.fpPitch=Math.atan2(eyeY-ty,dist);
+    best.g.visible=true;
+    return {name:best.name,dist:Math.round(bd)};
   },
   // Current race checkpoint world coords (street / boat / off-road), for autopilots.
   raceTarget:()=>{

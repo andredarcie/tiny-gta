@@ -1400,7 +1400,7 @@ function updateCameraChase(dt:number,tgt:THREE.Vector3){
     want.x=clamp(want.x,B.x0,B.x1);want.y=Math.min(want.y,B.y1);want.z=clamp(want.z,B.z0,B.z1);
   }
   camera.position.lerp(want,1-Math.exp(-4.5*dt));
-  const tf=62+Math.abs(cur?.speed||0)/32*13;
+  const tf=portraitFov(62+Math.abs(cur?.speed||0)/32*13);
   camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
   camera.updateProjectionMatrix();
   if(state.shake>0){
@@ -1413,6 +1413,15 @@ function updateCameraChase(dt:number,tgt:THREE.Vector3){
 
 // First-person positioning (on foot): the eye sits at the head, and the view rotates with
 // yaw + fpPitch, snapped to the body so it can't lag behind or clip through the head.
+// The FOVs above are vertical and tuned for a landscape screen. On a PORTRAIT screen
+// (a 9:16 video capture, a tall window) a fixed vertical FOV squeezes the horizontal view
+// into a tunnel, so widen it to keep ~2/3 of the landscape horizontal FOV (capped at 100°).
+function portraitFov(v:number):number{
+  const a=camera.aspect;
+  if(a>=1)return v;
+  const h=2*Math.atan(Math.tan(v*Math.PI/360)*16/9)*.66;           // target horizontal FOV
+  return Math.min(100,2*Math.atan(Math.tan(h/2)/a)*180/Math.PI);
+}
 function updateCameraFP(dt:number,tgt:THREE.Vector3){
   cameraRig.fpPitch=clamp(cameraRig.fpPitch,-1.3,1.3);
   const yaw=cameraRig.yaw,pitch=cameraRig.fpPitch;
@@ -1428,7 +1437,7 @@ function updateCameraFP(dt:number,tgt:THREE.Vector3){
   // Snap the eye to the head: zero follow-lag (most responsive), and it can never
   // interpolate through a wall the way a trailing camera could.
   camera.position.copy(_fpEye);
-  const tf=state.aiming?52:70; // aiming zooms in a little
+  const tf=portraitFov(state.aiming?52:70); // aiming zooms in a little
   camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
   camera.updateProjectionMatrix();
   if(state.shake>0){
