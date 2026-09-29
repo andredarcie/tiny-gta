@@ -524,7 +524,7 @@ function build(): THREE.Group {
     const pier=makeGatePier();pier.position.set(sx*GATE_HALF,0,HALF_D);g.add(pier);
   }
   const gate=makeRollingGate();gate.position.set(GATE_HALF+1.9,0,HALF_D-.45);g.add(gate);
-  const sign=makeSign();sign.position.set(-GATE_HALF,2.2,HALF_D+.55);sign.rotation.y=Math.PI;g.add(sign);
+  const sign=makeSign();sign.position.set(-GATE_HALF,2.2,HALF_D+.55);g.add(sign); // faces out (+z), readable from the approach
 
   // raised planter beds at every interactive slot
   for(const s of WEED_SLOTS){

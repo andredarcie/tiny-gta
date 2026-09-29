@@ -676,7 +676,7 @@ function nearestSlot(): Slot|null{
 (refs.zoneActions||(refs.zoneActions=[])).push((): ZoneAct|null=>{
   if(state.mode!=='foot'||state.swimming||fpBusy())return null;
   const p=playerPos();
-  const nearCrate=dist(p,box)<RANGE, nearTap=dist(p,tap)<RANGE, nearRack=dist(p,rackPos)<RANGE;
+  const nearCrate=dist(p,crateW)<RANGE, nearTap=dist(p,tap)<RANGE, nearRack=dist(p,rackPos)<RANGE;
   const slot=nearestSlot(), pl=slot?.plant||null;
 
   // ---- a plant in hand ----
@@ -839,6 +839,10 @@ refs.farmTest=(cmd: string)=>{
   if(cmd==='stock'){for(const st of STRAINS)state.seeds[st.id]=(state.seeds[st.id]|0)+3;state.fertilizer=(state.fertilizer|0)+3;}
   if(cmd==='ripen')for(const s of slots){const pl=s.plant;if(pl&&(pl.stage==='seed'||pl.stage==='growing'))setRipe(s);}
   if(cmd==='thirsty')for(const s of slots){const pl=s.plant;if(pl&&pl.stage!=='dead')pl.hyd=10;}
+  if(cmd.startsWith('grow:')){ // timelapse: advance every growing plant, kept watered
+    const sec=parseFloat(cmd.slice(5))||0;
+    for(const s of slots){const pl=s.plant;if(pl&&(pl.stage==='seed'||pl.stage==='growing')){pl.t+=sec;pl.hyd=100;}}
+  }
   if(cmd==='kill')for(const s of slots){const pl=s.plant;if(pl&&pl.stage!=='dead')killPlant(s);}
   if(cmd==='cure')hooks.forEach((h,i)=>{if(h&&h.obj&&!h.data.cured)cureHook(i);});
   return refs.getWeedFarmState!();
