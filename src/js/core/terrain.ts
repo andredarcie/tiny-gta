@@ -89,34 +89,27 @@ export function ruralHillH(x: number, z: number): number {
 // ponte e o gramado rural rebaixado):
 //  - o LEITO é cavado ABAIXO do mar (sea.ts, y=-0.32), então o mar global aflora
 //    sozinho como água navegável — sem precisar de uma malha d'água própria;
-//  - o TABULEIRO entra no groundHeight, então carro/pedestre/trânsito rural sobem
-//    na MESMA rampa que se vê e não afundam (isLand devolve "terra" no tabuleiro);
-//  - a LANCHA ignora o relevo (boia na linha d'água), então cruza POR BAIXO do vão
-//    (ver updateBoat + underBridge em player.ts).
+//  - the DECK enters groundHeight at street level, so cars/peds/rural traffic cross it
+//    flat and don't sink (isLand returns "land" on the deck);
+//  - the deck sits on the water, so BOATS can't pass under it: they bump off it and
+//    go around the peninsula (see updateBoat in player.ts).
 // Min/max inline (sem clamp) pra evitar a zona-morta (TDZ) do const, igual islandHeight.
 export const RIVER_CX=250;            // centro x do estreito (corta a península em z)
 export const RIVER_HW=26;             // meia-largura do canal navegável (x)
 export const RIVER_BED=-3.2;          // profundidade do leito cavado (bem abaixo do mar)
 export const BRIDGE_DECK_HW=8;        // meia-largura do tabuleiro (z): leva a estrada z=0
-export const BRIDGE_H=6;              // altura do tabuleiro (vão livre pra lancha por baixo)
-export const BRIDGE_RAMP=18;          // comprimento da rampa de acesso em cada margem
+export const BRIDGE_H=0.05;           // deck surface height: flush with the street (no ramps)
+export const BRIDGE_RAMP=3;           // short LEVEL abutment resting on each bank (no slope)
 export const BRIDGE_X0=RIVER_CX-RIVER_HW-BRIDGE_RAMP; // pé da rampa, margem oeste (cidade)
 export const BRIDGE_X1=RIVER_CX+RIVER_HW+BRIDGE_RAMP; // pé da rampa, margem leste (rural)
-// Perfil de altura do tabuleiro ao longo do x. 0 fora da faixa do tabuleiro; nela
-// sobe 0→BRIDGE_H pela rampa (smoothstep, sem quina no pé), fica plano sobre o vão e
-// desce de novo na outra margem. A MESMA curva monta a malha do tabuleiro
-// (assets/models/environment/suspension-bridge.ts), então o asfalto bate 1:1 com o
-// chão que o carro pisa.
+// Deck height along x: 0 off the deck; on it, a FLAT BRIDGE_H — the bridge sits at street
+// level, with no access ramps, so cars roll straight across. (> 0 on the deck is what
+// makes groundHeight/isLand treat it as dry road.) The same function builds the deck mesh
+// (assets/models/environment/suspension-bridge.ts), so the asphalt seen is the ground driven.
 export function bridgeDeckH(x: number, z: number): number{
   if(x<=BRIDGE_X0||x>=BRIDGE_X1)return 0;
   if(Math.abs(z)>BRIDGE_DECK_HW)return 0;
-  const wb=RIVER_CX-RIVER_HW, eb=RIVER_CX+RIVER_HW; // margens d'água
-  let t;                                            // 0 nos pés das rampas, 1 no vão plano
-  if(x<wb)t=(x-BRIDGE_X0)/BRIDGE_RAMP;
-  else if(x>eb)t=(BRIDGE_X1-x)/BRIDGE_RAMP;
-  else t=1;
-  if(t<0)t=0;else if(t>1)t=1;
-  return BRIDGE_H*t*t*(3-2*t);
+  return BRIDGE_H;
 }
 // Leito do rio: canal de fundo chato atravessando o estreito, cavado ABAIXO do mar
 // pra o mar global preencher como água aberta. 0 fora da faixa (dx>=RIVER_HW). Sobe
@@ -190,7 +183,7 @@ export function groundHeight(x: number, z: number): number {
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2){const ih=islandHeight(x,z);if(ih>0)return ih;}
   }
-  const b=bridgeDeckH(x,z);if(b>0)return b;   // sobre o tabuleiro da ponte: dirige/anda na rampa
+  const b=bridgeDeckH(x,z);if(b>0)return b;   // on the bridge deck (street level)
   const r=riverBedH(x);if(r<0)return r;        // dentro do estreito (fora do tabuleiro): leito submerso
   return ruralHillH(x,z)+mountainH(x,z)+cityCurbH(x,z);
 }
@@ -248,8 +241,7 @@ export function isLand(x: number, z: number): boolean {
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2&&Math.hypot(dx,dz)<islandCoastR(Math.atan2(dz,dx)))return true;
   }
-  // estreito do rio: água aberta cortando a península, EXCETO o tabuleiro da ponte
-  // (travessia seca). A lancha cruza POR BAIXO do tabuleiro via underBridge (player.ts).
+  // River strait: open water across the peninsula, EXCEPT the bridge deck (dry crossing).
   if(inRiverStrait(x))return bridgeDeckH(x,z)>0;
   const rh=ruralHalf(x);
   if(rh>0&&Math.abs(z)<=rh)return true;           // península

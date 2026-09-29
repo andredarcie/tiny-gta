@@ -965,9 +965,7 @@ function updateWake(dt:number){
 // Lancha: o oposto do carro — voa sobre a água e ENCALHA na areia/terra.
 // Quica de leve parada, levanta a proa ao planar e inclina pra dentro da curva.
 const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.ts)
-// Sob o tabuleiro da ponte, isLand devolve "terra" (carro/pedestre andam por cima),
-// então inWater seria falso bem no meio do estreito e a lancha "encalharia" no vão.
-// underBridge devolve a água ali: a lancha boia na linha d'água e cruza por baixo.
+// The bridge deck's footprint over the strait (the deck sits at street level, on the water).
 const underBridge=(x:number,z:number):boolean=>
   Math.abs(x-RIVER_CX)<RIVER_HW&&Math.abs(z)<=BRIDGE_DECK_HW;
 // A CAR (not a boat) that has fallen BELOW the deck over the water channel: treat it as in the
@@ -977,7 +975,7 @@ const carUnderDeck=(p:THREE.Vector3):boolean=>
   underBridge(p.x,p.z)&&p.y<bridgeDeckH(p.x,p.z)-1;
 function updateBoat(dt:number){
   const c=cur!,p=c.g.position;
-  const onWater=inWater(p)||underBridge(p.x,p.z);
+  const onWater=inWater(p);
   // boarding a boat gets the player out of the water: breath recovers just like
   // stepping back onto land (see updateFoot).
   if(state.swimAir<1)state.swimAir=Math.min(1,state.swimAir+dt*.55);
@@ -995,8 +993,15 @@ function updateBoat(dt:number){
   c.speed=clamp(c.speed,-13,MAX);
   // leme só morde com a lancha em movimento (parada não gira)
   c.heading+=st*1.7*dt*clamp(c.speed/10,-1,1)*(hb?1.5:1);
+  const px=p.x,pz=p.z;
   p.x+=Math.sin(c.heading)*c.speed*dt;
   p.z+=Math.cos(c.heading)*c.speed*dt;
+  // The street-level bridge deck is a wall for boats (hull ~1.5 m wide): bump back off it.
+  if(Math.abs(p.x-RIVER_CX)<RIVER_HW+1&&Math.abs(p.z)<=BRIDGE_DECK_HW+1.5){
+    p.x=px;p.z=pz;
+    if(Math.abs(c.speed)>4){thud(Math.abs(c.speed));state.shake=.25;}
+    c.speed*=-.3;
+  }
   // parede invisível bem mar adentro (igual aos demais veículos)
   p.x=clamp(p.x,-SWIM_BOUND,SWIM_BOUND);
   p.z=clamp(p.z,-SWIM_BOUND,SWIM_BOUND);

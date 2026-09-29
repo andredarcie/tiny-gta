@@ -6,13 +6,12 @@ import {registerRuralStatic} from '@/world/rural-cull.ts';
 import {RIVER_CX,RIVER_HW,BRIDGE_DECK_HW,BRIDGE_H,BRIDGE_X0,BRIDGE_X1,bridgeDeckH}
   from '@/core/constants.ts';
 
-// ===== Ponte suspensa: o cartão-postal entre a cidade e a zona rural ==========
-// Estilo Golden Gate: duas torres altas em "laranja internacional", cabos
-// principais em catenária com pendurais verticais, e um tabuleiro que LEVA a
-// estrada por cima do estreito navegável. A geometria nasce das MESMAS funções da
-// física (constants.ts): o tabuleiro segue bridgeDeckH(x) ponto a ponto, então o
-// asfalto que se vê é exatamente o chão que o carro pisa; a lancha passa por baixo
-// na linha d'água. Tudo é fundido (mergeStatic) em poucos draw calls.
+// ===== Suspension bridge: the postcard landmark between the city and the countryside =====
+// Golden Gate style: two tall "international orange" towers, catenary main cables with
+// vertical hangers, and a deck that carries the road across the strait AT STREET LEVEL —
+// no access ramps, so cars roll straight over it. The deck follows bridgeDeckH(x) from the
+// physics (constants.ts), so the asphalt seen is exactly the ground driven on. Boats can't
+// pass under it (it sits on the water). Everything is merged (mergeStatic) into few draws.
 
 const STEEL=matte({color:0xc0362c,roughness:.6});     // laranja internacional (torres/parapeito)
 const CABLE=matte({color:0xa82f23,roughness:.6});     // cabo/pendural (laranja mais escuro)
@@ -25,10 +24,10 @@ const BULB=matte({color:0xffe6a8,emissive:0xffcf73,emissiveIntensity:.9}); // lu
 
 const WB=RIVER_CX-RIVER_HW;        // margem oeste (cidade) — base da torre
 const EB=RIVER_CX+RIVER_HW;        // margem leste (rural) — base da torre
-const TOWER_TOP=BRIDGE_H+22;       // topo das torres acima do solo
+const TOWER_TOP=28;                // tower top above the water (same silhouette as before)
 const LEGZ=BRIDGE_DECK_HW+1.4;     // pernas da torre logo fora da pista
 const CABZ=BRIDGE_DECK_HW+0.6;     // plano dos cabos (pouco fora do parapeito)
-const SAG_LOW=BRIDGE_H+2.4;        // ponto mais baixo do cabo (sobre o meio do vão)
+const SAG_LOW=8.4;                 // lowest point of the main cable (mid-span)
 
 // Altura do cabo principal em x: catenária (parábola) presa no topo das torres,
 // caindo até SAG_LOW no meio do vão. Fora do vão (rampas) segue reta no backstay.
@@ -61,7 +60,7 @@ function buildBridge():THREE.Group{
   const g=new THREE.Group();
   const DECKW=BRIDGE_DECK_HW*2;            // largura total da pista (z)
 
-  // ---- Tabuleiro: segmentos ao longo de x seguindo bridgeDeckH (rampa+vão) ----
+  // ---- Deck: flat segments along x at bridgeDeckH (street level) ----
   const SEG=2.8;
   for(let x=BRIDGE_X0;x<BRIDGE_X1;x+=SEG){
     const xc=Math.min(x+SEG/2,BRIDGE_X1-0.01);
@@ -80,23 +79,12 @@ function buildBridge():THREE.Group{
       const rail=box(L,1.0,.28,STEEL,xc,h+.55,s*BRIDGE_DECK_HW,slope);
       g.add(rail);
     }
-    // Muro de arrimo fechando os LADOS da rampa (esquerda e direita) — SÓ nas
-    // rampas, não no vão sobre a água. Preenche o vão entre a rampa elevada e o
-    // chão, então é impossível passar por baixo da rampa. O vão central segue
-    // aberto (a lancha passa por baixo da ponte). Vertical (sem inclinar): vai do
-    // chão (-0.5, enterrado) até logo acima do tabuleiro (h+0.1).
-    if(xc<WB||xc>EB){
-      for(const s of[-1,1]){
-        const wall=box(L,h+.6,.6,PIER,xc,(h+.6)/2-.5,s*BRIDGE_DECK_HW);
-        wall.castShadow=true;wall.receiveShadow=true;g.add(wall);
-      }
-    }
   }
 
   // ---- Pilares de concreto e torres nas duas margens ----
   for(const TX of[WB,EB]){
-    // pilar de concreto descendo na água
-    g.add(box(6,6,DECKW+3,PIER,TX,-1.5,0));
+    // concrete pier going down into the water — its top stays just under the deck surface
+    g.add(box(6,6,DECKW+3,PIER,TX,BRIDGE_H-3.06,0));
     for(const LZ of[-LEGZ,LEGZ]){
       // base alargada + perna esguia até o topo
       g.add(box(2.4,2.2,2.4,STEEL,TX,1.1,LZ));
@@ -105,9 +93,7 @@ function buildBridge():THREE.Group{
       // chapéu da perna
       g.add(box(1.9,.7,1.9,STEEL,TX,TOWER_TOP+.2,LZ));
     }
-    // travessa perto do topo — visual icônico. A travessa mais baixa (logo acima da
-    // pista, y=BRIDGE_H+3.2) foi removida: cruzava a pista rente ao teto dos carros ao
-    // subir a rampa. É só visual (o tabuleiro/cabos não têm colisão), então sai sem mexer na física.
+    // cross-beam near the top — the iconic look (visual only, well above the traffic)
     g.add(box(1.2,1.2,DECKW+3,STEEL,TX,TOWER_TOP-2.2,0));
   }
 
@@ -123,7 +109,7 @@ function buildBridge():THREE.Group{
       g.add(cyl(prev,p,.18,CABLE));
       prev=p;
     }
-    // backstays: do topo de cada torre até a ancoragem no pé da rampa
+    // backstays: from each tower top down to the anchorage at the deck's ends
     g.add(cyl(new THREE.Vector3(WB,TOWER_TOP,z),new THREE.Vector3(BRIDGE_X0,bridgeDeckH(BRIDGE_X0+0.5,0)+.5,z),.16,CABLE));
     g.add(cyl(new THREE.Vector3(EB,TOWER_TOP,z),new THREE.Vector3(BRIDGE_X1,bridgeDeckH(BRIDGE_X1-0.5,0)+.5,z),.16,CABLE));
     // pendurais verticais do cabo até o tabuleiro, ao longo do vão
@@ -152,9 +138,9 @@ export default {
   build:():THREE.Group=>{const g=buildBridge();g.position.x=-RIVER_CX;return g;},
 };
 
-// Coloca a ponte no mundo, funde em poucos draw calls e devolve a colisão (pernas
-// das torres). O tabuleiro/cabos não têm colisão de propósito: sair da pista pela
-// borda joga o carro no rio (mergulho divertido); a lancha cruza livre por baixo.
+// Place the bridge in the world, merge it into few draw calls and add its collision (the
+// tower legs). The deck edges have no collision on purpose: leaving the road over the
+// edge drops the car into the river.
 export function addSuspensionBridge(
   solids:{x0:number;x1:number;z0:number;z1:number;h:number}[],
 ):void{
@@ -165,24 +151,6 @@ export function addSuspensionBridge(
   // colisão: as quatro pernas das torres (carro/pedestre não atravessam o aço)
   for(const TX of[WB,EB])for(const LZ of[-LEGZ,LEGZ])
     solids.push({x0:TX-1,x1:TX+1,z0:LZ-1,z1:LZ+1,h:TOWER_TOP});
-  // Pilares de concreto das torres: barram a lancha (e quem nada) de entrar na base
-  // da ponte. Topo baixo (h≈1.5): quem está no tabuleiro (y alto) passa por cima; a
-  // lancha (na linha d'água) é parada — cruza só pelo VÃO CENTRAL, entre os pilares.
-  for(const TX of[WB,EB])
-    solids.push({x0:TX-3,x1:TX+3,z0:-(BRIDGE_DECK_HW+1.5),z1:BRIDGE_DECK_HW+1.5,h:1.5});
-  // Colisão SOB as rampas: enche a área abaixo de cada rampa (largura TOTAL do
-  // tabuleiro, z∈[-DECK_HW,DECK_HW]) com caixas por segmento. A altura de cada caixa
-  // = altura local da rampa menos uma folga (1.5): quem anda/dirige POR CIMA passa
-  // (collideStatics ignora sólidos abaixo do pé, p.y>b.h), mas a pé é IMPOSSÍVEL
-  // entrar por baixo da rampa (no nível do chão é barrado) e a lancha não atravessa.
-  // O trecho baixo perto do pé é pulado (não há "embaixo" a fechar). O vão central
-  // sobre a água NÃO entra aqui — segue livre pra lancha passar por baixo.
-  const RC=3;
-  for(const[xa,xb]of[[BRIDGE_X0,WB],[EB,BRIDGE_X1]] as [number,number][])
-    for(let x=xa;x<xb;x+=RC){
-      const xc=Math.min(x+RC/2,xb-.01);
-      const h=bridgeDeckH(xc,0)-1.5;
-      if(h<=.2)continue;
-      solids.push({x0:x,x1:Math.min(x+RC,xb),z0:-BRIDGE_DECK_HW,z1:BRIDGE_DECK_HW,h});
-    }
+  // No deck/pier collision: the deck is at street level (cars drive straight on) and it
+  // sits on the water, so boats are stopped by the deck itself (updateBoat, player.ts).
 }
