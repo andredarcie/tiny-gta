@@ -20,9 +20,20 @@ export const ARMY_AT = 6;   // ★6:  the army responds (and cruisers stop chasi
 export const WANTED_GRACE = 16;    // out of sight this long before the star starts cooling
 export const WANTED_COOL = 7;      // seconds to shed ONE star once it is cooling
 
-/** Global multiplier on every crime's heat (applied in addWanted). Below 1 = stars climb
- *  slower: at 0.45 a star takes ~6 public gunshots or ~2-3 murders instead of 2-3 / 1. */
-export const WANTED_HEAT_SCALE = 0.45;
+/** Global multiplier on every crime's heat (applied in addWanted via heatGain). Below 1 =
+ *  stars climb slower: at 0.3 the first star takes ~9 public gunshots or ~3 murders. */
+export const WANTED_HEAT_SCALE = 0.3;
+/** Each star already held makes the next one harder to earn: heat is divided by
+ *  (1 + star*STAR_CLIMB_DAMP) — ★1→★2 costs 1.6x the heat of ★0→★1, ★5→★6 costs 4x. */
+export const STAR_CLIMB_DAMP = 0.6;
+/** Public gunfire adds heat at most once per this many seconds, so automatic weapons don't
+ *  rack up stars by fire rate alone. */
+export const GUNFIRE_HEAT_GAP = 0.6;
+
+/** The heat a crime of raw size `raw` actually adds at the current wanted level. */
+export function heatGain(current: number, raw: number): number {
+  return raw * WANTED_HEAT_SCALE / (1 + starLevel(current) * STAR_CLIMB_DAMP);
+}
 
 // Police response timing. A gunshot at ★0 only makes the dispatcher send ONE unit, which
 // rolls after SHOT_DISPATCH_DELAY seconds. Once the player HAS stars, cruisers only start

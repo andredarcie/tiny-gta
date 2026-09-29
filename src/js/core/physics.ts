@@ -1,7 +1,7 @@
 import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from '@/core/constants.ts';
 import {solids} from '@/world/world.ts';
 import {state,refs} from '@/core/state.ts';
-import {addStars,MAX_STARS,WANTED_HEAT_SCALE} from '@/core/wanted.ts';
+import {addStars,heatGain,MAX_STARS,GUNFIRE_HEAT_GAP} from '@/core/wanted.ts';
 import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 
@@ -62,15 +62,21 @@ export function hasLineOfSight(ax:number,az:number,bx:number,bz:number):boolean{
   return true;
 }
 
+let lastGunfireHeat=-99;
 export function addWanted(n:number,why?:string,crime='pursuit'){
   if(refs.isPartyArenaActive?.()){
     state.wanted=0;state.lastCrime=-99;state.spotted=false;
     return;
   }
+  // Rapid fire counts as one burst: gunfire heat at most every GUNFIRE_HEAT_GAP seconds.
+  if(crime==='gunfire'){
+    if(state.time-lastGunfireHeat<GUNFIRE_HEAT_GAP)return;
+    lastGunfireHeat=state.time;
+  }
   const before=Math.floor(state.wanted);
   // Accumulate + clamp via the shared star rules (MAX_STARS=6; the 6th star summons the
   // army, see js/actors/army.ts). Single source of truth in js/core/wanted.ts.
-  state.wanted=addStars(state.wanted,n*WANTED_HEAT_SCALE);state.lastCrime=state.time;
+  state.wanted=addStars(state.wanted,heatGain(state.wanted,n));state.lastCrime=state.time;
   if(state.wanted>=MAX_STARS)state.sixStarT=state.time; // reached/still at max: (re)arm the 6-star hold
   if(Math.floor(state.wanted)>before){
     blip([880,660,880],0.08,'square',.14);

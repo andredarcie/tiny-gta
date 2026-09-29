@@ -1,7 +1,7 @@
 // ============================================================================
 // Difficulty tuning — how hard the player is to kill. Pure constants, one place.
 // (How fast the police stars climb lives with the other star rules in js/core/wanted.ts
-// — WANTED_HEAT_SCALE.)
+// — WANTED_HEAT_SCALE, STAR_CLIMB_DAMP, GUNFIRE_HEAT_GAP.)
 // ============================================================================
 
 /** Fraction of every hit the player actually takes (gunfire, cars, explosions, fire,

@@ -829,7 +829,7 @@ export function updateWeedFarm(dt: number): void{
   if(heat>0)heat=Math.max(0,heat-dt*3);
   if(heat>HEAT_HOT&&nearFarm()){
     farmLinger+=dt;
-    if(farmLinger>6){addWanted(3,'POLICE RAID ON THE FARM!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
+    if(farmLinger>6){addWanted(3.5,'POLICE RAID ON THE FARM!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
   }else farmLinger=0;
   updateWeedHud();
 
