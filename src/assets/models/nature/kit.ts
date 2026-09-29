@@ -48,17 +48,16 @@ type Rng = ReturnType<typeof makeRng>;
 const _c = new THREE.Color(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _e = new THREE.Euler();
 
 // Canonical non-indexed geometry (position/normal/uv/color) so everything merges.
-// Each triangle gets a slight random shade so faceted foliage/rock reads as volume.
-function finish(src: THREE.BufferGeometry, color: number, rng: Rng, shade = .1): THREE.BufferGeometry {
+// ONE flat colour per piece (no per-triangle jitter — the look is flat colour, no grime);
+// the facets read through the lighting alone. rng/shade are kept for call-site symmetry.
+function finish(src: THREE.BufferGeometry, color: number, _rng: Rng, _shade = 0): THREE.BufferGeometry {
   const g = src.index ? src.toNonIndexed() : src.clone();
   for (const n of Object.keys(g.attributes)) if (n !== 'position') g.deleteAttribute(n);
   g.computeVertexNormals();
   const count = g.getAttribute('position').count;
   const col = new Float32Array(count * 3);
-  for (let i = 0; i < count; i += 3) {
-    _c.set(color).multiplyScalar(1 - shade / 2 + rng.random() * shade);
-    for (let k = 0; k < 3 && i + k < count; k++) { col[(i + k) * 3] = _c.r; col[(i + k) * 3 + 1] = _c.g; col[(i + k) * 3 + 2] = _c.b; }
-  }
+  _c.set(color);
+  for (let i = 0; i < count; i++) { col[i * 3] = _c.r; col[i * 3 + 1] = _c.g; col[i * 3 + 2] = _c.b; }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   g.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(count * 2), 2));
   return g;

@@ -1,6 +1,7 @@
 // Visual review shots: boots the real game at a few times of day (?tod=) and camera
 // spots, and saves screenshots to output/visual/<LABEL>/ for before/after comparison of
-// visual changes. Run headed: `SHOTS_LABEL=after npx playwright test test/visual-shots.spec.ts`.
+// visual changes. Run headed: `SHOTS_LABEL=after npx playwright test test/visual-shots.spec.ts`
+// (optionally with SHOTS_SETTINGS='{"bloom":false}' to pre-set graphics settings).
 // It asserts nothing about the look — judging the pictures is the owner's call.
 import {test} from '@playwright/test';
 
@@ -16,6 +17,10 @@ const SPOTS: [string, number, number, number, number, number][] = [
 for (const [todName, tod] of TODS) {
   test(`shots at ${todName}`, async ({page}) => {
     test.setTimeout(120_000);
+    // Optional graphics settings for A/B comparisons, e.g. SHOTS_SETTINGS='{"bloom":false}'.
+    if (process.env.SHOTS_SETTINGS) {
+      await page.addInitScript((json) => { try { localStorage.setItem('tinygta_settings', json); } catch { /* ignore */ } }, process.env.SHOTS_SETTINGS);
+    }
     await page.goto(`/?tod=${tod}`, {waitUntil: 'load'});
     await page.waitForFunction(() => !!(window as any).render_game_to_text
       && JSON.parse((window as any).render_game_to_text()).started === true, null, {timeout: 60_000});

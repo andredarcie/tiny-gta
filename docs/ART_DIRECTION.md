@@ -8,8 +8,8 @@
 ## The thesis
 
 Tiny Theft Auto is a **living diorama** of a coastal city: sun-faded stucco by
-day, Vice-City neon by night, seen through a retro film "camera" (grain,
-scanlines, vignette, letterbox). The miniature look is the aesthetic, not a
+day, Vice-City neon by night, shown CLEAN: flat colours, no film grain, scanlines,
+vignette or ambient-occlusion smudges. The miniature look is the aesthetic, not a
 technical limitation — the name says *Tiny*. Saturated color is reserved for
 things that carry gameplay meaning.
 
@@ -35,10 +35,10 @@ things that carry gameplay meaning.
    (`assets/models/characters/pedestrian.ts`) with flat vertex colours and simple
    procedural animation — no skin/cloth textures, no downloaded models or clips. NPC shirts deliberately share the
    vehicle paint family so people and traffic read as one world.
-6. **Retro film on top.** The CSS overlay stack (grain, scanlines, vignette,
-   cutscene letterbox) plus the global filmic grade (`REAL_DESAT`/`REAL_EXP`
-   in `daynight.ts`) is what makes the game "gritty" — the world itself never
-   chases realism.
+6. **Clean image.** No dirt anywhere: no film grain, scanlines or vignette overlays and
+   no ambient occlusion — their noise and corner darkening read as grime. The only
+   grade is the global one in `daynight.ts` (`REAL_DESAT`/`REAL_EXP`); cut-scenes keep
+   their letterbox bars.
 
 ## Working rules
 

@@ -7,28 +7,6 @@ html,body{height:100%;overflow:hidden;background:var(--ink);touch-action:none;ov
   font-family:'IBM Plex Mono',monospace;color:var(--cream);user-select:none}
 canvas#game{display:block;width:100%;height:100%;touch-action:none}
 
-.scanlines{position:fixed;inset:0;pointer-events:none;z-index:30;opacity:.035;
-  background:repeating-linear-gradient(0deg,#000 0 1px,transparent 1px 3px)}
-.vignette{position:fixed;inset:0;pointer-events:none;z-index:29;
-  background:radial-gradient(ellipse at 50% 47%,transparent 60%,rgba(12,8,22,.42) 100%)}
-/* Film grain: an animated monochrome-noise overlay (SVG feTurbulence) that jitters each
-   frame for a cinematic/retro film look. Composited (transform only) + low opacity, so it's
-   cheap. Sits over the 3D render (z31) but below the HUD (z40) so the UI stays crisp.
-   Disabled via body.no-grain (Settings → Graphics → Film grain). */
-/* Layer kept just larger than the viewport (the jitter translate is only ±7%), NOT 200% —
-   mix-blend-mode re-composites the whole layer every frame, so a smaller layer = far less
-   GPU/compositor work (~1.4x the screen instead of 4x). */
-#grain{position:fixed;top:-9%;left:-9%;width:118%;height:118%;pointer-events:none;z-index:31;
-  opacity:.085;mix-blend-mode:overlay;will-change:transform;background-size:170px 170px;
-  background-image:url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='170' height='170'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
-  animation:grain .7s steps(8) infinite}
-body.no-grain #grain{display:none}
-@keyframes grain{
-  0%{transform:translate(0,0)} 12.5%{transform:translate(-6%,-4%)}
-  25%{transform:translate(5%,-7%)} 37.5%{transform:translate(-4%,6%)}
-  50%{transform:translate(7%,3%)} 62.5%{transform:translate(-7%,-6%)}
-  75%{transform:translate(4%,7%)} 87.5%{transform:translate(-5%,4%)} 100%{transform:translate(0,0)}}
-
 #hud{position:fixed;inset:0;pointer-events:none;z-index:40;display:none}
 .panel{background:rgba(16,6,30,.62);border:2px solid var(--pink);
   box-shadow:0 0 14px rgba(255,46,136,.35), inset 0 0 22px rgba(255,46,136,.08);
@@ -708,7 +686,6 @@ body.wheel-open #touch-controls{opacity:0;pointer-events:none}
 body.is-portrait-blocked #rotate-device{display:flex}
 
 @media (pointer:coarse),(max-width:900px){
-  .scanlines{opacity:.02}.vignette{opacity:.55}
   .panel{border-width:1px;border-radius:8px;backdrop-filter:none}
   #vchud{top:max(10px,env(safe-area-inset-top));right:max(72px,calc(env(safe-area-inset-right) + 72px));gap:9px}
   #vc-stack{gap:6px}

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import {EffectComposer,RenderPass,EffectPass,BloomEffect,ToneMappingEffect,ToneMappingMode,SMAAEffect,SMAAPreset} from 'postprocessing';
-import {N8AOPostPass} from 'n8ao';
 import {makeSea} from '../../assets/models/environment/sea.ts';
 import {makeClouds} from '../../assets/models/environment/clouds.ts';
 
@@ -115,39 +114,20 @@ export const clouds:THREE.Sprite[]=[];
 }
 
 // ---- Post-processing: the quality render pipeline ----------------------------------
-// The scene renders into an HDR (half-float) MSAA buffer, then ONE merged effect chain:
-//   N8AO  — screen-space ambient occlusion from the depth buffer (no extra scene render):
-//           contact darkening where walls meet the street, under cars, props and people,
-//           so the diorama reads as solid objects instead of flat cut-outs.
+// The scene renders into an HDR (half-float) buffer, then ONE merged effect chain:
 //   Bloom — only HDR-bright pixels glow (neon, lit windows, lamps, headlights, muzzle
 //           flashes, the sun's glint); tuned per time of day by daynight.ts.
+//   SMAA  — edge anti-aliasing.
 //   ACES  — the same filmic tone mapping as before (exposure from
 //           renderer.toneMappingExposure, so daynight + the Brightness setting still work).
-// Phones get a lighter chain (no AO/MSAA, SMAA edges instead). Settings can switch AO and
-// bloom off; with both off the game renders straight to the screen as before.
+// No ambient occlusion and no film overlays: its noise pattern and corner darkening read
+// as dirt on the flat-colour world. With bloom off the game renders straight to screen.
 const mobilePipe=isMobileLike();
 export const composer=new EffectComposer(renderer,{
   frameBufferType:THREE.HalfFloatType,
   multisampling:0,
 });
 composer.addPass(new RenderPass(scene,camera));
-export const aoPass=new N8AOPostPass(scene,camera,initialSize.w,initialSize.h);
-Object.assign(aoPass.configuration,{
-  aoRadius:2.2,          // metres: curbs, doorways, car wheels, people's feet
-  distanceFalloff:1.0,
-  intensity:2.4,
-  aoSamples:8,
-  denoiseSamples:4,
-  denoiseRadius:8,
-  denoiseIterations:1,
-  halfRes:true,          // AO at half resolution + depth-aware upsampling: big perf win, same look
-  // NOT transparency-aware: in that mode N8AO walks the whole scene graph and re-renders
-  // the entire city twice more EVERY frame for the few transparent things (clouds, glass,
-  // fading FX) — measured 140 → 50 fps. Without it, AO just comes from the opaque depth.
-  transparencyAware:false,
-  color:new THREE.Color(0x14101c), // occlusion tinted toward the night-violet, not pure black
-});
-composer.addPass(aoPass);
 export const bloom=new BloomEffect({
   mipmapBlur:true,
   luminanceThreshold:.82,
@@ -160,14 +140,12 @@ const effects=[bloom,new SMAAEffect({preset:mobilePipe?SMAAPreset.MEDIUM:SMAAPre
 export const effectPass=new EffectPass(camera,...effects);
 composer.addPass(effectPass);
 
-let aoOn=!mobilePipe,bloomOn=true;
-function pipelineOn(){return aoOn||bloomOn;}
+let bloomOn=true;
+function pipelineOn(){return bloomOn;}
 function syncPipeline(){
-  aoPass.enabled=aoOn;
   bloom.blendMode.opacity.value=bloomOn?1:0;
 }
 syncPipeline();
-export function setAmbientOcclusion(on:boolean){aoOn=!!on;syncPipeline();}
 export function setBloomEnabled(on:boolean){bloomOn=!!on;syncPipeline();}
 // Time-of-day bloom strength (daynight.ts): subtle by day, strong for the neon night.
 export function setBloomStrength(intensity:number,threshold:number){

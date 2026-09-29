@@ -6,11 +6,9 @@
 import {test} from '@playwright/test';
 
 const CONFIGS: [string, Record<string, boolean>][] = [
-  ['plain (no AO, no bloom, no shadows)', {ao: false, bloom: false, shadows: false}],
-  ['shadows only', {ao: false, bloom: false, shadows: true}],
-  ['shadows + bloom', {ao: false, bloom: true, shadows: true}],
-  ['shadows + AO', {ao: true, bloom: false, shadows: true}],
-  ['everything', {ao: true, bloom: true, shadows: true}],
+  ['plain (no bloom, no shadows)', {bloom: false, shadows: false}],
+  ['shadows only', {bloom: false, shadows: true}],
+  ['everything (shadows + bloom)', {bloom: true, shadows: true}],
 ];
 
 test('graphics settings FPS matrix', async ({page}) => {
