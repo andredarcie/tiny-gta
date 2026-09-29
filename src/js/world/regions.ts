@@ -23,6 +23,13 @@ const CITY_NAMES: readonly string[][] = [
 ];
 const CITY_DIV = 2 * HALF / 3; // width/height of one third of the city (~117m)
 
+// True on the rural peninsula (farms, woods, the mountain, the village, the strait) — the
+// same area regionAt names as countryside. Firing a gun out here bothers no one: see
+// the gunshot handler in js/combat/weapons.ts.
+export function isRuralAt(x: number, z: number): boolean {
+  return x >= HALF && x <= RURAL_TIP + 24 && Math.abs(z) <= RURAL_HALF + 30;
+}
+
 // Returns the name of the region containing world (x,z), or null over open sea.
 // Cheap enough to call once per frame for the location HUD (a couple of compares
 // plus one isLand for the city, which is itself a handful of trig ops).
@@ -34,7 +41,7 @@ export function regionAt(x: number, z: number): string | null {
   }
   // Rural peninsula (east of the city junction). Small radial zones — the
   // mountain overlook and the village — win over the broad x-bands they sit in.
-  if (x >= HALF && x <= RURAL_TIP + 24 && Math.abs(z) <= RURAL_HALF + 30) {
+  if (isRuralAt(x, z)) {
     // The river strait + its landmark bridge cut the peninsula in two: the bridge
     // corridor (deck + approach ramps, narrow in z) reads as the bridge; the wider
     // open channel each side of it reads as the strait you boat through.

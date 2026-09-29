@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {isRuralAt} from '@/world/regions.ts';
 import {state,input,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK,LIMB_HIT_DAMAGE,MELEE_DAMAGE} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
@@ -1261,7 +1262,10 @@ const api: WeaponApi={
     // sample is decoded (or if it failed to load), so we fall back to gunshot().
     if(curWeapon?.id!=='pistol'||!pistolShot(v))gunshot(v);
     const pp=playerPos();state.shotT=state.time;state.shotX=pp.x;state.shotZ=pp.z; // broadcast a shot so NPCs (rural folk) can scatter
-    if(!refs.inGunShopRange?.()){
+    // Random shooting in the COUNTRYSIDE is nobody's business: no heat and no radio call.
+    // Only hitting someone or a vehicle there brings the police (those crimes add heat
+    // on their own: ped kills, vehicle shots, explosions…).
+    if(!refs.inGunShopRange?.()&&!isRuralAt(pp.x,pp.z)){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
       // no radio dispatch from the isolated Party Arena: addWanted already no-ops
       // there (physics.ts), and a dispatch would send a cruiser toward the
