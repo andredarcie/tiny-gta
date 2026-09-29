@@ -1,6 +1,7 @@
 import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
   RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,TOWN_CX,ruralRoadPath,
   cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from '@/core/constants.ts';
+import {tr} from '@/core/i18n.ts';
 import {state,input,refs} from '@/core/state.ts';
 import {isPark} from '@/world/world.ts';
 import {getTod} from '@/world/daynight.ts';
@@ -70,12 +71,12 @@ export function tickFps(): void {
 }
 
 export function message(t: string,col?: string): void {
-  hudMsg.textContent=t;hudMsg.style.color=col||'var(--cream)';
+  hudMsg.textContent=tr(t);hudMsg.style.color=col||'var(--cream)';
   hudMsg.style.opacity='1';msgT=2.6;
 }
 refs.message=message; // exposto p/ módulos que não podem importar hud sem ciclo (ex.: minigame.js)
 export function bigText(t: string,col: string): void {
-  hudBig.textContent=t;hudBig.style.color=col;
+  hudBig.textContent=tr(t);hudBig.style.color=col;
   hudBig.style.textShadow=`4px 4px 0 #000,0 0 40px ${col}`;
   hudBig.classList.add('show');
 }
@@ -906,7 +907,7 @@ export function updateHUD(dt: number): void {
     const reg=pp?regionAt(pp.x,pp.z):null;
     if(reg!==_region){
       _region=reg;
-      if(reg){hudLocation.textContent=reg;hudLocation.classList.add('show');_regionT=5;}
+      if(reg){hudLocation.textContent=tr(reg);hudLocation.classList.add('show');_regionT=5;}
       else{hudLocation.classList.remove('show');_regionT=0;}
     }
     if(_regionT>0){_regionT-=dt;if(_regionT<=0)hudLocation.classList.remove('show');}
@@ -916,7 +917,7 @@ export function updateHUD(dt: number): void {
   const wh=refs.getWeaponHud?.() as WeaponHud | undefined;
   if(wh){
     drawHudWeaponIcon(wh);
-    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=wh.name;hudWeaponName.style.display='block';_wname=wh.name;}
+    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=tr(wh.name);hudWeaponName.style.display='block';_wname=wh.name;}
     if(wh.infinite){hudWeaponAmmo.style.display='none';}
     else{
       hudWeaponAmmo.style.display='block';
@@ -945,7 +946,7 @@ export function updateHUD(dt: number): void {
   const action=getInteractAction();
   const showPrompt=action.enabled&&!input.touchActive;
   if(showPrompt){
-    const html=`<b>E</b> - ${action.prompt}`;
+    const html=`<b>E</b> - ${tr(action.prompt??"")}`;
     if(html!==_prompt){hudPrompt.innerHTML=html;_prompt=html;}
   }
   if(showPrompt!==_promptShown){hudPrompt.style.display=showPrompt?'block':'none';_promptShown=showPrompt as boolean;}

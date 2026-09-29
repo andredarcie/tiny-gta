@@ -1,0 +1,33 @@
+{
+  "exact": {
+    "TAKE THE PINK CAR - PRESS E": "PEGUE O CARRO ROSA - APERTE E",
+    "TAKE THE PINK CAR": "PEGUE O CARRO ROSA",
+    "SHOT FIRED!": "TIRO NA CIDADE!",
+    "EXPLOSION!": "EXPLOSÃO!",
+    "HIT AND RUN!": "ATROPELOU E FUGIU!",
+    "VEHICLE DESTROYED!": "VEÍCULO DESTRUÍDO!",
+    "MELEE ATTACK": "AGRESSÃO!",
+    "FIST": "SOCO",
+    "BASEBALL BAT": "TACO DE BEISEBOL",
+    "PISTOL": "PISTOLA",
+    "SHOTGUN": "ESCOPETA",
+    "SNIPER RIFLE": "RIFLE DE PRECISÃO",
+    "GRENADE": "GRANADA",
+    "MOLOTOV COCKTAIL": "COQUETEL MOLOTOV",
+    "ROCKET LAUNCHER": "LANÇA-FOGUETES",
+    "FLAMETHROWER": "LANÇA-CHAMAS",
+    "DETONATOR": "DETONADOR",
+    "Downtown": "Centro",
+    "Eastside": "Zona Leste",
+    "Westside": "Zona Oeste",
+    "Southbay": "Baía Sul",
+    "Harborview": "Vista do Porto",
+    "Rivergate": "Portão do Rio",
+    "The Foundry": "A Fundição",
+    "Oakridge": "Carvalhal",
+    "Sunset Bluffs": "Penhascos do Pôr do Sol"
+  },
+  "patterns": [
+    ["^WANTED ★(\\d)$", "PROCURADO ★$1"]
+  ]
+}

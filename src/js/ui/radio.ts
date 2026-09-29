@@ -69,6 +69,13 @@ export function radioOn(): void {
   _radioHudShow();
 }
 
+// Tune to station `i` and play it now (also works on foot — used by the video director
+// to lay the game's own music under a scene).
+export function radioPlay(i: number): void {
+  stationIdx=((i%STATIONS.length)+STATIONS.length)%STATIONS.length;
+  radioOn();
+}
+
 // Entrou no carro: sorteia uma estação de música (nunca a OFF AIR)
 export function radioRandom(): void {
   stationIdx=Math.floor(Math.random()*(STATIONS.length-1));

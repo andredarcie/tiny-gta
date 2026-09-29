@@ -23,6 +23,7 @@ export default defineConfig({
         '--disable-gpu-vsync', '--disable-frame-rate-limit', '--ignore-gpu-blocklist',
         '--disable-background-timer-throttling', '--disable-renderer-backgrounding',
         '--disable-backgrounding-occluded-windows',
+        '--autoplay-policy=no-user-gesture-required', // the game's AudioContext may start without a click
       ],
     },
   },

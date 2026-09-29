@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import {state,input,refs,keys} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts'; // money ledger — imported here so the genesis tx seeds at boot
 import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale,renderFrame} from '@/core/engine.ts';
-import {updateAudio} from '@/audio/audio.ts';
+import {updateAudio,AC,master} from '@/audio/audio.ts';
+import {radioPlay} from '@/ui/radio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
 import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
 import {groundHeight} from '@/core/constants.ts';
@@ -106,6 +107,9 @@ declare global {
       setHealth: (hp: number) => number;
       vmArms: () => {x: number; y: number; z: number; visible: boolean};
       farm: (cmd: string) => unknown;
+      audioStart: () => Promise<number>;
+      audioStop: () => Promise<string>;
+      music: (i: number) => boolean;
       aimAtNpc: (dist: number, part: string) => {name: string; dist: number} | null;
       gore: (kind: string) => {kind: string; name: string; dead: boolean; dist: number} | null;
       raceTarget: () => { x: number; z: number } | null;
@@ -656,6 +660,33 @@ window.__test={
     else refs.gibNpc?.(best,dir,1.5);
     return {kind,name:best.name,dead:best.dead,dist:Math.round(bd)};
   },
+  // Video: record the game's whole sound mix (the master bus: SFX, music, radio) with
+  // MediaRecorder. audioStart() resolves with the wall-clock ms the recording began;
+  // audioStop() resolves with the recording as base64 WebM/Opus.
+  audioStart:()=>new Promise<number>((res,rej)=>{
+    if(!AC||!master){rej(new Error('audio graph not ready'));return;}
+    void AC.resume();
+    const dest=AC.createMediaStreamDestination();master.connect(dest);
+    const rec=new MediaRecorder(dest.stream,{mimeType:'audio/webm;codecs=opus',audioBitsPerSecond:160000});
+    const chunks: Blob[]=[];
+    rec.ondataavailable=e=>{if(e.data.size)chunks.push(e.data);};
+    rec.onstart=()=>res(Date.now());
+    (window as unknown as {__audioRec:unknown}).__audioRec={rec,chunks,dest};
+    rec.start(250);
+  }),
+  audioStop:()=>new Promise<string>((res)=>{
+    const r=(window as unknown as {__audioRec?:{rec:MediaRecorder;chunks:Blob[];dest:MediaStreamAudioDestinationNode}}).__audioRec;
+    if(!r){res('');return;}
+    r.rec.onstop=async()=>{
+      const buf=new Uint8Array(await new Blob(r.chunks,{type:'audio/webm'}).arrayBuffer());
+      let bin='';for(let i=0;i<buf.length;i+=0x8000)bin+=String.fromCharCode(...buf.subarray(i,i+0x8000));
+      try{master?.disconnect(r.dest);}catch{/* already gone */}
+      res(btoa(bin));
+    };
+    r.rec.stop();
+  }),
+  // Video: play radio station i (0 funk, 1 pagode, 2 groove, 3 country) even on foot.
+  music:(i: number)=>{radioPlay(i);return true;},
   // Video/test: stand `dist` m from the nearest living outdoor pedestrian and aim the
   // first-person view at its head/body/legs (the next attack() fires there). Returns
   // who, or null. Used by the video scenes (test/video) to film real shots.

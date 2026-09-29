@@ -10,7 +10,10 @@
 //
 // Frames stream from Chrome's screencast (JPEG + real timestamps) and are written ONLY
 // while a clip is rolling, so everything between clips (walking, setup) is cut by
-// construction. test/video/make-video.mjs then builds the 9:16 30 fps MP4 + cover.
+// construction. The game's sound (master bus: SFX + music) is recorded for the whole shoot
+// and each clip gets its matching slice. HUD text is Portuguese by default (?lang=pt-BR);
+// strings with no translation yet are listed in output/video/<scene>/untranslated.txt.
+// test/video/make-video.mjs then builds the 9:16 30 fps MP4 (with sound) + cover.
 // See .claude/skills/record-video/SKILL.md for the full workflow.
 import type { Page, CDPSession } from '@playwright/test';
 import fs from 'node:fs';
@@ -19,10 +22,13 @@ import path from 'node:path';
 export interface SceneOptions {
   title: string;          // cover headline (big, 1-4 words)
   subtitle?: string;      // cover line under it
-  outro?: string;         // end-card line (default: the game's name)
+  outro?: string;         // end-card headline (default: the game's name)
+  outroSub?: string;      // end-card smaller line under it
+  lang?: string;          // HUD language (default 'pt-BR' — see src/js/core/i18n.ts)
+  music?: number | null;  // radio station playing under the scene (0 funk, 1 pagode, 2 groove, 3 country); null = none
   tod?: number;           // time of day 0..1 (0.42 = bright late morning)
   settings?: Record<string, unknown>; // extra graphics settings (localStorage)
-  hide?: string[];        // CSS selectors hidden while filming (default: the police radio subtitle)
+  hide?: string[];        // CSS selectors hidden while filming (default: police radio subtitle + radio station tag)
 }
 interface Clip { label: string; caption?: string; start: number; end: number }
 interface Frame { file: string; t: number }
@@ -39,6 +45,8 @@ export class Director {
   private rolling = false;
   private coverAt: number | null = null;
   private n = 0;
+  private audioStart: number | null = null;
+  private misses = new Set<string>();
 
   private constructor(page: Page, private name: string, private opts: SceneOptions) {
     this.page = page;
@@ -57,9 +65,10 @@ export class Director {
       const css = sel.map((q) => `${q}{display:none!important}`).join('');
       const add = () => { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); };
       if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
-    }, opts.hide ?? ['#police-radio']);
+    }, opts.hide ?? ['#police-radio', '#radio-hud']);
+    page.on('console', (m) => { const t = m.text(); if (t.startsWith('[i18n-miss]')) d.misses.add(t.slice(12)); });
     page.on('pageerror', (e) => { if (!/Pointer Lock/i.test(e.message)) console.error('[pageerror]', e.message); });
-    await page.goto(`/?tod=${opts.tod ?? .42}`, { waitUntil: 'load' });
+    await page.goto(`/?tod=${opts.tod ?? .42}&lang=${opts.lang ?? 'pt-BR'}`, { waitUntil: 'load' });
     await page.waitForFunction(() => !!(window as any).render_game_to_text
       && JSON.parse((window as any).render_game_to_text()).started === true, null, { timeout: 90_000 });
     // screencast runs the whole time; frames are only KEPT while a clip rolls
@@ -74,6 +83,11 @@ export class Director {
     });
     await d.cdp.send('Page.startScreencast', { format: 'jpeg', quality: 88, everyNthFrame: 1 });
     await d.wait(2000); // let the world settle / warm up before any clip
+    // sound: a harmless key press counts as the user gesture that unlocks the AudioContext,
+    // then the whole master mix is recorded until finish() (clips cut their own slices)
+    await page.keyboard.press('Shift');
+    if (opts.music != null) await d.ev((i: number) => (window as any).__test.music(i), opts.music);
+    d.audioStart = (await d.ev(() => (window as any).__test.audioStart())) as number / 1000;
     return d;
   }
 
@@ -90,9 +104,16 @@ export class Director {
   cover(): void { this.coverAt = Date.now() / 1000; }
 
   async finish(): Promise<string> {
+    await this.wait(1500);                    // a little extra sound for the end card
     await this.cdp.send('Page.stopScreencast').catch(() => {});
-    await this.wait(200);
-    const capture = { name: this.name, ...this.opts, clips: this.clips, frames: this.frames, coverAt: this.coverAt };
+    const b64 = (await this.ev(() => (window as any).__test.audioStop())) as string;
+    if (b64) fs.writeFileSync(path.join(this.dir, 'audio.webm'), Buffer.from(b64, 'base64'));
+    if (this.misses.size) {
+      fs.writeFileSync(path.join(this.dir, 'untranslated.txt'), [...this.misses].map((m) => m + '\n').join(''));
+      console.log(`[video] ${this.misses.size} HUD string(s) not translated -> ${path.join(this.dir, 'untranslated.txt')}`);
+    }
+    const capture = { name: this.name, ...this.opts, clips: this.clips, frames: this.frames, coverAt: this.coverAt,
+      audioStart: b64 ? this.audioStart : null };
     const file = path.join(this.dir, 'capture.json');
     fs.writeFileSync(file, JSON.stringify(capture, null, 1));
     const secs = this.clips.reduce((a, c) => a + (c.end - c.start), 0);
