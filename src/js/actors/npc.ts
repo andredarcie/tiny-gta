@@ -16,7 +16,7 @@ import {NPC_DEFS,type NpcDef} from '@/core/npc-defs.ts';
 //
 // The key is the global `npcs` REGISTRY: the weapon system (js/combat/weapons.ts)
 // scans that array ONCE and hits ANY Npc instance, instead of enumerating each
-// type by hand. NPCs with their own targeting (story/army) or that must never be
+// type by hand. NPCs with their own targeting (army) or that must never be
 // shot (patients) pass register:false and stay out of the scan.
 //
 // Each concrete type (pedestrian, gang, country folk, …) extends Npc and runs its
@@ -78,8 +78,8 @@ interface NpcOpts{
   // District / region the NPC belongs to (shown in the pause-menu roster).
   area?:string;
   // Join the global combat registry (`npcs`)? Default true. Specialised NPCs that
-  // have their OWN targeting (story actors via storyTargets, army soldiers via
-  // armyTargets) or that must NEVER be shot (paramedic patients) pass register:false
+  // have their OWN targeting (army soldiers via armyTargets) or that must NEVER be
+  // shot (paramedic patients) pass register:false
   // — they still INHERIT this base class (so 100% of NPCs share it), but the unified
   // weapon scan skips them so existing mini-game logic is untouched.
   register?:boolean;
@@ -100,7 +100,7 @@ interface NpcOpts{
 
 // Global registry of all NPCs (the combat scan iterates this). Holds the unified
 // NPCs — pedestrians, gang members, foot officers and country folk. NPCs with
-// their own targeting (story/army) or untouchable ones (patients) pass
+// their own targeting (army) or untouchable ones (patients) pass
 // register:false and stay out.
 export const npcs:Npc[]=[];
 
@@ -404,7 +404,7 @@ export interface NpcRosterEntry{
 // Friendly label per NPC kind (player-facing in the roster).
 const KIND_LABELS:Record<string,string>={
   ped:'Civilian',gang:'Gang',officer:'Police',police:'Police',rural:'Country folk',
-  soldier:'Army',criminal:'Criminal',patient:'Injured',story:'Story',
+  soldier:'Army',criminal:'Criminal',patient:'Injured',camper:'Camp redneck',
   sicko:'Sicko',npc:'NPC',
   // interior NPCs
   dancer:'Clubber',gymgoer:'Gym-goer',guard:'Guard',inmate:'Inmate',

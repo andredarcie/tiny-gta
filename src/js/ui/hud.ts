@@ -25,6 +25,7 @@ interface HudBlip {
   icon?: string; color?: string; col?: string;
   label?: string; letter?: string; kind?: string;
   current?: boolean; reveal?: boolean; faded?: boolean;
+  big?: boolean; // the story objective: drawn larger with a pulsing halo
   [k: string]: any;
 }
 // 2D point the world->radar transform returns.
@@ -140,8 +141,8 @@ function computeInteractAction(): InteractAction {
   if(state.mode==='foot'){
     const rk=refs.rickNear?.(); // acampamento secreto do Rick (sem blip no mapa)
     if(rk)return{label:'TALK',prompt:'TALK TO '+rk,enabled:true};
-    const sn=refs.storyNear?.();
-    if(sn)return{label:'TALK',prompt:'TALK TO '+sn,enabled:true};
+    const st=refs.storyAction?.(); // story: answer the pay phone / take the shovel / bury a body
+    if(st)return st;
     // ações de zona (car-crusher/export/bomba): bloqueadas durante outra sessão
     if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a)return a;}
   }
@@ -378,6 +379,21 @@ function mmCircleIcon(ctx: CanvasRenderingContext2D,px: number,py: number,b: Hud
       ctx.moveTo(0,-6);ctx.lineTo(5.2,0);ctx.lineTo(0,6);ctx.lineTo(-5.2,0);
       ctx.closePath();ctx.fill();
       break;
+    case'phone': // story: the pay phone (a telephone receiver)
+      ctx.lineWidth=3.2;
+      ctx.beginPath();ctx.moveTo(-3.6,3.9);ctx.quadraticCurveTo(0,-.6,3.6,3.9);ctx.stroke();  // handle
+      ctx.fillRect(-6.2,1.6,4.2,3.4);ctx.fillRect(2,1.6,4.2,3.4);                            // ear + mouth cups
+      ctx.lineWidth=1.3;
+      for(const r of[3.2,5.4]){ctx.beginPath();ctx.arc(0,-1.4,r,-2.3,-.84);ctx.stroke();}     // ringing waves
+      break;
+    case'shovel': // story: the burial job
+      ctx.save();ctx.rotate(-.7);
+      ctx.fillRect(-.8,-6.4,1.6,8.4);                                                        // shaft
+      ctx.fillRect(-2.6,-7.2,5.2,1.4);                                                       // D-grip
+      ctx.beginPath();ctx.moveTo(-3.2,1.6);ctx.lineTo(3.2,1.6);ctx.lineTo(2.6,5.6);
+      ctx.quadraticCurveTo(0,7.6,-2.6,5.6);ctx.closePath();ctx.fill();                        // blade
+      ctx.restore();
+      break;
     case'letter': // marcador de missão com a inicial do NPC
       ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText(b.letter||'?',0,.6);
@@ -432,6 +448,21 @@ function mmCircleIcon(ctx: CanvasRenderingContext2D,px: number,py: number,b: Hud
       ctx.lineWidth=1.8;ctx.strokeRect(-3.6,-5,7.2,10);
       ctx.beginPath();ctx.arc(1.7,.2,.65,0,Math.PI*2);ctx.fill();
   }
+  ctx.restore();
+}
+// Pulsing halo behind the story objective's icon (radar + map): two expanding rings in
+// the objective's colour, so it stands out as the one thing that matters most.
+function storyHalo(ctx: CanvasRenderingContext2D,px: number,py: number,color: string,scale: number): void {
+  const t=performance.now()/1000;
+  ctx.save();
+  ctx.strokeStyle=color;
+  for(let i=0;i<2;i++){
+    const k=(t*.8+i*.5)%1;
+    ctx.globalAlpha=(1-k)*.85;ctx.lineWidth=2.4*scale;
+    ctx.beginPath();ctx.arc(px,py,(11+k*11)*scale,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=.35;ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(px,py,13.5*scale,0,Math.PI*2);ctx.fill();
   ctx.restore();
 }
 function drawHudWeaponIcon(wh: WeaponHud): void {
@@ -595,12 +626,6 @@ export function drawMinimap(): void {
       const[px,py]=mmBlip(b.x,b.z,pp,scale);
       mmCircleIcon(mm,px,py,{x:0,z:0,icon:'cross',color:b.col||'#5eff8a'},b.current?1:.82);
     }
-    // Missão da história: blip no NPC atual (letra) ou no item (losango) quando ativa;
-    // o piscar de retorno já vem resolvido de storyBlips()
-    for(const b of refs.storyBlips?.()||[]){
-      const[px,py]=mmBlip(b.x,b.z,pp,scale);
-      mmCircleIcon(mm,px,py,{x:0,z:0,icon:b.letter?'letter':'diamond',letter:b.letter,color:b.col});
-    }
     // minigames registrados (firefighter, rampage, hidden packages, etc.)
     for(const fn of refs.miniBlips||[])for(const b of fn()){
       if(inGangTerritory(b.x,b.z))continue; // mini-game nunca em território de gangue
@@ -630,6 +655,15 @@ export function drawMinimap(): void {
         mm.beginPath();mm.arc(px,py,3.4,0,Math.PI*2);mm.fill();mm.stroke();
       }
     }
+  }
+
+  // The story objective: drawn LAST (on top) and BIG, with a pulsing halo, so it reads
+  // as more important than anything else on the radar. Hidden during a race or a
+  // mini-game session (the radar then shows only that session).
+  if(!mgActive&&!raceOn)for(const b of refs.storyBlips?.()||[]){
+    const[px,py]=mmBlip(b.x,b.z,pp,scale);
+    storyHalo(mm,px,py,b.color||'#ffd24a',1);
+    mmCircleIcon(mm,px,py,b,1.32);
   }
 
   // seta do jogador no centro, girando com a direção (mapa fixo no norte)
@@ -692,7 +726,7 @@ const NPC_DOT: Record<string,string>={
   ped:'#ffffff',gang:'#b06bff',officer:'#3e7bff',soldier:'#8fae5a',rural:'#7ad06b',
   driver:'#f5c518',dancer:'#ff5fae',gymgoer:'#ff8a1e',guard:'#3e7bff',inmate:'#d9a06b',
   clerk:'#f4c542',medic:'#19e3ff',patient:'#ff6f6f',fare:'#5eff8a',buyer:'#9dff2e',
-  criminal:'#ff3b56',story:'#ffd24a',sicko:'#9dff2e',
+  criminal:'#ff3b56',camper:'#ff3b56',sicko:'#9dff2e',
 };
 export function drawFullMap(): void {
   if(!fm)return;
@@ -774,8 +808,8 @@ export function drawFullMap(): void {
       for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPECT');
       for(const b of refs.paramedicBlips?.()||[])
         push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PATIENT');
-      // história
-      for(const b of refs.storyBlips?.()||[])push(b,b.letter?'letter':'diamond',b.col,'MISSION');
+      // story objective (drawn big, see below)
+      for(const b of refs.storyBlips?.()||[])marks.push({...b});
       // minigames registrados: o mapa completo mostra TODOS (longe ou perto), menos
       // os que caem em território de gangue (regra fundamental)
       for(const fn of refs.miniBlips||[])for(const b of fn())
@@ -821,11 +855,13 @@ export function drawFullMap(): void {
       fm.beginPath();fm.arc(px,py,5,0,Math.PI*2);fm.fill();fm.stroke();
       continue;
     }
-    mmCircleIcon(fm,px,py,m,1.25);
+    if(m.big)storyHalo(fm,px,py,m.color||'#ffd24a',1.6);
+    mmCircleIcon(fm,px,py,m,m.big?1.9:1.25);
     if(m.label){
       fm.font='700 10px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
-      fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText(m.label,px,py+15);
-      fm.fillStyle='#ffe9c9';fm.fillText(m.label,px,py+15);
+      const ly=py+(m.big?21:15);
+      fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText(m.label,px,ly);
+      fm.fillStyle=m.big?(m.color||'#ffd24a'):'#ffe9c9';fm.fillText(m.label,px,ly);
     }
   }
   // ---- live NPC overlay ("Show NPCs"): trail to the current destination, then a

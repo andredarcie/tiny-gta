@@ -28,6 +28,7 @@ export function collectSave(): SaveBlob {
     daily: refs.getDailySave?.() || null, // in-game day + the mini-games' "once per day" locks
     farm: refs.getFarmSave?.() || null,   // grow-op: upgrade level + bought seeds/plant-food
     clothing: refs.getClothingSave?.() || null, // player outfit: shirt/pants/shoe colours + accessories
+    story: refs.getStorySave?.() || null,       // mission chain: stage + bodies at the camp + graves
   };
 }
 
@@ -51,6 +52,7 @@ export function applySave(blob: unknown): void {
   refs.restoreDaily?.(b.daily);
   refs.restoreFarm?.(b.farm);
   refs.restoreClothing?.(b.clothing);
+  refs.restoreStory?.(b.story);
 }
 
 // ---- local persistence (localStorage) ---------------------------------------

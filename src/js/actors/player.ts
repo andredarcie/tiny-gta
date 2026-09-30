@@ -1227,6 +1227,10 @@ function doomClipMomentum(wantX:number,wantZ:number,gotX:number,gotZ:number){
   doomMom.x=ux*along;doomMom.z=uz*along;
 }
 
+// A first-person hand clip is playing (the weed farm, or the story's phone/shovel):
+// movement and look input are held so the clip reads cleanly.
+const actionLock=():boolean=>!!(refs.fpActionLock?.()||refs.storyFpLock?.());
+
 export function updateFoot(dt:number){
   doomLevelTime+=dt*DOOM_TICRATE;
   if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
@@ -1239,7 +1243,7 @@ export function updateFoot(dt:number){
   if(entering)return updateEntering(dt);
   if(exiting)return updateExiting(dt);
   if(state.dlgActive)return;
-  if(refs.fpActionLock?.()){doomStop();return;} // a weed-farm hand clip is playing (weed-farm-fp.ts)
+  if(actionLock()){doomStop();return;} // a hand clip is playing (weed-farm-fp.ts / story-fp.ts)
   // ----- água: o nado tem física, pose e efeitos próprios (updateSwim) -----
   if(inWater(player.g.position)){
     if(!state.swimming){enterWater();doomStop();} // transição terra→água: splash de entrada
@@ -1347,7 +1351,7 @@ const inVehicleView=():boolean=>(state.mode==='car'||state.mode==='cut')&&!!cur;
 // Mouse-look (pointer lock): yaw + pitch — the first-person pitch on foot, the chase
 // camera's orbit pitch in a vehicle.
 export function applyMouseLook(dx:number,dy:number){
-  if(refs.fpActionLock?.())return; // a weed-farm hand clip steers the view (weed-farm-fp.ts)
+  if(actionLock())return; // a hand clip steers the view (weed-farm-fp.ts / story-fp.ts)
   const aimK=state.aiming?.6:1; // ADS lowers mouse sensitivity for precision
   cameraRig.yaw-=dx*cameraRig.sensitivity*aimK;
   const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity*aimK;
@@ -1364,7 +1368,7 @@ export function updateCamera(dt:number){
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
   const tgt=inVehicle?cur!.g.position:player.g.position;
   const heading=inVehicle?cur!.heading:player.heading;
-  if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked&&!refs.fpActionLock?.()){
+  if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked&&!actionLock()){
     // Positive lookX means "turn right". In this engine yaw increases to the LEFT
     // (forward = (sin yaw, cos yaw); keyboard A is moveX=+1; mouse-right does yaw-=),
     // so turning right requires subtracting, same as the pointer-lock mouse path.

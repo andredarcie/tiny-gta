@@ -1,653 +1,358 @@
 import * as THREE from 'three';
-import {nodeX,ROAD,SIDE,BLOCK,N,GROUND,BEACH,rand,irand,pick,MOUNT_X,groundHeight} from '@/core/constants.ts';
+import {nodeX,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
-import {scene,camera} from '@/core/engine.ts';
-import {makePed} from '@/core/entities.ts';
-import {AC,master,blip,thud} from '@/audio/audio.ts';
+import {scene} from '@/core/engine.ts';
+import {phoneRing} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
-import {parks} from '@/world/world.ts';
-import {player,playerPos} from '@/actors/player.ts';
-import {addBloodPuddle} from '@/world/pedestrians.ts';
-import {setTod} from '@/world/daynight.ts';
-import {makeStoryGem} from '../../assets/models/missions/story-gem.ts';
-import {makeStoryUsb} from '../../assets/models/missions/story-usb.ts';
-import {makeStoryBottle} from '../../assets/models/missions/story-bottle.ts';
-import {makeStoryBox} from '../../assets/models/missions/story-box.ts';
-import {makeStoryMarker} from '../../assets/models/missions/story-marker.ts';
+import {solids} from '@/world/world.ts';
+import {player,playerPos,cameraRig} from '@/actors/player.ts';
 import {Beacon} from '@/core/beacon.ts';
-import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
 import {MiniGame} from '@/activities/minigame.ts';
-import {Npc,NPC_SEED} from '@/actors/npc.ts';
-import {inGangTerritory} from '@/actors/gangs.ts';
-import {makeRng} from '@/core/rng.ts';
-
-// ---- shapes for the story mission descriptors / engine ----------------------
-interface Voice { freq: number; type: OscillatorType; }
-// Static mission-NPC descriptor from the story JSON (NOT a runtime NPC — that is
-// the Actor class below, which extends the shared Npc base).
-interface StoryNpcDef {
-  name: string; letter: string;
-  shirt: number; pants: number | null;
-  color: number; css: string;
-  x: number; z: number; face: number;
-  voice: Voice;
-}
-interface StoryItem { shape: string; color: number; }
-interface FetchObjective { type: 'fetch'; spot: string; item: StoryItem; beacon: number; }
-interface KillObjective { type: 'kill'; target: string; }
-type Objective = FetchObjective | KillObjective;
-interface Mission {
-  id: string; title: string; reward: number;
-  npc: StoryNpcDef;
-  intro: string[]; outro: string[];
-  objective: Objective;
-  startMsg: string; foundMsg: string; unlockMsg: string;
-}
-interface Story { chapter: string; missions: Mission[]; }
-
-// The on-stage NPC for a mission: a ped + floating marker. Extends the shared Npc
-// base (so 100% of NPCs share one class), but with register:false — kill targets
-// are hit through storyTargets()/killTarget(), so the actor must NOT also join the
-// unified weapon scan. `ped` is kept as an alias of the base `g` so the existing
-// cut-scene code reads unchanged. Only the current mission's actor is visible.
-class Actor extends Npc {
-  marker: THREE.Object3D;
-  mat: THREE.MeshBasicMaterial;
-  phase: number;
-  constructor(ped: THREE.Object3D, marker: THREE.Object3D, mat: THREE.MeshBasicMaterial, def: StoryNpcDef, gender: 'M'|'F'){
-    super(ped,{kind:'story',hp:1,register:false,name:def.name,area:'Story mission',gender,showLabel:true});
-    this.marker=marker;this.mat=mat;this.phase=rand(0,6);
-  }
-  get ped(): THREE.Object3D {return this.g;}
-  override aliveState():string{return 'Story role';}
-}
-// A randomized objective spot, with the diálogo placeholders it resolves.
-interface Spot { x: number; z: number; where?: string; side?: string; vert?: string; }
+import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
+import boothModel,{STAND} from '../../assets/models/props/phone-booth.ts';
+import {playPhoneCall,updateCutscene,reachHand,setTalkPose,showMissionPass,showStoryEnd,advanceCine,cineActive,
+  type CineLine,type Voice} from '@/story/cutscene.ts';
+import {fpAnswer,fpHangUp,fpBusy,fpOnAbort,releaseHeld,setPhoneHands,updateStoryFocus,updateStoryHands} from '@/story/story-fp.ts';
+import {CAMP,CAMP_SIZE,campers,buildCamp,removeCamp,updateCamp,campBuilt,campAlive,campAlarmed,killAllCampers} from '@/story/redneck-camp.ts';
+import {startBurial,stopBurial,burialAction,burialGoal,updateBurial,burialState,restoreGraves,graveRecords,clearGraves} from '@/story/burial.ts';
+import {STAGES,type Stage,sanitizeStorySave,type StorySave} from '@/story/chain.ts';
 
 // ============================================================================
-// STORY: estrutura genérica de missões. Tudo que define uma missão (NPC,
-// posição, voz, diálogos, objetivo, recompensa, mensagens) vive neste JSON.
-// As missões são LINEARES: uma só fica disponível quando a anterior termina,
-// e cada uma encerra nela mesma (sem repetição infinita). Ao fim das três,
-// o prólogo acaba e fica o aviso para aguardar o capítulo 1.
+// THE STORY — a chain of missions handed out by the crime BOSS over a street PAY
+// PHONE. The boss is only ever a voice on the line.
 //
-// Placeholders nos diálogos, resolvidos quando o objetivo é sorteado:
-//   {where} {side} {opp} {vert}
+//   call1  — A pay phone rings a block from where the player starts (a big, pulsing
+//            PHONE icon on the radar/map, a light column over the booth, and the bell
+//            is heard as you get close). Answer it: the receiver is lifted in first
+//            person, then the cinematic call. "Welcome to Sin City..." The test: wipe
+//            out a redneck camp in the countryside.
+//   camp   — The camp only exists now (js/story/redneck-camp.ts): six armed rednecks
+//            around a campfire, a weapon stash around the clearing. Kill all six.
+//   call2  — Back to the booth, it rings again. The boss is horrified ("do you think
+//            this is a video game?")... then laughs it off: test passed. MISSION PASSED.
+//            But those were families — go back and bury them.
+//   burial — The bodies still lie at the camp; a shovel waits there. Six graves, dug
+//            and filled by hand in first person (js/story/burial.ts). MISSION PASSED.
+//   done   — The graves stay in the woods. More calls to come.
+//
+// Progress is saved (stage + where the bodies lie + the finished graves).
 // ============================================================================
-export const STORY: Story={
-  chapter:'PROLOGUE',
-  missions:[
-    {
-      id:'diego-usb-drive',
-      title:"ANDRÉ'S USB DRIVE",
-      reward:0,
-      npc:{
-        name:'DIEGO PENHA',letter:'D',
-        shirt:0xffd24a,pants:null,
-        color:0xffd24a,css:'#ffd24a',
-        x:nodeX(1)+ROAD/2+3.5,z:nodeX(4),face:0,
-        voice:{freq:118,type:'square'},
-      },
-      intro:[
-        'Hey, my dear friend! You glorious motherfucker! Welcome to the city of dreams: Andrelandia!',
-        'You enjoying this crazy-ass place so far?',
-        'Now you work for André N. Darcie, the biggest fucking mob boss in town, the king of crime, the ruler of every crooked deal, the master of all goddamn masters!',
-        'My name is Diego Penha, but you can call me Diguifi.',
-        'André needs something from you. There\'s a USB drive out there full of evidence of all the shady shit he\'s done. Some dumb bastard left it behind, and now we need it back.',
-      ],
-      outro:[
-        'You got it! You beautiful son of a bitch, André will love this.',
-        'Now go see Leozinho, a few blocks east. He has the next job for you.',
-      ],
-      objective:{type:'fetch',spot:'farPark',item:{shape:'usb',color:0x19e3ff},beacon:0x19e3ff},
-      startMsg:'DIGUIFI: RECOVER THE USB DRIVE',
-      foundMsg:'USB DRIVE RECOVERED! Return to Diguifi.',
-      unlockMsg:'TALK TO DIEGO PENHA - FOLLOW THE D ON THE RADAR',
-    },
-    {
-      id:'leozinho-last-package',
-      title:'THE LAST PACKAGE',
-      reward:500,
-      npc:{
-        name:'LEOZINHO',letter:'L',
-        shirt:0x9dff2e,pants:0x1c2f12,
-        color:0x9dff2e,css:'#9dff2e',
-        x:nodeX(7)+ROAD/2+3.5,z:nodeX(4)+10,face:-Math.PI/2,
-        voice:{freq:200,type:'square'},
-      },
-      intro:[
-        'So Diego told me about you, you crazy bastard! You did a job for him, which means André N. Darcie, the genius, the wizard, the absolute mastermind, has more work for you!',
-        'Man, I can\'t take this life of crime anymore. After today\'s job, I\'m getting the hell out of here.',
-        'Listen, I\'m the king of drugs, a total weed-smoking maniac. I need you to pick up the last package for André. Tonight he\'s planning to get high as hell and party all night long.',
-      ],
-      outro:[
-        'That\'s the one! The last package of my life, bro. I\'m out.',
-        'Here\'s your cut: $500. Now go talk to Augusto, down at the south beach. And good luck.',
-      ],
-      objective:{type:'fetch',spot:'random',item:{shape:'box',color:0xf4f0e2},beacon:0x9dff2e},
-      startMsg:'LEOZINHO: PICK UP THE LAST PACKAGE',
-      foundMsg:'PACKAGE SECURED! Take it back to Leozinho.',
-      unlockMsg:'LEOZINHO WANTS TO TALK - FOLLOW THE L ON THE RADAR',
-    },
-    {
-      id:'augusto-kill-diego',
-      title:'THE FILTHY RAT',
-      reward:1000,
-      npc:{
-        name:'AUGUSTO',letter:'A',
-        shirt:0xffb52e,pants:0x3d2a18,
-        color:0xffb52e,css:'#ffb52e',
-        x:30,z:GROUND/2+BEACH/2,face:Math.PI,
-        voice:{freq:92,type:'sawtooth'},
-      },
-      intro:[
-        'Hey there, my friend! I\'m Augusto, and I\'ve got something for you. You might want to grab a bottle of liquor first, because this is gonna be rough.',
-        'I need you to kill Diego. André told me he\'s a traitor. The bastard handed the USB drive over to the cops.',
-        'The guy\'s a filthy rat.',
-      ],
-      outro:[],
-      objective:{type:'kill',target:'diego-usb-drive'},
-      startMsg:'AUGUSTO: KILL DIEGO PENHA',
-      foundMsg:'DIEGO PENHA IS DOWN.',
-      unlockMsg:'AUGUSTO IS WAITING AT THE SOUTH BEACH - FOLLOW THE A',
-    },
-  ],
-};
 
-// ---------------------------------------------------------------------------
-// Sorteio do local do objetivo
-// ---------------------------------------------------------------------------
-function rollRandomSpot(): Spot{
-  const roll=Math.random();
-  if(roll<.5){
-    const i=irand(0,N-1),j=irand(0,N-1);
-    const xa=nodeX(i)+9,xb=nodeX(i+1)-9,za=nodeX(j)+9,zb=nodeX(j+1)-9;
-    const[cx,cz]=pick([[xa,za],[xb,za],[xb,zb],[xa,zb]]);
-    return{x:cx+rand(-2,2),z:cz+rand(-2,2),where:'on a street corner downtown'};
+const BOSS: Voice={freq:78,type:'sawtooth',phone:true};
+const YOU: Voice={freq:150,type:'square'};
+const boss=(text: string): CineLine=>({who:'THE BOSS',text,voice:BOSS,by:'npc'});
+const you=(text: string): CineLine=>({who:'YOU',text,voice:YOU,by:'player'});
+
+const CALL1: CineLine[]=[
+  boss('Welcome to Sin City, friend.'),
+  boss('Big things happen in this town. And you... you are going to do big things. WE are going to do big things together.'),
+  you('Who is this?'),
+  boss('Doesn\'t matter who I am. What matters is what you\'re willing to do.'),
+  boss('Everybody who works for me passes a test first. Call it an audition.'),
+  boss('Out in the countryside, past the mountain, off the Pine Hollow road, there\'s a camp in the woods. A few tents, a campfire, and six armed hillbillies.'),
+  boss('Wipe them out. All six. How you do it is your business.'),
+  boss('I left a few toys around the camp for you. When it\'s done, come back to this phone. I\'ll call.'),
+];
+const CALL2: CineLine[]=[
+  you('It\'s done. The camp is clean. All six of them.'),
+  boss('...You did WHAT?'),
+  boss('Do you think this is a video game?! You walked into those woods and killed six people in cold blood!'),
+  boss('Because some voice on a pay phone told you to? That could have been anybody! It could have been a prank call!'),
+  boss('You think you can just go around taking lives like that?'),
+  boss('...'),
+  boss('Relax. You passed. That is exactly what I wanted to see.'),
+  boss('But those were people. Families. I want them treated with respect.'),
+  boss('Go back to that camp. There\'s a shovel by the woodpile. Six bodies, six graves. Dig them properly.'),
+  you('You\'re serious.'),
+  boss('Dead serious. Get digging.'),
+];
+const REWARD_AUDITION=1500, REWARD_BURIAL=800;
+
+// ---- the booth: on the sidewalk a block ahead of where the player starts ----------
+const BOOTH={x:nodeX(4)+9.3,z:nodeX(4)+30,ry:-Math.PI/2};   // open front faces the street (west)
+const booth=boothModel.build();
+booth.position.set(BOOTH.x,groundHeight(BOOTH.x,BOOTH.z),BOOTH.z);
+booth.rotation.y=BOOTH.ry;
+scene.add(booth);
+booth.updateMatrixWorld(true);
+// only the back wall is solid (the front is open: you walk in to answer)
+{const bx=BOOTH.x+.5;solids.push({x0:bx,x1:bx+.14,z0:BOOTH.z-.6,z1:BOOTH.z+.6,h:2.4});}
+const handset=booth.userData.handset as THREE.Object3D;
+const standWorld=booth.localToWorld(STAND.clone());
+const phoneWorld=booth.localToWorld(new THREE.Vector3(0,1.46,-.5));
+const hookWorld=()=>({pos:booth.localToWorld((booth.userData.hookPos as THREE.Vector3).clone()),
+  quat:booth.getWorldQuaternion(new THREE.Quaternion()).multiply(booth.userData.hookQuat as THREE.Quaternion)});
+let beacon: Beacon|null=null;
+
+// ---- state ----------------------------------------------------------------------
+const S: {stage: Stage;busy: boolean;onCall: boolean;ringT: number}={stage:'call1',busy:false,onCall:false,ringT:0};
+const ringing=()=>(S.stage==='call1'||S.stage==='call2')&&!S.busy;
+
+function save(){refs.backupSave?.();}
+
+// Enter a stage. `restore` rebuilds the world for a stage loaded from a save.
+function enterStage(stage: Stage,restore?: StorySave){
+  S.stage=stage;
+  if(stage==='camp'){
+    buildCamp({alive:true,
+      onKill:(left)=>{if(left>0)message('REDNECKS LEFT: '+left,'#ff3b56');},
+      onAllDead:()=>{
+        enterStage('call2');
+        message('CAMP WIPED OUT - GO BACK TO THE PAY PHONE','var(--gold)');
+        save();
+      }});
+  }else if(stage==='call2'){
+    if(restore)buildCamp({alive:false,bodies:restore.bodies});
+  }else if(stage==='burial'){
+    if(restore){buildCamp({alive:false,bodies:restore.bodies});restoreGraves(restore.graves);}
+    startBurial({
+      onAllBuried:()=>{
+        enterStage('done');
+        economy.earn(REWARD_BURIAL,'story');
+        showMissionPass('DUST TO DUST','+$'+REWARD_BURIAL.toLocaleString('en-US')+'   ▲ RESPECT WITH THE BOSS',()=>showStoryEnd());
+        save();
+      }});
+  }else if(stage==='done'){
+    stopBurial();
+    if(restore)restoreGraves(restore.graves);
   }
-  if(roll<.75){
-    const side=pick(['n','s','w']); // leste virou zona rural
-    const depth=rand(GROUND/2+6,GROUND/2+BEACH-8),along=rand(-190,190);
-    const[x,z]=side==='n'?[along,-depth]:side==='s'?[along,depth]:[-depth,along];
-    return{x,z,where:'buried in the beach sand'};
-  }
-  if(roll<.92){
-    const[x,z]=pick([[250,-42],[222,70],[308,-54],[230,-12],[266,16]]);
-    return{x:x+rand(-1.5,1.5),z:z+rand(-1.5,1.5),where:'out in the farms, past the east road'};
-  }
-  return{x:MOUNT_X+rand(-2,2),z:rand(-2,2),where:'on TOP of the mountain. Yes, the top. Good luck'};
 }
 
-// Parque mais distante do NPC (missão do Diego): rende as pistas side/vert
-function farParkSpot(fromX: number,fromZ: number): Spot{
-  // story items never land on gang turf (same rule as mini-games)
-  const lst=[...parks].map((k: string)=>{
-    const[pi,pj]=k.split('_').map(Number);
-    return{
-      x:nodeX(pi)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2,
-      z:nodeX(pj)+ROAD/2+SIDE+(BLOCK-2*SIDE)/2
-    };
-  }).filter(t=>!inGangTerritory(t.x,t.z)).sort((a,b)=>Math.hypot(b.x-fromX,b.z-fromZ)-Math.hypot(a.x-fromX,a.z-fromZ));
-  const t=lst[0];
-  const x=t.x+rand(-2.5,2.5),z=t.z+rand(-2.5,2.5);
-  return{x,z,side:x<0?'west':'east',vert:z<0?'north':'south'};
+// ---- the phone call ---------------------------------------------------------------
+const _hw=new THREE.Vector3(),_ce=new THREE.Vector3();
+function layCord(){
+  // the coiled cord follows the receiver whenever it is off the hook
+  if(handset.parent===booth)return;
+  handset.localToWorld(_ce.copy(booth.userData.cordEnd as THREE.Vector3));
+  booth.worldToLocal(_ce);
+  (booth.userData.span as (a: THREE.Vector3,b: THREE.Vector3)=>void)(booth.userData.cordAnchor as THREE.Vector3,_ce);
 }
 
-function fillLines(lines: string[],spot: Spot | null): string[]{
-  return lines.map(t=>t
-    .replace('{where}',spot?.where??'')
-    .replace('{side}',spot?.side??'')
-    .replace('{opp}',spot?(spot.side==='west'?'east':'west'):'')
-    .replace('{vert}',spot?.vert??''));
-}
-
-// ---------------------------------------------------------------------------
-// Atores: ped + marcador de cada NPC da história (só o da missão atual aparece)
-// ---------------------------------------------------------------------------
-const storyRng=makeRng(NPC_SEED+3); // fixed gender per story character (same for all players)
-const actors: Actor[]=STORY.missions.map(m=>{
-  const ped=makePed(m.npc.shirt,m.npc.pants??undefined);
-  ped.position.set(m.npc.x,0,m.npc.z);
-  if(m.npc.face)ped.rotation.y=m.npc.face;
-  const {marker,mat}=makeStoryMarker(m.npc.color);
-  marker.position.set(m.npc.x,3.6,m.npc.z);
-  marker.visible=false;
-  scene.add(marker);
-  return new Actor(ped,marker,mat,m.npc,storyRng.random()<.5?'M':'F');
-});
-actors[0].marker.visible=true;
-
-// fetch: available -> active -> returning -> (cutscene de volta) -> próxima
-// kill:  available -> active -> (alvo morto) -> completing -> próxima | over
-const S: {
-  idx: number; phase: string; spot: Spot | null;
-  itemMesh: THREE.Object3D | null; beacon: Beacon | null;
-  target: Actor | null; targetNpc: StoryNpcDef | null;
-}={idx:0,phase:'available',spot:null,itemMesh:null,beacon:null,
-  target:null,targetNpc:null};
-const cm=()=>STORY.missions[S.idx];
-const ca=()=>actors[S.idx];
-function makeStoryItem(item: StoryItem): THREE.Object3D{
-  if(item.shape==='gem')return makeStoryGem(item.color);
-  if(item.shape==='usb')return makeStoryUsb(item.color);
-  if(item.shape==='bottle')return makeStoryBottle(item.color);
-  return makeStoryBox(item.color);
-}
-
-// ---------------------------------------------------------------------------
-// Cut-scene: barras de cinema, câmera em plano aberto dos dois personagens e
-// legendas estilo filme que correm sozinhas, letra a letra, com "voz" do NPC
-// ---------------------------------------------------------------------------
-const subEl=document.getElementById('cine-sub') as HTMLElement;
-const hintEl=document.getElementById('cine-hint') as HTMLElement | null;
-
-// Minimal mission/actor shapes the cut-scene machine needs (so playCutscene can
-// pass a stub for missions that live outside STORY — e.g. js/story/rick.ts).
-interface CineMission { npc: { voice: Voice }; }
-interface CineActor { ped: THREE.Object3D; marker: { visible: boolean }; }
-
-const cine: {
-  on: boolean; t: number; lines: string[]; li: number; txt: string;
-  shown: number; charT: number; phase: string;
-  voice: Voice | null; onDone: (() => void) | null; side: number;
-  npcPos: THREE.Vector3 | null; actor: CineActor | null;
-  shot: string; shotT: number; midCut: boolean;
-}={on:false,t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',
-  voice:null,onDone:null,side:1,npcPos:null,actor:null,
-  shot:'wide',shotT:0,midCut:false};
-
-// Dica de "continuar": só aparece quando a fala terminou de aparecer e o jogo
-// está esperando a interação do jogador (clique/tecla no PC, toque no celular).
-function showHint(){
-  if(!hintEl)return;
-  hintEl.textContent=state.mobile?'TAP TO CONTINUE ▸':'SPACE / E ▸';
-  hintEl.classList.add('show');
-}
-function hideHint(){hintEl?.classList.remove('show');}
-
-// 3 câmeras de cinema, trocadas em corte seco a cada fala:
-// wide = plano aberto lateral; close = por cima do ombro do jogador, fechado
-// no NPC que fala; reverse = contraplano com a reação do jogador
-function pickShot(li: number,total: number): string{
-  if(li===0||li===total-1)return 'wide';
-  return li%3===0?'reverse':'close';
-}
-
-function voiceTick(v: Voice | null){
-  if(!AC)return;
-  const o=AC.createOscillator();o.type=v!.type||'square';
-  o.frequency.value=v!.freq*(1+(Math.random()-.5)*.22);
-  const g=AC.createGain();
-  o.connect(g);g.connect(master!);
-  const t=AC.currentTime;
-  g.gain.setValueAtTime(0,t);
-  g.gain.linearRampToValueAtTime(.045,t+.006);
-  g.gain.exponentialRampToValueAtTime(.001,t+.055);
-  o.start(t);o.stop(t+.07);
-}
-
-function startCutscene(m: CineMission,actor: CineActor,lines: string[],onDone?: () => void){
-  cine.on=true;cine.t=0;cine.lines=lines;cine.li=-1;
-  cine.voice=m.npc.voice;cine.onDone=onDone??null;
-  cine.actor=actor;cine.npcPos=actor.ped.position;
-  state.cine=true;state.dlgActive=true;
-  setTod(.5); // cena sempre ao meio-dia; o relógio fica parado enquanto durar
-  document.body.classList.add('cine');
-  actor.marker.visible=false;
-  // os dois se encaram
-  const pp=playerPos();
-  const dx=actor.ped.position.x-pp.x,dz=actor.ped.position.z-pp.z;
-  player.heading=Math.atan2(dx,dz);player.g.rotation.y=player.heading;
-  actor.ped.rotation.y=Math.atan2(-dx,-dz);
-  // câmera fica do lado em que ela já está, para não atravessar a cena
-  const midx=(pp.x+actor.ped.position.x)/2,midz=(pp.z+actor.ped.position.z)/2;
-  cine.side=((camera.position.x-midx)*dz+(camera.position.z-midz)*-dx)>=0?1:-1;
-  nextLine();
-}
-// Cut-scene genérica para missões FORA do STORY (ex.: a missão secreta do Rick
-// em js/story/rick.ts). Reaproveita toda a máquina de câmera/legendas/voz: passa um
-// "ator" mínimo (ped + marcador fantasma) e a voz; updateCine/advanceCine já
-// rodam pelo updateStory. ped precisa ter userData.limbs/mouth (vale pra buildToonPlayer).
-export function playCutscene(ped: THREE.Object3D,voice: Voice,lines: string[],onDone?: () => void){
-  startCutscene({npc:{voice}},{ped,marker:{visible:false}},lines,onDone);
-}
-
-function nextLine(){
-  cine.li++;
-  if(cine.li>=cine.lines.length)return endCutscene();
-  cine.txt=cine.lines[cine.li];cine.shown=0;cine.charT=0;cine.phase='type';
-  cine.shot=pickShot(cine.li,cine.lines.length);
-  cine.shotT=0;cine.midCut=false;
-  subEl.textContent='';
-  hideHint();
-}
-
-// Avança a cut-scene SÓ por interação do jogador (não corre sozinha):
-//  - se a fala ainda está aparecendo, a 1ª interação revela ela inteira;
-//  - se a fala já está completa, avança pra próxima (ou encerra).
-// Usado tanto no PC (tecla/clique) quanto no celular (toque). Ver input.js.
-export function advanceCine(){
-  if(!cine.on)return false;
-  if(cine.phase==='type'&&cine.shown<cine.txt.length){
-    cine.shown=cine.txt.length;
-    subEl.textContent=cine.txt;
-    cine.phase='hold';
-    showHint();
-    return true;
-  }
-  nextLine();
+function answer(){
+  if(!ringing()||state.mode!=='foot'||state.cine||fpBusy()||MiniGame.busy)return false;
+  const lines=S.stage==='call1'?CALL1:CALL2;
+  const stage=S.stage;
+  S.busy=true;
+  beacon?.dispose();beacon=null;
+  booth.userData.setRinging(false,0);
+  // cut short (wasted/busted mid-reach): the receiver goes back and the phone rings on
+  fpOnAbort(()=>{releaseHeld();hangHandset();S.busy=false;});
+  fpAnswer(handset,standWorld,{onDone:()=>{fpOnAbort(null);startCall(stage,lines);}});
   return true;
 }
-function endCutscene(){
-  cine.on=false;state.cine=false;state.dlgActive=false;
-  document.body.classList.remove('cine');
-  subEl.textContent='';
-  hideHint();
-  // braços e boca de volta ao repouso
-  const l=cine.actor?.ped.userData.limbs;
-  if(l){
-    l.rightArm.rotation.set(0,0,-.12);l.leftArm.rotation.set(0,0,.12);
-    l.rightForearm?.rotation.set(0,0,0);l.leftForearm?.rotation.set(0,0,0);
+
+// Put the receiver back on its hook (and the cord back to rest).
+function hangHandset(){
+  booth.attach(handset);
+  handset.position.copy(booth.userData.hookPos as THREE.Vector3);
+  handset.quaternion.copy(booth.userData.hookQuat as THREE.Quaternion);
+  (booth.userData.span as (a: THREE.Vector3,b: THREE.Vector3)=>void)(booth.userData.cordAnchor as THREE.Vector3,
+    (booth.userData.cordEnd as THREE.Vector3).clone().applyQuaternion(handset.quaternion).add(handset.position));
+}
+
+function startCall(stage: Stage,lines: CineLine[]){
+  // third person: the player stands in the booth facing the phone, receiver at the ear
+  releaseHeld();
+  const p=player.g.position;
+  p.set(standWorld.x,groundHeight(standWorld.x,standWorld.z),standWorld.z);
+  player.heading=BOOTH.ry+Math.PI;player.g.rotation.set(0,player.heading,0);
+  const head=player.g.userData.limbs?.head as THREE.Object3D|undefined;
+  if(head){
+    head.add(handset);
+    // at the (doll's right) ear, mouthpiece tipped toward the mouth, cups against the head
+    handset.position.set(.17,.15,.02);
+    handset.quaternion.setFromEuler(new THREE.Euler(-.45,0,0));
   }
-  const mouth=cine.actor?.ped.userData.mouth;
-  if(mouth){mouth.scale.y=1;mouth.visible=false;}
-  const fn=cine.onDone;cine.onDone=null;fn&&fn();
+  S.onCall=true;setPhoneHands(true);
+  playPhoneCall({booth,lines,voice:BOSS,
+    onFrame:(t,talking)=>{
+      const l=player.g.userData.limbs;
+      if(talking==='player')setTalkPose(player.g,t,true);          // free hand gestures, mouth moves
+      else{
+        setTalkPose(player.g,t,false);
+        if(l?.head)l.head.rotation.x=Math.sin(t*1.3)*.05;             // listening: a slow nod
+      }
+      handset.getWorldPosition(_hw);
+      reachHand(player.g,'right',_hw);                                // the hand holds the receiver
+      layCord();
+    },
+    onDone:()=>endCall(stage)});
 }
 
-// Boca abrindo/fechando e mãos gesticulando enquanto o NPC fala
-function setTalkPose(actor: CineActor | null,t: number,talking: boolean){
-  if(!actor)return;
-  const l=actor.ped.userData.limbs;
-  if(l){
-    if(talking){
-      l.rightArm.rotation.x=-.55+Math.sin(t*2.6)*.4;
-      l.leftArm.rotation.x=-.3+Math.sin(t*1.9+1.4)*.32;
-      l.rightArm.rotation.z=-.28-Math.max(0,Math.sin(t*1.3))*.2;
-      l.leftArm.rotation.z=.18;
-      // cotovelos acompanham o gesto: mão sobe e desce enquanto fala
-      if(l.rightForearm)l.rightForearm.rotation.x=-.5-Math.max(0,Math.sin(t*2.2))*.4;
-      if(l.leftForearm)l.leftForearm.rotation.x=-.3-Math.max(0,Math.sin(t*1.6+.7))*.3;
-    }else{
-      l.rightArm.rotation.x*=.85;l.leftArm.rotation.x*=.85;
-      l.rightArm.rotation.z=-.12;l.leftArm.rotation.z=.12;
-      if(l.rightForearm)l.rightForearm.rotation.x*=.85;
-      if(l.leftForearm)l.leftForearm.rotation.x*=.85;
-    }
-  }
-  const mouth=actor.ped.userData.mouth;
-  if(mouth){mouth.visible=talking;mouth.scale.y=talking?1+Math.abs(Math.sin(t*16))*5:1;}
+function endCall(stage: Stage){
+  S.onCall=false;setPhoneHands(false);
+  const l=player.g.userData.limbs;
+  if(l){l.head.rotation.set(0,0,0);l.rightArm.rotation.set(0,0,-.12);l.rightForearm?.rotation.set(0,0,0);}
+  // back to first person, looking at the phone, and hang up
+  cameraRig.yaw=player.heading;cameraRig.fpPitch=.12;
+  // even if the hang-up clip is cut short, the call happened: move the story on
+  fpOnAbort(()=>{releaseHeld();hangHandset();finishCall(stage);});
+  fpHangUp(handset,hookWorld,{onRelease:hangHandset,onDone:()=>{fpOnAbort(null);finishCall(stage);}});
 }
 
-function updateCine(dt: number){
-  cine.t+=dt;
-  if(cine.phase==='type'){
-    const STEP=.034;
-    cine.charT+=dt;
-    while(cine.charT>=STEP&&cine.shown<cine.txt.length){
-      cine.charT-=STEP;cine.shown++;
-      const ch=cine.txt[cine.shown-1];
-      if(/[a-z0-9]/i.test(ch))voiceTick(cine.voice);
-    }
-    subEl.textContent=cine.txt.slice(0,cine.shown);
-    if(cine.shown>=cine.txt.length){
-      // terminou de aparecer: espera o jogador (não passa mais sozinho)
-      cine.phase='hold';
-      showHint();
-    }
-  }
-  // em 'hold' a cena fica parada até advanceCine() ser chamado por interação
-  setTalkPose(cine.actor,cine.t,cine.phase==='type');
-
-  // fala longa ganha um corte extra no meio, como num filme
-  if(cine.phase==='type'&&!cine.midCut&&cine.txt.length>110
-    &&cine.shown>=cine.txt.length*.55){
-    cine.midCut=true;cine.shotT=0;
-    cine.shot=cine.shot==='close'?'reverse':'close';
-  }
-
-  // câmera do plano atual (corte seco entre planos, dolly lento dentro deles)
-  const pp=playerPos(),np=cine.npcPos!;
-  let dx=np.x-pp.x,dz=np.z-pp.z;
-  const gap=Math.max(2,Math.hypot(dx,dz));dx/=gap;dz/=gap;
-  const px=dz*cine.side,pz=-dx*cine.side;
-  cine.shotT+=dt;
-  const push=Math.min(.5,cine.shotT*.05); // aproximação sutil dentro do plano
-  let cx,cy,cz,lx,ly,lz,fov;
-  if(cine.shot==='close'){           // ombro do jogador, fechado no NPC
-    cx=pp.x-dx*(1.15-push*.6)+px*.8;
-    cz=pp.z-dz*(1.15-push*.6)+pz*.8;
-    cy=groundHeight(cx,cz)+1.62;
-    lx=np.x;ly=np.y+1.5;lz=np.z;fov=34;
-  }else if(cine.shot==='reverse'){   // contraplano: reação do jogador
-    cx=np.x+dx*(1.15-push*.6)+px*.8;
-    cz=np.z+dz*(1.15-push*.6)+pz*.8;
-    cy=groundHeight(cx,cz)+1.62;
-    lx=pp.x;ly=pp.y+1.5;lz=pp.z;fov=34;
-  }else{                             // wide: plano aberto lateral dos dois
-    const midx=(pp.x+np.x)/2,midz=(pp.z+np.z)/2;
-    const dist=Math.max(5.2,gap*1.7)-push*1.6;
-    const drift=Math.sin(cine.t*.25)*1.1;
-    cx=midx+px*dist+dx*drift;
-    cz=midz+pz*dist+dz*drift;
-    cy=Math.max(groundHeight(midx,midz),groundHeight(cx,cz))+1.7;
-    lx=midx;ly=groundHeight(midx,midz)+1.25;lz=midz;fov=44;
-  }
-  camera.position.set(cx,cy,cz);
-  camera.fov=fov;
-  camera.updateProjectionMatrix();
-  camera.lookAt(lx,ly,lz);
-}
-
-// ---------------------------------------------------------------------------
-// Telas: MISSION PASSED e fim do prólogo
-// ---------------------------------------------------------------------------
-function showMissionPass(m: Mission,after?: () => void){
-  const el=document.getElementById('missionpass') as HTMLElement;
-  (document.getElementById('mp-mission') as HTMLElement).textContent=m.title;
-  (document.getElementById('mp-respect') as HTMLElement).textContent='▲ RESPECT WITH '+m.npc.name;
-  el.style.display='flex';
-  setTimeout(()=>(document.getElementById('mp-bar-fill') as HTMLElement).style.width='78%',60);
-  blip([392,523,659,784,1047,1319],.10,'sine',.20);
-  setTimeout(()=>{
-    el.style.display='none';
-    (document.getElementById('mp-bar-fill') as HTMLElement).style.width='0';
-    after&&after();
-  },5600);
-}
-
-function showPrologueEnd(){
-  const el=document.getElementById('prologue-end') as HTMLElement;
-  el.classList.add('show');
-  blip([523,659,784,1047,1319,1568],.12,'sine',.2);
-  setTimeout(()=>el.classList.remove('show'),14000);
-}
-
-// ---------------------------------------------------------------------------
-// Motor da missão
-// ---------------------------------------------------------------------------
-function spawnItem(m: Mission){
-  const obj=m.objective as FetchObjective;
-  const gh=groundHeight(S.spot!.x,S.spot!.z);
-  S.itemMesh=makeStoryItem(obj.item);
-  S.itemMesh.position.set(S.spot!.x,gh+.75,S.spot!.z);
-  S.itemMesh.userData.baseY=gh+.75;
-  scene.add(S.itemMesh);
-  S.beacon=new Beacon(obj.beacon).at(S.spot!.x,S.spot!.z,gh).mount();
-}
-
-// Missão de assassinato: o alvo é o NPC de outra missão (referência por id)
-function armKillTarget(m: Mission){
-  const obj=m.objective as KillObjective;
-  const i=STORY.missions.findIndex(x=>x.id===obj.target);
-  S.target=actors[i];S.targetNpc=STORY.missions[i].npc;
-  S.beacon=new Beacon(0xff2e88).at(S.targetNpc.x,S.targetNpc.z).mount();
-}
-
-function killTarget(){
-  if(!S.target||S.target.dead||S.phase!=='active')return;
-  const m=cm(),p=S.target.ped.position;
-  S.target.dead=true;
-  S.target.ped.rotation.x=-Math.PI/2; // cai no chão
-  p.y=.2;
-  addBloodPuddle(p.x,p.z);
-  thud(14);
-  if(S.beacon){S.beacon.dispose();S.beacon=null;}
-  S.phase='completing';
-  if(m.reward)economy.earn(m.reward,'story');
-  message(m.foundMsg,'var(--pink)');
-  setTimeout(()=>showMissionPass(m,advance),1400);
-}
-
-// Alvos da história que podem tomar tiro (weapons.js consulta via refs)
-export function storyTargets(){
-  if(S.idx>=STORY.missions.length||S.phase!=='active')return[];
-  if(cm().objective.type!=='kill'||!S.target||S.target.dead)return[];
-  return[{g:S.target.ped,kill:killTarget}];
-}
-
-function advance(){
-  S.idx++;S.spot=null;S.target=null;S.targetNpc=null;
-  if(S.idx>=STORY.missions.length){S.phase='over';showPrologueEnd();return;}
-  S.phase='available';
-  ca().marker.visible=true;
-  message(cm().unlockMsg,cm().npc.css);
-}
-
-export function storyNear(){
-  if(state.mode!=='foot'||state.cine)return null;
-  if(S.idx>=STORY.missions.length)return null;
-  if(S.phase!=='available'&&S.phase!=='returning')return null;
-  const m=cm(),pp=playerPos();
-  return Math.hypot(pp.x-m.npc.x,pp.z-m.npc.z)<3.5?m.npc.name:null;
-}
-
-export function storyInteract(){
-  if(state.dlgActive||state.mode!=='foot'||!storyNear())return false;
-  const m=cm(),a=ca();
-  if(S.phase==='available'){
-    const obj=m.objective;
-    if(obj.type==='fetch')
-      S.spot=obj.spot==='farPark'?farParkSpot(m.npc.x,m.npc.z):rollRandomSpot();
-    startCutscene(m,a,fillLines(m.intro,S.spot),()=>{
-      if(obj.type==='fetch')spawnItem(m);
-      else armKillTarget(m);
-      S.phase='active';
-      message(m.startMsg,m.npc.css);
+// What the call set in motion.
+function finishCall(stage: Stage){
+  S.busy=false;
+  if(stage==='call1'){
+    enterStage('camp');
+    message('WIPE OUT THE REDNECK CAMP - FOLLOW THE RED MARKER','#ff3b56');
+  }else{
+    economy.earn(REWARD_AUDITION,'story');
+    showMissionPass('THE AUDITION','+$'+REWARD_AUDITION.toLocaleString('en-US')+'   ▲ RESPECT WITH THE BOSS',()=>{
+      message('BURY THE SIX BODIES AT THE CAMP','var(--cream)');
     });
-    return true;
+    enterStage('burial');
   }
-  if(S.phase==='returning'){
-    S.phase='completing';
-    startCutscene(m,a,fillLines(m.outro,S.spot),()=>{
-      if(m.reward)economy.earn(m.reward,'story');
-      showMissionPass(m,advance);
-    });
-    return true;
-  }
-  return false;
+  save();
 }
 
-// Blips do radar: NPC da missão atual (piscando rosa na volta), o item da
-// busca ou o alvo do assassinato (piscando vermelho)
-export function storyBlips(){
-  if(S.idx>=STORY.missions.length)return[];
-  const m=cm();
-  if(S.phase==='active'&&m.objective.type==='kill'&&S.target&&!S.target.dead){
-    const p=S.target.ped.position;
-    return[{x:p.x,z:p.z,col:'#ff2e88',letter:S.targetNpc!.letter}];
+// ---- interaction (E) ---------------------------------------------------------------
+const nearBooth=()=>{const pp=playerPos();return Math.hypot(pp.x-standWorld.x,pp.z-standWorld.z)<1.9;};
+
+export function storyAction(): {label: string;prompt: string;enabled: boolean;run?: () => void}|null{
+  if(state.mode!=='foot'||state.cine||state.dlgActive||S.busy||fpBusy())return null;
+  if(ringing()&&nearBooth()){
+    if(MiniGame.busy)return{label:'...',prompt:'FINISH WHAT YOU\'RE DOING FIRST',enabled:false};
+    return{label:'PHONE',prompt:'ANSWER THE PHONE',enabled:true,run:answer};
   }
-  if(S.phase==='active'&&S.spot)
-    return[{x:S.spot.x,z:S.spot.z,col:m.npc.css}];
-  if(S.phase==='available'||S.phase==='returning'){
-    if(S.phase==='returning'&&Math.floor(state.time*4)%2!==0)return[];
-    return[{x:m.npc.x,z:m.npc.z,letter:m.npc.letter,
-      col:S.phase==='returning'?'#ff2e88':m.npc.css}];
-  }
-  return[];
+  if(S.stage==='burial')return burialAction();
+  return null;
 }
-
-// Seta de navegação 3D sobre o jogador apontando para o objetivo atual da
-// história (NPC quando disponível/retorno, item ou alvo quando a missão roda)
-const {arrow:storyArrow,material:navMat}=makeStoryArrow();
-storyArrow.visible=false;scene.add(storyArrow);
-
-// Para onde a missão atual aponta agora (null = sem objetivo na tela)
-function storyGoal(): {x: number; z: number; col: string} | null{
-  if(S.idx>=STORY.missions.length)return null;
-  const m=cm();
-  if(S.phase==='available'||S.phase==='returning')
-    return{x:m.npc.x,z:m.npc.z,col:S.phase==='returning'?'#ff2e88':m.npc.css};
-  if(S.phase==='active'){
-    if(m.objective.type==='kill')
-      return S.target&&!S.target.dead
-        ?{x:S.target.ped.position.x,z:S.target.ped.position.z,col:'#ff2e88'}:null;
-    if(S.spot)return{x:S.spot.x,z:S.spot.z,col:m.npc.css};
-  }
+export function storyInteract(): boolean{
+  const a=storyAction();
+  if(!a||!a.enabled||!a.run)return false;
+  a.run();
+  return true;
+}
+// The line shown when a run starts (what to do next).
+export function storyHint(): string|null{
+  if(S.stage==='call1')return 'A PAY PHONE IS RINGING NEARBY - FOLLOW THE PHONE ICON';
+  if(S.stage==='camp')return 'WIPE OUT THE REDNECK CAMP';
+  if(S.stage==='call2')return 'THE PAY PHONE IS RINGING - GO ANSWER IT';
+  if(S.stage==='burial')return 'BURY THE BODIES AT THE CAMP';
   return null;
 }
 
-// Objetivo do MINI GAME em curso (tem prioridade sobre a história): a seta 3D
-// passa a apontar EXATAMENTE pro alvo do mini game enquanto a sessão roda.
-//   - táxi/vigilante/paramédico/bombeiro/RC: o alvo atual (passageiro, fugitivo,
-//     ferido, incêndio, carro a destruir) — via MiniGame.activeBlips();
-//   - corrida/lanchas: o checkpoint/boia atual — via refs.raceBlips/boatRaceBlips.
-function miniGameGoal(): {x: number; z: number; col: string} | null{
+// ---- radar / map / navigation ----------------------------------------------------
+// The current objective, drawn BIG on the radar and the map (hud.ts `big`).
+interface StoryBlip{x: number;z: number;icon: string;color: string;label: string;big: true;}
+export function storyBlips(): StoryBlip[]{
+  if(S.onCall)return[];
+  if(ringing())return[{x:BOOTH.x,z:BOOTH.z,icon:'phone',color:'#ffd24a',label:'PAY PHONE',big:true}];
+  if(S.stage==='camp')return[{x:CAMP.x,z:CAMP.z,icon:'target',color:'#ff3b56',label:'REDNECK CAMP',big:true}];
+  if(S.stage==='burial'){
+    const g=burialGoal();
+    if(g)return[{x:g.x,z:g.z,icon:'shovel',color:'#d9a06b',label:g.kind==='shovel'?'SHOVEL':'BURY',big:true}];
+  }
+  return[];
+}
+function storyGoal(): {x: number;z: number;col: string}|null{
+  const b=storyBlips()[0];
+  return b?{x:b.x,z:b.z,col:b.color}:null;
+}
+// A running mini-game takes over the arrow (its current target).
+function miniGameGoal(): {x: number;z: number;col: string}|null{
   if(!state.activeMiniGame)return null;
   const targets=MiniGame.activeBlips?.()||[];
   const t=targets.find((b: any)=>b.current)||targets[0];
   if(t)return{x:t.x,z:t.z,col:t.color||'#ffd24a'};
-  // corridas não expõem blips pela base (desenham o próprio percurso): usa o
-  // checkpoint atual marcado com current:true
   const rb=[...(refs.raceBlips?.()||[]),...(refs.boatRaceBlips?.()||[])];
   const cp=rb.find((b: any)=>b.current);
   if(cp)return{x:cp.x,z:cp.z,col:'#ff8a1e'};
   return null;
 }
+// 3D navigation arrow floating over the player, pointing at the current objective.
+const {arrow:navArrow,material:navMat}=makeStoryArrow();
+navArrow.visible=false;scene.add(navArrow);
 
+// ---- per-frame ---------------------------------------------------------------------
+const RING_EVERY=3.4, RING_HEAR=60;
+/** BEFORE the camera update (hand clips turn the view). */
+export function updateStoryPre(dt: number){updateStoryFocus(dt);}
+
+/** AFTER the camera update (the cut-scene owns the camera). */
 export function updateStory(dt: number){
-  if(cine.on)updateCine(dt);
-  // em ambiente interno a seta 3D de missão não aparece (o objetivo é na cidade).
-  // Dentro de um mini game ela aponta pro objetivo do mini game (prioridade);
-  // fora dele, pro objetivo da história.
-  const goal=state.started&&!state.cine&&!state.interior
-    ?(miniGameGoal()||storyGoal()):null;
-  storyArrow.visible=!!goal;
+  updateCutscene(dt);
+  updateStoryHands(dt);
+  updateCamp(dt);
+  updateBurial();
+  if(fpBusy()||S.onCall)layCord();
+  const pp=playerPos();
+  // the booth rings: bell bursts heard louder as you get close, sign flashing,
+  // receiver rattling on its hook, a light column over it
+  if(ringing()&&state.started){
+    if(!beacon)beacon=new Beacon(0xffd24a).at(BOOTH.x,BOOTH.z).mount();
+    const d=Math.hypot(pp.x-BOOTH.x,pp.z-BOOTH.z);
+    S.ringT-=dt;
+    const burst=S.ringT>RING_EVERY-1.05;
+    if(S.ringT<=0){
+      S.ringT=RING_EVERY;
+      if(!state.interior&&!state.paused&&d<RING_HEAR)phoneRing(Math.pow(1-d/RING_HEAR,1.6));
+    }
+    booth.userData.setRinging(burst,state.time);
+    if(handset.parent===booth){
+      const hq=booth.userData.hookQuat as THREE.Quaternion;
+      handset.quaternion.copy(hq);
+      if(burst)handset.rotateZ(Math.sin(state.time*48)*.05);
+    }
+  }else if(beacon){beacon.dispose();beacon=null;booth.userData.setRinging(false,0);}
+  // once the story is over, the empty camp packs up when nobody is watching
+  if(S.stage==='done'&&campBuilt()&&Math.hypot(pp.x-CAMP.x,pp.z-CAMP.z)>150)removeCamp();
+  // navigation arrow
+  const goal=state.started&&!state.cine&&!state.interior?(miniGameGoal()||storyGoal()):null;
+  navArrow.visible=!!goal;
   if(goal){
-    const pp=playerPos();
-    storyArrow.position.set(pp.x,5.4+Math.sin(state.time*3)*.25,pp.z);
-    storyArrow.lookAt(goal.x,storyArrow.position.y,goal.z);
+    navArrow.position.set(pp.x,5.4+Math.sin(state.time*3)*.25,pp.z);
+    navArrow.lookAt(goal.x,navArrow.position.y,goal.z);
     navMat.color.set(goal.col);
   }
-  const a=S.idx<actors.length?ca():null;
-  if(a&&a.marker.visible){
-    a.marker.position.y=3.6+Math.sin(state.time*2.8+a.phase)*.2;
-    a.marker.rotation.y+=dt*1.9;
-    a.mat.color.setHex(S.phase==='returning'
-      ?(Math.floor(state.time*4)%2?0xff2e88:cm().npc.color):cm().npc.color);
+}
+
+// ---- save ------------------------------------------------------------------------
+function collect(): StorySave{
+  const bodies=(S.stage==='call2'||S.stage==='burial')&&campBuilt()
+    ?campers.map(c=>c.buried?null:{x:+c.g.position.x.toFixed(2),z:+c.g.position.z.toFixed(2)}):[];
+  return{stage:S.stage,bodies,graves:graveRecords()};
+}
+// Restore a saved stage. The fresh boot is always at call1 with nothing built, so this
+// resets whatever exists and rebuilds the world for the saved stage.
+function restore(raw: unknown){
+  const s=sanitizeStorySave(raw,CAMP_SIZE);
+  if(!s)return;
+  if(S.busy||S.onCall)return;
+  removeCamp();stopBurial();clearGraves();
+  S.stage='call1';
+  if(s.stage!=='call1')enterStage(s.stage,s);
+}
+refs.getStorySave=collect;
+refs.restoreStory=restore;
+refs.storyAction=storyAction;
+refs.storyBlips=storyBlips;
+
+// ---- debug snapshot + test hook ------------------------------------------------------
+export function getStoryState(){
+  return{stage:S.stage,busy:S.busy,onCall:S.onCall,ringing:ringing(),cine:cineActive(),
+    booth:{x:BOOTH.x,z:BOOTH.z,stand:{x:+standWorld.x.toFixed(2),z:+standWorld.z.toFixed(2)}},
+    camp:{built:campBuilt(),alive:campAlive(),alarmed:campAlarmed(),x:CAMP.x,z:CAMP.z},
+    burial:burialState()};
+}
+refs.getStoryState=getStoryState;
+// __test.story(cmd): 'state' | 'stage:<name>' (jump there, as if loaded from a save) |
+// 'killCamp' | 'skipCine' (run through the current call) | 'toBooth' | 'toCamp'.
+export function storyTest(cmd: string): unknown{
+  if(cmd.startsWith('stage:')){
+    const st=cmd.slice(6) as Stage;
+    if(!STAGES.includes(st))return 'bad stage';
+    restore({stage:st,bodies:[],graves:[]});
+  }else if(cmd==='killCamp')killAllCampers();
+  else if(cmd==='skipCine'){for(let i=0;i<60&&cineActive();i++){advanceCine();advanceCine();}}
+  else if(cmd==='toBooth'||cmd==='toCamp'){
+    if(state.mode!=='foot')return 'not on foot';
+    const x=cmd==='toBooth'?standWorld.x-2.2:CAMP.x-4,z=cmd==='toBooth'?standWorld.z:CAMP.z-30;
+    player.g.position.set(x,groundHeight(x,z),z);
+    const fx=cmd==='toBooth'?phoneWorld.x:CAMP.x,fz=cmd==='toBooth'?phoneWorld.z:CAMP.z;
+    player.heading=cameraRig.yaw=Math.atan2(fx-x,fz-z);cameraRig.fpPitch=.05;
   }
-  if(S.itemMesh){
-    S.itemMesh.rotation.y+=dt*2;
-    S.itemMesh.position.y=S.itemMesh.userData.baseY+Math.sin(state.time*3.2)*.18;
-  }
-  if(state.dlgActive||state.cine||state.mode==='cut')return;
-  if(S.phase==='active'&&S.itemMesh){
-    const pp=playerPos();
-    if(Math.hypot(pp.x-S.spot!.x,pp.z-S.spot!.z)<2.4){
-      scene.remove(S.itemMesh);S.beacon!.dispose();S.itemMesh=null;S.beacon=null;
-      S.phase='returning';
-      a!.marker.visible=true;
-      message(cm().foundMsg,'var(--pink)');
-      blip([660,880,1100],.09,'sine',.18);
-    }
-  }
-  // assassinato: tiro chega via storyTargets/weapons; atropelamento conta aqui
-  if(S.phase==='active'&&cm().objective.type==='kill'&&S.target&&!S.target.dead
-    &&state.mode==='car'){
-    const c=refs.getCur?.();
-    if(c&&Math.abs(c.speed)>8){
-      const p=S.target.ped.position;
-      if(Math.hypot(c.g.position.x-p.x,c.g.position.z-p.z)<2.4)killTarget();
-    }
-  }
+  return getStoryState();
 }

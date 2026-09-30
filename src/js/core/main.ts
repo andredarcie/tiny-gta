@@ -36,7 +36,7 @@ import {updateBombShop} from '@/activities/bomb-shop.ts';             // Open-wo
 import {updateRcToyz} from '@/activities/rc-toyz.ts';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: as 12 armas escondidas pelo mapa
 import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
-import {updateStory,storyNear,storyBlips,storyTargets} from '@/story/story.ts';
+import {updateStory,updateStoryPre,storyTest} from '@/story/story.ts'; // pay-phone mission chain (wires its own refs)
 import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
 import {blinkBar} from '@/core/entities.ts';
 import {preloadNature} from '../../assets/models/nature/kit.ts';
@@ -107,6 +107,7 @@ declare global {
       setHealth: (hp: number) => number;
       vmArms: () => {x: number; y: number; z: number; visible: boolean};
       farm: (cmd: string) => unknown;
+      story: (cmd: string) => unknown;
       audioStart: () => Promise<number>;
       audioStop: () => Promise<string>;
       music: (i: number) => boolean;
@@ -249,9 +250,6 @@ refs.interiorBlips=()=>interiors
   .filter(it=>it.mapIcon&&it.door)
   .map(it=>({x:it.door!.x,z:it.door!.z,...it.mapIcon}));
 refs.getDelivery=()=>delivery;
-refs.storyNear=storyNear;
-refs.storyBlips=storyBlips;
-refs.storyTargets=storyTargets;
 refs.rickNear=rickNear;         // HUD mostra TALK TO RICK no acampamento secreto
 refs.rickInteract=rickInteract; // performInteract abre a cut-scene do Rick
 refs.getRickState=getRickState; // snapshot de debug da missão secreta
@@ -420,12 +418,13 @@ function step(dt: number){
   for(const c of idleCars)blinkBar(c.g);
   P.end();
 
+  updateStoryPre(dt); // story hand clips turn the view (before the camera)
   P.begin('camera');updateCamera(dt);updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
-  updateStory(dt); // depois da câmera: em cut-scene a câmera é da história
-  updateRick(dt);  // missão secreta do Rick: fogueira + caça aos doentes (usa a cut-scene da história)
+  updateStory(dt); // after the camera: a cut-scene owns the camera
+  updateRick(dt);  // Rick's secret mission: campfire + the sicko hunt (uses the story cut-scene)
   P.end();
   P.begin('hud');updateHUD(dt);P.end();
   P.begin('audio');updateAudio();P.end();
@@ -579,6 +578,7 @@ window.render_game_to_text=()=>{
     house:refs.getHouseState?.()||null,
     houseTv:refs.getHouseTvState?.()||null,
     rick:refs.getRickState?.()||null,
+    story:refs.getStoryState?.()||null,
   });
 };
 // Test/debug hook (same spirit as advanceTime / render_game_to_text): lets the
@@ -642,6 +642,7 @@ window.__test={
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
   vmArms:()=>viewmodelArms(), // FP arms' camera-space offset (arm-motion test)
   farm:(cmd: string)=>refs.farmTest?.(cmd), // weed farm: 'stock' | 'ripen' | 'thirsty' | 'cure' -> state
+  story:(cmd: string)=>storyTest(cmd), // story: 'state' | 'stage:<name>' | 'killCamp' | 'skipCine' | 'toBooth' | 'toCamp'
   // Gore test: dismember the nearest living outdoor NPC ('head'|'arm'|'leg'|'gib'),
   // first placing the player 5 m away facing it so the result is on screen. Returns what
   // it did (or null) — lets the harness exercise the gore layer directly.

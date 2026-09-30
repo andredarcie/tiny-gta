@@ -6,7 +6,7 @@ import {playerPos} from '@/actors/player.ts';
 import {solids} from '@/world/world.ts';
 import {message} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
-import {playCutscene} from '@/story/story.ts';
+import {playCutscene} from '@/story/cutscene.ts';
 import {buildRick} from '../../assets/models/characters/rick.ts';
 import campfire from '../../assets/models/rural/campfire.ts';
 import tent from '../../assets/models/rural/tent.ts';
@@ -22,7 +22,8 @@ import type * as THREE from 'three';
 // lado OPOSTO à casa de campo, que fica em z=-80). Rick é um eremita hippie que
 // pede pra caçar os "doentes da floresta": criaturinhas verdes escondidas pela
 // zona rural. SEM blip no mapa, SEM seta de navegação — é procurar de verdade.
-// Tudo aqui é separado do STORY (js/story/story.ts): só reaprovamos a cut-scene.
+// Everything here is separate from the story (js/story/story.ts): only the cut-scene
+// engine (js/story/cutscene.ts) is reused.
 // ============================================================================
 const CAMP={x:474,z:62};       // centro do acampamento, no sopé sul da montanha
 const TOTAL=5;                  // doentes a caçar

@@ -5,7 +5,7 @@
 // county jail. But if they're caught wearing the weed DELIVERY BACKPACK, jail is
 // the wrong outcome: a bent cop hauls them out to the middle of the rural woods,
 // runs a full story-style cut-scene (cinema bars, scripted camera, typed
-// dialogue — see js/story/story.ts playCutscene), and lets them walk for a bribe. The
+// dialogue — see js/story/cutscene.ts playCutscene), and lets them walk for a bribe. The
 // stash is seized either way. No booking happens, so weapons are NOT confiscated.
 //
 // Wired in via refs (refs.isCarryingDrugs / refs.startDrugBust) so player.js
@@ -14,7 +14,7 @@
 import {state,refs} from '@/core/state.ts';
 import {NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {player} from '@/actors/player.ts';
-import {playCutscene} from '@/story/story.ts';
+import {playCutscene} from '@/story/cutscene.ts';
 import {makePed} from '@/core/entities.ts';
 import {Npc} from '@/actors/npc.ts';
 import {economy} from '@/core/economy.ts';

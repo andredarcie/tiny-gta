@@ -547,6 +547,9 @@ body.cine #cine-top,body.cine #cine-bottom{transform:none}
   text-shadow:2px 2px 2px #000,-1px -1px 1px #000,0 0 10px rgba(0,0,0,.9);
   opacity:0;transition:opacity .3s}
 body.cine #cine-sub{opacity:1}
+/* speaker tag above the subtitle line (THE BOSS / YOU) */
+#cine-sub .who{display:block;margin-bottom:6px;font-weight:700;font-size:.62em;letter-spacing:.14em;color:var(--gold)}
+#cine-sub .who:empty{display:none}
 body.cine #hud,body.cine #touch-controls,body.cine #weedhud{display:none!important}
 
 /* Faixa do modo OVERKILL: aparece no topo enquanto o modo está ligado */

@@ -2,7 +2,8 @@ import {state,keys,input,refs} from '@/core/state.ts';
 import {initAudio,AC} from '@/audio/audio.ts';
 import {radioSwitch} from '@/ui/radio.ts';
 import {enterCar,exitCar,cur,player,cameraRig,applyMouseLook} from '@/actors/player.ts';
-import {storyInteract,advanceCine} from '@/story/story.ts';
+import {storyInteract,storyHint} from '@/story/story.ts';
+import {advanceCine} from '@/story/cutscene.ts';
 import {gymTrain} from '@/places/gym.ts';
 import {gymGameActive,gymGamePress,closeGymGame} from '@/places/gym-game.ts';
 import {clubDance} from '@/places/club.ts';
@@ -138,6 +139,7 @@ export function performInteract(): void {
   if(state.dlgActive)return; // cut-scene: legendas correm sozinhas
   if(isBlocked())return;
   if(state.mode==='foot'){
+    if(refs.storyFpLock?.())return; // a story hand clip (phone / shovel) is playing
     if(canPickWeapon()){pickupWeapon();return;}
     if(houseEat())return;  // comer da geladeira dentro de casa (cura)
     if(houseBuy())return;  // comprar a casa de campo (perto da placa FOR SALE)
@@ -149,7 +151,7 @@ export function performInteract(): void {
     // num mini game não dá pra começar outro (um por vez): overkill e zonas travados
     if(!MiniGame.busy&&startOverkill())return; // liga o modo overkill (perto do totem)
     if(refs.rickInteract?.())return; // missão secreta do Rick no acampamento rural
-    if(storyInteract())return;
+    if(storyInteract())return;       // story: answer the pay phone / take the shovel / bury a body
     if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a&&a.run){a.run();return;}} // minigames de zona (chão)
     enterCar();
   }else if(state.mode==='car'){
@@ -187,7 +189,7 @@ export function startGameFromUserGesture(opts: {mobile?: boolean}={}): void {
     orient?.catch?.(()=>{});
   }else lockPointer();
   setMissionHUD();
-  message(mobile?'TAKE THE PINK CAR':'TAKE THE PINK CAR - PRESS E','var(--gold)');
+  message(storyHint()||(mobile?'TAKE THE PINK CAR':'TAKE THE PINK CAR - PRESS E'),'var(--gold)');
 }
 
 const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').matches;
@@ -203,7 +205,10 @@ function beginRun(): void {
   const save=loadLocalSave();
   if(save){
     applySave(save);
-    if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
+    // the restored story may be further along: say what to do next (or welcome back)
+    const hint=storyHint();
+    if(hint)message(hint,'var(--gold)');
+    else if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
   }
   startLocalSave();
 }

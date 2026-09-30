@@ -141,6 +141,7 @@ export interface SaveBlob {
   daily: unknown;
   farm: unknown;
   clothing?: unknown;
+  story?: unknown;
 }
 
 // ---- HUD / world registries ------------------------------------------------

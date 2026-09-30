@@ -56,8 +56,9 @@ export const KNOWN = new Set<string>([
   // main.ts core late-binding
   'playerPos','getCur','getPlayerHeading','getRadarHeading','isWasted','traffic','cops',
   'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','spawnBlood','severHead','severArm','severLeg','gibNpc','maimRandom','addBloodPool','gangs','setGangsHidden',
-  'interiorBlips','getDelivery','storyNear','storyBlips','storyTargets','rickNear',
-  'rickInteract','getRickState',
+  'interiorBlips','getDelivery','rickNear','rickInteract','getRickState',
+  // story (js/story/story.ts + story-fp.ts)
+  'storyAction','storyBlips','getStoryState','getStorySave','restoreStory','storyHandsActive','storyFpLock',
   'getBusted','getWasted','getHeli','nearestCar',
   'canPickWeapon','isWeaponHeld','canAttack','switchWeapon','selectWeaponSlot',
   'getWeaponHud','confiscateWeapon','gymTrainState','clubDanceState','modShopState',

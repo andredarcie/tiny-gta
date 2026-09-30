@@ -279,6 +279,59 @@ export function raceSiren(){
   o.start(t0);o.stop(t+.1);
 }
 
+// Pay-phone bell: one "brrring-brrring" burst — two mixed tones (the classic 440+480 Hz
+// ring) chopped by a fast tremolo like a hammer on a bell, in two pulses. `vol` is the
+// distance-scaled loudness (0..1); the story calls it every few seconds while it rings.
+export function phoneRing(vol=1){
+  if(!AC||!master||vol<=.005)return;
+  const t0=AC.currentTime;
+  const out=AC.createGain();out.gain.value=Math.min(1,vol)*.16;out.connect(master);
+  // tones → tremolo (gain .5 ± .5 from a square LFO = the hammer) → on/off envelope
+  const trem=AC.createOscillator();trem.type='square';trem.frequency.value=22;
+  const tremDepth=AC.createGain();tremDepth.gain.value=.5;
+  const tremG=AC.createGain();tremG.gain.value=.5;
+  trem.connect(tremDepth);tremDepth.connect(tremG.gain);
+  const env=AC.createGain();env.gain.value=0;
+  tremG.connect(env);env.connect(out);
+  for(const f of[440,480,1320]){
+    const o=AC.createOscillator();o.type=f>1000?'sine':'triangle';o.frequency.value=f;
+    const g=AC.createGain();g.gain.value=f>1000?.25:.5;
+    o.connect(g).connect(tremG);o.start(t0);o.stop(t0+1.3);
+  }
+  for(const[a,b]of[[0,.42],[.62,1.04]]){                 // brrring ... brrring
+    env.gain.setValueAtTime(0,t0+a);env.gain.linearRampToValueAtTime(1,t0+a+.02);
+    env.gain.setValueAtTime(1,t0+b-.03);env.gain.linearRampToValueAtTime(0,t0+b);
+  }
+  trem.start(t0);trem.stop(t0+1.3);
+}
+
+// The receiver lifted off / dropped on the hook: a short plastic clack.
+export function phoneClick(down=false){
+  if(!AC||!master)return;
+  const t0=AC.currentTime;
+  const len=Math.floor(AC.sampleRate*.05);
+  const b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,3);
+  const src=AC.createBufferSource();src.buffer=b;
+  const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=down?900:1500;f.Q.value=2;
+  const g=AC.createGain();g.gain.value=.35;
+  src.connect(f).connect(g).connect(master);src.start(t0);
+}
+
+// A shovel biting into soil (scoop) or a load of dirt landing (land): filtered noise.
+export function dirtSound(kind:'scoop'|'land'='scoop',vol=1){
+  if(!AC||!master)return;
+  const t0=AC.currentTime,dur=kind==='scoop'?.22:.3;
+  const len=Math.floor(AC.sampleRate*dur);
+  const b=AC.createBuffer(1,len,AC.sampleRate),d=b.getChannelData(0);
+  for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,kind==='scoop'?1.5:2.2)*(kind==='scoop'&&Math.random()<.04?2:1);
+  const src=AC.createBufferSource();src.buffer=b;
+  const f=AC.createBiquadFilter();
+  f.type=kind==='scoop'?'bandpass':'lowpass';f.frequency.value=kind==='scoop'?1400:520;f.Q.value=.8;
+  const g=AC.createGain();g.gain.value=(kind==='scoop'?.22:.32)*vol;
+  src.connect(f).connect(g).connect(master);src.start(t0);
+}
+
 export function blip(freqs:number[],dur=.09,type:OscillatorType='sine',vol=.18){
   if(!AC)return;
   freqs.forEach((fr,k)=>{

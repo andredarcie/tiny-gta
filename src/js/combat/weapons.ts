@@ -241,11 +241,15 @@ let meleeAnim: MeleeAnim|null=null,punchSide=1;
 const meleeTrails: MeleeTrailFx[]=[];
 document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ ARSENAL');
 
+// The hands are busy with something else (the weed farm's bucket/plant, or the story's
+// receiver/shovel): the weapon is put away and can't be fired.
+const handsBusy=():boolean=>!!(refs.farmHandsActive?.()||refs.storyHandsActive?.());
+
 // Mira/crosshair só pra armas de pontaria (fogo, pesadas, arremesso); punho e
 // detonador atacam sem retículo. O rampage da lança-foguetes também conta como armado.
 export function isWeaponHeld(){
   if(state.mode!=='foot'||state.swimming)return false; // nadando não se empunha arma
-  if(refs.farmHandsActive?.())return false;             // hands busy on the weed farm (bucket/plant)
+  if(handsBusy())return false;             // hands busy (weed farm bucket/plant, story receiver/shovel)
   return rampage.active||(curWeapon.aimed&&state.weaponHeld);
 }
 
@@ -828,7 +832,6 @@ function resolveMeleeImpact(a: MeleeAnim){
     // a lethal bat swing caves the head clean off, or tears a limb away
     if(wasAlive&&npc.dead){if(Math.random()<.6)refs.severHead?.(npc,dir);else refs.maimRandom?.(npc,dir);}
   }
-  else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
   else if(hit.kind==='car'){dentCar(hit.target.g,pos,dir,a.kind==='bat' ? .18 : .1);addWanted(.4,'MELEE ATTACK','melee');}
@@ -920,10 +923,6 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
     if(n.dead)continue;
     const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
     if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
-  }
-  for(const t of refs.storyTargets?.()||[]){ // alvo de missão de assassinato
-    const d=rayHitXZ(origin,dir,t.g.position,1.05,range);
-    if(d!==null&&d<best.d)best={kind:'story',d,target:t};
   }
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
@@ -1092,7 +1091,6 @@ function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,da
       else if(Math.random()<.35)refs.maimRandom?.(npc,dir);
     }
   }
-  else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
@@ -1132,7 +1130,6 @@ function missileBlast(pos: THREE.Vector3,hit: WeaponHit|null){
     blastDamage(pos);
     if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
   }
-  if(hit&&hit.kind==='story')hit.target.kill();
   state.shake=Math.max(state.shake,.4);
 }
 
@@ -1281,7 +1278,7 @@ const api: WeaponApi={
 
 export function shootWeapon(){
   if(state.mode!=='foot'||state.swimming)return; // sem disparo dentro d'água
-  if(refs.farmHandsActive?.())return;             // hands full on the weed farm: no shooting/punching
+  if(handsBusy())return;             // hands full (weed farm / story): no shooting/punching
   if(rampage.active)return fireMissile();
   curWeapon.tryFire(api);
 }
@@ -1338,7 +1335,6 @@ function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: 
 function aimAssistError(px: number,pz: number,py: number,yaw: number): number|null{
   _assist.best=null;_assist.bestErr=ASSIST_CONE;
   for(const n of npcs)if(!n.dead)considerAssistTarget(n,px,pz,py,yaw); // peds+gang+officers+rural
-  for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   return _assist.best;
 }
@@ -1391,7 +1387,7 @@ export function updateWeapons(dt: number){
   // When a holstered firearm is hidden no body pose runs, so animatePed (called every frame
   // in updateFoot) keeps the arms in the normal walk cycle.
   // weed farm: while the farm hands hold a bucket/plant or play a clip, the weapon is put away
-  const farmHands=!!refs.farmHandsActive?.();
+  const farmHands=!!handsBusy();
   if(farmHands&&state.aiming)state.aiming=false;
   heldHolder.visible=!farmHands&&showHeld&&(curWeapon.aimed?aimingNow:true);
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
