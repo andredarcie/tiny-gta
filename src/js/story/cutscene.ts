@@ -32,15 +32,15 @@ const whoEl=subBox.querySelector('.who') as HTMLElement | null;
 const subEl=(subBox.querySelector('.txt') as HTMLElement | null)??subBox;
 const hintEl=document.getElementById('cine-hint') as HTMLElement | null;
 
-type Mode='duo'|'phone';
+type Mode='duo'|'phone'|'solo';
 const cine: {
   on: boolean; mode: Mode; t: number; lines: CineLine[]; li: number; txt: string;
   shown: number; charT: number; phase: string;
   voice: Voice; onDone: (() => void) | null; onFrame: ((t: number, talking: 'npc'|'player'|null) => void) | null;
-  side: number; actor: CineActor | null; booth: THREE.Object3D | null;
+  side: number; actor: CineActor | null; booth: THREE.Object3D | null; focus: THREE.Vector3;
   shot: string; shotT: number; shotN: number; midCut: boolean;
 }={on:false,mode:'duo',t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',
-  voice:{freq:120,type:'square'},onDone:null,onFrame:null,side:1,actor:null,booth:null,
+  voice:{freq:120,type:'square'},onDone:null,onFrame:null,side:1,actor:null,booth:null,focus:new THREE.Vector3(),
   shot:'wide',shotT:0,shotN:0,midCut:false};
 
 export const cineActive=()=>cine.on;
@@ -105,6 +105,15 @@ export function playPhoneCall(opts: {booth: THREE.Object3D; lines: CineLine[]; v
   begin('phone',opts.lines,opts.voice,opts.onDone);
 }
 
+// SOLO: the player alone, thinking out loud while looking at `focus` (after the burial
+// time skip: the six graves). The player is turned to face it.
+export function playMonologue(opts: {focus: THREE.Vector3; lines: CineLine[]; voice: Voice; onDone?: () => void}){
+  cine.actor=null;cine.booth=null;cine.onFrame=null;cine.focus.copy(opts.focus);
+  const p=player.g.position;
+  player.heading=Math.atan2(opts.focus.x-p.x,opts.focus.z-p.z);player.g.rotation.set(0,player.heading,0);
+  begin('solo',opts.lines,opts.voice,opts.onDone);
+}
+
 // DUO: wide two-shot on the first/last line, otherwise alternate close / reverse.
 function pickDuoShot(li: number,total: number): string{
   if(li===0||li===total-1)return 'wide';
@@ -112,13 +121,20 @@ function pickDuoShot(li: number,total: number): string{
 }
 // PHONE: a fixed cycle of angles around the booth, one per line.
 const PHONE_CYCLE=['wide','close','side','over','low','close','high','side','close','wide'];
+// SOLO: over the player onto what they look at, their face, then across it back at them.
+const SOLO_CYCLE=['wide','close','across','close'];
+function cycleShot(): string{
+  if(cine.mode==='phone')return PHONE_CYCLE[cine.shotN++%PHONE_CYCLE.length];
+  if(cine.mode==='solo')return SOLO_CYCLE[cine.shotN++%SOLO_CYCLE.length];
+  return pickDuoShot(cine.li,cine.lines.length);
+}
 
 function nextLine(){
   cine.li++;
   if(cine.li>=cine.lines.length)return endCutscene();
   const line=cine.lines[cine.li];
   cine.txt=tr(line.text);cine.shown=0;cine.charT=0;cine.phase='type';
-  cine.shot=cine.mode==='phone'?PHONE_CYCLE[cine.shotN++%PHONE_CYCLE.length]:pickDuoShot(cine.li,cine.lines.length);
+  cine.shot=cycleShot();
   cine.shotT=0;cine.midCut=false;
   subEl.textContent='';
   if(whoEl)whoEl.textContent=line.who?tr(line.who):'';
@@ -243,6 +259,41 @@ function directPhone(){
   aimCamera(s.fov);
 }
 
+function directSolo(){
+  const p=player.g.position,f=cine.focus;
+  let dx=f.x-p.x,dz=f.z-p.z;const d=Math.max(.5,Math.hypot(dx,dz));dx/=d;dz/=d;
+  const sx=dz,sz=-dx;                                   // sideways
+  const k=Math.min(1,cine.shotT/6),e=k*k*(3-2*k);
+  let fov;
+  if(cine.shot==='close'){                               // the face, from slightly off-axis
+    _c.set(p.x+dx*(1.3-e*.15)+sx*.45,p.y+1.62,p.z+dz*(1.3-e*.15)+sz*.45);
+    _l.set(p.x,p.y+1.58,p.z);fov=38;
+  }else if(cine.shot==='across'){                        // low, from beyond the graves back at the player
+    _c.set(f.x+dx*2.2+sx*(2.4-e*.6),0,f.z+dz*2.2+sz*(2.4-e*.6));
+    _c.y=groundHeight(_c.x,_c.z)+.75;
+    _l.set(p.x,p.y+1.1,p.z);fov=46;
+  }else{                                                 // over the shoulder, onto the graves
+    _c.set(p.x-dx*(3.4-e*.6)+sx*1.5,0,p.z-dz*(3.4-e*.6)+sz*1.5);
+    _c.y=groundHeight(_c.x,_c.z)+2.5;
+    _l.set((p.x+f.x)/2,groundHeight(f.x,f.z)+.5,(p.z+f.z)/2);fov=48;
+  }
+  aimCamera(fov);
+}
+
+// Fade the screen to black with a caption ("HOURS LATER..."), run `onBlack` while it is
+// dark (set the scene up behind the curtain), then fade back in and call `onDone`.
+export function fadeThrough(caption: string,onBlack: () => void,onDone?: () => void){
+  const el=document.getElementById('story-fade') as HTMLElement|null;
+  const txt=el?.querySelector('.txt') as HTMLElement|null;
+  if(!el){onBlack();onDone?.();return;}
+  if(txt)txt.textContent=tr(caption);
+  el.classList.add('on');
+  setTimeout(()=>{
+    onBlack();
+    setTimeout(()=>{el.classList.remove('on');setTimeout(()=>onDone?.(),900);},1700);
+  },1000);
+}
+
 // Run by the story update, AFTER the regular camera update (the cut-scene owns it).
 export function updateCutscene(dt: number){
   if(!cine.on)return;
@@ -255,7 +306,7 @@ export function updateCutscene(dt: number){
     while(cine.charT>=STEP&&cine.shown<cine.txt.length){
       cine.charT-=STEP;cine.shown++;
       const ch=cine.txt[cine.shown-1];
-      if(/[a-z0-9]/i.test(ch))voiceTick(v);
+      if(/[\p{L}\p{N}]/u.test(ch))voiceTick(v);
     }
     subEl.textContent=cine.txt.slice(0,cine.shown);
     if(cine.shown>=cine.txt.length){
@@ -266,20 +317,17 @@ export function updateCutscene(dt: number){
   const typing=cine.phase==='type';
   const by=cine.lines[cine.li]?.by??'npc';
   const talking=typing?by:null;
-  if(cine.mode==='duo'){
-    setTalkPose(cine.actor?.ped,cine.t,talking==='npc');
-    if(talking==='player')setTalkPose(player.g,cine.t,true);
-  }
+  if(cine.mode==='duo')setTalkPose(cine.actor?.ped,cine.t,talking==='npc');
+  if(cine.mode!=='phone')setTalkPose(player.g,cine.t,talking==='player');
   cine.onFrame?.(cine.t,talking);
 
   // a long line gets an extra cut halfway through, like a film edit
   if(typing&&!cine.midCut&&cine.txt.length>110&&cine.shown>=cine.txt.length*.55){
     cine.midCut=true;cine.shotT=0;
-    cine.shot=cine.mode==='phone'?PHONE_CYCLE[cine.shotN++%PHONE_CYCLE.length]
-      :(cine.shot==='close'?'reverse':'close');
+    cine.shot=cine.mode==='duo'?(cine.shot==='close'?'reverse':'close'):cycleShot();
   }
   cine.shotT+=dt;
-  if(cine.mode==='phone')directPhone();else directDuo();
+  if(cine.mode==='phone')directPhone();else if(cine.mode==='solo')directSolo();else directDuo();
 }
 
 // ---------------------------------------------------------------------------

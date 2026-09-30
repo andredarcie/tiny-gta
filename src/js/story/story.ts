@@ -6,68 +6,90 @@ import {scene} from '@/core/engine.ts';
 import {phoneRing} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {solids} from '@/world/world.ts';
+import {getTod,setTod} from '@/world/daynight.ts';
 import {player,playerPos,cameraRig} from '@/actors/player.ts';
 import {Beacon} from '@/core/beacon.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {makeStoryArrow} from '../../assets/models/missions/story-arrow.ts';
 import boothModel,{STAND} from '../../assets/models/props/phone-booth.ts';
-import {playPhoneCall,updateCutscene,reachHand,setTalkPose,showMissionPass,showStoryEnd,advanceCine,cineActive,
-  type CineLine,type Voice} from '@/story/cutscene.ts';
+import {playPhoneCall,playMonologue,fadeThrough,updateCutscene,reachHand,setTalkPose,showMissionPass,showStoryEnd,
+  advanceCine,cineActive,type CineLine,type Voice} from '@/story/cutscene.ts';
 import {fpAnswer,fpHangUp,fpBusy,fpOnAbort,releaseHeld,setPhoneHands,updateStoryFocus,updateStoryHands} from '@/story/story-fp.ts';
 import {CAMP,CAMP_SIZE,campers,buildCamp,removeCamp,updateCamp,campBuilt,campAlive,campAlarmed,killAllCampers} from '@/story/redneck-camp.ts';
-import {startBurial,stopBurial,burialAction,burialGoal,updateBurial,burialState,restoreGraves,graveRecords,clearGraves} from '@/story/burial.ts';
+import {startBurial,stopBurial,burialAction,burialGoal,updateBurial,burialState,restoreGraves,graveRecords,clearGraves,
+  shovelSave,finishRemaining,gravesCenter,buriedCount,BURY_TARGET} from '@/story/burial.ts';
 import {STAGES,type Stage,sanitizeStorySave,type StorySave} from '@/story/chain.ts';
 
 // ============================================================================
 // THE STORY — a chain of missions handed out by the crime BOSS over a street PAY
-// PHONE. The boss is only ever a voice on the line.
+// PHONE (the "orelhão"). The boss is only ever a voice on the line. By the user's
+// request the whole story — dialogue, prompts and messages — is in Brazilian
+// Portuguese (the rest of the game stays English, see js/core/i18n.ts).
 //
 //   call1  — A pay phone rings a block from where the player starts (a big, pulsing
 //            PHONE icon on the radar/map, a light column over the booth, and the bell
 //            is heard as you get close). Answer it: the receiver is lifted in first
-//            person, then the cinematic call. "Welcome to Sin City..." The test: wipe
-//            out a redneck camp in the countryside.
+//            person, then the cinematic call. "Bem-vindo à Cidade do Pecado..." The
+//            test: wipe out a redneck camp in the countryside.
 //   camp   — The camp only exists now (js/story/redneck-camp.ts): six armed rednecks
 //            around a campfire, a weapon stash around the clearing. Kill all six.
-//   call2  — Back to the booth, it rings again. The boss is horrified ("do you think
-//            this is a video game?")... then laughs it off: test passed. MISSION PASSED.
+//   call2  — Back to the booth, it rings again. The boss is horrified ("você acha que
+//            isso é videogame?")... then laughs it off: test passed (MISSION 1 DONE).
 //            But those were families — go back and bury them.
-//   burial — The bodies still lie at the camp; a shovel waits there. Six graves, dug
-//            and filled by hand in first person (js/story/burial.ts). MISSION PASSED.
+//   burial — The bodies still lie at the camp; a shovel waits there. BURY_TARGET graves
+//            dug and filled by hand in first person (js/story/burial.ts), then a time
+//            skip: fade to black, "hours later", all six are buried and the player says
+//            so to themselves.
+//   call3  — Back to the booth to tell the boss. MISSION 2 DONE, more respect.
 //   done   — The graves stay in the woods. More calls to come.
 //
-// Progress is saved (stage + where the bodies lie + the finished graves).
+// Progress is saved (stage + where the bodies lie + the graves + where the shovel is).
 // ============================================================================
 
 const BOSS: Voice={freq:78,type:'sawtooth',phone:true};
 const YOU: Voice={freq:150,type:'square'};
-const boss=(text: string): CineLine=>({who:'THE BOSS',text,voice:BOSS,by:'npc'});
-const you=(text: string): CineLine=>({who:'YOU',text,voice:YOU,by:'player'});
+const boss=(text: string): CineLine=>({who:'O CHEFÃO',text,voice:BOSS,by:'npc'});
+const you=(text: string): CineLine=>({who:'VOCÊ',text,voice:YOU,by:'player'});
 
 const CALL1: CineLine[]=[
-  boss('Welcome to Sin City, friend.'),
-  boss('Big things happen in this town. And you... you are going to do big things. WE are going to do big things together.'),
-  you('Who is this?'),
-  boss('Doesn\'t matter who I am. What matters is what you\'re willing to do.'),
-  boss('Everybody who works for me passes a test first. Call it an audition.'),
-  boss('Out in the countryside, past the mountain, off the Pine Hollow road, there\'s a camp in the woods. A few tents, a campfire, and six armed hillbillies.'),
-  boss('Wipe them out. All six. How you do it is your business.'),
-  boss('I left a few toys around the camp for you. When it\'s done, come back to this phone. I\'ll call.'),
+  boss('Bem-vindo à Cidade do Pecado, meu amigo.'),
+  boss('Coisas grandes acontecem nessa cidade. E você... você vai fazer coisas grandes. NÓS vamos fazer coisas grandes juntos.'),
+  you('Quem tá falando?'),
+  boss('Não importa quem eu sou. Importa o que você tá disposto a fazer.'),
+  boss('Todo mundo que trabalha pra mim passa por um teste antes. Pode chamar de prova de admissão.'),
+  boss('Lá na zona rural, depois da montanha, perto da estrada de Pine Hollow, tem um acampamento no meio do mato. Umas barracas, uma fogueira e seis caipiras armados.'),
+  boss('Acaba com eles. Com os seis. Como você vai fazer isso é problema seu.'),
+  boss('Deixei uns brinquedinhos em volta do acampamento pra você. Quando terminar, volta pra esse orelhão. Eu ligo.'),
 ];
 const CALL2: CineLine[]=[
-  you('It\'s done. The camp is clean. All six of them.'),
-  boss('...You did WHAT?'),
-  boss('Do you think this is a video game?! You walked into those woods and killed six people in cold blood!'),
-  boss('Because some voice on a pay phone told you to? That could have been anybody! It could have been a prank call!'),
-  boss('You think you can just go around taking lives like that?'),
+  you('Tá feito. O acampamento tá limpo. Os seis.'),
+  boss('...Você fez O QUÊ?'),
+  boss('Você acha que isso aqui é videogame?! Você entrou naquele mato e matou seis pessoas a sangue frio!'),
+  boss('Só porque uma voz num orelhão mandou? Podia ser qualquer um! Podia ser um trote!'),
+  boss('Você acha que pode sair tirando a vida das pessoas assim?'),
   boss('...'),
-  boss('Relax. You passed. That is exactly what I wanted to see.'),
-  boss('But those were people. Families. I want them treated with respect.'),
-  boss('Go back to that camp. There\'s a shovel by the woodpile. Six bodies, six graves. Dig them properly.'),
-  you('You\'re serious.'),
-  boss('Dead serious. Get digging.'),
+  boss('Relaxa. Você passou no teste. Era exatamente isso que eu queria ver.'),
+  boss('Mas aquelas pessoas tinham família. Eu quero que elas sejam respeitadas.'),
+  boss('Volta lá no acampamento. Tem uma pá do lado da lenha. Seis corpos, seis covas. Faz direito.'),
+  you('Você tá falando sério.'),
+  boss('Sério como um defunto. Vai cavar.'),
 ];
-const REWARD_AUDITION=1500, REWARD_BURIAL=800;
+// after the time skip, alone at the graves
+const MONOLOGUE: CineLine[]=[
+  you('Ufa... Enterrei os seis corpos.'),
+  you('Seis covas, seis cruzes. Minhas costas vão me odiar amanhã.'),
+  you('Agora tenho que voltar lá no orelhão e avisar o chefão.'),
+];
+const CALL3: CineLine[]=[
+  you('Pronto, chefe. Os seis tão enterrados. Cada um na sua cova, com cruz e tudo.'),
+  boss('Eu sei. Eu tenho olhos em todo canto dessa cidade.'),
+  boss('Você fez o serviço sujo e ainda limpou a sujeira. Isso é raro hoje em dia.'),
+  boss('Gostei de você. A partir de hoje, você trabalha pra mim.'),
+  boss('Fica de olho nos orelhões. Quando um deles tocar... é pra você.'),
+];
+const CALLS: Partial<Record<Stage,CineLine[]>>={call1:CALL1,call2:CALL2,call3:CALL3};
+const REWARD_TEST=1500, REWARD_BURIAL=800;
+const RESPECT='▲ RESPEITO COM O CHEFÃO';
 
 // ---- the booth: on the sidewalk a block ahead of where the player starts ----------
 const BOOTH={x:nodeX(4)+9.3,z:nodeX(4)+30,ry:-Math.PI/2};   // open front faces the street (west)
@@ -87,7 +109,7 @@ let beacon: Beacon|null=null;
 
 // ---- state ----------------------------------------------------------------------
 const S: {stage: Stage;busy: boolean;onCall: boolean;ringT: number}={stage:'call1',busy:false,onCall:false,ringT:0};
-const ringing=()=>(S.stage==='call1'||S.stage==='call2')&&!S.busy;
+const ringing=()=>!!CALLS[S.stage]&&!S.busy;
 
 function save(){refs.backupSave?.();}
 
@@ -96,27 +118,45 @@ function enterStage(stage: Stage,restore?: StorySave){
   S.stage=stage;
   if(stage==='camp'){
     buildCamp({alive:true,
-      onKill:(left)=>{if(left>0)message('REDNECKS LEFT: '+left,'#ff3b56');},
+      onKill:(left)=>{if(left>0)message('FALTAM '+left+' CAIPIRAS','#ff3b56');},
       onAllDead:()=>{
         enterStage('call2');
-        message('CAMP WIPED OUT - GO BACK TO THE PAY PHONE','var(--gold)');
+        message('ACAMPAMENTO LIMPO - VOLTE AO ORELHÃO','var(--gold)');
         save();
       }});
   }else if(stage==='call2'){
     if(restore)buildCamp({alive:false,bodies:restore.bodies});
   }else if(stage==='burial'){
     if(restore){buildCamp({alive:false,bodies:restore.bodies});restoreGraves(restore.graves);}
-    startBurial({
-      onAllBuried:()=>{
-        enterStage('done');
-        economy.earn(REWARD_BURIAL,'story');
-        showMissionPass('DUST TO DUST','+$'+REWARD_BURIAL.toLocaleString('en-US')+'   ▲ RESPECT WITH THE BOSS',()=>showStoryEnd());
-        save();
-      }});
-  }else if(stage==='done'){
+    startBurial({shovel:restore?.shovel,onEnough:timeSkip});
+    // saved right after the last hand-dug grave (before the time skip ran): run it now
+    if(restore&&buriedCount()>=BURY_TARGET)timeSkip();
+  }else if(stage==='call3'||stage==='done'){
     stopBurial();
     if(restore)restoreGraves(restore.graves);
   }
+}
+
+// ---- the time skip: after BURY_TARGET graves the rest are "done off screen" ---------
+function timeSkip(){
+  S.busy=true;
+  fadeThrough('ALGUMAS HORAS DEPOIS...',()=>{
+    finishRemaining();                       // the other bodies are found buried
+    stopBurial();                            // the shovel's job is over
+    setTod((getTod()+.18)%1);                // the sun has moved on
+    // stand back from the graves, looking at them
+    const c=gravesCenter(),p=player.g.position;
+    const d=new THREE.Vector3(p.x-c.x,0,p.z-c.z);if(d.lengthSq()<1e-4)d.set(1,0,0);
+    d.normalize().multiplyScalar(4.5);
+    p.set(c.x+d.x,groundHeight(c.x+d.x,c.z+d.z),c.z+d.z);
+    playMonologue({focus:c,lines:MONOLOGUE,voice:YOU,onDone:()=>{
+      S.busy=false;
+      cameraRig.yaw=player.heading;cameraRig.fpPitch=.1;
+      enterStage('call3');
+      message('VOLTE AO ORELHÃO E AVISE O CHEFÃO','var(--gold)');
+      save();
+    }});
+  });
 }
 
 // ---- the phone call ---------------------------------------------------------------
@@ -124,6 +164,7 @@ const _hw=new THREE.Vector3(),_ce=new THREE.Vector3();
 function layCord(){
   // the coiled cord follows the receiver whenever it is off the hook
   if(handset.parent===booth)return;
+  handset.updateWorldMatrix(true,false);
   handset.localToWorld(_ce.copy(booth.userData.cordEnd as THREE.Vector3));
   booth.worldToLocal(_ce);
   (booth.userData.span as (a: THREE.Vector3,b: THREE.Vector3)=>void)(booth.userData.cordAnchor as THREE.Vector3,_ce);
@@ -131,8 +172,7 @@ function layCord(){
 
 function answer(){
   if(!ringing()||state.mode!=='foot'||state.cine||fpBusy()||MiniGame.busy)return false;
-  const lines=S.stage==='call1'?CALL1:CALL2;
-  const stage=S.stage;
+  const stage=S.stage,lines=CALLS[stage]!;
   S.busy=true;
   beacon?.dispose();beacon=null;
   booth.userData.setRinging(false,0);
@@ -196,13 +236,17 @@ function finishCall(stage: Stage){
   S.busy=false;
   if(stage==='call1'){
     enterStage('camp');
-    message('WIPE OUT THE REDNECK CAMP - FOLLOW THE RED MARKER','#ff3b56');
-  }else{
-    economy.earn(REWARD_AUDITION,'story');
-    showMissionPass('THE AUDITION','+$'+REWARD_AUDITION.toLocaleString('en-US')+'   ▲ RESPECT WITH THE BOSS',()=>{
-      message('BURY THE SIX BODIES AT THE CAMP','var(--cream)');
+    message('ACABE COM O ACAMPAMENTO DOS CAIPIRAS - SIGA O MARCADOR VERMELHO','#ff3b56');
+  }else if(stage==='call2'){
+    economy.earn(REWARD_TEST,'story');
+    showMissionPass('O TESTE','+$'+REWARD_TEST.toLocaleString('pt-BR')+'   '+RESPECT,()=>{
+      message('ENTERRE OS CORPOS NO ACAMPAMENTO','var(--cream)');
     });
     enterStage('burial');
+  }else{
+    economy.earn(REWARD_BURIAL,'story');
+    showMissionPass('DO PÓ AO PÓ','+$'+REWARD_BURIAL.toLocaleString('pt-BR')+'   '+RESPECT,()=>showStoryEnd());
+    enterStage('done');
   }
   save();
 }
@@ -213,8 +257,8 @@ const nearBooth=()=>{const pp=playerPos();return Math.hypot(pp.x-standWorld.x,pp
 export function storyAction(): {label: string;prompt: string;enabled: boolean;run?: () => void}|null{
   if(state.mode!=='foot'||state.cine||state.dlgActive||S.busy||fpBusy())return null;
   if(ringing()&&nearBooth()){
-    if(MiniGame.busy)return{label:'...',prompt:'FINISH WHAT YOU\'RE DOING FIRST',enabled:false};
-    return{label:'PHONE',prompt:'ANSWER THE PHONE',enabled:true,run:answer};
+    if(MiniGame.busy)return{label:'...',prompt:'TERMINE O QUE ESTÁ FAZENDO ANTES',enabled:false};
+    return{label:'ATENDER',prompt:'ATENDER O TELEFONE',enabled:true,run:answer};
   }
   if(S.stage==='burial')return burialAction();
   return null;
@@ -227,10 +271,11 @@ export function storyInteract(): boolean{
 }
 // The line shown when a run starts (what to do next).
 export function storyHint(): string|null{
-  if(S.stage==='call1')return 'A PAY PHONE IS RINGING NEARBY - FOLLOW THE PHONE ICON';
-  if(S.stage==='camp')return 'WIPE OUT THE REDNECK CAMP';
-  if(S.stage==='call2')return 'THE PAY PHONE IS RINGING - GO ANSWER IT';
-  if(S.stage==='burial')return 'BURY THE BODIES AT THE CAMP';
+  if(S.stage==='call1')return 'UM ORELHÃO ESTÁ TOCANDO AQUI PERTO - SIGA O ÍCONE DO TELEFONE';
+  if(S.stage==='camp')return 'ACABE COM O ACAMPAMENTO DOS CAIPIRAS';
+  if(S.stage==='call2')return 'O ORELHÃO ESTÁ TOCANDO - VÁ ATENDER';
+  if(S.stage==='burial')return 'ENTERRE OS CORPOS NO ACAMPAMENTO';
+  if(S.stage==='call3')return 'VOLTE AO ORELHÃO E AVISE O CHEFÃO';
   return null;
 }
 
@@ -238,12 +283,12 @@ export function storyHint(): string|null{
 // The current objective, drawn BIG on the radar and the map (hud.ts `big`).
 interface StoryBlip{x: number;z: number;icon: string;color: string;label: string;big: true;}
 export function storyBlips(): StoryBlip[]{
-  if(S.onCall)return[];
-  if(ringing())return[{x:BOOTH.x,z:BOOTH.z,icon:'phone',color:'#ffd24a',label:'PAY PHONE',big:true}];
-  if(S.stage==='camp')return[{x:CAMP.x,z:CAMP.z,icon:'target',color:'#ff3b56',label:'REDNECK CAMP',big:true}];
+  if(S.onCall||S.busy)return[];
+  if(ringing())return[{x:BOOTH.x,z:BOOTH.z,icon:'phone',color:'#ffd24a',label:'ORELHÃO',big:true}];
+  if(S.stage==='camp')return[{x:CAMP.x,z:CAMP.z,icon:'target',color:'#ff3b56',label:'ACAMPAMENTO',big:true}];
   if(S.stage==='burial'){
     const g=burialGoal();
-    if(g)return[{x:g.x,z:g.z,icon:'shovel',color:'#d9a06b',label:g.kind==='shovel'?'SHOVEL':'BURY',big:true}];
+    if(g)return[{x:g.x,z:g.z,icon:'shovel',color:'#d9a06b',label:g.kind==='shovel'?'PÁ':'ENTERRAR',big:true}];
   }
   return[];
 }
@@ -297,8 +342,8 @@ export function updateStory(dt: number){
       if(burst)handset.rotateZ(Math.sin(state.time*48)*.05);
     }
   }else if(beacon){beacon.dispose();beacon=null;booth.userData.setRinging(false,0);}
-  // once the story is over, the empty camp packs up when nobody is watching
-  if(S.stage==='done'&&campBuilt()&&Math.hypot(pp.x-CAMP.x,pp.z-CAMP.z)>150)removeCamp();
+  // once the digging is over, the empty camp packs up when nobody is watching
+  if((S.stage==='call3'||S.stage==='done')&&campBuilt()&&Math.hypot(pp.x-CAMP.x,pp.z-CAMP.z)>150)removeCamp();
   // navigation arrow
   const goal=state.started&&!state.cine&&!state.interior?(miniGameGoal()||storyGoal()):null;
   navArrow.visible=!!goal;
@@ -313,7 +358,7 @@ export function updateStory(dt: number){
 function collect(): StorySave{
   const bodies=(S.stage==='call2'||S.stage==='burial')&&campBuilt()
     ?campers.map(c=>c.buried?null:{x:+c.g.position.x.toFixed(2),z:+c.g.position.z.toFixed(2)}):[];
-  return{stage:S.stage,bodies,graves:graveRecords()};
+  return{stage:S.stage,bodies,graves:graveRecords(),shovel:S.stage==='burial'?shovelSave():null};
 }
 // Restore a saved stage. The fresh boot is always at call1 with nothing built, so this
 // resets whatever exists and rebuilds the world for the saved stage.
@@ -335,7 +380,7 @@ export function getStoryState(){
   return{stage:S.stage,busy:S.busy,onCall:S.onCall,ringing:ringing(),cine:cineActive(),
     booth:{x:BOOTH.x,z:BOOTH.z,stand:{x:+standWorld.x.toFixed(2),z:+standWorld.z.toFixed(2)}},
     camp:{built:campBuilt(),alive:campAlive(),alarmed:campAlarmed(),x:CAMP.x,z:CAMP.z},
-    burial:burialState()};
+    burial:burialState(),buryTarget:BURY_TARGET};
 }
 refs.getStoryState=getStoryState;
 // __test.story(cmd): 'state' | 'stage:<name>' (jump there, as if loaded from a save) |
@@ -344,12 +389,12 @@ export function storyTest(cmd: string): unknown{
   if(cmd.startsWith('stage:')){
     const st=cmd.slice(6) as Stage;
     if(!STAGES.includes(st))return 'bad stage';
-    restore({stage:st,bodies:[],graves:[]});
+    restore({stage:st,bodies:[],graves:[],shovel:null});
   }else if(cmd==='killCamp')killAllCampers();
   else if(cmd==='skipCine'){for(let i=0;i<60&&cineActive();i++){advanceCine();advanceCine();}}
   else if(cmd==='toBooth'||cmd==='toCamp'){
     if(state.mode!=='foot')return 'not on foot';
-    const x=cmd==='toBooth'?standWorld.x-2.2:CAMP.x-4,z=cmd==='toBooth'?standWorld.z:CAMP.z-30;
+    const x=cmd==='toBooth'?standWorld.x-2.2:CAMP.x-4,z=cmd==='toBooth'?standWorld.z:CAMP.z+30;
     player.g.position.set(x,groundHeight(x,z),z);
     const fx=cmd==='toBooth'?phoneWorld.x:CAMP.x,fz=cmd==='toBooth'?phoneWorld.z:CAMP.z;
     player.heading=cameraRig.yaw=Math.atan2(fx-x,fz-z);cameraRig.fpPitch=.05;

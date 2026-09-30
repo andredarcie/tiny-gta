@@ -22,26 +22,30 @@ import woodPile from '../../assets/models/rural/wood-pile.ts';
 
 // ============================================================================
 // THE REDNECK CAMP — the target of the story's first job (js/story/story.ts). It only
-// EXISTS while the story needs it: a clearing in the woods east of the mountain (south
-// of the Pine Hollow road) with a few small tents around a campfire and SIX armed
+// EXISTS while the story needs it: a clearing in the woods north-east of the mountain,
+// well off the dirt road (~45 m), with a few small tents around a campfire and SIX armed
 // rednecks. It is built when the boss hands out the job and torn down once the dead
 // are buried (their graves stay — see burial.ts).
 //
 // The six keep to their posts (four around the fire, two sentries looking out) until the
 // camp is ALARMED — one of them spots the player (a view cone + line of sight, or anyone
 // too close), a gunshot rings out nearby, or one of them gets hurt. Then every survivor
-// turns on the player: they close in to firing range, sidestep, and shoot. Left alone
-// long enough (the player gone far away) the camp calms down again.
+// turns on the player: they run at them firing, sidestep, and shoot — but they never
+// leave their clearing: nobody chases past LEASH, and once the player backs off beyond
+// DISENGAGE they all go back to their posts and WAIT there, now on guard (they spot the
+// player all around, from further away), until the player comes back.
 //
 // The dead are NOT faded out: their bodies stay where they fell for the burial job.
 // Around the clearing, before the tents, a small stash of weapons helps the assault.
 // ============================================================================
 
-export const CAMP={x:584,z:54};
+export const CAMP={x:588,z:-46};  // north of the Pine Hollow road, between the ranch and the grow-op
 const CULL2=140*140;          // beyond this the camp's people are hidden and idle
 const VIEW_R=24, VIEW_COS=Math.cos(1.05), HEAR_R=6.5;
+const WARY_R=32;              // on guard (after a fight): they see the player all around, this far
 const SHOT_HEAR_R=60;         // a gunshot within this of the camp raises the alarm
-const CALM_AFTER=25;          // seconds with the player far away before they calm down
+const LEASH=30;               // no camper ever goes further than this from the camp centre
+const DISENGAGE=50;           // the player this far from the camp → everyone back to their posts
 const FIGHT_FAR=40;
 
 // Who they are and where they stand (offsets from CAMP; face = yaw they look along).
@@ -50,16 +54,16 @@ const ROSTER: {name: string;sex: 'M'|'F';gun: string;x: number;z: number;face?: 
   {name:'Jolene',sex:'F',gun:'pistol',x:-2.9,z:2.3},
   {name:'Earl',sex:'M',gun:'pistol',x:.6,z:-3.4},
   {name:'Bobby Ray',sex:'M',gun:'uzi',x:-1.2,z:-2.6},
-  {name:'Dwayne',sex:'M',gun:'shotgun',x:8,z:-9,face:Math.atan2(-.4,-1),sentry:true},   // watches the road side
+  {name:'Dwayne',sex:'M',gun:'shotgun',x:8,z:9,face:Math.atan2(.3,1),sentry:true},      // watches the road side (south)
   {name:'Hank',sex:'M',gun:'pistol',x:-10,z:6,face:-Math.PI/2,sentry:true},             // watches the west trail
 ];
 export const CAMP_SIZE=ROSTER.length;
 
 // The stash left around the camp for the assault (world offsets from CAMP).
 const STASH: {id: string;x: number;z: number}[]=[
-  {id:'pistol',x:-9,z:-26},
-  {id:'grenade',x:11,z:-27},
-  {id:'uzi',x:-27,z:-7},
+  {id:'pistol',x:-9,z:25},                 // on the road side, where the player comes in
+  {id:'grenade',x:11,z:26},
+  {id:'uzi',x:-27,z:7},
 ];
 
 export class Camper extends Npc{
@@ -87,7 +91,7 @@ let fireGlow: THREE.Mesh|undefined;
 export const campers: Camper[]=[];
 const stash: Stash[]=[];
 const tracers: Tracer[]=[];
-let alarm=false,calmT=0;
+let alarm=false,wary=false;
 let onAllDead: (() => void)|null=null;
 let onKill: ((left: number) => void)|null=null;
 
@@ -100,9 +104,15 @@ function place(obj: THREE.Object3D,x: number,z: number,ry=0): THREE.Object3D{
 
 function raiseAlarm(){
   if(alarm)return;
-  alarm=true;calmT=0;
+  alarm=true;wary=true;
   for(const c of campers)if(!c.dead){c.mode='fight';c.shootT=rand(.5,1.3);}
-  message('THE CAMP IS ON TO YOU!','#ff3b56');
+  message('O ACAMPAMENTO TE VIU!','#ff3b56');
+}
+// The player backed off: everyone walks back to the camp and waits there, on guard.
+function standDown(){
+  alarm=false;
+  for(const c of campers)if(!c.dead)c.mode='idle';
+  message('OS CAIPIRAS VOLTARAM PRO ACAMPAMENTO','var(--cream)');
 }
 
 /** Build the camp. `alive=false` lays the six out as the corpses left by the job
@@ -110,7 +120,7 @@ function raiseAlarm(){
 export function buildCamp(opts: {alive: boolean;bodies?: ({x: number;z: number}|null)[];
   onKill?: (left: number) => void;onAllDead?: () => void}): void{
   if(built)removeCamp();
-  built=true;alarm=false;calmT=0;
+  built=true;alarm=false;wary=false;
   onKill=opts.onKill??null;onAllDead=opts.onAllDead??null;
   const X=CAMP.x,Z=CAMP.z;
   // the camp itself
@@ -176,7 +186,7 @@ export function removeCamp(): void{
   stash.length=0;
   for(const t of tracers){Entities.disposeGeometries(t.line);scene.remove(t.line);}
   tracers.length=0;
-  built=false;alarm=false;onAllDead=null;onKill=null;
+  built=false;alarm=false;wary=false;onAllDead=null;onKill=null;
 }
 
 export const campBuilt=()=>built;
@@ -202,6 +212,7 @@ function shoot(c: Camper,pp: THREE.Vector3,dist: number){
 // Can this camper notice the player right now (view cone + line of sight, or too close)?
 function spots(c: Camper,pp: THREE.Vector3,dist: number): boolean{
   if(dist<HEAR_R)return true;
+  if(wary)return dist<WARY_R&&hasLineOfSight(c.g.position.x,c.g.position.z,pp.x,pp.z);
   if(dist>VIEW_R)return false;
   const fx=Math.sin(c.g.rotation.y),fz=Math.cos(c.g.rotation.y);
   const dx=(pp.x-c.g.position.x)/dist,dz=(pp.z-c.g.position.z)/dist;
@@ -241,11 +252,8 @@ export function updateCamp(dt: number): void{
     const sx=(state.shotX??1e9)-CAMP.x,sz=(state.shotZ??1e9)-CAMP.z;
     if(sx*sx+sz*sz<SHOT_HEAR_R*SHOT_HEAR_R)raiseAlarm();
   }
-  // the camp calms down when the player has been gone for a while
-  if(alarm){
-    if(d2C>90*90){calmT+=dt;if(calmT>CALM_AFTER){alarm=false;for(const c of campers)if(!c.dead)c.mode='idle';}}
-    else calmT=0;
-  }
+  // the player backed off far enough: they give up the chase and go home to wait
+  if(alarm&&d2C>DISENGAGE*DISENGAGE)standDown();
   const car=refs.getCur?.();
   const danger=state.mode==='car'&&car&&Math.abs(car.speed)>6;
   const canShoot=state.started&&state.mode!=='cut'&&!state.cine&&!state.mapOpen&&!state.interior;
@@ -267,9 +275,12 @@ export function updateCamp(dt: number): void{
     let mv: number;
     if(c.mode==='idle'){
       if(canShoot&&spots(c,pp,dist))raiseAlarm();
-      // drift back to the post and look where they were looking
+      // back to the post (running if far) and look where they were looking
       const bx=c.post.x-p.x,bz=c.post.z-p.z,bd=Math.hypot(bx,bz);
-      if(bd>.4){p.x+=bx/bd*1.4*dt;p.z+=bz/bd*1.4*dt;c.g.rotation.y=Math.atan2(bx,bz);mv=.3;c.bob+=dt*3;}
+      if(bd>.4){
+        const sp=bd>3?3.6:1.4;
+        p.x+=bx/bd*sp*dt;p.z+=bz/bd*sp*dt;c.g.rotation.y=Math.atan2(bx,bz);mv=sp>2?.8:.3;c.bob+=dt*(sp>2?8:3);
+      }
       else{
         const look=c.face+(c.sentry?Math.sin(state.time*.35+c.bob)*.7:Math.sin(state.time*.2+c.bob)*.15);
         c.g.rotation.y+=wrapA(look-c.g.rotation.y)*Math.min(1,dt*2);c.bob+=dt*1.2;mv=.08;
@@ -285,6 +296,9 @@ export function updateCamp(dt: number): void{
       else if(dist<6){vx-=_dir.x*2.2;vz-=_dir.z*2.2;}
       vx+=_dir.z*c.strafe*1.6;vz-=_dir.x*c.strafe*1.6;
       p.x+=vx*dt;p.z+=vz*dt;
+      // ...but never leave the clearing
+      const lx=p.x-CAMP.x,lz=p.z-CAMP.z,ld=Math.hypot(lx,lz);
+      if(ld>LEASH){p.x=CAMP.x+lx/ld*LEASH;p.z=CAMP.z+lz/ld*LEASH;}
       const sp=Math.hypot(vx,vz);mv=Math.min(.9,sp/4);c.bob+=dt*(2+sp*2);
       c.shootT-=dt;
       if(canShoot&&c.shootT<=0&&dist<FIGHT_FAR&&pp.y-p.y<3&&hasLineOfSight(p.x,p.z,pp.x,pp.z))shoot(c,pp,dist);

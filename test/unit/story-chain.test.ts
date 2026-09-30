@@ -6,8 +6,8 @@ import { STAGES, sanitizeStorySave } from '@/story/chain.ts';
 // kept for the stages that use them, and garbage entries are dropped or neutralised.
 
 describe('story chain — stages', () => {
-  it('runs call1 → camp → call2 → burial → done', () => {
-    expect([...STAGES]).toEqual(['call1','camp','call2','burial','done']);
+  it('runs call1 → camp → call2 → burial → call3 → done', () => {
+    expect([...STAGES]).toEqual(['call1','camp','call2','burial','call3','done']);
   });
 });
 
@@ -19,7 +19,7 @@ describe('story chain — sanitizeStorySave', () => {
   });
 
   it('keeps a bare stage with empty bodies/graves', () => {
-    expect(sanitizeStorySave({stage:'camp'},6)).toEqual({stage:'camp',bodies:[],graves:[]});
+    expect(sanitizeStorySave({stage:'camp'},6)).toEqual({stage:'camp',bodies:[],graves:[],shovel:null});
   });
 
   it('keeps body positions only while they lie at the camp (call2 / burial)', () => {
@@ -46,6 +46,13 @@ describe('story chain — sanitizeStorySave', () => {
   it('keeps valid graves for burial/done, defaulting the yaw', () => {
     const graves=[{x:1,z:2,ry:.5},{x:3,z:4},{x:'bad',z:0},null];
     expect(sanitizeStorySave({stage:'done',graves},6)!.graves).toEqual([{x:1,z:2,ry:.5},{x:3,z:4,ry:0}]);
+    expect(sanitizeStorySave({stage:'call3',graves},6)!.graves.length).toBe(2);
     expect(sanitizeStorySave({stage:'call2',graves},6)!.graves).toEqual([]);
+  });
+
+  it('keeps where the shovel was left, only during the burial', () => {
+    expect(sanitizeStorySave({stage:'burial',shovel:{x:5,z:-3}},6)!.shovel).toEqual({x:5,z:-3});
+    expect(sanitizeStorySave({stage:'burial',shovel:{x:'?',z:1}},6)!.shovel).toBeNull();
+    expect(sanitizeStorySave({stage:'done',shovel:{x:5,z:-3}},6)!.shovel).toBeNull();
   });
 });
