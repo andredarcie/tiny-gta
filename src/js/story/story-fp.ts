@@ -543,7 +543,9 @@ export function updateStoryHands(dt: number): void{
   updateClods(dt);
   const fp=isFirstPerson()&&state.mode==='foot';
   rig.visible=fp&&(held!=='none'||!!cur);
-  if(!rig.visible)return;
+  // a running clip always plays to its end, even while the view is not first person
+  // (otherwise it would stall forever and keep the player input-locked)
+  if(!rig.visible&&!cur)return;
   camera.updateMatrixWorld(true);
   if(cur){
     cur.t+=dt;

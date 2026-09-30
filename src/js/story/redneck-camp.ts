@@ -105,7 +105,12 @@ function place(obj: THREE.Object3D,x: number,z: number,ry=0): THREE.Object3D{
 
 function raiseAlarm(){
   if(alarm)return;
-  alarm=true;wary=true;
+  wary=true;
+  // attacked from beyond DISENGAGE (a sniper, a far shot): they hold the camp, on guard,
+  // instead of charging out and straight back every shot
+  const pp=playerPos();
+  if(Math.hypot(pp.x-CAMP.x,pp.z-CAMP.z)>DISENGAGE)return;
+  alarm=true;
   for(const c of campers)if(!c.dead){c.mode='fight';c.shootT=rand(.5,1.3);}
   message('O ACAMPAMENTO TE VIU!','#ff3b56');
 }

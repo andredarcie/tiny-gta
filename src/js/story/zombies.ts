@@ -92,6 +92,11 @@ export const cursedCorpses=()=>zombies.filter(z=>z.dead&&!z.gone&&!z.burning);
 /** For the save: where each corpse lies (null = burned). */
 export const corpseRecords=()=>zombies.map(z=>z.gone||z.burning?null:{x:+z.g.position.x.toFixed(2),z:+z.g.position.z.toFixed(2)});
 export function onCorpsesBurned(fn: (() => void)|null){onAllBurned=fn;}
+/** The curse holds the bodies together: any corpse the gore layer tore apart (head, limbs,
+ *  or blown to pieces) is whole again, so every one can be found and sprinkled. */
+export function mendCorpses(): void{
+  for(const z of zombies)if(z.dead&&!z.gone){z.restoreLimbs();z.g.visible=true;}
+}
 
 /** Holy water hit this body: it bursts into flames and burns away. */
 export function burnCorpse(z: Zombie): void{
@@ -153,7 +158,13 @@ export function updateZombies(dt: number): void{
       continue;
     }
     z.g.visible=near;
-    if(!near)continue;
+    if(!near){
+      // out of sight they keep marching on the village (cheap: no animation, no chase)
+      const gx=z.goal.x-p.x,gz=z.goal.z-p.z,gd=Math.hypot(gx,gz);
+      if(gd>2){p.x+=gx/gd*WALK*.8*dt;p.z+=gz/gd*WALK*.8*dt;}
+      else z.goal={x:VILLAGE.x+rand(-12,12),z:VILLAGE.z+rand(-12,12)};
+      continue;
+    }
     // run down by a fast car
     if(danger&&p.distanceTo(car!.g.position)<2.3){
       const hd=new THREE.Vector3(Math.sin(car!.heading),0,Math.cos(car!.heading));

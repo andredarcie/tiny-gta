@@ -271,7 +271,7 @@ export function setupInput(): void {
     // Cut-scene: o diálogo só passa por interação. Avança com Space/Enter/E/F
     // e nenhum outro atalho funciona enquanto a cena roda.
     if(state.cine){
-      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();advanceCine();}
+      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();if(!e.repeat)advanceCine();} // held keys don't skip lines
       return;
     }
     if(gymGameActive()){ // mini-game do supino: Espaço/Enter/E/F = repetição, Esc desiste

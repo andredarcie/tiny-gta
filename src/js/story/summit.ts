@@ -143,6 +143,7 @@ export function poseSummit(t: number,talking: 'npc'|'player'|null,phase: CinePha
     else setTalkPose(player.g,t,false,false);
     toMouth=talking==='player'?.12+Math.max(0,Math.sin(t*1.8))*.12:0;
     setLit(.4+Math.sin(t*2)*.05);
+    lighter!.visible=false;                                    // (the opening may have been skipped mid-light)
     l.leftArm.rotation.set(-.35,0,.12);l.leftForearm.rotation.set(-.9,0,0);
   }
   reachHand(player.g,'right',_t.copy(_k).lerp(_m.clone().addScaledVector(fwd,.07),toMouth));

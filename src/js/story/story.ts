@@ -23,7 +23,7 @@ import {startBurial,stopBurial,burialAction,burialGoal,updateBurial,burialState,
   shovelSave,finishRemaining,buriedCount,setGravesOpen,BURY_TARGET} from '@/story/burial.ts';
 import {setupSummit,poseSummit,endSummit,updateSummitFx,INTRO_T,OUTRO_T} from '@/story/summit.ts';
 import {zombies,spawnZombies,clearZombies,updateZombies,zombiesAlive,cursedCorpses,corpseRecords,burnCorpse,
-  nearestCorpse,onCorpsesBurned,killAllZombies} from '@/story/zombies.ts';
+  nearestCorpse,onCorpsesBurned,mendCorpses,killAllZombies} from '@/story/zombies.ts';
 import {PRIEST,MEET,spawnPriest,removePriest,priestPed,priestNear,spawnCrowd,clearCrowd,crowdOut,crowdCheer,
   updatePriest} from '@/story/priest.ts';
 import {STAGES,type Stage,sanitizeStorySave,type StorySave} from '@/story/chain.ts';
@@ -219,6 +219,7 @@ function enterStage(stage: Stage,restore?: StorySave){
       if(zombies.every(z=>z.gone)){lifted();return;}  // saved with every body already burned
       fpGiveFlask(holyWaterModel.build());
     }
+    mendCorpses();
     onCorpsesBurned(()=>{
       lifted();
       message('A MALDIÇÃO ACABOU - VOLTE AO PADRE','var(--gold)');
@@ -236,6 +237,8 @@ function enterStage(stage: Stage,restore?: StorySave){
 // player is found smoking on the summit, looking out over the woods ------------------
 function timeSkip(){
   S.busy=true;
+  // hold the player still while the screen goes black (no walking off or into a car)
+  state.dlgActive=true;
   fadeThrough('ALGUMAS HORAS DEPOIS...',()=>{
     finishRemaining();                       // the other bodies are found buried
     stopBurial();                            // the shovel's job is over
