@@ -178,7 +178,7 @@ function enterStage(stage: Stage,restore?: StorySave){
   if(restore&&STAGES.indexOf(stage)>STAGES.indexOf('burial'))restoreGraves(restore.graves);
   if(stage==='camp'){
     buildCamp({alive:true,
-      onKill:(left)=>{if(left>0)message('FALTAM '+left+' CAIPIRAS','#ff3b56');},
+      onKill:(left)=>{if(left>0)message(left===1?'FALTA 1 CAIPIRA':'FALTAM '+left+' CAIPIRAS','#ff3b56');},
       onAllDead:()=>{
         enterStage('call2');
         message('ACAMPAMENTO LIMPO - VOLTE AO ORELHÃO','var(--gold)');
@@ -196,7 +196,7 @@ function enterStage(stage: Stage,restore?: StorySave){
   }else if(stage==='zombies'){
     setGravesOpen(true);
     spawnZombies({at:zombieStarts(),names:CAMP_NAMES,
-      onKill:(left)=>{if(left>0)message('FALTAM '+left+' ZUMBIS','#9dff2e');},
+      onKill:(left)=>{if(left>0)message(left===1?'FALTA 1 ZUMBI':'FALTAM '+left+' ZUMBIS','#9dff2e');},
       onAllDead:()=>{
         enterStage('call5');
         message('OS ZUMBIS CAÍRAM - VOLTE AO ORELHÃO','var(--gold)');
@@ -392,7 +392,7 @@ function sprinkle(){
   fpSprinkle(target,{onSplash:()=>{
     burnCorpse(z);
     const left=cursedCorpses().length;
-    if(left>0)message('FALTAM '+left+' CORPOS','#7fc8e8');
+    if(left>0)message(left===1?'FALTA 1 CORPO':'FALTAM '+left+' CORPOS','#7fc8e8');
   }});
 }
 
@@ -576,10 +576,25 @@ export function storyTest(cmd: string): unknown{
   }else if(cmd==='killCamp')killAllCampers();
   else if(cmd==='killZombies')killAllZombies();
   else if(cmd==='noQuiet')S.quietT=0;
+  else if(cmd.startsWith('aim:')){
+    // stand <dist> m from the nearest living camp redneck / zombie, aimed at the head
+    // (video/test framing: the next attack fires there)
+    if(state.mode!=='foot')return 'not on foot';
+    const dist=+cmd.slice(4)||8,pp=player.g.position;
+    const live=[...campers.filter(c=>!c.dead),...zombies.filter(z=>!z.dead)];
+    let best: THREE.Object3D|null=null,bd=1e9;
+    for(const c of live){const d=c.g.position.distanceTo(pp);if(d<bd){bd=d;best=c.g;}}
+    if(!best)return null;
+    const b=best.position,a=Math.atan2(pp.x-b.x,pp.z-b.z);
+    const x=b.x+Math.sin(a)*dist,z=b.z+Math.cos(a)*dist;
+    player.g.position.set(x,groundHeight(x,z),z);
+    player.heading=cameraRig.yaw=Math.atan2(b.x-x,b.z-z);
+    cameraRig.fpPitch=Math.atan2(player.g.position.y+1.56-(b.y+1.66),dist);
+  }
   else if(cmd==='skipCine'){for(let i=0;i<60&&cineActive();i++){advanceCine();advanceCine();}}
   else if(cmd==='toBooth'||cmd==='toCamp'||cmd==='toPriest'){
     if(state.mode!=='foot')return 'not on foot';
-    const to={toBooth:[standWorld.x-2.2,standWorld.z,phoneWorld.x,phoneWorld.z],
+    const to={toBooth:[standWorld.x-1.2,standWorld.z,phoneWorld.x,phoneWorld.z],
       toCamp:[CAMP.x-4,CAMP.z+30,CAMP.x,CAMP.z],
       toPriest:[MEET.x,MEET.z-1.5,PRIEST.x,PRIEST.z]}[cmd]!;
     const[x,z,fx,fz]=to;

@@ -1391,7 +1391,9 @@ export function updateWeapons(dt: number){
   if(farmHands&&state.aiming)state.aiming=false;
   heldHolder.visible=!farmHands&&showHeld&&(curWeapon.aimed?aimingNow:true);
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
-  if(!swimming&&!meleeAnimating){
+  // no weapon pose on the body during a cut-scene or while the hands hold something else
+  // (the story poses the arms itself: the phone receiver at the ear, the cigarette...)
+  if(!swimming&&!meleeAnimating&&!state.cine&&!farmHands){
     if(rampaging||(showHeld&&curWeapon.aimed&&aimingNow))posePlayerWithGun();
     else if(showHeld&&!curWeapon.aimed)carryPose();
   }

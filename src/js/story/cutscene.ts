@@ -227,9 +227,18 @@ export function setTalkPose(ped: THREE.Object3D | null | undefined,t: number,tal
 
 // ---- camera directors ------------------------------------------------------
 const _c=new THREE.Vector3(),_l=new THREE.Vector3();
+// The shot FOVs are vertical and tuned for a landscape screen; on a portrait screen (a
+// 9:16 video, a tall window) keep ~2/3 of the landscape horizontal view instead, like
+// the gameplay camera does (player.ts portraitFov), so the shots don't become a tunnel.
+function shotFov(v: number): number{
+  const a=camera.aspect;
+  if(a>=1)return v;
+  const h=2*Math.atan(Math.tan(v*Math.PI/360)*16/9)*.66;
+  return Math.min(100,2*Math.atan(Math.tan(h/2)/a)*180/Math.PI);
+}
 function aimCamera(fov: number){
   camera.position.copy(_c);
-  camera.fov=fov;
+  camera.fov=shotFov(fov);
   camera.updateProjectionMatrix();
   camera.lookAt(_l);
 }
@@ -264,8 +273,8 @@ function directDuo(){
 // facing the phone on the back wall). `drift` is how far the camera dollies over a shot.
 const PHONE_SHOTS: Record<string,{cam: [number,number,number]; look: [number,number,number]; fov: number; drift: [number,number,number]}>={
   wide:{cam:[2.5,1.75,4.8],look:[0,1.35,0],fov:40,drift:[-.6,0,-.7]},           // from the street
-  close:{cam:[.3,1.63,-.3],look:[-.02,1.62,.14],fov:44,drift:[0,0,.05]},         // by the phone, on the face
-  side:{cam:[-1.8,1.55,.3],look:[0,1.58,.1],fov:36,drift:[.25,0,.1]},            // profile through the glass
+  close:{cam:[.55,1.68,-.42],look:[0,1.6,.06],fov:44,drift:[-.06,0,.04]},        // on the face (the receiver is on the -x side)
+  side:{cam:[1.8,1.55,.3],look:[0,1.58,.1],fov:40,drift:[-.25,0,.1]},           // profile through the glass, receiver side away
   over:{cam:[.38,1.78,1.05],look:[-.08,1.45,-.5],fov:40,drift:[0,0,-.15]},       // over the shoulder onto the phone
   low:{cam:[-1.4,.3,2.7],look:[0,2.15,0],fov:52,drift:[.35,0,0]},               // low angle up at the booth + sign
   high:{cam:[1.6,4.4,2.3],look:[0,1.1,0],fov:48,drift:[0,-.35,0]},              // looking down from above
