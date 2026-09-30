@@ -12,10 +12,13 @@ import {makePed,animatePed,makeMotorcycle} from '@/core/entities.ts';
 import {say} from '@/ui/speech.ts';
 import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HALF,
   TAP_YAW,SALE_YAW,TAP_SPOUT,TAP_BUCKET_REST,CRATE_LOCAL,CRATE_INNER,
+  TABLE_TOP_Y,TRIM_PLANT_LOCAL,TRIM_TRAY_LOCAL,TRIM_SHEARS_LOCAL,TRIM_STAND_LOCAL,
   makeWeedPlant} from '../../assets/models/rural/weed-farm.ts';
 import {makeFarmBucket} from '../../assets/models/rural/farm-bucket.ts';
-import {makeHarvestedPlant} from '../../assets/models/rural/weed-harvest.ts';
-import {fpHeld,fpHeldObject,fpBusy,setHeld,fpPickUp,fpPlace,fpFill,fpPour,fpSow,fpUproot,
+import {makeHarvestedPlant,makeFlowerBud} from '../../assets/models/rural/weed-harvest.ts';
+import {makeTrimShears} from '../../assets/models/rural/trim-shears.ts';
+import {makeBudTray,TRAY_W,TRAY_D} from '../../assets/models/rural/bud-tray.ts';
+import {fpHeld,fpHeldObject,fpBusy,setHeld,fpPickUp,fpPlace,fpFill,fpPour,fpSow,fpUproot,fpSnip,fpTipTray,tossPiece,flyTo,
   abortActions,updateFarmFocus} from '@/activities/weed-farm-fp.ts';
 import {makeWeedBackpack} from '../../assets/models/rural/weed-backpack.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
@@ -44,8 +47,11 @@ import {peds,type Ped} from '@/world/pedestrians.ts'; // street peds that like w
 //               carry ONE plant at a time (better-tended plants hold more buds).
 //   5. DRY    — hang each plant upside down on the drying RACK (mandatory): in a few
 //               seconds it dries and turns golden-brown. Take it back down.
-//   6. STASH  — lay each DRIED plant in the wooden CRATE, one by one (a fresh plant is refused).
-//   7. DELIVER— take the stash OUT of the crate: the player straps on a backpack and
+//   6. TRIM   — lay the dried plant on the work table, pick up the trimming shears, cut
+//               off the fan leaves and snip each bud off the stem into the tray (the
+//               "bucking + manicure" growers do before curing). The bare stem is tossed.
+//   7. STASH  — tip the tray of buds into the wooden CRATE.
+//   8. DELIVER— take the stash OUT of the crate: the player straps on a backpack and
 //               enters a DELIVERY RUN to buyers across the country and the city.
 //
 // Open-world activity: zone actions + a per-frame update, no world lock.
@@ -239,6 +245,7 @@ interface Harvest{buds:number;val:number;strain:string;quality:number;cured:bool
 let heldPlant: Harvest|null=null;
 const groundPlants: {obj:THREE.Object3D;data:Harvest}[]=[];   // plants put down anywhere
 const holdingPlant=()=>fpHeld()==='plant'&&!!heldPlant;
+const handsFree=()=>fpHeld()==='none';
 
 const rand=(a: number,b: number)=>a+Math.random()*(b-a);
 const dist=(p: {x:number;z:number},o: {x:number;z:number})=>Math.hypot(p.x-o.x,p.z-o.z);
@@ -407,45 +414,128 @@ function harvest(slot: Slot): void{
     }});
 }
 
-// ---------- the crate: each plant is laid in by hand, one at a time ----------
-const CRATE_VIS_CAP=12;
-const crateObjs: THREE.Object3D[]=[];
-let crateItems: Harvest[]=[];                     // what's in the crate (for a returned pack)
-// The n-th plant's resting pose in the crate: rows across the crate, stacked in layers,
-// alternating head-to-tail like harvested plants tossed in neatly.
-function crateSlot(n: number): {pos:THREE.Vector3;quat:THREE.Quaternion}{
-  const i=n%CRATE_VIS_CAP,layer=(i/4)|0,row=i%4;
-  const flip=(row+layer)%2?1:-1;
-  const lz=(-1.5+row)*CRATE_INNER.halfD*.62;
-  const lx=-flip*.3*CRATE_INNER.halfW;             // stem base offset so the plant sits centred
-  const o=yawXZ(lx,lz,SALE_YAW);
-  const pos=new THREE.Vector3(crateW.x+o.x,crateW.y+.07+layer*.085,crateW.z+o.z);
-  const e=new THREE.Euler(((n*37)%10-5)*.04,SALE_YAW,flip*Math.PI/2,'YXZ');
-  return{pos,quat:new THREE.Quaternion().setFromEuler(e)};
+// ---------- the work table: trimming (lay the plant down, shears, fan leaves, buds) ----------
+const tableGY=groundHeight(box.x,box.z);
+const tableW=(lx: number,ly: number,lz: number)=>{const o=yawXZ(lx,lz,SALE_YAW);return new THREE.Vector3(box.x+o.x,tableGY+ly,box.z+o.z);};
+const tableYaw=(extra=0)=>new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0),SALE_YAW+extra);
+const trimStand=tableW(TRIM_STAND_LOCAL.x,0,TRIM_STAND_LOCAL.z);
+// the shears rest flat on the table; the tray sits to the right
+const shears=makeTrimShears();
+const shearsRest={pos:tableW(TRIM_SHEARS_LOCAL.x,TABLE_TOP_Y+.012,TRIM_SHEARS_LOCAL.z),quat:tableYaw(.6)};
+function restShears(): void{
+  if(shears.parent!==scene)scene.add(shears);
+  shears.position.copy(shearsRest.pos);shears.quaternion.copy(shearsRest.quat);shears.scale.setScalar(1);
 }
-const PLANT_CRATE_SCALE=.55;
-function addPlantVisual(data: Harvest): THREE.Object3D|null{
-  if(crateObjs.length>=CRATE_VIS_CAP)return null;
-  const obj=makeHarvestedPlant(STRAIN_BY_ID[data.strain]?.color,data.cured);
-  const sl=crateSlot(crateObjs.length);
-  obj.position.copy(sl.pos);obj.quaternion.copy(sl.quat);obj.scale.setScalar(PLANT_CRATE_SCALE);
-  scene.add(obj);crateObjs.push(obj);return obj;
-}
-function clearCrateVisuals(): void{for(const o of crateObjs)scene.remove(o);crateObjs.length=0;}
+restShears();
+const tray=makeBudTray();
+tray.position.copy(tableW(TRIM_TRAY_LOCAL.x,TABLE_TOP_Y,TRIM_TRAY_LOCAL.z));tray.quaternion.copy(tableYaw());
+scene.add(tray);
+let trayItems: Harvest[]=[];                      // trimmed plants whose buds are in the tray
 
-function placeInCrate(): void{
-  const data=heldPlant;if(!data||!holdingPlant()||!data.cured)return; // only dried plants (drying is mandatory)
-  const sl=crateSlot(crateObjs.length);
-  fpPlace({pos:sl.pos,quat:sl.quat,scale:PLANT_CRATE_SCALE},{focus:crateW,hover:.35,stepDist:1.05,
+// A dried plant lying on the table being trimmed: its fan-leaf pairs, then its buds.
+interface TrimJob{obj:THREE.Object3D;data:Harvest;fans:THREE.Object3D[];buds:THREE.Object3D[];fanPairs:number;}
+let trimJob: TrimJob|null=null;
+const holdingShears=()=>fpHeld()==='shears';
+const nearTable=(p: {x:number;z:number})=>dist(p,trimStand)<1.9||dist(p,box)<1.9;
+
+function layOnTable(): void{
+  const data=heldPlant;if(!data||!holdingPlant()||!data.cured||trimJob)return;
+  const pos=tableW(TRIM_PLANT_LOCAL.x,TABLE_TOP_Y+.07,TRIM_PLANT_LOCAL.z);
+  // lying along the table, stem base to the left, a little tilt so both fan sides show
+  const quat=tableYaw().multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(.25,0,-Math.PI/2)));
+  fpPlace({pos,quat,scale:.62},{focus:pos,hover:.2,stepDist:1.0,
     onRelease:(obj)=>{
       heldPlant=null;
-      if(crateObjs.length<CRATE_VIS_CAP)crateObjs.push(obj);else scene.remove(obj);
-      deposit.buds+=data.buds;deposit.val+=data.val;crateItems.push(data);
+      const fans=[...(obj.userData.fans as THREE.Object3D[])];
+      trimJob={obj,data,fans,buds:[...(obj.userData.buds as THREE.Object3D[])],fanPairs:Math.ceil(fans.length/2)};
+    },
+    onDone:()=>message('PICK UP THE SHEARS AND TRIM IT','var(--gold)')});
+}
+function pickUpShears(): void{ fpPickUp(shears,'shears',{onGrab:()=>blip([660,880],.03,'square',.06)}); }
+function putShearsDown(): void{ fpPlace({pos:shearsRest.pos,quat:shearsRest.quat,scale:1},{hover:.08}); }
+const stemPoint=(j: TrimJob)=>j.obj.localToWorld(new THREE.Vector3(0,.15,0));
+
+// cut the next fan-leaf pair off: they drop off the table
+function snipFan(): void{
+  const j=trimJob;if(!j||!j.fans.length||!holdingShears())return;
+  const pair=j.fans.splice(0,2);
+  fpSnip(()=>pair[0].getWorldPosition(new THREE.Vector3()),()=>stemPoint(j),{
+    onCut:()=>{
+      for(const f of pair){
+        const a=Math.random()*Math.PI*2;
+        tossPiece(f,new THREE.Vector3(Math.cos(a)*.9,1.2,Math.sin(a)*.9));
+      }
+    },
+    onDone:()=>{if(!j.fans.length)message('FAN LEAVES OFF - NOW SNIP THE BUDS INTO THE TRAY','var(--gold)');},
+  });
+}
+// snip the next bud off the stem: it arcs into the tray. The last one leaves a bare stem.
+function snipBud(): void{
+  const j=trimJob;if(!j||j.fans.length||!j.buds.length||!holdingShears())return;
+  const bud=j.buds.shift()!;
+  const last=!j.buds.length;
+  fpSnip(()=>bud.getWorldPosition(new THREE.Vector3()),()=>stemPoint(j),{
+    onCut:()=>{
+      // the cola is part of the plant model: swap it for a loose bud nugget before it flies
+      let piece: THREE.Object3D=bud;
+      if(!(bud as THREE.Mesh).geometry||(bud as THREE.Mesh).geometry.type!=='IcosahedronGeometry'){
+        piece=makeFlowerBud(true);
+        bud.getWorldPosition(piece.position);scene.add(piece);bud.visible=false;
+      }
+      piece.scale.setScalar(.62*1.25);
+      const inside=tray.userData.inside as THREE.Object3D;
+      const to=inside.localToWorld(new THREE.Vector3((Math.random()-.5)*TRAY_W*.6,.03,(Math.random()-.5)*TRAY_D*.6));
+      flyTo(piece,to,.35,()=>inside.attach(piece));
+    },
+    onDone:()=>{
+      if(!last)return;
+      // bare stem goes in the bin; the plant's buds are now in the tray
+      tossPiece(j.obj,new THREE.Vector3(-Math.sin(cameraRig.yaw)*1.5,2.2,-Math.cos(cameraRig.yaw)*1.5));
+      trayItems.push(j.data);trimJob=null;
+      const n=trayItems.reduce((a,t)=>a+t.buds,0);
+      message(`TRIMMED - ${n} BUDS IN THE TRAY - TIP THEM INTO THE CRATE`,'var(--gold)');
+      blip([659,880,1175],.07,'square',.16);
+      putShearsDown();
+    },
+  });
+}
+
+// ---------- the crate: a growing pile of trimmed, dried buds ----------
+const PILE_CAP=36;
+const pile: THREE.Object3D[]=[];
+let crateItems: Harvest[]=[];                     // what's in the crate (for a returned pack)
+const cratePilePoint=()=>{
+  const lx=(Math.random()-.5)*CRATE_INNER.halfW*1.5,lz=(Math.random()-.5)*CRATE_INNER.halfD*1.5;
+  const o=yawXZ(lx,lz,SALE_YAW);
+  return new THREE.Vector3(crateW.x+o.x,crateW.y+.05+Math.min(.3,pile.length*.008),crateW.z+o.z);
+};
+function addPileBud(): void{
+  if(pile.length>=PILE_CAP)return;
+  const b=makeFlowerBud(true);b.scale.setScalar(.8);
+  b.position.copy(cratePilePoint());b.rotation.set(Math.random()*3,Math.random()*3,Math.random()*3);
+  scene.add(b);pile.push(b);
+}
+function clearPile(): void{for(const b of pile)scene.remove(b);pile.length=0;}
+
+// Tip the tray: every bud in it tumbles into the crate; the harvest joins the stash.
+function tipTrayIntoCrate(): void{
+  if(!trayItems.length||!handsFree())return;
+  const items=trayItems;
+  fpTipTray(tray,crateW,{
+    onTip:()=>{
+      const inside=tray.userData.inside as THREE.Object3D;
+      for(const b of [...inside.children]){
+        if(pile.length>=PILE_CAP){inside.remove(b);continue;}
+        flyTo(b,cratePilePoint(),.35+Math.random()*.15,()=>pile.push(b));
+      }
+      for(const it of items){deposit.buds+=it.buds;deposit.val+=it.val;crateItems.push(it);}
+      trayItems=[];
     },
     onDone:()=>{
       message(`IN THE CRATE: ${deposit.buds} BUDS - NO CASH HERE; TAKE IT OUT TO RUN DELIVERIES`,'var(--gold)');
       blip([330,392],.06,'sine',.12);
-    }});
+    },
+  });
 }
 
 // ---------- a plant put down anywhere (walked off, or set down on purpose) ----------
@@ -473,7 +563,7 @@ function pickUpPlant(i: number): void{
 function withdrawPack(): void{
   if(pack.active||deposit.buds<=0)return;
   pack.active=true;pack.buds=deposit.buds;pack.val=deposit.val;pack.orig=deposit.buds;
-  deposit.buds=0;deposit.val=0;clearCrateVisuals();
+  deposit.buds=0;deposit.val=0;clearPile();
   packItems=crateItems;crateItems=[];
   runEarned=0;
   attachBackpack();spawnBuyers();delivering=true;
@@ -485,7 +575,7 @@ function returnPack(): void{
   if(!pack.active)return;
   deposit.buds+=pack.buds;deposit.val+=pack.val;
   crateItems=packItems;packItems=[];
-  for(const it of crateItems)addPlantVisual(it);
+  for(let i=0;i<deposit.buds;i++)addPileBud();
   endRunCleanup();
   message('BACKPACK RETURNED - THE STASH IS BACK IN THE BOX','var(--cream)');
   blip([300,240],.05,'square',.1);
@@ -684,8 +774,12 @@ function nearestSlot(): Slot|null{
   if(holdingPlant()){
     // drying is MANDATORY: only a dried plant goes in the crate; a fresh one goes on the rack
     const dry=heldPlant!.cured;
-    if(nearCrate)return dry?act('PLACE','LAY THE DRIED PLANT IN THE CRATE',placeInCrate)
-      :act('WET','STILL WET - DRY IT ON THE RACK FIRST',()=>message('DRY IT ON THE RACK FIRST - ONLY DRIED PLANTS GO IN THE CRATE','var(--cyan)'));
+    if(nearTable(p)&&dry){
+      if(!trimJob)return act('TRIM','LAY IT ON THE TABLE TO TRIM',layOnTable);
+      return act('BUSY','FINISH TRIMMING THE ONE ON THE TABLE FIRST',()=>message('ONE PLANT ON THE TABLE AT A TIME','var(--cream)'));
+    }
+    if(nearCrate||nearTable(p))return dry?act('TRIM','TRIM IT AT THE TABLE FIRST',()=>message('BUDS ONLY - TRIM IT AT THE TABLE, THEN TIP THE TRAY IN','var(--cyan)'))
+      :act('WET','STILL WET - DRY IT ON THE RACK FIRST',()=>message('DRY IT ON THE RACK FIRST, THEN TRIM IT AT THE TABLE','var(--cyan)'));
     if(nearRack&&!dry){
       if(freeHook()>=0)return act('HANG','HANG IT UPSIDE DOWN TO DRY',hangPlant);
       return act('FULL','THE RACK IS FULL - WAIT FOR ONE TO DRY',()=>message('THE RACK IS FULL - TAKE A DRIED ONE DOWN FIRST','var(--cream)'));
@@ -693,6 +787,20 @@ function nearestSlot(): Slot|null{
     if(slot&&pl?.stage==='ripe')return act('FULL',dry?'HANDS FULL - LAY THIS ONE IN THE CRATE FIRST':'HANDS FULL - HANG THIS ONE TO DRY FIRST',
       ()=>message(dry?'ONE PLANT AT A TIME - TAKE IT TO THE CRATE':'ONE PLANT AT A TIME - HANG IT ON THE DRYING RACK','var(--cream)'));
     return act('DROP','PUT THE PLANT DOWN',()=>dropPlantHere(true));
+  }
+
+  // ---- the shears in hand: trim the plant on the table ----
+  if(holdingShears()){
+    const j=trimJob;
+    if(j&&j.fans.length){
+      const done=j.fanPairs-Math.ceil(j.fans.length/2);
+      return act('SNIP',`CUT OFF THE FAN LEAVES (${done+1}/${j.fanPairs})`,snipFan);
+    }
+    if(j&&j.buds.length){
+      const total=(j.obj.userData.buds as unknown[]).length,done=total-j.buds.length;
+      return act('SNIP',`SNIP THE BUDS INTO THE TRAY (${done+1}/${total})`,snipBud);
+    }
+    return act('SHEARS','PUT THE SHEARS DOWN',putShearsDown);
   }
 
   // ---- the bucket in hand ----
@@ -712,6 +820,11 @@ function nearestSlot(): Slot|null{
   }
 
   // ---- empty hands ----
+  if(nearTable(p)||nearCrate){
+    if(trimJob&&nearTable(p))return act('SHEARS','PICK UP THE SHEARS AND TRIM',pickUpShears);
+    if(trayItems.length)
+      return act('CRATE',`TIP ${trayItems.reduce((a,t)=>a+t.buds,0)} BUDS INTO THE CRATE`,tipTrayIntoCrate);
+  }
   if(nearCrate){
     if(pack.active)return act('RETURN','RETURN THE DELIVERY BACKPACK',returnPack);
     if(deposit.buds>0)return act('TAKE',`TAKE ${deposit.buds} BUDS FOR DELIVERY`,withdrawPack);
@@ -831,6 +944,7 @@ refs.getWeedFarmState=()=>{
   for(const s of slots){if(s.plant){planted++;if(s.plant.stage==='ripe')ripe++;}}
   return{planted,ripe,held:fpHeld(),busy:fpBusy(),heldPlant:heldPlant?{...heldPlant}:null,
     bucketWater:+((bucket.userData.water as number)||0).toFixed(2),crate:crateItems.length,
+    trim:trimJob?{fans:trimJob.fans.length,buds:trimJob.buds.length}:null,tray:trayItems.length,
     hung:hooks.filter(Boolean).length,dropped:groundPlants.length,
     boxed,waterCharges,upLevel,sprinklers:hasSprinklers(),
     seeds:{...state.seeds},seedSel:state.seedSel||plantStrain(),
@@ -897,11 +1011,14 @@ export function updateWeedFarm(dt: number): void{
   // bucket goes back under the faucet and a carried plant is set down where you were.
   if(!fpBusy()&&fpHeld()!=='none'){
     const p=playerPos();
-    const away=state.mode!=='foot'||state.swimming||Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)>BUCKET_DROP_DIST;
+    const away=state.mode!=='foot'||state.swimming||Math.hypot(p.x-WEED_CX,p.z-WEED_CZ)>BUCKET_DROP_DIST
+      ||(holdingShears()&&!nearTable(p));          // the shears stay at the table
     if(away){
       if(holdingBucket()){
         setHeld('none',null);waterCharges=0;setBucketWater(0);restBucketAtTap();
         if(state.mode==='foot')message('LEFT THE BUCKET AT THE TAP','var(--cream)');
+      }else if(holdingShears()){
+        setHeld('none',null);restShears();
       }else if(holdingPlant()){
         dropPlantHere(false);
         if(state.mode==='foot')message('YOU PUT THE PLANT DOWN','var(--cream)');

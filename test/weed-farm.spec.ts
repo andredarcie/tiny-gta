@@ -7,6 +7,24 @@ import { test, expect } from './support/game.ts';
 
 const CX = 620, CZ = -90;                       // compound centre (assets/models/rural/weed-farm.ts)
 const W = (x: number, z: number) => ({ x: CX + x, z: CZ + z });
+const TABLE = W(9.5, 6.5), TRIM = W(8.39, 6.8);    // sale/work table centre and where you stand to trim
+
+// Lay the dried plant on the table, pick up the shears, snip every fan-leaf pair and bud
+// into the tray (the shears go back down by themselves), then tip the tray into the crate.
+async function trimAndStash(act: (n: string, t: number[]) => Promise<any>, tp: (p: any, f: any) => Promise<unknown>, page: any) {
+  await tp(TRIM, TABLE); await page.waitForTimeout(700);
+  let s = await act('lay', [600, 1200]);
+  expect(s.trim).not.toBeNull();
+  s = await act('shears', [600]);
+  expect(s.held).toBe('shears');
+  for (let i = 0; i < 12 && s.trim; i++) s = await act(i < 3 ? 'snip-fan' : 'snip-bud', i === 0 || i === 3 ? [250, 420] : []);
+  expect(s.trim).toBeNull();
+  expect(s.tray).toBe(1);
+  s = await act('tip', [500, 1100, 1500, 2100]);
+  expect(s.tray).toBe(0);
+  expect(s.crate).toBeGreaterThan(0);
+  return s;
+}
 
 test('weed farm first-person hand loop', async ({ game }) => {
   test.setTimeout(180_000);
@@ -57,7 +75,7 @@ test('weed farm first-person hand loop', async ({ game }) => {
   expect(s.held).toBe('plant');
   expect(s.heldPlant?.buds).toBeGreaterThan(0);
   // 6) the crate REFUSES a fresh plant: drying is mandatory
-  await tp(W(6.8, 6.4), W(8.24, 6.84));        // the crate sits on the ground, yard side of the sale table
+  await tp(TRIM, TABLE);                       // at the work table (the crate sits beside it)
   await page.waitForTimeout(700);
   s = await act('crate-wet', []);
   expect(s.held).toBe('plant');
@@ -70,8 +88,8 @@ test('weed farm first-person hand loop', async ({ game }) => {
   await page.screenshot({ path: `output/visual/farm/${String(++shot).padStart(2, '0')}-dried.png` });
   s = await act('takedry', [500]);
   expect(s.heldPlant?.cured).toBe(true);
-  await tp(W(6.8, 6.4), W(8.24, 6.84)); await page.waitForTimeout(700);
-  s = await act('crate', [400, 900, 1250]);
+  // 8) trim it at the table: lay it down, shears, fan leaves, buds into the tray, tip into the crate
+  s = await trimAndStash(act, tp, page);
   expect(s.held).toBe('none');
   expect(s.crate).toBe(1);
   console.log('[farm] final', JSON.stringify(s));
@@ -118,8 +136,7 @@ test('weed farm first-person rack + dead plant', async ({ game }) => {
   s = await act('takecured', [400, 900]);
   expect(s.held).toBe('plant');
   expect(s.heldPlant?.cured).toBe(true);
-  await tp(W(6.8, 6.4), W(8.24, 6.84)); await page.waitForTimeout(700);
-  s = await act('crate2', []);
+  s = await trimAndStash(act, tp, page);
   expect(s.crate).toBe(1);
   console.log('[farm rack] final', JSON.stringify(s));
 });

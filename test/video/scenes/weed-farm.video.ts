@@ -54,10 +54,16 @@ test('video: weed farm', async ({ page }) => {
     await d.farmAct();
   }, 150);
 
-  // stash it in the crate, then take the stash on a delivery run
-  await d.walkTo(W(6.6, 6.3), .35);
-  await d.turnTo(W(8.24, 6.84), 300);
-  await d.clip('stash', 'One plant at a time', async () => { await d.farmAct(); }, 200);
+  // trim it at the work table: lay it down, shears, fan leaves off, buds into the tray
+  await d.walkTo(W(8.39, 6.8), .35);
+  await d.turnTo(W(9.5, 6.5), 300);
+  await d.clip('trim', 'Trim it by hand', async () => {
+    await d.farmAct();                                   // lay it on the table
+    await d.farmAct();                                   // pick up the shears
+    for (let i = 0; i < 12 && (await d.farm('state')).trim; i++) await d.farmAct();
+  }, 200);
+  // tip the tray into the crate, then take the stash on a delivery run
+  await d.clip('stash', 'Buds into the crate', async () => { await d.farmAct(); }, 200);
   await d.clip('deliver', 'Then sell it', async () => { await d.interact(); await d.wait(1400); }, 100);
 
   await d.finish();

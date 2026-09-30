@@ -33,7 +33,7 @@ import {makeWaterDrop} from '../../assets/models/rural/weed-farm.ts';
 // read by js/combat/weapons.ts).
 // ============================================================================
 
-export type HeldKind='none'|'bucket'|'plant';
+export type HeldKind='none'|'bucket'|'plant'|'shears';
 
 const V=(x=0,y=0,z=0)=>new THREE.Vector3(x,y,z);
 const clamp01=(v: number)=>v<0?0:v>1?1:v;
@@ -90,13 +90,15 @@ const toRig=(w: THREE.Vector3,out=new THREE.Vector3())=>rig.worldToLocal(out.cop
 
 // ---------- carry poses (rig space) ----------
 interface Pose{pos: THREE.Vector3;quat: THREE.Quaternion;scale: number;}
-const CARRY: Record<'bucket'|'plant',{pos:[number,number,number];rot:[number,number,number];scale:number}>={
+type Carried=Exclude<HeldKind,'none'>;
+const CARRY: Record<Carried,{pos:[number,number,number];rot:[number,number,number];scale:number}>={
   bucket:{pos:[.2,-.13,-.48],rot:[.12,-.35,0],scale:.5},
   plant:{pos:[.19,-.37,-.55],rot:[-.12,.4,-.1],scale:.36},
+  shears:{pos:[.17,-.19,-.42],rot:[-.55,.35,.35],scale:1},    // blades up and forward, ready to snip
 };
 const VM_SWAY=2*Math.PI*35*128/8192;            // DOOM's weapon-bob phase speed (as the guns)
 let vmMove=0;
-function carryPose(kind: 'bucket'|'plant',out: Pose): Pose{
+function carryPose(kind: Carried,out: Pose): Pose{
   const c=CARRY[kind];
   const ph=state.time*VM_SWAY;
   const bx=Math.cos(ph)*.045*vmMove, by=-Math.abs(Math.sin(ph))*.03*vmMove+Math.sin(state.time*1.6)*.004*(1-vmMove);
@@ -134,7 +136,7 @@ function gripInRig(o: THREE.Object3D,out=new THREE.Vector3()): THREE.Vector3{
 const yawQuat=(yaw: number)=>new THREE.Quaternion().setFromAxisAngle(V(0,1,0),yaw);
 
 // ---------- world particles (water drops, seeds, soil clods, a tossed plant) ----------
-interface Particle{m: THREE.Object3D;v: THREE.Vector3;floor: number;life: number;spin?: THREE.Vector3;onLand?: ()=>void;}
+interface Particle{m: THREE.Object3D;v: THREE.Vector3;floor: number;life: number;spin?: THREE.Vector3;onLand?: ()=>void;keep?: boolean;}
 const parts: Particle[]=[];
 function spawn(m: THREE.Object3D,from: THREE.Vector3,v: THREE.Vector3,floor: number,opts: Partial<Particle>={}): void{
   m.position.copy(from);scene.add(m);
@@ -150,11 +152,25 @@ function updateParticles(dt: number): void{
     p.life-=dt;p.v.y-=9*dt;
     p.m.position.addScaledVector(p.v,dt);
     if(p.spin){p.m.rotation.x+=p.spin.x*dt;p.m.rotation.y+=p.spin.y*dt;p.m.rotation.z+=p.spin.z*dt;}
-    if(p.m.position.y<=p.floor||p.life<=0){
+    if((p.m.position.y<=p.floor&&(!p.keep||p.v.y<0))||p.life<=0){ // kept pieces land only on the way down
+      if(p.keep)p.m.position.y=Math.max(p.m.position.y,p.floor);
       p.onLand?.();
-      scene.remove(p.m);parts.splice(i,1);
+      if(!p.keep)scene.remove(p.m);
+      parts.splice(i,1);
     }
   }
+}
+/** Throw a piece off (a cut fan leaf, a bare stem): it tumbles to the ground and is gone. */
+export function tossPiece(o: THREE.Object3D,v: THREE.Vector3,spin=new THREE.Vector3(5,2,6)): void{
+  scene.attach(o);
+  const w=o.getWorldPosition(new THREE.Vector3());
+  parts.push({m:o,v,floor:groundHeight(w.x,w.z)-.05,life:2,spin});
+}
+/** Fly a piece in an arc onto a world point and KEEP it there (a bud into the tray/crate). */
+export function flyTo(o: THREE.Object3D,to: THREE.Vector3,tFlight: number,onLand?: ()=>void): void{
+  scene.attach(o);
+  const w=o.getWorldPosition(new THREE.Vector3());
+  parts.push({m:o,v:ballistic(w,to,tFlight),floor:to.y,life:tFlight+.5,spin:V(3,4,2),keep:true,onLand});
 }
 /** Soil clods kicked up around a world point (planting pat, uprooting). */
 export function soilBurst(at: THREE.Vector3,n=8,power=1): void{
@@ -207,7 +223,7 @@ function keepCarry(): void{
 // ===================== the clips =====================
 
 /** Reach for a world object (the bucket, a dropped or cured plant) and bring it to the carry pose. */
-export function fpPickUp(obj: THREE.Object3D,kind: 'bucket'|'plant',cb: {onGrab?: ()=>void;onDone?: ()=>void}={}): void{
+export function fpPickUp(obj: THREE.Object3D,kind: Carried,cb: {onGrab?: ()=>void;onDone?: ()=>void}={}): void{
   let from: Pose|null=null;const to=newPose();
   play({dur:1.3,
     focus:()=>{const w=obj.getWorldPosition(V());w.y+=.15;return from?null:w;},
@@ -465,6 +481,74 @@ export function fpUproot(plant: THREE.Object3D,cb: {toss?: boolean;onPull?: ()=>
       }
     },
     done:()=>{L.g.visible=false;cb.onDone?.();}});
+}
+
+/** One cut with the trimming shears: the left hand pins the stem at `hold`, the shears
+ *  open, reach the leaf/bud at `target` and snap shut (onCut), then come back. */
+export function fpSnip(target: ()=>THREE.Vector3,hold: ()=>THREE.Vector3,cb: {onCut?: ()=>void;onDone?: ()=>void}={}): void{
+  const obj=heldObj;if(!obj||held!=='shears')return;
+  const setOpen=obj.userData.setOpen as (k: number)=>void;
+  const tip=(obj.userData.tip as THREE.Object3D).position;
+  const carry=newPose(),at=newPose(),tipOff=new THREE.Vector3(),tRig=new THREE.Vector3();
+  let aim: THREE.Vector3|null=null;                 // the target, frozen when the clip starts
+  play({dur:.78,
+    focus:()=>aim,
+    update:(t)=>{
+      if(!aim)aim=target().clone();
+      const reach=ease(seg(t,0,.3))*(1-ease(seg(t,.46,.78)));
+      carryPose('shears',carry);
+      // shears pose that puts the blade tip on the target (keeping the carry orientation)
+      toRig(aim,tRig);
+      at.quat.copy(carry.quat);at.scale=carry.scale;
+      tipOff.copy(tip).multiplyScalar(at.scale).applyQuaternion(at.quat);
+      at.pos.copy(tRig).sub(tipOff);
+      applyBlend(obj,carry,at,reach);
+      placeArm(R,gripInRig(obj),.3*reach);
+      // blades: open on the way in, snap shut on the stem
+      setOpen(t<.3?seg(t,.05,.3):t<.4?1-seg(t,.34,.4):0);
+      // the free hand pins the stem while the shears work
+      const pin=ease(seg(t,0,.25))*(1-ease(seg(t,.5,.78)));
+      if(pin>.02)placeArm(L,lerpV(REST_L,toRig(hold()),pin),.5*pin,-.3*pin);else L.g.visible=false;
+      once('cut',t>=.4,()=>{thud(.6);cb.onCut?.();});
+    },
+    done:()=>{setOpen(0);L.g.visible=false;cb.onDone?.();}});
+}
+
+/** Lift the trim tray off the table, carry it over the crate, tip it (onTip — the buds
+ *  pour out) and set it back where it was. */
+export function fpTipTray(tray: THREE.Object3D,over: THREE.Vector3,cb: {onTip?: ()=>void;onDone?: ()=>void}={}): void{
+  const home={pos:tray.position.clone(),quat:tray.quaternion.clone()};
+  let from: Pose|null=null;const dock=newPose();
+  const yaw=yawQuat(cameraRig.yaw);
+  let back=false;
+  play({dur:2.5,
+    focus:()=>back?home.pos:(from?over:home.pos),
+    step:{at:()=>over,dist:1.1},
+    update:(t)=>{
+      if(!from){
+        const k=ease(seg(t,.05,.45));
+        placeArm(R,lerpV(REST_R,gripInRig(tray),k),.3*k,-.4*k);
+      }
+      once('grab',t>=.45,()=>{rig.attach(tray);from=capture(tray);thud(1.5);});
+      if(from&&!back){
+        // carry it over the crate, then tip it forward to pour
+        const k=ease(seg(t,.45,1.2)), tip=easeOut(seg(t,1.2,1.55))*(1-ease(seg(t,1.75,2.05)));
+        const q=yaw.clone().multiply(new THREE.Quaternion().setFromAxisAngle(V(1,0,0),1.45*tip));
+        worldToRigPose(V(over.x,over.y+.42,over.z),q,1,dock);
+        applyBlend(tray,from,dock,k);
+        placeArm(R,gripInRig(tray),.3,-.4);
+      }
+      once('tip',t>=1.4,()=>{cb.onTip?.();splash(.15);});
+      once('back',t>=2.05,()=>{back=true;from=capture(tray);});
+      if(back&&from){
+        const k=ease(seg(t,2.05,2.45));
+        worldToRigPose(home.pos,home.quat,1,dock);
+        applyBlend(tray,from,dock,k);
+        placeArm(R,gripInRig(tray),.3,-.4);
+      }
+      once('release',t>=2.45,()=>{scene.attach(tray);tray.position.copy(home.pos);tray.quaternion.copy(home.quat);thud(1.5);});
+    },
+    done:()=>{if(tray.parent!==scene){scene.attach(tray);tray.position.copy(home.pos);tray.quaternion.copy(home.quat);}R.g.visible=false;cb.onDone?.();}});
 }
 
 // ===================== per-frame =====================

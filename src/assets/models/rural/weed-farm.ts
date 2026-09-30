@@ -50,7 +50,12 @@ export const WEED_RACK={x:-2.5,z:-7.3};   // drying rack — hang the harvest to
 export const TAP_YAW=.5, SALE_YAW=-Math.PI/2.4;
 export const TAP_SPOUT={x:.22,y:1.1,z:-.2};
 export const TAP_BUCKET_REST={x:.3,y:.4,z:.1};
-export const CRATE_LOCAL={x:0,y:0,z:1.3}, CRATE_SCALE=1; // on the ground, yard side: you look down into it
+export const CRATE_LOCAL={x:-1.9,y:0,z:.4}, CRATE_SCALE=1; // on the ground beside the table's end: you look down into it
+// The table doubles as the TRIMMING bench: the dried plant is laid along its top, the trim
+// tray sits to its right, the shears rest by it, and you work it from the yard side.
+export const TABLE_TOP_Y=.98;
+export const TRIM_PLANT_LOCAL={x:.05,z:.08}, TRIM_TRAY_LOCAL={x:.62,z:.22}, TRIM_SHEARS_LOCAL={x:-.3,z:.32};
+export const TRIM_STAND_LOCAL={x:0,z:1.15};
 export const CRATE_INNER={floorY:.1*CRATE_SCALE,halfW:.62*CRATE_SCALE,halfD:.42*CRATE_SCALE};
 
 // ---- materials (shared, so bakeProp merges every farm mesh by material) ----
@@ -361,10 +366,10 @@ function makeSaleTable(): THREE.Group {
   scaleBody.position.set(.3,1.78,-.4);g.add(scaleBody);
   const pan=new THREE.Mesh(new THREE.CylinderGeometry(.18,.14,.06,14),pipeM);
   pan.position.set(.3,1.55,-.4);g.add(pan);
-  // price board leaning at the back
+  // price board propped along the back edge
   const board=new THREE.Mesh(new THREE.PlaneGeometry(.9,.66),
     new THREE.MeshBasicMaterial({map:priceTexture(),side:THREE.DoubleSide}));
-  board.position.set(.3,1.4,.5);board.rotation.x=.12;g.add(board);
+  board.position.set(.3,1.42,-.56);board.rotation.x=-.12;g.add(board); // back edge, facing the yard: the front stays clear for trimming
   // open crate on the ground beside the table: each harvested plant is laid in it by hand
   const crate=makeCrate(CRATE_SCALE);crate.position.set(CRATE_LOCAL.x,CRATE_LOCAL.y,CRATE_LOCAL.z);g.add(crate);
   return g;
