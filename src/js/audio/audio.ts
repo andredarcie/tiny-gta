@@ -305,6 +305,23 @@ export function phoneRing(vol=1){
   trem.start(t0);trem.stop(t0+1.3);
 }
 
+// A zombie's groan: a low, wobbling sawtooth sliding down, throat-filtered, with a
+// breathy noise layer. `vol` is the distance-scaled loudness (0..1).
+export function zombieGroan(vol=1){
+  if(!AC||!master||vol<=.01)return;
+  const t0=AC.currentTime,dur=.9+Math.random()*.6,f0=95+Math.random()*40;
+  const o=AC.createOscillator();o.type='sawtooth';
+  o.frequency.setValueAtTime(f0,t0);o.frequency.linearRampToValueAtTime(f0*.62,t0+dur);
+  const wob=AC.createOscillator();wob.frequency.value=5+Math.random()*3;
+  const wobG=AC.createGain();wobG.gain.value=f0*.08;wob.connect(wobG);wobG.connect(o.frequency);
+  const f=AC.createBiquadFilter();f.type='bandpass';f.frequency.value=480;f.Q.value=1.6;
+  const g=AC.createGain();g.gain.setValueAtTime(0,t0);
+  g.gain.linearRampToValueAtTime(.2*Math.min(1,vol),t0+.15);
+  g.gain.exponentialRampToValueAtTime(.001,t0+dur);
+  o.connect(f).connect(g).connect(master);
+  o.start(t0);o.stop(t0+dur+.05);wob.start(t0);wob.stop(t0+dur+.05);
+}
+
 // The receiver lifted off / dropped on the hook: a short plastic clack.
 export function phoneClick(down=false){
   if(!AC||!master)return;

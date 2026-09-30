@@ -2,13 +2,15 @@
 //   1) the phone rings at the booth by the start — walk up, answer it (first-person pick-up,
 //      then the cinematic call), 2) the redneck camp appears in the countryside — wipe it
 //      out, 3) back to the booth for the second call (mission 1 done), 4) take the shovel
-//      and bury three bodies in first person, then the time skip, 5) the third call (mission 2 done).
+//      and bury three bodies in first person, then the time skip (smoking on the summit),
+//      5) the third call (mission 2 done), 6) the fourth call and the zombies, 7) the fifth
+//      call and the priest, 8) holy water on every body, 9) the blessing (mission 3 done).
 // Frames of every beat are saved to output/visual/story/ for review.
 //   npx playwright test test/story.spec.ts
 import { test, expect } from './support/game.ts';
 
-test('story: pay phone → camp → second call → burial → third call', async ({ game }) => {
-  test.setTimeout(300_000);
+test('story: all three missions, from the first call to the blessing', async ({ game }) => {
+  test.setTimeout(420_000);
   const page = game.page;
   const story = (cmd: string) => page.evaluate((c) => (window as any).__test.story(c), cmd) as Promise<any>;
   const tp = (x: number, z: number, fx: number, fz: number) =>
@@ -94,9 +96,13 @@ test('story: pay phone → camp → second call → burial → third call', asyn
       expect(s.burial.holding).toBe(false);        // planted beside the grave
     }
   }
-  // the time skip: fade to black, all six buried, the player's monologue
+  // the time skip: fade to black, all six buried; on the summit, lighting a cigarette
   await page.waitForFunction(() => (window as any).__test.story('state').cine, null, { timeout: 15_000 });
-  await page.waitForTimeout(1500); await snap('time-skip-monologue');
+  let last = 0;
+  for (const t of [800, 1900, 2600, 3400, 4300, 5600, 7000]) {   // the whole smoking intro
+    await page.waitForTimeout(t - last); last = t;
+    await snap(`summit-${t}`);
+  }
   await story('skipCine');
   await page.waitForFunction(() => (window as any).__test.story('state').stage === 'call3', null, { timeout: 5000 });
   s = await story('state');
@@ -112,5 +118,64 @@ test('story: pay phone → camp → second call → burial → third call', asyn
   await waitIdle();
   await page.waitForTimeout(800); await snap('mission2-passed');
   s = await story('state');
-  expect(s.stage).toBe('done');
+  expect(s.stage).toBe('call4');
+
+  // 6) mission 3: the fourth call — the dead rose as zombies
+  await story('noQuiet');
+  await page.waitForFunction(() => (window as any).__test.story('state').ringing, null, { timeout: 5000 });
+  await interact();
+  await page.waitForFunction(() => (window as any).__test.story('state').cine, null, { timeout: 5000 });
+  await page.waitForTimeout(1500); await snap('call4');
+  await story('skipCine');
+  await waitIdle();
+  s = await story('state');
+  expect(s.stage).toBe('zombies');
+  expect(s.zombies.alive).toBe(6);
+  await story('toCamp');
+  await page.waitForTimeout(3000); await snap('zombies');
+  await story('killZombies');
+  await page.waitForFunction(() => (window as any).__test.story('state').stage === 'call5', null, { timeout: 5000 });
+
+  // 7) the fifth call, then the priest
+  await story('toBooth');
+  await page.waitForTimeout(1000);
+  await interact();
+  await page.waitForFunction(() => (window as any).__test.story('state').cine, null, { timeout: 5000 });
+  await story('skipCine');
+  await waitIdle();
+  expect((await story('state')).stage).toBe('priest');
+  await story('toPriest');
+  await page.waitForTimeout(1000); await snap('priest');
+  await interact();
+  await page.waitForFunction(() => (window as any).__test.story('state').cine, null, { timeout: 5000 });
+  await page.waitForTimeout(1500); await snap('priest-talk');
+  await story('skipCine');
+  await waitIdle();
+  s = await story('state');
+  expect(s.stage).toBe('holywater');
+  expect(s.held).toBe('flask');
+
+  // 8) the holy water on every cursed body
+  for (let n = 0; n < 6; n++) {
+    s = await story('state');
+    const c = s.zombies.corpses[0];
+    await tp(c.x - 1.4, c.z - 1, c.x, c.z);
+    await page.waitForTimeout(400);
+    await interact();
+    if (n === 0) for (const t of [500, 1000, 1500, 2400]) { await page.waitForTimeout(500); await snap(`holy-${t}`); }
+    await waitIdle();                  // the sprinkle clip (the hands) is over
+    await page.waitForTimeout(400);
+  }
+  await page.waitForFunction(() => (window as any).__test.story('state').stage === 'blessing', null, { timeout: 8000 });
+
+  // 9) the blessing: the villagers kneel, mission 3 done
+  await story('toPriest');
+  await page.waitForTimeout(1500); await snap('crowd');
+  await interact();
+  await page.waitForFunction(() => (window as any).__test.story('state').cine, null, { timeout: 5000 });
+  await page.waitForTimeout(1500); await snap('blessing');
+  await story('skipCine');
+  await waitIdle();
+  await page.waitForTimeout(800); await snap('mission3-passed');
+  expect((await story('state')).stage).toBe('done');
 });

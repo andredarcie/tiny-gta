@@ -66,6 +66,15 @@ export function restoreGraves(recs: GraveRec[]){
   for(const r of recs)if(Number.isFinite(r?.x)&&Number.isFinite(r?.z))addGrave({x:r.x,z:r.z,ry:+r.ry||0},true);
 }
 export const graveRecords=(): GraveRec[]=>graves.map(g=>({...g.rec}));
+/** The dead rose (mission 3): the graves lie open, crosses down. Closed again once the
+ *  curse is lifted. */
+export function setGravesOpen(open: boolean){
+  for(const g of graves){
+    const u=g.g.userData;
+    if(open){u.setDig(1);u.setFill(0);u.setCross(false);}
+    else{u.setDig(1);u.setFill(1);u.setCross(true);}
+  }
+}
 export function clearGraves(){
   for(const g of graves)scene.remove(g.g);
   graves.length=0;

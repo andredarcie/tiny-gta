@@ -6,8 +6,9 @@ import { STAGES, sanitizeStorySave } from '@/story/chain.ts';
 // kept for the stages that use them, and garbage entries are dropped or neutralised.
 
 describe('story chain — stages', () => {
-  it('runs call1 → camp → call2 → burial → call3 → done', () => {
-    expect([...STAGES]).toEqual(['call1','camp','call2','burial','call3','done']);
+  it('runs the three missions in order', () => {
+    expect([...STAGES]).toEqual(['call1','camp','call2','burial','call3',
+      'call4','zombies','call5','priest','holywater','blessing','done']);
   });
 });
 
@@ -27,6 +28,15 @@ describe('story chain — sanitizeStorySave', () => {
     expect(sanitizeStorySave({stage:'call2',bodies},6)!.bodies).toEqual(bodies);
     expect(sanitizeStorySave({stage:'camp',bodies},6)!.bodies).toEqual([]);
     expect(sanitizeStorySave({stage:'done',bodies},6)!.bodies).toEqual([]);
+  });
+
+  it('keeps the cursed zombie corpses after the fight; null = burned (holy water only)', () => {
+    const bodies=[{x:1,z:2},null];
+    expect(sanitizeStorySave({stage:'priest',bodies},6)!.bodies.length).toBe(2);
+    expect(Number.isNaN(sanitizeStorySave({stage:'priest',bodies},6)!.bodies[1]!.x)).toBe(true);
+    expect(sanitizeStorySave({stage:'holywater',bodies},6)!.bodies).toEqual([{x:1,z:2},null]);
+    expect(sanitizeStorySave({stage:'zombies',bodies},6)!.bodies).toEqual([]);
+    expect(sanitizeStorySave({stage:'blessing',graves:[{x:1,z:1}]},6)!.graves.length).toBe(1);
   });
 
   it('null marks a buried body — only meaningful during the burial', () => {

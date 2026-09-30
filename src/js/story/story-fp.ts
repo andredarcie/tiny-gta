@@ -6,11 +6,14 @@ import {cameraRig,player,isFirstPerson} from '@/actors/player.ts';
 import {phoneClick,dirtSound,thud} from '@/audio/audio.ts';
 import {makeFpHands} from '../../assets/models/characters/fp-hands.ts';
 import {makeSoilClod} from '../../assets/models/rural/weed-harvest.ts';
+import {makeWaterDrop} from '../../assets/models/rural/weed-farm.ts';
 
 // ============================================================================
 // STORY in FIRST PERSON — the player's own hands for the story's physical beats:
 //   • the PAY PHONE: reach for the receiver, lift it to the ear (the cinematic call
 //     takes over from there) and, after the call, hang it back on its hook;
+//   • the HOLY WATER: a little flask in the right hand, raised and shaken over a body
+//     (the drops arc onto it);
 //   • the BURIAL: a two-handed shovel — dig strokes that throw soil onto the heap, the
 //     shovel planted upright while both hands drag the body into the pit, fill strokes
 //     that shovel the heap back in, and a couple of pats on the mound.
@@ -67,7 +70,7 @@ function placeArm(a: Arm,grip: THREE.Vector3,roll=0,flick=0): void{
 const toRig=(w: THREE.Vector3,out=new THREE.Vector3())=>rig.worldToLocal(out.copy(w));
 
 // ---------- what the hands hold ----------
-export type Held='none'|'handset'|'shovel';
+export type Held='none'|'handset'|'shovel'|'flask';
 let held: Held='none';
 let heldObj: THREE.Object3D|null=null;
 export const fpHeld=(): Held=>held;
@@ -75,9 +78,9 @@ export const fpHeld=(): Held=>held;
 // ---------- world particles: soil clods thrown by the shovel ----------
 interface Clod{m: THREE.Object3D;v: THREE.Vector3;floor: number;life: number;onLand?: ()=>void;}
 const clods: Clod[]=[];
-function throwClods(from: THREE.Vector3,to: THREE.Vector3,n: number,onLand?: ()=>void): void{
+function throwClods(from: THREE.Vector3,to: THREE.Vector3,n: number,onLand?: ()=>void,water=false): void{
   for(let i=0;i<n;i++){
-    const m=makeSoilClod();m.scale.setScalar(1.4+Math.random()*1.4);
+    const m=water?makeWaterDrop():makeSoilClod();m.scale.setScalar(water?.5+Math.random()*.4:1.4+Math.random()*1.4);
     m.position.copy(from);scene.add(m);
     const tgt=V(to.x+(Math.random()-.5)*.5,to.y,to.z+(Math.random()-.5)*.5);
     const tf=.38+Math.random()*.12;
@@ -452,6 +455,62 @@ export function dropShovel(to: THREE.Object3D|null,at: {pos: THREE.Vector3;quat:
 /** Hand the receiver over to someone else (the third-person call) without a clip. */
 export function releaseHeld(): void{held='none';heldObj=null;R.g.visible=L.g.visible=false;}
 
+// ===================== the holy water =====================
+// Carry: the flask held upright low on the right of the view.
+const FLASK_CARRY=V(.19,-.24,-.42);
+const FLASK_Q=new THREE.Quaternion().setFromEuler(new THREE.Euler(.15,-.4,-.1));
+function flaskCarry(o: THREE.Object3D): void{
+  const ph=state.time*1.6;
+  o.position.copy(FLASK_CARRY);o.position.y+=Math.sin(ph)*.004;o.quaternion.copy(FLASK_Q);o.scale.setScalar(1.4);
+}
+const _fg=new THREE.Vector3();
+function flaskGrip(o: THREE.Object3D): THREE.Vector3{return _fg.set(o.position.x,o.position.y+.06,o.position.z);}
+
+/** Put the flask straight into the right hand (the priest just gave it). */
+export function fpGiveFlask(flask: THREE.Object3D): void{
+  rig.add(flask);flaskCarry(flask);held='flask';heldObj=flask;
+}
+/** The flask is used up: it goes away. */
+export function fpDropFlask(): void{
+  if(held!=='flask'||!heldObj)return;
+  heldObj.parent?.remove(heldObj);held='none';heldObj=null;R.g.visible=false;
+}
+
+/** Step up to a body and sprinkle it: raise the flask, tip it over the body and shake
+ *  it twice — the drops arc onto `target()`; onSplash when the first ones land. */
+export function fpSprinkle(target: ()=>THREE.Vector3,cb: {onSplash?: ()=>void;onDone?: ()=>void}={}): void{
+  const flask=heldObj;if(!flask||held!=='flask')return;
+  let standAt: THREE.Vector3|null=null;
+  const up=V(.12,-.06,-.5);
+  const tipped=new THREE.Quaternion().setFromEuler(new THREE.Euler(-2.2,0,.2)); // neck forward and down
+  let splashed=false;
+  play({dur:1.7,
+    moveTo:()=>{
+      if(!standAt){
+        const t=target(),p=player.g.position;
+        const d=V(p.x-t.x,0,p.z-t.z);if(d.lengthSq()<1e-4)d.set(1,0,0);
+        standAt=V(t.x,0,t.z).addScaledVector(d.normalize(),1.35);
+      }
+      return standAt;
+    },
+    focus:()=>target(),
+    update:(t)=>{
+      const raise=ease(seg(t,.1,.5))*(1-ease(seg(t,1.25,1.7)));
+      const shake=t>.55&&t<1.2?Math.sin((t-.55)*28)*.05:0;
+      flaskCarry(flask);
+      flask.position.lerp(up,raise);flask.position.y+=shake;
+      flask.quaternion.slerp(tipped,raise);
+      placeArm(R,flaskGrip(flask),.3*raise,-.4*raise);
+      for(const[key,at]of[['s1',.62],['s2',.9]]as[string,number][])
+        once(key,t>=at,()=>{
+          flask.updateMatrixWorld(true);
+          const from=flask.localToWorld(V().copy(flask.userData.spout as THREE.Vector3));
+          throwClods(from,target(),9,()=>{if(!splashed){splashed=true;cb.onSplash?.();}},true);
+        });
+    },
+    done:cb.onDone});
+}
+
 // ===================== per-frame =====================
 const angDiff=(a: number,b: number)=>{let d=(b-a)%(Math.PI*2);if(d>Math.PI)d-=Math.PI*2;if(d<-Math.PI)d+=Math.PI*2;return d;};
 const _eye=new THREE.Vector3();
@@ -495,6 +554,7 @@ export function updateStoryHands(dt: number): void{
   // idle carry
   if(held==='shovel')applyShovel(carrySP(newSP()));
   else if(held==='handset'&&heldObj){earPose(heldObj);placeArm(L,heldObj.position,.9);}
+  else if(held==='flask'&&heldObj){flaskCarry(heldObj);placeArm(R,flaskGrip(heldObj));L.g.visible=false;}
   else R.g.visible=L.g.visible=false;
 }
 

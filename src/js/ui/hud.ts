@@ -726,7 +726,7 @@ const NPC_DOT: Record<string,string>={
   ped:'#ffffff',gang:'#b06bff',officer:'#3e7bff',soldier:'#8fae5a',rural:'#7ad06b',
   driver:'#f5c518',dancer:'#ff5fae',gymgoer:'#ff8a1e',guard:'#3e7bff',inmate:'#d9a06b',
   clerk:'#f4c542',medic:'#19e3ff',patient:'#ff6f6f',fare:'#5eff8a',buyer:'#9dff2e',
-  criminal:'#ff3b56',camper:'#ff3b56',sicko:'#9dff2e',
+  criminal:'#ff3b56',camper:'#ff3b56',zombie:'#9dff2e',priest:'#f4f1e8',villager:'#7ad06b',sicko:'#9dff2e',
 };
 export function drawFullMap(): void {
   if(!fm)return;

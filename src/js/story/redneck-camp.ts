@@ -58,6 +58,7 @@ const ROSTER: {name: string;sex: 'M'|'F';gun: string;x: number;z: number;face?: 
   {name:'Hank',sex:'M',gun:'pistol',x:-10,z:6,face:-Math.PI/2,sentry:true},             // watches the west trail
 ];
 export const CAMP_SIZE=ROSTER.length;
+export const CAMP_NAMES=ROSTER.map(r=>r.name);
 
 // The stash left around the camp for the assault (world offsets from CAMP).
 const STASH: {id: string;x: number;z: number}[]=[

@@ -33,13 +33,19 @@ const subEl=(subBox.querySelector('.txt') as HTMLElement | null)??subBox;
 const hintEl=document.getElementById('cine-hint') as HTMLElement | null;
 
 type Mode='duo'|'phone'|'solo';
+/** Per-frame hook for the scene's owner: scene time, who is talking now, and the phase —
+ *  'intro' (a silent opening before the first line), 'lines', or 'outro' (a closing shot
+ *  after the last line) — with the time spent in that phase. */
+export type CinePhase='intro'|'lines'|'outro';
+type FrameFn=(t: number,talking: 'npc'|'player'|null,phase: CinePhase,phaseT: number)=>void;
 const cine: {
   on: boolean; mode: Mode; t: number; lines: CineLine[]; li: number; txt: string;
   shown: number; charT: number; phase: string;
-  voice: Voice; onDone: (() => void) | null; onFrame: ((t: number, talking: 'npc'|'player'|null) => void) | null;
+  voice: Voice; onDone: (() => void) | null; onFrame: FrameFn | null;
+  introT: number; outroT: number; phaseT: number;
   side: number; actor: CineActor | null; booth: THREE.Object3D | null; focus: THREE.Vector3;
   shot: string; shotT: number; shotN: number; midCut: boolean;
-}={on:false,mode:'duo',t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',
+}={on:false,mode:'duo',t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',introT:0,outroT:0,phaseT:0,
   voice:{freq:120,type:'square'},onDone:null,onFrame:null,side:1,actor:null,booth:null,focus:new THREE.Vector3(),
   shot:'wide',shotT:0,shotN:0,midCut:false};
 
@@ -72,19 +78,25 @@ function voiceTick(v: Voice){
   o.start(t);o.stop(t+.07);
 }
 
-function begin(mode: Mode,lines: CineLine[],voice: Voice,onDone?: () => void){
+function begin(mode: Mode,lines: CineLine[],voice: Voice,onDone?: () => void,introT=0,outroT=0){
   cine.on=true;cine.mode=mode;cine.t=0;cine.lines=lines;cine.li=-1;cine.shotN=0;
-  cine.voice=voice;cine.onDone=onDone??null;
+  cine.voice=voice;cine.onDone=onDone??null;cine.introT=introT;cine.outroT=outroT;cine.phaseT=0;
   state.cine=true;state.dlgActive=true;
   document.body.classList.add('cine');
-  nextLine();
+  subEl.textContent='';if(whoEl)whoEl.textContent='';hideHint();
+  if(introT>0){cine.phase='intro';cine.shot='close';cine.shotT=0;}
+  else nextLine();
 }
 
 // DUO cut-scene with an NPC standing in the world (Rick, the crooked cop...). `ped`
 // needs the doll rig (userData.limbs / mouth). The scene is always played at noon.
 export function playCutscene(ped: THREE.Object3D,voice: Voice,lines: string[],onDone?: () => void){
-  cine.actor={ped};cine.booth=null;cine.onFrame=null;
   setTod(.5);
+  playDialogue(ped,lines.map(text=>({text,by:'npc' as const})),voice,onDone);
+}
+// DUO with speaker-tagged lines (the NPC's and the player's), at the current time of day.
+export function playDialogue(ped: THREE.Object3D,lines: CineLine[],voice: Voice,onDone?: () => void,onFrame?: FrameFn){
+  cine.actor={ped};cine.booth=null;cine.onFrame=onFrame??null;
   // the two face each other
   const pp=playerPos();
   const dx=ped.position.x-pp.x,dz=ped.position.z-pp.z;
@@ -93,25 +105,28 @@ export function playCutscene(ped: THREE.Object3D,voice: Voice,lines: string[],on
   // keep the camera on the side it already is, so it never crosses the line
   const midx=(pp.x+ped.position.x)/2,midz=(pp.z+ped.position.z)/2;
   cine.side=((camera.position.x-midx)*dz+(camera.position.z-midz)*-dx)>=0?1:-1;
-  begin('duo',lines.map(text=>({text,by:'npc' as const})),voice,onDone);
+  begin('duo',lines,voice,onDone);
 }
 
 // PHONE call at a booth: the player is already standing in it (see story.ts). The
 // caller is only a voice; `onFrame` lets the story pose the player (receiver at the
 // ear, free hand gesturing) every frame, told who is talking.
 export function playPhoneCall(opts: {booth: THREE.Object3D; lines: CineLine[]; voice: Voice;
-  onFrame?: (t: number,talking: 'npc'|'player'|null) => void; onDone?: () => void}){
+  onFrame?: FrameFn; onDone?: () => void}){
   cine.actor=null;cine.booth=opts.booth;cine.onFrame=opts.onFrame??null;
   begin('phone',opts.lines,opts.voice,opts.onDone);
 }
 
-// SOLO: the player alone, thinking out loud while looking at `focus` (after the burial
-// time skip: the six graves). The player is turned to face it.
-export function playMonologue(opts: {focus: THREE.Vector3; lines: CineLine[]; voice: Voice; onDone?: () => void}){
-  cine.actor=null;cine.booth=null;cine.onFrame=null;cine.focus.copy(opts.focus);
+// SOLO: the player alone, thinking out loud while looking toward `focus` (after the
+// burial: sitting on the summit, smoking). The player is turned to face it. `introT`
+// seconds of silent opening and `outroT` of closing shot bracket the lines; `onFrame`
+// poses the player through all of it.
+export function playMonologue(opts: {focus: THREE.Vector3; lines: CineLine[]; voice: Voice; onDone?: () => void;
+  onFrame?: FrameFn; introT?: number; outroT?: number}){
+  cine.actor=null;cine.booth=null;cine.onFrame=opts.onFrame??null;cine.focus.copy(opts.focus);
   const p=player.g.position;
   player.heading=Math.atan2(opts.focus.x-p.x,opts.focus.z-p.z);player.g.rotation.set(0,player.heading,0);
-  begin('solo',opts.lines,opts.voice,opts.onDone);
+  begin('solo',opts.lines,opts.voice,opts.onDone,opts.introT??0,opts.outroT??0);
 }
 
 // DUO: wide two-shot on the first/last line, otherwise alternate close / reverse.
@@ -131,7 +146,14 @@ function cycleShot(): string{
 
 function nextLine(){
   cine.li++;
-  if(cine.li>=cine.lines.length)return endCutscene();
+  if(cine.li>=cine.lines.length){
+    if(cine.outroT>0&&cine.phase!=='outro'){            // the closing shot, no subtitle
+      cine.phase='outro';cine.phaseT=0;cine.shot='wide';cine.shotT=0;
+      subEl.textContent='';if(whoEl)whoEl.textContent='';hideHint();
+      return;
+    }
+    return endCutscene();
+  }
   const line=cine.lines[cine.li];
   cine.txt=tr(line.text);cine.shown=0;cine.charT=0;cine.phase='type';
   cine.shot=cycleShot();
@@ -146,6 +168,8 @@ function nextLine(){
 // Wired to keyboard/click (input.ts) and to a tap on mobile.
 export function advanceCine(){
   if(!cine.on)return false;
+  if(cine.phase==='intro'){nextLine();return true;}     // skip the silent opening
+  if(cine.phase==='outro'){endCutscene();return true;}
   if(cine.phase==='type'&&cine.shown<cine.txt.length){
     cine.shown=cine.txt.length;
     subEl.textContent=cine.txt;
@@ -314,12 +338,23 @@ export function updateCutscene(dt: number){
       showHint();
     }
   }
+  // the silent opening and the closing shot run on their own clocks
+  if(cine.phase==='intro'){
+    cine.phaseT+=dt;
+    const want=cine.phaseT<cine.introT*.55?'close':'wide';
+    if(want!==cine.shot){cine.shot=want;cine.shotT=0;}
+    if(cine.phaseT>=cine.introT)nextLine();
+  }else if(cine.phase==='outro'){
+    cine.phaseT+=dt;
+    if(cine.phaseT>=cine.outroT){endCutscene();return;}
+  }
   const typing=cine.phase==='type';
   const by=cine.lines[cine.li]?.by??'npc';
   const talking=typing?by:null;
   if(cine.mode==='duo')setTalkPose(cine.actor?.ped,cine.t,talking==='npc');
   if(cine.mode!=='phone')setTalkPose(player.g,cine.t,talking==='player');
-  cine.onFrame?.(cine.t,talking);
+  const phase: CinePhase=cine.phase==='intro'?'intro':cine.phase==='outro'?'outro':'lines';
+  cine.onFrame?.(cine.t,talking,phase,phase==='lines'?cine.t:cine.phaseT);
 
   // a long line gets an extra cut halfway through, like a film edit
   if(typing&&!cine.midCut&&cine.txt.length>110&&cine.shown>=cine.txt.length*.55){
