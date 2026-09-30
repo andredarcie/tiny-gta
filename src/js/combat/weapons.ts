@@ -1389,7 +1389,7 @@ export function updateWeapons(dt: number){
   // weed farm: while the farm hands hold a bucket/plant or play a clip, the weapon is put away
   const farmHands=!!handsBusy();
   if(farmHands&&state.aiming)state.aiming=false;
-  heldHolder.visible=!farmHands&&showHeld&&(curWeapon.aimed?aimingNow:true);
+  heldHolder.visible=!farmHands&&!state.cine&&showHeld&&(curWeapon.aimed?aimingNow:true); // put away in cut-scenes
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
   // no weapon pose on the body during a cut-scene or while the hands hold something else
   // (the story poses the arms itself: the phone receiver at the ear, the cigarette...)

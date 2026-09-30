@@ -20,10 +20,16 @@ import {makeSmokePuff} from '../../assets/models/effects/smoke-puff.ts';
 
 export const INTRO_T=6.4, OUTRO_T=1.8;
 
-// Head-bone-local points (the doll's head bone sits at the neck, pedestrian.ts).
-const MOUTH=new THREE.Vector3(0,.09,.2);
-// Forearm-bone-local: between the fingers of the hand (the hand box is at (.03,-.34,0)).
-const FINGERS=new THREE.Vector3(.03,-.37,.05);
+// Head-bone-local: the lips (the doll's head bone sits at the neck; the face is at z .13).
+const LIPS=new THREE.Vector3(0,.085,.14);
+// Forearm-bone-local: the centre of the fist (pedestrian.ts hand box).
+const HAND=new THREE.Vector3(.03,-.34,0);
+// The props are staged explicitly in the player's own space (not hung on the arm bones,
+// whose orientation is whatever the reach solver finds): the cigarette points forward,
+// a little down and out to the side so it reads from the front; the hands follow them.
+const CIG_DIR=new THREE.Vector3(.4,-.28,.87).normalize();
+const CIG_Q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),CIG_DIR);
+const PROP_SCALE=2.2;
 
 let seat: THREE.Object3D|null=null;
 let cig: THREE.Object3D|null=null;
@@ -76,14 +82,12 @@ export function setupSummit(look: THREE.Vector3): THREE.Vector3{
   player.g.rotation.set(0,heading,0);
   player.g.position.set(at.x,gy-SIT_DROP,at.z);
   sitPose();
-  // the cigarette between the right fingers, the lighter in the left hand (hidden)
-  const l=player.g.userData.limbs;
-  cig=cigaretteModel.build();cig.scale.setScalar(1.4);
-  cig.position.copy(FINGERS);cig.rotation.set(Math.PI/2,0,0);        // pointing forward out of the fist
-  l.rightForearm.add(cig);
-  lighter=lighterModel.build();lighter.scale.setScalar(1.4);
-  lighter.position.set(-.03,-.36,.03);lighter.visible=false;
-  l.leftForearm.add(lighter);
+  // the cigarette (in the right hand) and the lighter (hidden until needed), staged in
+  // the player's space every frame by poseSummit
+  cig=cigaretteModel.build();cig.scale.setScalar(PROP_SCALE);cig.quaternion.copy(CIG_Q);
+  player.g.add(cig);
+  lighter=lighterModel.build();lighter.scale.setScalar(PROP_SCALE);lighter.visible=false;
+  player.g.add(lighter);
   lit=0;(cig.userData.setLit as (k: number)=>void)(0);
   return at.clone().addScaledVector(dir,10).setY(gy);
 }
@@ -95,43 +99,43 @@ export function endSummit(){
   standPose();
 }
 
-const _m=new THREE.Vector3(),_k=new THREE.Vector3(),_t=new THREE.Vector3(),_h=new THREE.Vector3();
+const _m=new THREE.Vector3(),_k=new THREE.Vector3(),_t=new THREE.Vector3(),_h=new THREE.Vector3(),_w=new THREE.Vector3();
+// Put the cigarette at world point `at` (its filter end) in the player's space.
+function placeCig(at: THREE.Vector3){
+  cig!.position.copy(player.g.worldToLocal(_w.copy(at)));
+  cig!.updateMatrixWorld(true);
+}
 /** Pose one frame of the scene (cutscene onFrame). */
 export function poseSummit(t: number,talking: 'npc'|'player'|null,phase: CinePhase,pt: number){
-  const l=player.g.userData.limbs;if(!l||!cig)return;
+  const l=player.g.userData.limbs;if(!l||!cig||!lighter)return;
+  const fwd=V(Math.sin(player.heading),0,Math.cos(player.heading));
   if(phase==='outro'){
     // the cut: he stands up, cigarette hanging from the right hand, looking out
     const p=player.g.position;
     if(p.y<groundHeight(p.x,p.z)-.1){                         // first frame of the shot
-      p.addScaledVector(V(Math.sin(player.heading),0,Math.cos(player.heading)),.45);  // a step off the log
+      p.addScaledVector(fwd,.45);                             // a step off the log
       p.y=groundHeight(p.x,p.z);standPose();
     }
+    lighter.visible=false;
     l.rightArm.rotation.set(-.15,0,-.1);l.rightForearm.rotation.set(-.35,0,0);
+    player.g.updateMatrixWorld(true);
+    placeCig(l.rightForearm.localToWorld(_h.copy(HAND)));
     smokeFromTip(1/60);
     return;
   }
   sitPose();
   player.g.updateMatrixWorld(true);
-  l.head.localToWorld(_m.copy(MOUTH));
+  l.head.localToWorld(_m.copy(LIPS));
   // the "rest": the right hand on the right knee
-  const fwd=V(Math.sin(player.heading),0,Math.cos(player.heading));
   l.rightLeg.getWorldPosition(_k).addScaledVector(fwd,.38);_k.y+=.1;
   const setLit=cig.userData.setLit as (k: number)=>void;
   let toMouth: number;
+  let lup=0;
   if(phase==='intro'){
-    // 0.5-1.3 up to the lips · 1.3-2.7 the lighter · 2.7-3.6 the drag · 3.6-4.6 blow the
-    // smoke out · 4.6-5.6 the hand comes down to the knee
+    // 0.5-1.3 up to the lips · 1.3-3.1 the lighter · 2.1-3.5 the drag · 3.5-4.1 out of
+    // the mouth, 3.7-4.7 blow the smoke out · 4.6-5.6 the hand comes down to the knee
     toMouth=ease(seg(pt,.5,1.3))*(1-ease(seg(pt,3.5,4.1)))+ease(seg(pt,3.5,4.1))*(1-ease(seg(pt,4.6,5.6)))*.45;
-    // the lighter: up under the tip, the flame, back down
-    const lup=ease(seg(pt,1.3,1.9))*(1-ease(seg(pt,2.5,3.1)));
-    lighter!.visible=lup>.02;
-    (lighter!.userData.flame as THREE.Object3D).visible=pt>1.85&&pt<2.55;
-    if(lup>.02){
-      cig.localToWorld(_t.copy(cig.userData.tip as THREE.Vector3));
-      _t.y-=.07;                                               // just under the tip
-      l.leftLeg.getWorldPosition(_h).addScaledVector(fwd,.38);_h.y+=.1;
-      reachHand(player.g,'left',_h.lerp(_t,lup));
-    }else{l.leftArm.rotation.set(-.35,0,.12);l.leftForearm.rotation.set(-.9,0,0);}
+    lup=ease(seg(pt,1.3,1.9))*(1-ease(seg(pt,2.5,3.1)));
     lit=pt<2.1?0:pt<3.5?Math.min(1,(pt-2.1)*1.5):.4;
     setLit(lit);
     // the smoke blown out of the mouth after the drag
@@ -139,14 +143,29 @@ export function poseSummit(t: number,talking: 'npc'|'player'|null,phase: CinePha
       puff(_m.clone().addScaledVector(fwd,.08),fwd.clone().multiplyScalar(.55).add(V((Math.random()-.5)*.2,.18,(Math.random()-.5)*.2)),.05,2.2);
   }else{
     // the lines: the cigarette rests at the knee; a small gesture while he talks
-    if(talking==='player')setTalkPose(player.g,t,true,false);
-    else setTalkPose(player.g,t,false,false);
+    setTalkPose(player.g,t,talking==='player',false);
     toMouth=talking==='player'?.12+Math.max(0,Math.sin(t*1.8))*.12:0;
     setLit(.4+Math.sin(t*2)*.05);
-    lighter!.visible=false;                                    // (the opening may have been skipped mid-light)
-    l.leftArm.rotation.set(-.35,0,.12);l.leftForearm.rotation.set(-.9,0,0);
   }
-  reachHand(player.g,'right',_t.copy(_k).lerp(_m.clone().addScaledVector(fwd,.07),toMouth));
+  // the right hand carries the cigarette: its fist sits just behind the filter, and the
+  // filter meets the lips as the hand arrives at the mouth
+  const cdir=CIG_DIR.clone().applyQuaternion(player.g.quaternion);   // the cigarette's direction, world
+  const lipsOut=_t.copy(_m).addScaledVector(cdir,-.03);
+  const handGoal=V().lerpVectors(_k,lipsOut,toMouth).addScaledVector(cdir,-.05);
+  reachHand(player.g,'right',handGoal);
+  l.rightForearm.localToWorld(_h.copy(HAND));
+  placeCig(_h.lerp(lipsOut,clamp01((toMouth-.55)/.45)).addScaledVector(cdir,.02));
+  // the lighter: from the left knee up under the tip, the flame, back down
+  lighter.visible=lup>.02;
+  (lighter.userData.flame as THREE.Object3D).visible=phase==='intro'&&pt>1.85&&pt<2.55;
+  if(lup>.02){
+    const tip=cig.localToWorld(V().copy(cig.userData.tip as THREE.Vector3));
+    tip.y-=.2;                                                  // the flame licks the tip
+    l.leftLeg.getWorldPosition(_h).addScaledVector(fwd,.38);_h.y+=.1;
+    const at=_h.lerp(tip,lup);
+    lighter.position.copy(player.g.worldToLocal(_w.copy(at)));lighter.rotation.set(0,0,0);
+    reachHand(player.g,'left',at.clone().setY(at.y+.02));
+  }else{l.leftArm.rotation.set(-.35,0,.12);l.leftForearm.rotation.set(-.9,0,0);}
   if(pt>2.1||phase!=='intro')smokeFromTip(1/60);
 }
 

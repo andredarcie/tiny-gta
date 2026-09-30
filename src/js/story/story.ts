@@ -244,7 +244,10 @@ function timeSkip(){
     stopBurial();                            // the shovel's job is over
     setTod((getTod()+.18)%1);                // the sun has moved on
     const look=setupSummit(new THREE.Vector3(CAMP.x,0,CAMP.z));
-    playMonologue({focus:look,lines:MONOLOGUE,voice:YOU,introT:INTRO_T,outroT:OUTRO_T,onFrame:poseSummit,
+    // the scene starts behind the black screen; hold the smoking until it has faded in
+    const HIDDEN=2.3;
+    playMonologue({focus:look,lines:MONOLOGUE,voice:YOU,introT:INTRO_T+HIDDEN,outroT:OUTRO_T,
+      onFrame:(t,talking,phase,pt)=>poseSummit(t,talking,phase,phase==='intro'?Math.max(0,pt-HIDDEN):pt),
       onDone:()=>{
         endSummit();
         S.busy=false;

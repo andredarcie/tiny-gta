@@ -298,9 +298,9 @@ function directSolo(){
   const sx=dz,sz=-dx;                                   // sideways
   const k=Math.min(1,cine.shotT/6),e=k*k*(3-2*k);
   let fov;
-  if(cine.shot==='close'){                               // the face, from slightly off-axis
-    _c.set(p.x+dx*(1.3-e*.15)+sx*.45,p.y+1.62,p.z+dz*(1.3-e*.15)+sz*.45);
-    _l.set(p.x,p.y+1.58,p.z);fov=38;
+  if(cine.shot==='close'){                               // the face, three-quarter, a little from below
+    _c.set(p.x+dx*(1.25-e*.12)+sx*.85,p.y+1.45,p.z+dz*(1.25-e*.12)+sz*.85);
+    _l.set(p.x+dx*.15,p.y+1.5,p.z+dz*.15);fov=40;
   }else if(cine.shot==='across'){                        // low, from beyond the graves back at the player
     _c.set(f.x+dx*2.2+sx*(2.4-e*.6),0,f.z+dz*2.2+sz*(2.4-e*.6));
     _c.y=groundHeight(_c.x,_c.z)+.75;
