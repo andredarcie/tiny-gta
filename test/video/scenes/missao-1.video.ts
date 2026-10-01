@@ -15,6 +15,7 @@ test('video: missao-1', async ({ page }) => {
     outroSub: 'Modo história: Missão 1',
     music: 3,                                   // country radio — fits the rednecks
     tod: .42,
+    settings: { music: 18 },                    // radio low: the dubbed voices on top
   });
   const story = (cmd: string) => d.ev((c: string) => (window as any).__test.story(c), cmd) as Promise<any>;
   const tough = () => d.ev(() => (window as any).__test.setHealth(5000));
@@ -22,6 +23,8 @@ test('video: missao-1', async ({ page }) => {
   const nextLines = async (n: number) => {
     for (let i = 0; i < n; i++) { await page.keyboard.press('Space'); await d.wait(60); await page.keyboard.press('Space'); await d.wait(60); }
   };
+  // the current cut-scene line has finished (the subtitle types along with its voice clip)
+  const lineDone = async (extra = 350) => { await page.waitForSelector('#cine-hint.show', { timeout: 15_000 }); await d.wait(extra); };
   const waitStory = (pred: string, ms = 15_000) =>
     page.waitForFunction(new Function(`const s=window.__test.story('state');return ${pred};`) as any, null, { timeout: ms });
 
@@ -47,16 +50,22 @@ test('video: missao-1', async ({ page }) => {
   // 3) the boss on the line
   await waitStory('s.cine');
   await d.clip('boss', 'Era o chefão do crime', async () => {
-    await d.wait(2300);
+    await lineDone();
+  }, 100);
+
+  // 3b) the player's own voice: "Quem tá falando?"
+  await nextLines(2);
+  await d.clip('who', 'Eu, educadamente:', async () => {
+    await lineDone(300);
   }, 100);
 
   // 4) ...and the job ("Acaba com eles. Com os seis.")
-  await nextLines(6);
-  await d.wait(300);
+  await nextLines(4);
+  await d.wait(150);
   await d.clip('job', 'A entrevista de emprego', async () => {
     await d.wait(900);
     d.cover();                                   // the booth, PHONE sign lit, the call going on
-    await d.wait(1500);
+    await lineDone(250);
   }, 100);
   await story('skipCine');
   await waitStory('s.stage==="camp"&&!s.busy');
@@ -67,7 +76,7 @@ test('video: missao-1', async ({ page }) => {
   await d.teleport({ x: s0.camp.x + 3, z: -68 }, { x: s0.camp.x, z: -46 });
   await d.wait(2500);
   await d.clip('camp', 'Seis caipiras armados. Moleza.', async () => {
-    await d.wait(2400);
+    await d.wait(1900);
   }, 100);
 
   // 6) a long-range "conversation"
@@ -112,14 +121,14 @@ test('video: missao-1', async ({ page }) => {
   await nextLines(2);
   await d.wait(200);
   await d.clip('videogame', 'O chefão ficou chocado', async () => {
-    await d.wait(3000);
+    await d.wait(2900);                          // "Você acha que isso aqui é videogame?!"
   }, 100);
 
   // 10) ...then laughs it off: test passed
   await nextLines(4);
   await d.wait(300);
   await d.clip('passed', 'Contratado.', async () => {
-    await d.wait(2200);
+    await d.wait(2500);                          // "Relaxa. Você passou no teste."
   }, 100);
   await story('skipCine');
   await waitStory('!s.busy&&!s.cine&&!s.burial.busy');

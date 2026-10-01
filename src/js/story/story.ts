@@ -27,6 +27,7 @@ import {zombies,spawnZombies,clearZombies,updateZombies,zombiesAlive,cursedCorps
 import {PRIEST,MEET,spawnPriest,removePriest,priestPed,priestNear,spawnCrowd,clearCrowd,crowdOut,crowdCheer,
   updatePriest} from '@/story/priest.ts';
 import {STAGES,type Stage,sanitizeStorySave,type StorySave} from '@/story/chain.ts';
+import {BOSS,YOU,PADRE,CALL1,CALL2,MONOLOGUE,CALL3,CALL4,CALL5,PRIEST_TALK,BLESSING} from '@/story/dialogue.ts';
 
 // ============================================================================
 // THE STORY — a chain of missions handed out by the crime BOSS over a street PAY
@@ -61,82 +62,6 @@ import {STAGES,type Stage,sanitizeStorySave,type StorySave} from '@/story/chain.
 // Progress is saved (stage + where the bodies lie + the graves + where the shovel is).
 // ============================================================================
 
-const BOSS: Voice={freq:78,type:'sawtooth',phone:true};
-const YOU: Voice={freq:150,type:'square'};
-const PADRE: Voice={freq:112,type:'triangle'};
-const boss=(text: string): CineLine=>({who:'O CHEFÃO',text,voice:BOSS,by:'npc'});
-const you=(text: string): CineLine=>({who:'VOCÊ',text,voice:YOU,by:'player'});
-const padre=(text: string): CineLine=>({who:'PADRE ANSELMO',text,voice:PADRE,by:'npc'});
-const crowd=(text: string): CineLine=>({who:'O POVO',text,voice:{freq:210,type:'square'},by:'npc'});
-
-const CALL1: CineLine[]=[
-  boss('Bem-vindo à Cidade do Pecado, meu amigo.'),
-  boss('Coisas grandes acontecem nessa cidade. E você... você vai fazer coisas grandes. NÓS vamos fazer coisas grandes juntos.'),
-  you('Quem tá falando?'),
-  boss('Não importa quem eu sou. Importa o que você tá disposto a fazer.'),
-  boss('Todo mundo que trabalha pra mim passa por um teste antes. Pode chamar de prova de admissão.'),
-  boss('Lá na zona rural, depois da montanha, perto da estrada de Pine Hollow, tem um acampamento no meio do mato. Umas barracas, uma fogueira e seis caipiras armados.'),
-  boss('Acaba com eles. Com os seis. Como você vai fazer isso é problema seu.'),
-  boss('Deixei uns brinquedinhos em volta do acampamento pra você. Quando terminar, volta pra esse orelhão. Eu ligo.'),
-];
-const CALL2: CineLine[]=[
-  you('Tá feito. O acampamento tá limpo. Os seis.'),
-  boss('...Você fez O QUÊ?'),
-  boss('Você acha que isso aqui é videogame?! Você entrou naquele mato e matou seis pessoas a sangue frio!'),
-  boss('Só porque uma voz num orelhão mandou? Podia ser qualquer um! Podia ser um trote!'),
-  boss('Você acha que pode sair tirando a vida das pessoas assim?'),
-  boss('...'),
-  boss('Relaxa. Você passou no teste. Era exatamente isso que eu queria ver.'),
-  boss('Mas aquelas pessoas tinham família. Eu quero que elas sejam respeitadas.'),
-  boss('Volta lá no acampamento. Tem uma pá do lado da lenha. Seis corpos, seis covas. Faz direito.'),
-  you('Você tá falando sério.'),
-  boss('Sério como um defunto. Vai cavar.'),
-];
-// after the time skip, sitting on the summit with a cigarette
-const MONOLOGUE: CineLine[]=[
-  you('Ufa... Foi um trabalho puxado. Trabalho pesado mesmo.'),
-  you('Seis covas, seis cruzes. Mas finalmente a gente respeitou aquela gente.'),
-  you('Agora é voltar lá no orelhão e avisar o chefão.'),
-];
-const CALL3: CineLine[]=[
-  you('Pronto, chefe. Os seis tão enterrados. Cada um na sua cova, com cruz e tudo.'),
-  boss('Eu sei. Eu tenho olhos em todo canto dessa cidade.'),
-  boss('Você fez o serviço sujo e ainda limpou a sujeira. Isso é raro hoje em dia.'),
-  boss('Gostei de você. A partir de hoje, você trabalha pra mim.'),
-  boss('Fica de olho nos orelhões. Quando um deles tocar... é pra você.'),
-];
-const CALL4: CineLine[]=[
-  boss('Temos um problema. Um problemão.'),
-  boss('Aconteceu um desastre absurdo lá no mato. Nas covas que você cavou.'),
-  you('Que desastre? Eles tão enterrados.'),
-  boss('ESTAVAM. A terra se abriu. Os seis caipiras levantaram... como zumbis.'),
-  boss('Tão indo pra vila de Pine Hollow, atacando e matando quem aparece pela frente.'),
-  you('Zumbis. Você só pode tá de brincadeira.'),
-  boss('Eu tenho cara de quem brinca? Vai lá e mata eles de novo. E dessa vez, mira na cabeça.'),
-];
-const CALL5: CineLine[]=[
-  you('Pronto. Os seis tão no chão. De novo.'),
-  boss('Não é tão simples. Esses corpos tão amaldiçoados. Enquanto ficarem lá, vão levantar de novo.'),
-  boss('Vai até a vila, depois da montanha. Tem um padre na porta da igreja.'),
-  boss('Ele entende desse tipo de coisa. Eu não mexo com isso.'),
-];
-const PRIEST_TALK: CineLine[]=[
-  padre('Eu sei por que você veio, meu filho. Os mortos do mato não descansam.'),
-  you('Disseram que os corpos tão amaldiçoados. Como eu acabo com isso?'),
-  padre('Nenhuma bala mata o que já está morto. Pra livrar aquele lugar dos demônios, você precisa abraçar o caminho da submissão total.'),
-  padre('Se ajoelhar e rezar todos os dias. Entregar tudo.'),
-  padre('O mal que você vai resolver ali é pela cidade inteira. Você vai ser um herói, meu filho. Vão te considerar um Jesus Cristo.'),
-  you('...Um Jesus Cristo. Tá bom, padre.'),
-  padre('Tome esta água benta. Jogue um pouco sobre cada corpo, e o fogo do céu vai levá-los embora.'),
-];
-const BLESSING: CineLine[]=[
-  padre('Você voltou, meu filho. Eu senti quando o mal deixou aquele mato.'),
-  crowd('SALVADOR! SALVADOR!'),
-  padre('Olhe à sua volta. Essa gente ajoelhada é a prova. Você livrou Pine Hollow dos demônios.'),
-  you('Eu só joguei um pouco de água, padre.'),
-  crowd('ABENÇOADO SEJA! NOSSO HERÓI!'),
-  padre('A fé move montanhas, meu filho. E você moveu uma vila inteira. Vá em paz.'),
-];
 const CALLS: Partial<Record<Stage,CineLine[]>>={call1:CALL1,call2:CALL2,call3:CALL3,call4:CALL4,call5:CALL5};
 const REWARD_TEST=1500, REWARD_BURIAL=800, REWARD_HOLY=1000;
 const RESPECT='▲ RESPEITO COM O CHEFÃO', RESPECT_PRIEST='▲ RESPEITO COM O PADRE';

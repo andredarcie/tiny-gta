@@ -19,7 +19,8 @@
     "video": "node tools/video.mjs",
     "android:sync": "vite build && cap sync android",
     "android:open": "cap open android",
-    "android:run": "vite build && cap sync android && cap run android"
+    "android:run": "vite build && cap sync android && cap run android",
+    "voice": "node tools/voice/run.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.0",

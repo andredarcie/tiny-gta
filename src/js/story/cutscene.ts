@@ -6,6 +6,7 @@ import {AC,master,blip} from '@/audio/audio.ts';
 import {tr} from '@/core/i18n.ts';
 import {player,playerPos} from '@/actors/player.ts';
 import {setTod} from '@/world/daynight.ts';
+import {hasVoice,playVoice,stopVoice,preloadVoices} from '@/story/voices.ts';
 
 // ============================================================================
 // CINEMATIC CUT-SCENES — cinema bars, typed movie subtitles advanced by the player,
@@ -20,8 +21,9 @@ import {setTod} from '@/world/daynight.ts';
 // ============================================================================
 
 export interface Voice { freq: number; type: OscillatorType; phone?: boolean; }
-/** One subtitle. `who` is the speaker tag shown above it; `by` says whose mouth moves. */
-export interface CineLine { text: string; who?: string; voice?: Voice; by?: 'npc'|'player'; }
+/** One subtitle. `who` is the speaker tag shown above it; `by` says whose mouth moves;
+ *  `speaker` is the voice id of its dubbed clip (js/story/voices.ts), if it has one. */
+export interface CineLine { text: string; who?: string; speaker?: string; voice?: Voice; by?: 'npc'|'player'; }
 
 // Minimal actor the DUO director needs (the NPC's doll).
 interface CineActor { ped: THREE.Object3D; }
@@ -43,9 +45,10 @@ const cine: {
   shown: number; charT: number; phase: string;
   voice: Voice; onDone: (() => void) | null; onFrame: FrameFn | null;
   introT: number; outroT: number; phaseT: number;
+  dubbed: boolean; step: number;
   side: number; actor: CineActor | null; booth: THREE.Object3D | null; focus: THREE.Vector3;
   shot: string; shotT: number; shotN: number; midCut: boolean;
-}={on:false,mode:'duo',t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',introT:0,outroT:0,phaseT:0,
+}={on:false,mode:'duo',t:0,lines:[],li:-1,txt:'',shown:0,charT:0,phase:'type',introT:0,outroT:0,phaseT:0,dubbed:false,step:.034,
   voice:{freq:120,type:'square'},onDone:null,onFrame:null,side:1,actor:null,booth:null,focus:new THREE.Vector3(),
   shot:'wide',shotT:0,shotN:0,midCut:false};
 
@@ -84,6 +87,7 @@ function begin(mode: Mode,lines: CineLine[],voice: Voice,onDone?: () => void,int
   state.cine=true;state.dlgActive=true;
   document.body.classList.add('cine');
   subEl.textContent='';if(whoEl)whoEl.textContent='';hideHint();
+  preloadVoices(lines);                                 // decode the dubbed clips ahead
   if(introT>0){cine.phase='intro';cine.shot='close';cine.shotT=0;}
   else nextLine();
 }
@@ -156,6 +160,16 @@ function nextLine(){
   }
   const line=cine.lines[cine.li];
   cine.txt=tr(line.text);cine.shown=0;cine.charT=0;cine.phase='type';
+  // a dubbed line plays its recorded voice, and the subtitle types along with it
+  stopVoice();
+  cine.step=.034;
+  cine.dubbed=hasVoice(line.speaker,line.text);
+  if(cine.dubbed){
+    const li=cine.li,len=cine.txt.length;
+    void playVoice(line.speaker!,line.text,{phone:!!line.voice?.phone}).then(dur=>{
+      if(dur&&cine.on&&cine.li===li)cine.step=Math.min(.09,Math.max(.018,dur*.9/Math.max(1,len)));
+    });
+  }
   cine.shot=cycleShot();
   cine.shotT=0;cine.midCut=false;
   subEl.textContent='';
@@ -191,6 +205,7 @@ function restLimbs(g: THREE.Object3D | undefined){
   if(mouth){mouth.scale.y=1;mouth.visible=false;}
 }
 function endCutscene(){
+  stopVoice();
   cine.on=false;state.cine=false;state.dlgActive=false;
   document.body.classList.remove('cine');
   subEl.textContent='';
@@ -332,14 +347,14 @@ export function updateCutscene(dt: number){
   if(!cine.on)return;
   cine.t+=dt;
   if(cine.phase==='type'){
-    const STEP=.034;
+    const STEP=cine.step;
     cine.charT+=dt;
     const line=cine.lines[cine.li];
     const v=line?.voice??cine.voice;
     while(cine.charT>=STEP&&cine.shown<cine.txt.length){
       cine.charT-=STEP;cine.shown++;
       const ch=cine.txt[cine.shown-1];
-      if(/[\p{L}\p{N}]/u.test(ch))voiceTick(v);
+      if(!cine.dubbed&&/[\p{L}\p{N}]/u.test(ch))voiceTick(v);  // synth blips only when not dubbed
     }
     subEl.textContent=cine.txt.slice(0,cine.shown);
     if(cine.shown>=cine.txt.length){
