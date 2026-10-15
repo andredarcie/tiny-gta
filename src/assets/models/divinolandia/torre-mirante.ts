@@ -14,12 +14,12 @@ const fenceM=matte({color:0x7d8287}),deckM=matte({color:0x8a6040}),hutM=matte({c
 export const beaconMat=new THREE.MeshBasicMaterial({color:0xff3322});
 export const TORRE_H=72;
 
-function lattice(g:THREE.Group,H:number):void{
-  const base=5.2,top=1.1,bands=12;
+function lattice(g:THREE.Group,H:number,painted=true,base0=5.2):void{
+  const base=base0,top=1.1,bands=Math.max(6,Math.round(H/6));
   const half=(y:number):number=>base/2+(top/2-base/2)*(y/H);
   const legs:[number,number][]=[[1,1],[1,-1],[-1,1],[-1,-1]];
   for(let b=0;b<bands;b++){
-    const y0=b*H/bands,y1=(b+1)*H/bands,m=b%2?white:red;
+    const y0=b*H/bands,y1=(b+1)*H/bands,m=painted?(b%2?white:red):steel;
     const h0=half(y0),h1=half(y1),len=Math.hypot(y1-y0,h0-h1);
     for(const[sx,sz]of legs){                                        // leg segment
       const leg=new THREE.Mesh(new THREE.CylinderGeometry(.1,.13,len,5),m);
@@ -41,9 +41,11 @@ function lattice(g:THREE.Group,H:number):void{
   }
 }
 
-function build():THREE.Group{
-  const g=new THREE.Group(),H=TORRE_H;
-  lattice(g,H);
+// opts: h = height; painted = aviation red/white bands (else galvanised); mirante = the
+// fenced yard + viewing deck of the Morro da Torre (off for the plain cell towers in town)
+function build(o:{h?:number;painted?:boolean;mirante?:boolean}={}):THREE.Group{
+  const g=new THREE.Group(),H=o.h??TORRE_H;
+  lattice(g,H,o.painted??true,H<50?3.2:5.2);
   // antennas, panels and dishes up top
   const mast=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,8,6),white);mast.position.y=H+4;g.add(mast);
   for(let k=0;k<4;k++){
@@ -55,6 +57,7 @@ function build():THREE.Group{
   }
   const beacon=new THREE.Mesh(new THREE.SphereGeometry(.35,10,8),beaconMat);beacon.position.y=H+8.3;g.add(beacon);
   const mid=new THREE.Mesh(new THREE.SphereGeometry(.25,8,6),beaconMat);mid.position.set(1.9,H*.5,1.9);g.add(mid);
+  if(o.mirante===false){g.userData.h=H+9;return g;}
   // equipment yard: hut + chain-link fence
   const hut=new THREE.Mesh(new THREE.BoxGeometry(4,2.8,3),hutM);hut.position.set(-6.5,1.4,-5);hut.castShadow=true;g.add(hut);
   const hr=new THREE.Mesh(new THREE.BoxGeometry(4.4,.2,3.4),roofM);hr.position.set(-6.5,2.9,-5);g.add(hr);
@@ -76,4 +79,4 @@ function build():THREE.Group{
   g.userData.h=H+9;
   return g;
 }
-export default {category:'Divinolândia',label:'Torre do Mirante (Morro da Torre)',build};
+export default {category:'Divinolândia',label:'Torre do Mirante (Morro da Torre)',build,variants:[{label:'Morro da Torre (mirante)',opts:{}},{label:'Torre de celular (centro)',opts:{h:38,painted:false,mirante:false}}]};

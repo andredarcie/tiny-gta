@@ -81,7 +81,8 @@ export function buildDivinolandia():void{
   const lines:StreetLine[]=D.roads.map(r=>{
     const pts=r.pts.map(p=>w(p));
     const mid=pts[Math.floor(pts.length/2)];
-    return{pts,hw:r.hw,paved:!!r.p,sett:r.sf==='sett',sidewalk:!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
+    // the surveyed street draws its own raised sidewalks, poles and lamps (ruas/build-rua.ts)
+    return{pts,hw:r.hw,paved:!!r.p,sett:r.sf==='sett',sidewalk:r.n!==RUA_JAM&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
   scene.add(makeStreets(lines,H));
 
@@ -91,8 +92,16 @@ export function buildDivinolandia():void{
     for(const r of D.roads)if(r.n===RUA_JAM)for(const p of r.pts){const q=w(p);const last=jam[jam.length-1];if(!last||Math.hypot(last[0]-q[0],last[1]-q[1])>.5)jam.push(q);}
     const fps=D.roads.find(r=>r.n==='Rua Francisco Pereira de Souza');
     const street=new THREE.Group();                          // all lots merged together (few draw calls)
-    if(jam.length>1)buildJoseAugustoMachado(jam,D.roads.find(r=>r.n===RUA_JAM)!.hw,fps?fps.hw:3.6,H,o=>{street.add(o);});
+    if(jam.length>1){
+      const r=buildJoseAugustoMachado(jam,D.roads.find(r=>r.n===RUA_JAM)!.hw,fps?fps.hw:3.6,H,o=>{street.add(o);});
+      scene.add(r.wires);                                    // lines aren't merged with the meshes
+    }
     placeStatic(street);
+  }
+  // ---------- the cell towers of the centre (seen over the roofs from the street) ----------
+  for(const p of D.landmarks.torresCelular){
+    const[x,z]=w(p);const t=Torre.build({h:38,painted:false,mirante:false});t.position.set(x,H(x,z),z);placeStatic(t);
+    addObb(x,z,3.6,3.6,0,H(x,z)+40);
   }
   scene.add(makeWater(D.waters.map(x=>({hw:x.hw,pts:x.pts.map(p=>[p[0]+DIV_OX,p[1]+DIV_OZ,p[2]] as [number,number,number])}))));
 
