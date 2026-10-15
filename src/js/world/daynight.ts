@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {clamp,RURAL_X0} from '@/core/constants.ts';
+import {clamp,RURAL_X0,DIVINO_X_MIN} from '@/core/constants.ts';
 import {scene,renderer,hemi,dlight,sunDir,clouds,camera,setBloomStrength,setNightBloom} from '@/core/engine.ts';
 import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
 import {state,refs} from '@/core/state.ts';
@@ -190,7 +190,7 @@ export function updateDayNight(dt:number){
   // distante na névoa — e, da cidade, a zona rural distante. Transição suave no
   // corredor de pasto. Mirante: do alto da montanha o horizonte reabre.
   const ppos=refs.playerPos?.();
-  const ruralF=clamp(((ppos?ppos.x:0)-RURAL_X0)/120,0,1);
+  const ruralF=ppos&&ppos.x>DIVINO_X_MIN?0:clamp(((ppos?ppos.x:0)-RURAL_X0)/120,0,1); // Divinolândia isn't the peninsula
   // De dia com sol, a névoa rural densa deve parecer uma BRUMA luminosa (não um
   // cinza de tempo fechado): clareia a cor da névoa em direção ao haze, na medida
   // de quão rural se está E de quão forte está o sol (sunI ~2.4 ao meio-dia, ~.5 à
@@ -213,8 +213,12 @@ export function updateDayNight(dt:number){
   // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
   // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
   // horizon from the mountaintop mirante.
-  (scene.fog as THREE.Fog).near=100-ruralF*76;
-  const fogFar=Math.min(200-ruralF*150+(ppos?Math.max(0,ppos.y)*15:0),430);
+  // Divinolândia (the real town, far east): a long, light haze so the green serras around
+  // the town read on the horizon (the town is drawn in a few big batches, the serra is one
+  // coarse mesh — far cheaper than the classic map's prop chunks).
+  const divino=!!ppos&&ppos.x>DIVINO_X_MIN;
+  (scene.fog as THREE.Fog).near=divino?320:100-ruralF*76;
+  const fogFar=divino?2600:Math.min(200-ruralF*150+(ppos?Math.max(0,ppos.y)*15:0),430);
   (scene.fog as THREE.Fog).far=fogFar;
   // REGRA MESTRA (só desenha o que o jogador VÊ): o plano FAR da câmera acompanha a
   // névoa. Tudo além de `fogFar` já é 100% opaco de neblina — invisível —, então deixar

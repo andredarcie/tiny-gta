@@ -1,5 +1,6 @@
-import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN} from '@/core/constants.ts';
+import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN,DIVINO_X_MIN} from '@/core/constants.ts';
 import {solids} from '@/world/world.ts';
+import {divinoCollide} from '@/world/divinolandia/collide.ts';
 import {state} from '@/core/state.ts';
 import {addStars,heatGain,MAX_STARS,GUNFIRE_HEAT_GAP} from '@/core/wanted.ts';
 import {blip} from '@/audio/audio.ts';
@@ -7,6 +8,7 @@ import {message} from '@/ui/hud.ts';
 
 // bound: NPCs param no calção da praia (BOUND); jogador pode nadar até SWIM_BOUND
 export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOUND){
+  if(p.x>DIVINO_X_MIN)return divinoCollide(p,r); // Divinolândia: its own oriented boxes + bounds
   let hit=false;
   for(const b of solids){
     if(b.h!==undefined&&p.y>b.h)continue; // avião passa por cima dos prédios

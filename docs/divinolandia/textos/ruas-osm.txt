@@ -1,0 +1,114 @@
+Avenida A
+Avenida Adhemar de Barros
+Avenida Deputado Décio Queiróz Telles
+Avenida Leonor Mendes de Barros
+Avenida Marginal do Rio do Peixe
+Estrada do Laticinio
+Praça Doutor Alcindo Cardoso de Paiva
+Praça Jorge Galhano
+Praça Nossa Senhora do Rosário
+Praça Professor Ladislau Rodrigues Pinto
+Rodovia Lourival Lindorio de Faria
+Rua 1
+Rua 10
+Rua 2
+Rua 3
+Rua 5
+Rua 7
+Rua 8
+Rua 9
+Rua Amazonas
+Rua Ana Lúcia de Souza
+Rua Anibal Franchi
+Rua Antônio Bertollini
+Rua Antônio Faustino
+Rua Antônio de Melo
+Rua Antônio de Moura
+Rua Armando Grespan
+Rua Augusto Sorci
+Rua Barão do Rio Branco
+Rua Bernadino Franchi
+Rua Campo Grande
+Rua Campos Salles
+Rua Capitão Thomaz de Andrade
+Rua Celso B. de Souza
+Rua Cinco
+Rua Constatino da Cunha Sobrinho
+Rua Coronel José Leopoldino
+Rua Dez
+Rua Dois
+Rua Dom Alberto J. Gonçalves
+Rua Dom Antônio J. de Mello
+Rua Domingas Cardoso
+Rua Domingos Passoni
+Rua Doutor Ângelo Elizeu Franchi
+Rua Doze
+Rua Espírito Santo
+Rua Eunice Machado Franchi
+Rua Francisca Augusta de Souza Prado
+Rua Francisco Domingos Cervelim
+Rua Francisco Pereira de Souza
+Rua Frederico Zaneti
+Rua Gabriel Haddad
+Rua Goiás
+Rua Guanabura
+Rua Guiomar Dorcie Fonsato
+Rua Joaquim Garcia
+Rua Joaquim Lourenço Pires
+Rua Joaquim Pereira de Souza
+Rua Jorge Ferreira Pinto
+Rua José Augusto Machado
+Rua José Marrafori
+Rua João Batista Martins
+Rua João Cabral de Medeiros
+Rua João Cabrera
+Rua João Darcie
+Rua Júlio Antônio Honorato
+Rua Lazinho Aureliano Martins
+Rua Leonor Mendes de Barros
+Rua Lourival Medeiros
+Rua Luis Bianchetti
+Rua Manoel Pereira de Souza
+Rua Marcelo Ramos Correia
+Rua Maria Julia Martins
+Rua Mario Mandoni
+Rua Mato Grosso
+Rua Milton Nogueira
+Rua Minas Gerais
+Rua Nilo Datovo
+Rua Nove
+Rua Oito
+Rua Orfeu Ermogenes Fornari
+Rua Padre João Fonte
+Rua Padre Vicente Major
+Rua Pio de Andrade
+Rua Plínio de Carvalho
+Rua Presidente Vargas
+Rua Professor Silvino Ribeiro
+Rua Quatro
+Rua Quinze
+Rua Rio de Janeiro
+Rua Romeu Zanetti
+Rua Sabatino Reinaldo Fornari
+Rua Sargento Sebastião Ribeiro
+Rua Sebastião Moreira da Silva
+Rua Seis
+Rua Sete
+Rua Sete de Setembro
+Rua Severino de Souza Carneiro
+Rua Severo Maida
+Rua Stello Loureiro Machado
+Rua São José
+Rua São Paulo
+Rua São Vicente de Paula
+Rua Treze
+Rua Treze de Maio
+Rua Três
+Rua Um
+Rua Walter Darcie
+Rua Walter Tavares
+Rua XV de Novembro
+Rua Yolanda Zamai Raimundo
+Rua Zaki Haddad
+Rua do Acre
+Travessa Luiz de Marco

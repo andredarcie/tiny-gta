@@ -82,6 +82,17 @@ import {updateRuralCulling} from '@/world/rural-cull.ts'; // grandes marcos rura
 import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
 import {startWarmup} from '@/core/warmup.ts'; // background shader/geometry warmup (anti-hitch, non-blocking)
 import {validateRefs,auditRefs} from '@/core/refs.ts'; // boot-time check of the late-binding ref contract
+import {divinoModeOn} from '@/world/divinolandia/mode.ts';
+
+// Divinolândia map (?map=divinolandia): the real town is built from its own lazily-loaded
+// chunk (so its ~1 MB of baked data never weighs on the classic map); the run start
+// waits for it (input.ts beginRun awaits refs.divinoPending).
+let updateDivino:((x:number,z:number)=>void)|null=null;
+if(divinoModeOn()){
+  refs.divinoPending=import('@/world/divinolandia/build.ts').then(m=>{
+    m.buildDivinolandia();updateDivino=m.updateDivinolandia;
+  }).catch(e=>{console.error('[divinolandia] build failed',e);});
+}
 performance.mark('tg:modules-evaluated'); // every module (incl. the whole world build) has run
 
 // Dev/test-only hooks attached to window (see DEBUG_HOOKS block below). Declared
@@ -440,6 +451,7 @@ function step(dt: number){
   updateNatureCulling(pp.x,pp.z); // stylized-nature chunks (trees/rocks/grass): same size-LOD cut
   updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
   updateRuralCulling(pp.x,pp.z); // rancho + celeiro: ~130 draw calls cortados além da névoa
+  updateDivino?.(pp.x,pp.z);     // Divinolândia: houses / woods / coffee chunks by distance
   // Veículos parados (avião/barco/trator/bombeiro/ambulância/carro do jogador):
   // não desenha os que estão ALÉM da névoa — lá já são invisíveis, então é
   // visual-neutro. O corte acompanha a névoa (que abre na altitude). O carro
@@ -468,8 +480,9 @@ function step(dt: number){
   for(const c of idleCars)
     if(c.g&&c.g.visible&&!_vFrustum.intersectsSphere(_vSphere.set(c.g.position,8)))c.g.visible=false;
   P.end();
-  dlight.position.set(pp.x+sunDir.x*160,sunDir.y*160,pp.z+sunDir.z*160);
-  dlight.target.position.set(pp.x,0,pp.z);
+  // the sun follows the player's height too (Divinolândia's ground is hundreds of metres up)
+  dlight.position.set(pp.x+sunDir.x*160,pp.y+sunDir.y*160,pp.z+sunDir.z*160);
+  dlight.target.position.set(pp.x,pp.y,pp.z);
 
   P.begin('render');renderFrame(dt);P.end();
   // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),

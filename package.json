@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "bake": "tsx tools/bake-world.ts",
+    "bake:divinolandia": "tsx tools/bake-divinolandia.ts",
     "island-check": "tsx tools/island-check.ts",
     "preview": "vite preview",
     "test": "playwright test",

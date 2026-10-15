@@ -1,0 +1,15 @@
+{
+  "source": "AWS Terrain Tiles (terrarium) \u2014 SRTM/Mapzen, public domain-ish (see LICENSE notes)",
+  "zoom": 15,
+  "south": -21.715,
+  "west": -46.795,
+  "north": -21.61,
+  "east": -46.68,
+  "rows": 1316,
+  "cols": 1340,
+  "min": 602.96484375,
+  "max": 1468.98828125,
+  "zoom_px_scale": 0.5,
+  "encoding": "uint16 little-endian, (altitude_m - 500) * 10, row-major north\u2192south, gzip",
+  "zoom_note": "pixel (i,j) covers Web-Mercator z15 pixels (2i..2i+1, 2j..2j+1) of the crop"
+}

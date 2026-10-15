@@ -87,6 +87,8 @@ export const KNOWN = new Set<string>([
   'getWeaponsSave','restoreWeapons','explodeAt','vigilanteBlips','vigilanteStart',
   'isVigilanteCar','getVigilanteState','getWeaponPickupsState','taxiTarget','isTaxiCar',
   'getTaxiState','seizeDrugBackpack','getFarmSave','restoreFarm','getWeedFarmState',
+  // Divinolândia map (js/world/divinolandia/build.ts + main.ts / input.ts)
+  'divinoPending','divinoReady','divinoMinimap','divinoFullMap','divinoPlace','divinoAltitude','divinoWelcome',
 ]);
 
 // Paint (or update) a single fixed red banner at the top of the screen. Dev-only;

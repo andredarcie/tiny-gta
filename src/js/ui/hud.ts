@@ -1,6 +1,6 @@
 import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
   RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,TOWN_CX,ruralRoadPath,
-  cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from '@/core/constants.ts';
+  cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR,DIVINO_X_MIN} from '@/core/constants.ts';
 import {tr} from '@/core/i18n.ts';
 import {state,input,refs} from '@/core/state.ts';
 import {isPark} from '@/world/world.ts';
@@ -528,6 +528,8 @@ export function drawMinimap(): void {
   const VIS=MM_RANGE+4;
   mmBlitVisible(mmStaticR,-MMW/2,-MMW/2,MMW/2,MMW/2,pp,VIS);
   mmBlitVisible(mmRuralR,RR_X0,-RR_HALF,RR_X1,RR_HALF,pp,VIS);
+  // Divinolândia map: the real town's own atlas (built lazily by world/divinolandia/build.ts)
+  (refs.divinoMinimap as ((c:CanvasRenderingContext2D,p:{x:number;z:number},v:number)=>void)|undefined)?.(mm,pp,VIS);
   // territórios das gangues (círculos coloridos que encolhem conforme você mata)
   const gangsArr=refs.gangs;
   if(!raceOn&&!mgActive&&gangsArr)for(const g of gangsArr){
@@ -730,6 +732,14 @@ const NPC_DOT: Record<string,string>={
 };
 export function drawFullMap(): void {
   if(!fm)return;
+  // Divinolândia map: draw the real town (its builder returns the world→canvas mapping)
+  const dvMap=refs.divinoFullMap as ((c:CanvasRenderingContext2D,w:number,h:number)=>(wx:number,wz:number)=>Pt)|undefined;
+  const pp0=refs.playerPos?.();
+  if(dvMap&&pp0&&pp0.x>DIVINO_X_MIN){
+    fm.setTransform(1,0,0,1,0,0);
+    drawFmPlayer(dvMap(fm,fmCanvas!.width,fmCanvas!.height));
+    return;
+  }
   const{s,ox,oy}=fmFit();
   const P=(wx: number,wz: number): Pt=>[ox+(wx-FM_MINX)*s,oy+(wz-FM_MINZ)*s];
   const rOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
@@ -884,7 +894,11 @@ export function drawFullMap(): void {
     }
   }
 
-  // jogador (seta + "YOU"), mesma convenção do radar: norte pra cima, seta gira
+  drawFmPlayer(P);
+}
+// Player marker (arrow + "YOU"), same convention as the radar: north up, the arrow turns.
+function drawFmPlayer(P:(wx:number,wz:number)=>Pt):void{
+  if(!fm)return;
   const pp=refs.playerPos?.();
   if(pp){
     const[px,py]=P(pp.x,pp.z);
@@ -940,7 +954,9 @@ export function updateHUD(dt: number): void {
   // segundos (geografia, não um alerta permanente).
   if(hudLocation){
     const pp=!state.interior?refs.playerPos?.():null;
-    const reg=pp?regionAt(pp.x,pp.z):null;
+    // Divinolândia: the real street / plaza / landmark name where the player stands
+    const dvPlace=refs.divinoPlace as ((x:number,z:number)=>string)|undefined;
+    const reg=pp?(pp.x>DIVINO_X_MIN&&dvPlace?dvPlace(pp.x,pp.z):regionAt(pp.x,pp.z)):null;
     if(reg!==_region){
       _region=reg;
       if(reg){hudLocation.textContent=tr(reg);hudLocation.classList.add('show');_regionT=5;}

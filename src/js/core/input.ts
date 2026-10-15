@@ -200,6 +200,9 @@ const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').mat
 // state.started, so a double-tap can't restore twice.
 function beginRun(): void {
   if(state.started)return;
+  // Divinolândia map: the town is still being built from its lazy chunk — start right after
+  const pending=refs.divinoPending as Promise<void>|undefined;
+  if(pending&&!refs.divinoReady){void pending.then(()=>{refs.divinoReady=true;beginRun();});return;}
   performance.mark('tg:run-started');
   startGameFromUserGesture({mobile:isMobileEnv()});
   const save=loadLocalSave();
@@ -211,6 +214,7 @@ function beginRun(): void {
     else if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
   }
   startLocalSave();
+  (refs.divinoWelcome as (()=>void)|undefined)?.();
 }
 
 // Used by touch-controls: tapping PLAY starts the game.

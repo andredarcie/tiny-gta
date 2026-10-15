@@ -1,0 +1,157 @@
+[
+  {
+    "nome": "Igreja Matriz (Paróquia do Divino Espírito Santo)",
+    "osm": "way/542649940",
+    "lat": -21.66209,
+    "lon": -46.739323,
+    "altitude_m": 1065
+  },
+  {
+    "nome": "Praça Prof. Ladislau Rodrigues Pinto (praça da Matriz)",
+    "osm": "way/732002964",
+    "lat": -21.661999,
+    "lon": -46.739334,
+    "altitude_m": 1063
+  },
+  {
+    "nome": "Prefeitura Municipal",
+    "osm": "way/543759772",
+    "lat": -21.661427,
+    "lon": -46.739807,
+    "altitude_m": 1054
+  },
+  {
+    "nome": "Hospital (OSM: Hospital Ortopedista de Divinolândia)",
+    "osm": "way/542649938",
+    "lat": -21.668341,
+    "lon": -46.742739,
+    "altitude_m": 1136
+  },
+  {
+    "nome": "Torre de comunicação (sul, alta)",
+    "osm": "way/543759751",
+    "lat": -21.679957,
+    "lon": -46.732401,
+    "altitude_m": 1396
+  },
+  {
+    "nome": "Torre celular (centro A)",
+    "osm": "node/8051191473",
+    "lat": -21.663239,
+    "lon": -46.737089,
+    "altitude_m": 1072
+  },
+  {
+    "nome": "Torre celular (centro B)",
+    "osm": "node/8051191474",
+    "lat": -21.663885,
+    "lon": -46.737607,
+    "altitude_m": 1083
+  },
+  {
+    "nome": "Torre celular (norte)",
+    "osm": "node/8051200595",
+    "lat": -21.65995,
+    "lon": -46.737225,
+    "altitude_m": 1030
+  },
+  {
+    "nome": "Estádio Municipal Armando Grespan",
+    "osm": "way/542649859",
+    "lat": -21.662373,
+    "lon": -46.729883,
+    "altitude_m": 1028
+  },
+  {
+    "nome": "Cemitério Municipal",
+    "osm": "way/536783868",
+    "lat": -21.664803,
+    "lon": -46.741171,
+    "altitude_m": 1084
+  },
+  {
+    "nome": "Praça Jorge Galhano",
+    "osm": "way/536783873",
+    "lat": -21.663284,
+    "lon": -46.73422,
+    "altitude_m": 1043
+  },
+  {
+    "nome": "Praça Nossa Senhora do Rosário",
+    "osm": "way/732002971",
+    "lat": -21.661564,
+    "lon": -46.733581,
+    "altitude_m": 1051
+  },
+  {
+    "nome": "Praça Dom Bosco",
+    "osm": "way/732004527",
+    "lat": -21.661595,
+    "lon": -46.74052,
+    "altitude_m": 1059
+  },
+  {
+    "nome": "Igreja São Francisco (Igreja Ecológica)",
+    "osm": "way/543759981",
+    "lat": -21.673163,
+    "lon": -46.716174,
+    "altitude_m": 1064
+  },
+  {
+    "nome": "Posto Petrobras",
+    "osm": "node/13690275377",
+    "lat": -21.660718,
+    "lon": -46.728288,
+    "altitude_m": 1028
+  },
+  {
+    "nome": "Polícia Militar",
+    "osm": "node/13690279160",
+    "lat": -21.661015,
+    "lon": -46.729364,
+    "altitude_m": 1028
+  },
+  {
+    "nome": "Escola Estadual Dep. Vicente Nasser",
+    "osm": "way/542649937",
+    "lat": -21.665198,
+    "lon": -46.738955,
+    "altitude_m": 1097
+  },
+  {
+    "nome": "Rio do Peixe (trecho)",
+    "osm": "way/660878683",
+    "altitude_min_m": 713,
+    "altitude_max_m": 878
+  },
+  {
+    "nome": "Rio do Peixe (trecho)",
+    "osm": "way/661839682",
+    "altitude_min_m": 942,
+    "altitude_max_m": 1062
+  },
+  {
+    "nome": "Rio do Peixe (trecho)",
+    "osm": "way/851619422",
+    "altitude_min_m": 1042,
+    "altitude_max_m": 1207
+  },
+  {
+    "nome": "Rio do Peixe (trecho)",
+    "osm": "way/854253310",
+    "altitude_min_m": 865,
+    "altitude_max_m": 874
+  },
+  {
+    "nome": "Rio do Peixe (trecho)",
+    "osm": "way/854253311",
+    "altitude_min_m": 866,
+    "altitude_max_m": 867
+  },
+  {
+    "nome": "Rio do Peixe (trecho)",
+    "osm": "way/1545362320",
+    "altitude_min_m": 871,
+    "altitude_max_m": 949
+  }
+]

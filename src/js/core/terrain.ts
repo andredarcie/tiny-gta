@@ -178,7 +178,14 @@ export function cityCurbH(x: number, z: number): number {
 // mountain (mountainH) and the city sidewalks (cityCurbH). The hills and the
 // mountain never overlap in x, so summing them is safe — one is always 0 where the
 // other rises; the curb only lifts the city sidewalk rings (0 on roads/lots).
+// ===== Divinolândia: the real town, far east of everything above ==============
+// Its terrain is a baked real heightfield (src/js/world/divinolandia/data.ts), plugged
+// in at boot only when that map is active — this file stays import-free.
+export const DIVINO_X_MIN=3000;
+let divinoH: ((x: number, z: number) => number) | null = null;
+export function setDivinoTerrain(fn: (x: number, z: number) => number): void { divinoH=fn; }
 export function groundHeight(x: number, z: number): number {
+  if(x>DIVINO_X_MIN&&divinoH)return divinoH(x,z);
   if(x<-300){                  // ilha a oeste: relevo próprio, isolada no mar
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2){const ih=islandHeight(x,z);if(ih>0)return ih;}
@@ -237,6 +244,7 @@ export function ruralHalf(x: number): number {
 }
 // Terra vs. mar. Barato (abs/max/atan2 + ~3 sin) — só o player chama (~4×/frame).
 export function isLand(x: number, z: number): boolean {
+  if(x>DIVINO_X_MIN)return true;                   // Divinolândia: inland town (rivers are wadeable)
   if(x<-300){                                      // ilha a oeste (rejeição barata por x)
     const dx=x-ISLAND_CX,dz=z-ISLAND_CZ;
     if(dx*dx+dz*dz<ISLAND_MAXR2&&Math.hypot(dx,dz)<islandCoastR(Math.atan2(dz,dx)))return true;

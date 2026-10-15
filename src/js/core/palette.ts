@@ -69,3 +69,21 @@ export const NATURE={
   petals:[0xd8c24a,0xc05a7a,0xe8e0d0,0x8a6ac0,0xd9743a] as number[],
   sea:0x2e9ec4,
 };
+
+// --- DIVINOLÂNDIA — the real interior-paulista town (src/js/world/divinolandia/). ---
+// Same muted, sun-faded logic, tuned to a Serra da Mantiqueira coffee town: pastel
+// limewash façades, clay-tile roofs, terra-roxa dirt roads, coffee-green slopes.
+export const DIVINO={
+  facades:['#ece0c2','#efd9a6','#e6c4b2','#c8dacd','#bfd1dd','#f1ede4','#e3b9a2','#d8cfb2','#ecc9c6','#cfdcb9','#e7dac8','#d4a98c'],
+  roofTiles:['#a8573a','#b4633f','#99503a','#8e4a34'],   // telha cerâmica
+  slab:'#8f8b84',            // laje / platibanda top
+  frame:'#3a3532',           // doors, window voids
+  shutter:'#b9bcbf',         // steel roll-up shop doors
+  asphalt:'#4b4b50',
+  sidewalk:'#c7c0b0',
+  dirtRoad:'#94533a',        // terra roxa
+  pasture:'#5e7c33', pastureDry:'#86883f', forest:'#2e5427', soil:'#7a4630', rock:'#8a8577',
+  coffee:0x2b5226, coffeeLight:0x3d6b2f,
+  tree:[0x3f7a34,0x356b2c,0x4c8a3a,0x2f5f2a] as number[], trunk:0x5e4330,
+  river:0x55786a,            // Rio do Peixe: green-brown, not pool blue
+};

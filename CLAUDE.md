@@ -63,6 +63,8 @@ The codebase is **TypeScript in strict mode**. Static validation is `npm run typ
 - `src/js/**` — gameplay systems (`player`, `traffic`, `police`, `gangs`, `weapons`, `missions`, `taxi`, `story`, `pedestrians`, `daynight`, `hud`, …) that *orchestrate* models. They must not define geometry/materials.
 - Many model modules expose `add*()` that push into per-material buckets, with a `finalize*()` called once in `world.ts` to merge geometry (`mergeGeometries`) — the whole city renders in ~18 draw calls instead of ~900. Keep this batching intact when editing world/building code.
 
+**Divinolândia (the real town, migration in progress).** The game is migrating to the real town of Divinolândia/SP. The dossier + sources live in `docs/divinolandia/` (README in Portuguese). `npm run bake:divinolandia` turns OSM + SRTM into `src/data/divinolandia.json`; `src/js/world/divinolandia/` builds it (lazy chunk, only with `?map=divinolandia` / the title-screen switch) at world offset (+5000,+5000), 1:1 scale; anything at x > `DIVINO_X_MIN` (3000) uses the town's own terrain (`setDivinoTerrain`) and oriented-box collision (`collide.ts`). Models in `src/assets/models/divinolandia/`. The classic map remains the default until traffic/peds/police/missions move over.
+
 **Debug hooks** on `window`: `render_game_to_text()` (JSON snapshot of game state), `advanceTime(ms)` (steps the loop deterministically), and `__test` (test scaffolding used by the browser harness — `enterCar`/`exitCar`/`interact`/`placeVehicle`/`setKey`/`clearKeys`/`raceTarget`). The game never uses `__test`; it only exists so tests can set up scenarios on the live instance.
 
 ## Testing (browser end-to-end)

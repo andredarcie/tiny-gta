@@ -1,0 +1,24 @@
+{
+  "codigo_ibge": 3513900,
+  "nome": "Divinolândia",
+  "uf": "SP",
+  "microrregiao": "São João da Boa Vista",
+  "mesorregiao": "Campinas",
+  "regiao_imediata": "São José do Rio Pardo - Mococa",
+  "regiao_intermediaria": "Campinas",
+  "censo_2022": {
+    "populacao": 11158,
+    "area_km2": 223.749,
+    "densidade_hab_km2": 49.87
+  },
+  "populacao_estimada": {
+    "ano": 2026,
+    "pessoas": 11296
+  },
+  "pib_mil_reais": {
+    "ano": 2023,
+    "valor": 528584
+  },
+  "fonte": "API de serviços de dados do IBGE (servicodados.ibge.gov.br) — agregados 4714, 6579, 5938; localidades v1",
+  "baixado_em": "2026-10-15"
+}
