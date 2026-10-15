@@ -110,6 +110,16 @@ docs/divinolandia/relevo/dem-u16.bin.gz  ┴─ tools/bake-divinolandia.ts ─�
 
 Para regenerar: `python docs/divinolandia/scripts/fetch-dem.py` (baixa os tiles), `python docs/divinolandia/scripts/render-overview.py` (limpa o relevo, gera mapas e o DEM compacto), `npm run bake:divinolandia` (gera os dados do jogo), `python docs/divinolandia/scripts/render-bake.py` (imagem de conferência). Para atualizar o OSM: `python -I docs/divinolandia/scripts/overpass.py docs/divinolandia/scripts/q-urbano.overpassql docs/divinolandia/osm/urbano.json`.
 
+### Ruas levantadas lote a lote (Street View)
+
+A partir daqui as ruas passam a ser **100% fiéis**, uma de cada vez: cada lote é descrito a partir do Google Street View (cores, número de andares, tipo de telhado, portões, janelas, sacadas, muros, revestimento de pedra, toldos, placas). As capturas ficam em `referencias-streetview/` **só localmente** (imagens do Google, fora do git).
+
+| Rua | Spec | Notas |
+|---|---|---|
+| **Rua José Augusto Machado** (367 m) | `src/js/world/divinolandia/ruas/jose-augusto-machado.ts` | 46 lotes nos dois lados entre a Manoel Pereira de Souza e a Joaquim Garcia. Asfalto no 1º quarteirão, **paralelepípedo** da Barão do Rio Branco até a Francisco Pereira de Souza, asfalto no último. A **casa rosa da esquina** (nº 228 / R. Francisco Pereira de Souza nº 58) tem modelo próprio (`src/assets/models/divinolandia/casa-rosa-esquina.ts`). Também estão lá a casa verde de grafiato com lambrequim, a casa azul, o sobrado de pedra com hera, a "Faculdade UNINA", a clínica "Letícia Brandi", o terreno da torre de celular, as resedás rosas e as palmeiras. |
+
+Paralelepípedo também confirmado nas ruas Barão do Rio Branco, Leonor Mendes de Barros e Francisco Pereira de Souza.
+
 ## 7. Roteiro da migração (a cidade inteira do jogo → Divinolândia)
 
 A v1 é **jogável** pelo botão *Divinolândia* na tela inicial (ou `?map=divinolandia`). O mapa clássico continua existindo até tudo migrar.
@@ -118,7 +128,7 @@ A v1 é **jogável** pelo botão *Divinolândia* na tela inicial (ou `?map=divin
 2. **Vida na cidade**: pedestres e trânsito andando pelas ruas reais (o grafo de ruas do OSM já está no bake).
 3. **Polícia e procurado**: viaturas saindo da delegacia/PM reais.
 4. **Missões e lojas**: telefone público, oficina, loja de armas, casa do jogador etc. em endereços de Divinolândia.
-5. **Fidelidade**: fachadas reais dos prédios do centro (com fotos), a Matriz com medidas exatas, o Hospital Regional, Campestrinho, as cachoeiras e os outros mirantes.
+5. **Fidelidade**: rua a rua com o Street View (a Rua José Augusto Machado já está pronta), fachadas reais dos prédios do centro (com fotos), a Matriz com medidas exatas, o Hospital Regional, Campestrinho, as cachoeiras e os outros mirantes.
 6. **Virada**: Divinolândia vira o mapa padrão e o mapa clássico sai.
 
 ## 8. Fontes e licenças

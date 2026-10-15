@@ -23,6 +23,8 @@ import {gunzipSync} from 'node:zlib';
 import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import {makeRng} from '@/core/rng.ts';
+// surveyed streets (lot-by-lot from Street View): no generated houses there, real paving
+import {RUA as SURVEYED,SURFACE as SURVEYED_SURFACE,SETT_STREETS} from '@/world/divinolandia/ruas/jose-augusto-machado.ts';
 
 const here=dirname(fileURLToPath(import.meta.url));
 const DOCS=join(here,'..','docs','divinolandia');
@@ -127,7 +129,7 @@ const r1=(v:number):number=>Math.round(v*10)/10;
 const HW:Record<string,number>={primary:4.6,primary_link:3.6,secondary:4.2,tertiary:4,residential:3.6,
   living_street:3,unclassified:3.3,service:2.6,track:2.2};
 const PAVED_SURF=new Set(['asphalt','paved','concrete','paving_stones','sett','cobblestone','concrete:plates']);
-type Road={id:number;k:string;name:string;hw:number;paved:boolean;pts:P2[]};
+type Road={id:number;k:string;name:string;hw:number;paved:boolean;pts:P2[];sf?:'asphalt'|'sett'};
 const roads:Road[]=[];
 // urban landuse polygons (houses only inside these, or near the paved town streets)
 const urbanPolys:P2[][]=[],noBuild:P2[][]=[];
@@ -303,10 +305,17 @@ const landmarkKeep:[number,number,number][]=[
   [church.cx,church.cz,MATRIZ_KEEP],[landmarks.hospital[0],landmarks.hospital[1],70],
   [landmarks.torre[0],landmarks.torre[1],40],[landmarks.prefeitura[0],landmarks.prefeitura[1],16],
 ];
+// keep generated houses off the surveyed street (its lots come from the street spec)
+const surveyedPts=roads.filter(r=>r.name===SURVEYED).map(r=>r.pts);
+function nearSurveyed(x:number,z:number,m:number):boolean{
+  for(const pts of surveyedPts)for(let i=1;i<pts.length;i++)
+    if(segDist(x,z,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1])[0]<m)return true;
+  return false;
+}
 const townStreet=new Set(['residential','tertiary','secondary','primary','living_street','unclassified']);
 let tried=0;
 for(const r of roads){
-  if(!townStreet.has(r.k))continue;
+  if(!townStreet.has(r.k)||r.name===SURVEYED)continue;
   for(const side of[-1,1]){
     for(let k=1;k<r.pts.length;k++){
       const[ax,az]=r.pts[k-1],[bx,bz]=r.pts[k],L=Math.hypot(bx-ax,bz-az);
@@ -328,6 +337,7 @@ for(const r of roads){
         if(!urban)continue;
         if(noBuild.some(q=>pip(P,q)||pip(front,q)))continue;
         if(landmarkKeep.some(([x,z,R])=>Math.hypot(h.x-x,h.z-z)<R))continue;
+        if(nearSurveyed(h.x,h.z,24))continue;
         const cs=corners(h);
         if(cs.some(c=>nearestRoad(c[0],c[1],12).d<.8))continue;
         if(nearestRoad(h.x,h.z,14).d<.8)continue;
@@ -397,6 +407,28 @@ for(let n=0;n<9000;n++){
   if(coffee.length>=3*7000)break;
 }
 
+// ---------------- real paving (surveyed) ----------------
+function cut(pts:P2[],a:number,b:number):P2[]{             // sub-polyline between arc lengths a..b
+  const out:P2[]=[];let acc=0;
+  const at=(i:number,t:number):P2=>[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*t,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*t];
+  for(let i=1;i<pts.length;i++){
+    const L=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]),s0=acc,s1=acc+L;acc=s1;
+    if(s1<a||s0>b)continue;
+    if(!out.length)out.push(at(i,Math.max(0,(a-s0)/(L||1))));
+    out.push(at(i,Math.min(1,(b-s0)/(L||1))));
+  }
+  return out;
+}
+{
+  const out:Road[]=[];
+  for(const r of roads){
+    if(r.name===SURVEYED){for(const[a,b,sf]of SURVEYED_SURFACE){const p=cut(r.pts,a,b);if(p.length>1)out.push({...r,pts:p,sf,paved:true});}continue;}
+    if(SETT_STREETS.includes(r.name))r.sf='sett';
+    out.push(r);
+  }
+  roads.length=0;roads.push(...out);
+}
+
 // ---------------- encode ----------------
 let gmin=Infinity;for(const v of near)gmin=Math.min(gmin,v);for(const v of far)gmin=Math.min(gmin,v);
 const REF=Math.floor(gmin)-4;      // y = elevation - REF  (all > 0)
@@ -407,7 +439,7 @@ const out={
   lat0:LAT0,lon0:LON0,mx:MX,mz:MZ,ref:REF,
   near:{x0:NX0,z0:NZ0,cell:CELL,nx:NNX,nz:NNZ,h:enc(near)},
   far:{x0:fx0,z0:fz0,cell:FCELL,nx:FNX,nz:FNZ,h:enc(far)},
-  roads:roads.filter(r=>r.pts.length>1).map(r=>({k:r.k,n:r.name,hw:r.hw,p:r.paved?1:0,pts:r.pts.map(p=>[r1(p[0]),r1(p[1])])})),
+  roads:roads.filter(r=>r.pts.length>1).map(r=>({k:r.k,n:r.name,hw:r.hw,p:r.paved?1:0,sf:r.sf||'',pts:r.pts.map(p=>[r1(p[0]),r1(p[1])])})),
   waters:waters.map(wt=>({...wt,pts:wt.pts.map(p=>[p[0],p[1],r1(p[2]-REF)])})),   // surface y in game units (altitude − ref)
   plazas:plazas.map(p=>({n:p.name,k:p.kind,pts:p.pts.map(q=>[r1(q[0]),r1(q[1])])})),
   areas:areas.map(p=>({n:p.name,k:p.kind,pts:p.pts.map(q=>[r1(q[0]),r1(q[1])])})),

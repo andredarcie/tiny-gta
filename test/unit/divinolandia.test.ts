@@ -130,3 +130,51 @@ describe('Divinolândia town geometry builds cleanly from the baked data', () =>
     expect(makeCoffee(c).length).toBeGreaterThan(5);
   });
 });
+
+// The surveyed street (Rua José Augusto Machado, lot by lot from Street View).
+import { LOTS, TREES, SURFACE, RUA } from '@/world/divinolandia/ruas/jose-augusto-machado.ts';
+import { buildFachada } from '../../src/assets/models/divinolandia/fachada.ts';
+import CasaRosa from '../../src/assets/models/divinolandia/casa-rosa-esquina.ts';
+
+describe('Rua José Augusto Machado (surveyed)', () => {
+  it('lots never overlap on a side and stay clear of the cross streets', () => {
+    const cross = [0, 100, 172, 272, 367];
+    for (const side of ['N', 'S'] as const) {
+      const lots = LOTS.filter(l => l.side === side).sort((a, b) => a.s0 - b.s0);
+      for (let i = 1; i < lots.length; i++) expect(lots[i].s0).toBeGreaterThanOrEqual(lots[i - 1].s1);
+      for (const l of lots) for (const c of cross) expect(l.s0 >= c + 5 || l.s1 <= c - 5).toBe(true);
+    }
+    expect(LOTS.length).toBeGreaterThan(40);
+    for (const t of TREES) expect(t.s).toBeGreaterThan(0);
+  });
+  it('the bake paved it as surveyed: asphalt, cobblestone from Barão to Francisco P. de Souza, asphalt', () => {
+    expect(SURFACE.map(s => s[2])).toEqual(['asphalt', 'sett', 'asphalt']);
+    const pieces = divData.roads.filter(r => r.n === RUA);
+    expect(pieces.map(p => p.sf)).toEqual(['asphalt', 'sett', 'asphalt']);
+    // no generated houses left along it (its lots come from the survey)
+    const pts = pieces.flatMap(p => p.pts);
+    for (const h of divData.houses) {
+      let d = 1e9;
+      for (let i = 1; i < pts.length; i++) {
+        const [ax, az] = pts[i - 1], [bx, bz] = pts[i], dx = bx - ax, dz = bz - az, l2 = dx * dx + dz * dz || 1;
+        let t = ((h[0] - ax) * dx + (h[1] - az) * dz) / l2; t = t < 0 ? 0 : t > 1 ? 1 : t;
+        d = Math.min(d, Math.hypot(h[0] - ax - t * dx, h[1] - az - t * dz));
+      }
+      expect(d).toBeGreaterThan(20);
+    }
+  });
+  it('every lot and the pink corner house build without NaN geometry', () => {
+    const bounds = (g: THREE.Object3D): THREE.Box3 => { g.updateMatrixWorld(true); return new THREE.Box3().setFromObject(g); };
+    for (const l of LOTS) {
+      const g = buildFachada({ ...l.f, w: l.s1 - l.s0 - .1 });
+      checkPositions(g, -60, 60);
+      const b = bounds(g);
+      expect(b.max.x - b.min.x).toBeLessThan(l.s1 - l.s0 + 3);        // stays on its lot (eaves allowed)
+      expect(b.max.y).toBeLessThan(16);
+    }
+    const rosa = CasaRosa.build(); checkPositions(rosa, -60, 60);
+    const b = bounds(rosa);
+    expect(b.min.y).toBeGreaterThan(-2); expect(b.max.y).toBeLessThan(10);  // two storeys on a raised lot
+    expect(b.max.x).toBeLessThan(1.5);                                    // nothing crosses into the street
+  });
+});

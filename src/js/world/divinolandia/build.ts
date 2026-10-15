@@ -34,6 +34,8 @@ import Coreto from '../../../assets/models/rural/coreto.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
+import {buildJoseAugustoMachado} from './ruas/build-rua.ts';
+import {RUA as RUA_JAM} from './ruas/jose-augusto-machado.ts';
 
 type P2=[number,number];
 const H=divinoHeight;
@@ -79,9 +81,19 @@ export function buildDivinolandia():void{
   const lines:StreetLine[]=D.roads.map(r=>{
     const pts=r.pts.map(p=>w(p));
     const mid=pts[Math.floor(pts.length/2)];
-    return{pts,hw:r.hw,paved:!!r.p,sidewalk:!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
+    return{pts,hw:r.hw,paved:!!r.p,sett:r.sf==='sett',sidewalk:!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
   scene.add(makeStreets(lines,H));
+
+  // ---------- surveyed streets (lot by lot from Street View) ----------
+  {
+    const jam:[number,number][]=[];
+    for(const r of D.roads)if(r.n===RUA_JAM)for(const p of r.pts){const q=w(p);const last=jam[jam.length-1];if(!last||Math.hypot(last[0]-q[0],last[1]-q[1])>.5)jam.push(q);}
+    const fps=D.roads.find(r=>r.n==='Rua Francisco Pereira de Souza');
+    const street=new THREE.Group();                          // all lots merged together (few draw calls)
+    if(jam.length>1)buildJoseAugustoMachado(jam,D.roads.find(r=>r.n===RUA_JAM)!.hw,fps?fps.hw:3.6,H,o=>{street.add(o);});
+    placeStatic(street);
+  }
   scene.add(makeWater(D.waters.map(x=>({hw:x.hw,pts:x.pts.map(p=>[p[0]+DIV_OX,p[1]+DIV_OZ,p[2]] as [number,number,number])}))));
 
   // ---------- plazas, greens, pitches, cemetery, schools ----------
