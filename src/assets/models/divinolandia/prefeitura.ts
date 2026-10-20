@@ -3,31 +3,33 @@ import {matte} from '../matte.ts';
 import {DIVINO} from '@/core/palette.ts';
 
 // Prefeitura Municipal de Divinolândia — Rua XV de Novembro, modelled from Google Street
-// View (panoramas SGqi-j3SSfA-ri1jDv0C5A and neighbours, captured with
-// tools/capture-streetview.ts; images kept locally in
-// docs/divinolandia/referencias-streetview/prefeitura*/). A one-storey civic compound in
-// royal-blue limewash under clay-tile hipped roofs:
-//   - the PAVILION on the left (west) reaching the pavement: an open porch behind two
-//     wide round-headed arches, white inside, a white frieze with the name and a thin red
-//     stripe under the eaves, raised on four blue-edged steps;
-//   - the MAIN BLOCK set back behind a clay-paver forecourt, its glass door in a white
-//     round-headed surround, reached by a ramp with red tubular railings;
-//   - a smaller two-arch PORCH on its right, three FLAGPOLES (São Paulo, Brasil,
-//     Divinolândia) in the forecourt and the parking area on the east side.
+// View (panoramas SGqi-j3SSfA-ri1jDv0C5A in front, kMP4DgpGKRrTN3gnpdJUVA to the SE and
+// 9UE7RObTTHAmwuozhPU8IA to the SW, captured with tools/capture-streetview.ts; images kept
+// locally in docs/divinolandia/referencias-streetview/prefeitura*/). A one-storey civic
+// compound in royal-blue limewash under clay-tile hipped roofs, laid out as an L:
+//   - the PAVILION on the west, deep, reaching the pavement: an open white porch behind two
+//     wide arches, faint lettering on the frieze, a red stripe under the white eaves, four
+//     blue-edged steps on the pavement and three barred windows along its east side; its
+//     roof is two-tiered (a clay skirt, a white band, then the upper hip);
+//   - behind a paved forecourt + car park, the MAIN BLOCK with the round-headed door,
+//     reached by a ramp with red tubular railings that runs along the pavilion;
+//   - the EAST WING, a recessed white veranda behind three arches (glass door, main door,
+//     open end with a balustrade), with the same two-tier roof;
+//   - three FLAGPOLES (São Paulo, Brasil, Divinolândia) at the wing's corner.
 // build() is pure; the street front faces +z, x = east (the pavilion is at -x). The
 // origin is at street level under the middle of the lot; PREF_FOOT are its collision
 // boxes [cx, cz, w, d, height] in this frame.
-const FL=.9;                                   // floor level of the raised rooms
+const FL=.9,FW=.45;                             // floor level of the raised rooms / of the east veranda
 const blueM=matte({color:DIVINO.civicBlue}),whiteM=matte({color:DIVINO.civicWhite});
-const stripeM=matte({color:DIVINO.civicStripe}),railM=matte({color:DIVINO.railing});
-const treadM=matte({color:DIVINO.stepTread}),glassM=matte({color:0x2e3a44}),frameM=matte({color:0x2a2a2e});
-const roofM=matte({color:DIVINO.civicRoof,flatShading:true}),poleM=matte({color:0xdedede});
-const paverM=matte({map:paverTexture()});
+const soffitM=matte({color:DIVINO.civicWhite,emissive:0x5e5c57}),stripeM=matte({color:DIVINO.civicStripe}),railM=matte({color:DIVINO.railing});
+const treadM=matte({color:DIVINO.stepTread}),glassM=matte({color:0x56646e}),frameM=matte({color:0x2a2a2e});
+const roofM=matte({map:tileTexture(),flatShading:true}),poleM=matte({color:0xdedede});
+const paverM=matte({map:paverTexture()}),lineM=matte({color:0xd9b23a});
 
 export const PREF_FOOT:[number,number,number,number,number][]=[
-  [-8,8,10,10,FL+3.4],     // pavilion
-  [0,-5,26,16,FL+3.6],     // main block
-  [8.75,4.75,7.5,3.5,FL+3.2], // right porch
+  [-11,9,10,7.6,FL+3.4],      // pavilion
+  [-6.5,-4.5,19,19,FL+3.6],   // main block
+  [9.5,-3.6,13,15.2,FL+3.6],  // east wing rooms (the veranda in front stays walkable)
 ];
 
 function box(g:THREE.Group,m:THREE.Material,w:number,h:number,d:number,x:number,y:number,z:number):THREE.Mesh{
@@ -60,17 +62,51 @@ function hipRoof(w:number,d:number,rise:number):THREE.BufferGeometry{
   const tris=along
     ?[[D,C,R2],[D,R2,R1],[B,A,R1],[B,R1,R2],[A,D,R1],[C,B,R2]]
     :[[A,R1,B],[C,R2,D],[D,R2,R1],[D,R1,A],[B,R1,R2],[B,R2,C]];
-  const pos:number[]=[];for(const t of tris)for(const v of t)pos.push(...v);
+  const pos:number[]=[],uv:number[]=[];
+  for(const t of tris){
+    // tile rows run along the eave: map each face by its own downhill direction
+    const nx=(t[1][1]-t[0][1])*(t[2][2]-t[0][2])-(t[1][2]-t[0][2])*(t[2][1]-t[0][1]);
+    const nz=(t[1][0]-t[0][0])*(t[2][1]-t[0][1])-(t[1][1]-t[0][1])*(t[2][0]-t[0][0]);
+    const alongX=Math.abs(nz)>=Math.abs(nx);
+    for(const v of t){pos.push(...v);uv.push(alongX?v[0]/1.2:v[2]/1.2,(alongX?Math.abs(v[2]):Math.abs(v[0]))/.45);}
+  }
   const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   geo.computeVertexNormals();
   return geo;
 }
+const OVER=.6;
+// hipped roof over a wall rectangle (cx,cz,w,d) whose head is at y: clay hip out to the
+// overhang, the white soffit under it and the thin red stripe along the wall head
 function roof(g:THREE.Group,cx:number,cz:number,w:number,d:number,y:number,rise:number):void{
-  const m=new THREE.Mesh(hipRoof(w,d,rise),roofM);m.position.set(cx,y,cz);m.castShadow=true;g.add(m);
-  // white fascia board + the thin red stripe just under it
-  for(const[ww,dd,yy,mat,hh]of[[w,d,y-.22,whiteM,.22],[w-.5,d-.5,y-.32,stripeM,.1]] as [number,number,number,THREE.Material,number][]){
-    const f=new THREE.Mesh(new THREE.BoxGeometry(ww,hh,dd),mat);f.position.set(cx,yy+hh/2,cz);g.add(f);
+  const m=new THREE.Mesh(hipRoof(w+2*OVER,d+2*OVER,rise),roofM);m.position.set(cx,y,cz);m.castShadow=true;g.add(m);
+  const sf=new THREE.Mesh(new THREE.BoxGeometry(w+2*OVER,.1,d+2*OVER),soffitM);sf.position.set(cx,y-.05,cz);g.add(sf);
+  const st=new THREE.Mesh(new THREE.BoxGeometry(w+.06,.12,d+.06),stripeM);st.position.set(cx,y-.3,cz);g.add(st);
+}
+// the two-tier roof of the pavilion and the east wing: a shallow clay skirt, a short
+// white band, then the upper hip
+function roof2(g:THREE.Group,cx:number,cz:number,w:number,d:number,y:number):void{
+  roof(g,cx,cz,w,d,y,1.1);
+  const bw=w-1.6,bd=d-1.6;
+  box(g,whiteM,bw,.4,bd,cx,y+.7,cz);
+  const m=new THREE.Mesh(hipRoof(bw+1.4,bd+1.4,2.1),roofM);m.position.set(cx,y+1.15,cz);m.castShadow=true;g.add(m);
+  const sf=new THREE.Mesh(new THREE.BoxGeometry(bw+1.4,.08,bd+1.4),soffitM);sf.position.set(cx,y+1.11,cz);g.add(sf);
+}
+
+// weathered capa-e-canal clay tiles: one course per texture row, darker joints, soiled patches
+function tileTexture():THREE.CanvasTexture{
+  const c=document.createElement('canvas');c.width=64;c.height=64;const x=c.getContext('2d')!;
+  const hex=(n:number)=>'#'+n.toString(16).padStart(6,'0');
+  x.fillStyle=hex(DIVINO.civicRoof);x.fillRect(0,0,64,64);
+  for(let r=0;r<4;r++)for(let k=0;k<4;k++){
+    const ox=(r%2)*8,shade=[0,.06,-.05,.03][(r*3+k)%4];
+    x.fillStyle=shade>0?`rgba(255,220,190,${shade})`:`rgba(40,20,10,${-shade})`;x.fillRect(k*16+ox,r*16,16,16);
+    x.fillStyle='rgba(50,25,15,.35)';x.fillRect(k*16+ox,r*16,2,16);
   }
+  x.fillStyle='rgba(45,22,14,.45)';for(let r=0;r<4;r++)x.fillRect(0,r*16+13,64,3);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.magFilter=THREE.NearestFilter;
+  return t;
 }
 
 function paverTexture():THREE.CanvasTexture{
@@ -85,8 +121,7 @@ function paverTexture():THREE.CanvasTexture{
 
 function signTexture():THREE.CanvasTexture{
   const c=document.createElement('canvas');c.width=1024;c.height=64;const x=c.getContext('2d')!;
-  x.fillStyle='#f1efe8';x.fillRect(0,0,1024,64);
-  x.fillStyle='#8a9bb8';x.font='600 26px serif';x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle='rgba(225,232,245,.55)';x.font='600 30px serif';x.textAlign='center';x.textBaseline='middle';
   x.fillText('PREFEITURA MUNICIPAL DE DIVINOLÂNDIA',512,34);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
@@ -125,7 +160,9 @@ function door(g:THREE.Group,x:number,y:number,z:number,w:number,h:number):void{
 function windowAt(g:THREE.Group,x:number,y:number,z:number,w:number,h:number):void{
   const f=new THREE.Mesh(new THREE.BoxGeometry(w+.2,h+.2,.08),whiteM);f.position.set(x,y+h/2,z);g.add(f);
   const gl=new THREE.Mesh(new THREE.PlaneGeometry(w,h),glassM);gl.position.set(x,y+h/2,z+.05);g.add(gl);
-  const m=new THREE.Mesh(new THREE.BoxGeometry(w,.05,.02),whiteM);m.position.set(x,y+h*.55,z+.07);g.add(m);
+  // the white security bars of the real windows
+  for(let k=1;k<5;k++){const b=new THREE.Mesh(new THREE.BoxGeometry(w,.035,.03),whiteM);b.position.set(x,y+h*k/5,z+.08);g.add(b);}
+  const v=new THREE.Mesh(new THREE.BoxGeometry(.05,h,.03),whiteM);v.position.set(x,y+h/2,z+.08);g.add(v);
 }
 // red tubular railing between two points (posts every ~1.2 m + top and mid rails)
 function railing(g:THREE.Group,ax:number,ay:number,az:number,bx:number,by:number,bz:number):void{
@@ -139,76 +176,90 @@ function railing(g:THREE.Group,ax:number,ay:number,az:number,bx:number,by:number
   }
 }
 
+// an arcade wall facing +z (or turned by ry), the openings as in arcadeWall()
+function arcade(g:THREE.Group,w:number,h:number,t:number,holes:{x:number;w:number;h:number;r?:number}[],x:number,y:number,z:number,ry=0):void{
+  const a=new THREE.Mesh(arcadeWall(w,h,t,holes),blueM);a.position.set(x,y,z);a.rotation.y=ry;a.castShadow=true;a.receiveShadow=true;g.add(a);
+}
+function flagpoles(g:THREE.Group,z:number):void{
+  ([['sp',1.2],['br',2.1],['div',3.0]] as ['sp'|'br'|'div',number][]).forEach(([k,x],i)=>{
+    const h=9.6-i*.25,p=new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,h,8),poleM);p.position.set(x,h/2,z);g.add(p);
+    const f=new THREE.Mesh(new THREE.PlaneGeometry(1.5,1),matte({map:flagTexture(k),side:THREE.DoubleSide}));
+    f.position.set(x+.77,h-.6,z);g.add(f);
+  });
+}
+
 function build():THREE.Group{
   const g=new THREE.Group();
-  // ---- forecourt (clay pavers) + parking, at street level
-  const court=new THREE.Mesh(new THREE.PlaneGeometry(16,11.6),paverM);
-  court.rotation.x=-Math.PI/2;court.position.set(5,.03,8.8);court.receiveShadow=true;g.add(court);
-
-  // ---- MAIN BLOCK: x -13..13, z -13..3 (front wall seen at x > -3 behind the forecourt)
-  box(g,blueM,26,FL+.02,16,0,0,-5);                                   // plinth
-  box(g,blueM,26,3.6,16,0,FL,-5);                                     // body
-  roof(g,0,-5,27.2,17.2,FL+3.6,2.6);
-  door(g,.5,FL,3.02,1.4,2.5);
-  windowAt(g,-1.6,FL+1.1,3.03,.9,.8);windowAt(g,3.2,FL+1,3.03,1.1,1);
-  // landing in front of the door, and the ramp down along the pavilion to the street
-  box(g,treadM,3.2,FL,2,.5,0,4);
+  // ---- forecourt + car park: clay pavers out to the kerb, yellow bay lines
   {
-    const ramp=new THREE.Mesh(new THREE.BoxGeometry(1.5,.2,8.4),paverM);
-    ramp.position.set(-2.2,FL/2,9.2);ramp.rotation.x=Math.atan2(FL,8.4);g.add(ramp);
-    railing(g,-2.95,FL,5,-2.95,0,13.4);railing(g,-1.45,FL,5,-1.45,0,13.4);
+    const court=new THREE.Mesh(new THREE.PlaneGeometry(22,14),paverM);
+    court.rotation.x=-Math.PI/2;court.position.set(5,.03,12);court.receiveShadow=true;g.add(court);
+    const apron=new THREE.Mesh(new THREE.PlaneGeometry(10.4,2.6),paverM);
+    apron.rotation.x=-Math.PI/2;apron.position.set(-11,.03,15.9);apron.receiveShadow=true;g.add(apron);
+    for(let k=0;k<6;k++){const l=new THREE.Mesh(new THREE.BoxGeometry(.12,.02,4.6),lineM);l.position.set(3.6+k*2.5,.045,10.6);g.add(l);}
   }
-  // downspouts
-  for(const x of[-2.7,12.8])box(g,whiteM,.12,FL+3.5,.12,x,0,3.1);
 
-  // ---- PAVILION: x -13..-3, z 3..13, open porch behind the two arches (z 10.6..13)
-  box(g,blueM,10,FL+.02,10,-8,0,8);                                    // plinth
-  // the real arcade: two wide openings on thin pillars, flat-topped with rounded corners
-  const arc=new THREE.Mesh(arcadeWall(10,3.4,.35,[{x:-2.5,w:4.3,h:2.65,r:.75},{x:2.5,w:4.3,h:2.65,r:.75}]),blueM);
-  arc.position.set(-8,FL,12.82);arc.castShadow=true;g.add(arc);
-  box(g,blueM,.35,3.4,10,-12.83,FL,8);                                // west side wall
-  // east side: solid back part + the side arch opening onto the forecourt
-  box(g,blueM,.35,3.4,7.4,-3.17,FL,6.7);
-  {const sa=new THREE.Mesh(arcadeWall(2.6,3.4,.35,[{x:0,w:1.9,h:2.65,r:.95}]),blueM);sa.position.set(-3.17,FL,11.7);sa.rotation.y=Math.PI/2;g.add(sa);}
-  box(g,whiteM,9.3,3.4,.2,-8,FL,9.4);                                 // white porch back wall (deep porch)
-  box(g,whiteM,.1,3.3,3.2,-12.6,FL,11.1);box(g,whiteM,.1,3.3,3.2,-3.4,FL,11.1); // white porch side faces
-  box(g,whiteM,9.3,.12,3.4,-8,FL+3.28,11.1);                           // porch ceiling
-  // the porch's glass door: a plain rectangle with a dark steel grid (not arched)
-  {const f=new THREE.Mesh(new THREE.BoxGeometry(2.0,2.55,.06),frameM);f.position.set(-7,FL+1.275,9.52);g.add(f);
-   const gl=new THREE.Mesh(new THREE.PlaneGeometry(1.8,2.4),glassM);gl.position.set(-7,FL+1.25,9.56);g.add(gl);
-   for(const yy of[.8,1.6])box(g,frameM,1.8,.04,.02,-7,FL+yy,9.58);
-   box(g,frameM,.04,2.4,.02,-7,FL+.05,9.58);}
-  windowAt(g,-10.8,FL+1,9.51,1.1,1.1);
-  {const tag=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.75),matte({map:flagTexture('div')}));tag.position.set(-4.6,FL+1.8,9.52);g.add(tag);}
-  // small window on the east side wall, like the real one
-  {const wg=new THREE.Group();windowAt(wg,0,0,0,.9,.9);wg.position.set(-2.96,FL+1.2,6);wg.rotation.y=Math.PI/2;g.add(wg);}
-  // white frieze with the name over the arches
-  {const f=new THREE.Mesh(new THREE.BoxGeometry(10.1,.5,.05),matte({map:signTexture()}));f.position.set(-8,FL+3.1,13.02);g.add(f);}
-  // two-tier roof like the real pavilion: a low clay skirt, a white band, then the upper hip
-  roof(g,-8,8,11.2,11.2,FL+3.4,.9);
-  box(g,whiteM,7.6,.45,7.6,-8,FL+3.4+.55,8);
-  roof(g,-8,8,8.2,8.2,FL+3.4+1.0,1.5);
+  // ---- MAIN BLOCK: x -16..3, z -14..5; the door just east of the pavilion
+  box(g,blueM,19,FL+3.6,19,-6.5,0,-4.5);
+  roof(g,-6.5,-4.5,19,19,FL+3.6,2.6);
+  door(g,-3.1,FL,5.02,1.3,2.4);
+  {const v=new THREE.Group();windowAt(v,0,0,0,.8,.5);v.position.set(-5.1,FL+1.9,5.03);g.add(v);}
+  box(g,whiteM,.12,FL+3.5,.12,-5.86,0,5.1);                          // downspout at the corner
+  // landing at the door + steps down to the courtyard
+  box(g,blueM,4.6,FL,2.2,-3.7,0,6.1);
+  for(let k=0;k<3;k++)box(g,treadM,1.6,FL-(k+1)*.225,.3,-.6,0,5.9+k*.3);
+  // the ramp up along the pavilion: from the pavement to the landing
+  {
+    const L=5.6,z0=7.2,sh=new THREE.Shape();sh.moveTo(0,0);sh.lineTo(L,0);sh.lineTo(0,FL);sh.closePath();
+    const wedge=new THREE.Mesh(new THREE.ExtrudeGeometry(sh,{depth:1.4,bevelEnabled:false}),blueM);
+    wedge.rotation.y=-Math.PI/2;wedge.position.set(-5.9,0,z0);g.add(wedge);       // runs +z, high end at z0
+    const top=new THREE.Mesh(new THREE.BoxGeometry(1.4,.04,Math.hypot(L,FL)),paverM);
+    top.position.set(-5.2,FL/2+.02,z0+L/2);top.rotation.x=Math.atan2(FL,L);g.add(top);
+    railing(g,-5.85,FL,z0,-5.85,0,z0+L);railing(g,-4.55,FL,z0,-4.55,0,z0+L);
+  }
+
+  // ---- PAVILION: x -16..-6, z 5..13; open porch z 9.6..13
+  box(g,blueM,10,FL+.02,7.8,-11,0,8.9);                                // plinth
+  arcade(g,10,3.4,.35,[{x:-2.5,w:4.3,h:2.65,r:.75},{x:2.5,w:4.3,h:2.65,r:.75}],-11,FL,12.82);
+  box(g,blueM,.35,3.4,7.8,-15.83,FL,8.9);                             // west side wall
+  box(g,blueM,.35,3.4,4.4,-6.17,FL,7.2);                              // east side wall (rooms)
+  arcade(g,3.4,3.4,.35,[{x:0,w:1.9,h:2.65}],-6.17,FL,11.1,Math.PI/2);  // east side arch onto the forecourt
+  for(const z of[5.9,7.3,8.7]){const wg=new THREE.Group();windowAt(wg,0,0,0,.95,1.05);wg.position.set(-5.95,FL+1.1,z);wg.rotation.y=Math.PI/2;g.add(wg);}
+  box(g,whiteM,9.3,3.4,.2,-11,FL,9.5);                                // white porch back wall
+  box(g,whiteM,.1,3.3,3.2,-15.6,FL,11.2);box(g,whiteM,.1,3.3,3.2,-6.4,FL,11.2);
+  box(g,whiteM,9.3,.12,3.4,-11,FL+3.28,11.2);                          // porch ceiling
+  // the porch's glass door: a plain rectangle with a dark steel grid
+  {const f=new THREE.Mesh(new THREE.BoxGeometry(2.0,2.55,.06),frameM);f.position.set(-10,FL+1.275,9.62);g.add(f);
+   const gl=new THREE.Mesh(new THREE.PlaneGeometry(1.8,2.4),glassM);gl.position.set(-10,FL+1.25,9.66);g.add(gl);
+   for(const yy of[.8,1.6])box(g,frameM,1.8,.04,.02,-10,FL+yy,9.68);
+   box(g,frameM,.04,2.4,.02,-10,FL+.05,9.68);}
+  {const tag=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.75),matte({map:flagTexture('div')}));tag.position.set(-7.6,FL+1.8,9.62);g.add(tag);}
+  {const f=new THREE.Mesh(new THREE.PlaneGeometry(9,.45),matte({map:signTexture(),transparent:true}));f.position.set(-11,FL+3.05,13.01);g.add(f);}
+  roof2(g,-11,8.9,10,7.8,FL+3.4);
   // the four steps up to the porch, all along the front
   for(let k=0;k<4;k++){
     const top=FL-k*.225,d=.4;
-    box(g,blueM,10.2,top-.02,d,-8,0,13+.2+k*d);                       // blue riser block
-    const t=new THREE.Mesh(new THREE.BoxGeometry(10.2,.04,d),treadM);t.position.set(-8,top-.02,13+.2+k*d);g.add(t);
+    box(g,blueM,10.4,top-.02,d,-11,0,13+.2+k*d);                       // blue riser block
+    const t=new THREE.Mesh(new THREE.BoxGeometry(10.4,.04,d),treadM);t.position.set(-11,top-.02,13+.2+k*d);g.add(t);
   }
 
-  // ---- RIGHT PORCH: x 5..12.5, z 3..6.5, two smaller arches facing the forecourt
-  box(g,blueM,7.5,FL,3.5,8.75,0,4.75);
-  {const a=new THREE.Mesh(arcadeWall(7.5,3.2,.3,[{x:-1.85,w:3.1,h:2.5,r:.7},{x:1.85,w:3.1,h:2.5,r:.7}]),blueM);a.position.set(8.75,FL,6.35);g.add(a);}
-  box(g,blueM,.3,3.2,3.5,12.35,FL,4.75);
-  box(g,whiteM,7,.1,3.2,8.75,FL+3.12,4.75);
-  for(let k=0;k<2;k++){const t=new THREE.Mesh(new THREE.BoxGeometry(7.5,FL-k*.45,.45),treadM);t.position.set(8.75,(FL-k*.45)/2,6.7+k*.45);g.add(t);}
-  roof(g,8.75,4.75,8.3,4.3,FL+3.2,1.4);
+  // ---- EAST WING: x 3..16, z -11..7; a white veranda (z 3.8..7) behind three arches
+  box(g,blueM,13,FW,3.2,9.5,0,5.4);                                   // veranda floor
+  box(g,treadM,12.4,.03,3,9.5,FW,5.4);
+  box(g,blueM,13,FL+3.6,14.8,9.5,0,-3.6);                             // rooms behind
+  box(g,whiteM,12.4,FL+3.2-FW,.1,9.5,FW,3.85);                        // white veranda back wall
+  arcade(g,13,FL+3.6-FW,.35,[{x:-4.6,w:2.4,h:2.55,r:.9},{x:-.8,w:4.2,h:2.65,r:.8},{x:4.2,w:4.6,h:2.65,r:.8}],9.5,FW,6.82);
+  box(g,whiteM,12.4,.1,3.2,9.5,FL+3.5,5.4);                           // veranda ceiling
+  // open east end: a white balustrade under a blue lintel
+  box(g,whiteM,.25,.9,3,15.85,FW,5.4);box(g,blueM,.3,1.1,3.2,15.85,FL+2.5,5.4);
+  {const gl=new THREE.Mesh(new THREE.PlaneGeometry(1.6,2.3),glassM);gl.position.set(4.9,FW+1.15,3.92);g.add(gl);}
+  {const d=new THREE.Mesh(new THREE.PlaneGeometry(1.4,2.3),frameM);d.position.set(9.4,FW+1.15,3.92);g.add(d);}
+  box(g,matte({color:0x8a6a4a}),1.8,.45,.45,11.3,FW,4.3);               // bench
+  for(let k=0;k<2;k++)box(g,treadM,4,FW-k*.225,.35,8.7,0,7.2+k*.35);   // steps to the middle arch
+  for(const x of[6.3,11.05])box(g,whiteM,.12,FL+3.5,.12,x,0,7.05);     // downspouts on the pillars
+  roof2(g,9.5,1.8,13,10.4,FL+3.6);
 
-  // ---- three flagpoles in the forecourt: São Paulo, Brasil, Divinolândia
-  ([['sp',2.3],['br',3.4],['div',4.5]] as ['sp'|'br'|'div',number][]).forEach(([k,x],i)=>{
-    const h=9.2-i*.3,p=new THREE.Mesh(new THREE.CylinderGeometry(.05,.07,h,8),poleM);p.position.set(x,h/2,9);g.add(p);
-    const f=new THREE.Mesh(new THREE.PlaneGeometry(1.6,1.07),matte({map:flagTexture(k),side:THREE.DoubleSide}));
-    f.position.set(x+.82,h-.6,9);g.add(f);
-  });
+  flagpoles(g,7.4);
   return g;
 }
 

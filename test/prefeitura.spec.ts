@@ -4,12 +4,14 @@ import {expect, test} from '@playwright/test';
 // from (SGqi-j3SSfA-ri1jDv0C5A, in the street in front of it): the same headings, for a
 // side-by-side with docs/divinolandia/referencias-streetview/prefeitura*/ (local images).
 // Street View heading 0 = north = world -z.
-const P={x:4946.5,z:4946.5};                       // the panorama: Rua XV de Novembro, in front of the pavilion
+// pano positions in world metres, from the building's local frame (prefeitura.ts: front +z)
+// through its placement in sites-table.ts: in front (-6.1, 22.5) and to the SE (9.5, 20.5)
+const P={x:4942.6,z:4948.3},SE={x:4958.4,z:4948.6};
 const VIEWS=[
   {name:'h000',camera:P,heading:0},
   {name:'h015',camera:P,heading:15},
-  {name:'h345',camera:P,heading:-15},
-  {name:'h045',camera:P,heading:45},
+  {name:'se-h000',camera:SE,heading:0},
+  {name:'se-h340',camera:SE,heading:-20},
 ];
 
 test('Prefeitura matches its Street View panorama',async({page})=>{

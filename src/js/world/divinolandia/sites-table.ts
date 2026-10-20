@@ -32,7 +32,7 @@ export const SITE_TABLE={
   // ---- real landmarks rebuilt from Street View (levelled + cleared the same way)
   // the Prefeitura's front (its porch steps) sits on the Rua XV de Novembro pavement;
   // face = the street's heading (1.4316) − 90°. Model origin = this centre − 0.8 m along face.
-  prefeitura:{x:-48.35,z:-72.28,face:-0.13917,w:27,d:28,name:'Rua XV de Novembro'},
+  prefeitura:{x:-48.35,z:-72.28,face:-0.13917,w:34,d:30,name:'Rua XV de Novembro'},
 } satisfies Record<string,SiteSpec>;
 export type SiteId=keyof typeof SITE_TABLE;
 
