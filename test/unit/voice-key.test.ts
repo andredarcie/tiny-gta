@@ -25,6 +25,7 @@ describe('voiceKey', () => {
       if (keys.has(k)) expect(keys.get(k)).toBe(id);
       keys.set(k, id);
     }
-    expect(keys.size).toBeGreaterThan(40);
+    // (the story is being rewritten: no dubbed lines yet; the check stays for when they come)
+    expect(keys.size).toBe(ALL_LINES.filter(l => l.speaker).length);
   });
 });

@@ -7,7 +7,9 @@ import {makeCar} from '@/core/entities.ts';
 import {buyWeapon} from '@/combat/weapons.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud,setFireSiren,setHose} from '@/audio/audio.ts';
-import {N,nodeX,irand,rand,clamp,groundHeight} from '@/core/constants.ts';
+import {rand,clamp,groundHeight} from '@/core/constants.ts';
+import {nearestRoad,pointAt,laneOff,streetSpot} from '@/world/divinolandia/nav.ts';
+import {divData,DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
 import {Beacon} from '@/core/beacon.ts';
@@ -52,13 +54,18 @@ const DOUSE_RATE=0.7;      // "vida" do fogo apagada por segundo de jato
 const REGEN_RATE=0.6;      // "vida" recuperada por segundo quando ninguém borrifa
 const WRECK_RESPAWN=REWARDS.firefighter.wreckRespawnSec;    // caminhão destruído: volta à esquina depois disso (s)
 
-// Truck parked at the intersection x=nodeX(3)=-44, z=nodeX(6)=88 (open asphalt,
-// OUTSIDE the SKULLS turf — rule: a mini-game never spawns inside a gang zone)
-const spawn={x:nodeX(3)+4,z:nodeX(6),heading:0};
+// The truck waits in the street lane beside the Prefeitura (town hall), downtown.
+const spawn=(()=>{
+  const[px,pz]=divData.landmarks.prefeitura,x=px+DIV_OX,z=pz+DIV_OZ;
+  const r=nearestRoad(x,z,200);
+  if(!r)return{x,z,heading:0};
+  const p=pointAt(r.e,r.s,1);
+  return{x:r.x-p.dz*laneOff(r.e),z:r.z+p.dx*laneOff(r.e),heading:Math.atan2(p.dx,p.dz)};
+})();
 
-const truck: any={g:makeFireTruck(),heading:0,speed:0,name:'FIRE TRUCK',firetruck:true};
+const truck: any={g:makeFireTruck(),heading:spawn.heading,speed:0,name:'FIRE TRUCK',firetruck:true};
 truck.g.position.set(spawn.x,groundHeight(spawn.x,spawn.z),spawn.z);
-truck.g.rotation.y=0;
+truck.g.rotation.y=spawn.heading;
 scene.add(truck.g);
 idleCars.push(truck);
 const cannon=truck.g.userData.cannon||null;   // pivot do canhão d'água
@@ -190,20 +197,12 @@ refs.getFirefighterState=()=>({onDuty:phase==='duty',level,fires,timeLeft,
 // outros materiais são compartilhados, então NÃO se mexe neles)
 const CHARRED=0x140f0c;
 
-// nasce um incêndio (um VEÍCULO em chamas) numa interseção a 50–110m do jogador.
-// Em 40 tentativas sem achar na faixa, usa a MELHOR (nunca em cima do jogador nem
-// fora do mapa). O tempo concedido é proporcional à distância e acumula no relógio.
+// A fire breaks out (a VEHICLE in flames) in a street lane 60–220 m from the player.
+// The time granted is proportional to the distance and adds to the clock.
 function spawnFire(initial?: boolean){
   const pp=playerPos();
-  let x=spawn.x,z=spawn.z,best=Infinity,bx=spawn.x,bz=spawn.z;
-  for(let tries=0;tries<40;tries++){
-    x=nodeX(irand(1,N-1));z=nodeX(irand(1,N-1));
-    const d=Math.hypot(x-pp.x,z-pp.z);
-    if(d>=50&&d<=110){bx=x;bz=z;break;}
-    const miss=d<50?50-d:d-110;
-    if(miss<best){best=miss;bx=x;bz=z;}
-  }
-  x=bx;z=bz;
+  const spot=streetSpot({x:pp.x,z:pp.z},60,220);
+  const x=spot.road.x,z=spot.road.z;
   const gy=groundHeight(x,z);
   // VEÍCULO em chamas (alvo do incêndio, estilo open-world). Wreck estático: sem
   // sombra (custo) e fora de idleCars (não vira carro dirigível/colidível).

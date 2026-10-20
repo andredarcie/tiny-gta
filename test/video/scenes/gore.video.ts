@@ -15,7 +15,7 @@ test('video: gore', async ({ page }) => {
   });
   await d.giveGun();
   // downtown: busy sidewalks, plenty of volunteers
-  await d.teleport({ x: 10, z: 22 }, { x: 10, z: 60 });
+  await d.teleport({ x: 5110, z: 4980 }, { x: 5110, z: 4940 }); // a street east of the Matriz
   await d.wait(1500);
 
   // 1) the arsenal flicks through the hand

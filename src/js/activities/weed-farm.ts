@@ -4,7 +4,8 @@ import {scene} from '@/core/engine.ts';
 import {playerPos,player,idleCars,cameraRig,cur,getBusted} from '@/actors/player.ts';
 import {economy} from '@/core/economy.ts';
 import {addWanted} from '@/core/physics.ts';
-import {groundHeight,TOWN_CX,RURAL_GAP} from '@/core/constants.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {blip} from '@/audio/audio.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
@@ -13,7 +14,7 @@ import {say} from '@/ui/speech.ts';
 import {WEED_CX,WEED_CZ,WEED_SLOTS,WEED_BOX,WEED_TAP,WEED_RACK,WEED_GATE,GATE_HALF,
   TAP_YAW,SALE_YAW,TAP_SPOUT,TAP_BUCKET_REST,CRATE_LOCAL,CRATE_INNER,
   TABLE_TOP_Y,TRIM_PLANT_LOCAL,TRIM_TRAY_LOCAL,TRIM_SHEARS_LOCAL,TRIM_STAND_LOCAL,
-  makeWeedPlant} from '../../assets/models/rural/weed-farm.ts';
+  makeWeedPlant,addWeedFarm} from '../../assets/models/rural/weed-farm.ts';
 import {makeFarmBucket} from '../../assets/models/rural/farm-bucket.ts';
 import {makeHarvestedPlant,makeFlowerBud} from '../../assets/models/rural/weed-harvest.ts';
 import {makeTrimShears} from '../../assets/models/rural/trim-shears.ts';
@@ -124,19 +125,20 @@ let backpackObj: THREE.Object3D|null=null;     // the 3D pack worn on the player
 let delivering=false;
 let packItems: {buds:number;val:number;strain:string;quality:number;cured:boolean}[]=[]; // the plants the pack holds (to refill the crate on return)
 const DELIV_RANGE=2.6;
-// buyers: a few rural roadside spots + a couple of city road junctions (spawned only
-// during a run). All sit on open road/clearing ground — clear of buildings/fences.
-// `gated` marks a buyer that needs a boat/plane to reach: it is EXCLUDED from the
-// "out of buyers → respawn a fresh batch" check so a player who can't cross water is
-// never left holding a stash with no reachable buyer (see deliverTo).
+// buyers: a few country roadside spots + a few corners in the town (spawned only during
+// a run), each on the kerb of a real Divinolândia street (nav.roadside, town-local
+// coordinates). `gated` marks a buyer that is hard to reach: it is EXCLUDED from the
+// "out of buyers → respawn a fresh batch" check so a player is never left holding a
+// stash with no reachable buyer (see deliverTo).
+const buyerSpot=(lx:number,lz:number,city:boolean,gated=false)=>({...roadside(lx,lz,2),city,gated});
 const DELIV_POINTS: {x:number;z:number;city:boolean;gated?:boolean}[]=[
-  {x:TOWN_CX,        z:12,  city:false}, // Pine Hollow village square (north of the flag)
-  {x:320+RURAL_GAP,  z:5,   city:false}, // open countryside, roadside (x=450)
-  {x:236+RURAL_GAP,  z:-6,  city:false}, // farmhouse row, out on the dirt road (x=366)
-  {x:49,             z:5,   city:true },  // city: by a central road junction
-  {x:-49,            z:5,   city:true },  // city: by a road junction
-  {x:30,             z:200, city:false}, // city BEACH: a buyer down on the sand by the water
-  {x:-380,           z:-44, city:true, gated:true },  // far ISLAND: needs a boat/plane to reach (premium rate)
+  buyerSpot(-150,560,false),   // the road out past the cemetery, toward the hospital
+  buyerSpot(-560,-610,false),  // the rodovia west, by the river bridge
+  buyerSpot(900,520,false),    // dirt road south-east, past the last houses
+  buyerSpot(60,-20,true),      // the Matriz square
+  buyerSpot(560,90,true),      // Praça Jorge Galhano
+  buyerSpot(-300,140,true),    // the west neighbourhoods
+  buyerSpot(716,1940,true,true), // up at the Morro da Torre mirante (premium, a long climb)
 ];
 // a live delivery buyer placed in the world during a run
 // A weed buyer waiting at a deal point. Extends Npc (so 100% of NPCs share the
@@ -152,6 +154,8 @@ class Buyer extends Npc{
   override aliveState():string{return this.served?'Deal done':'Waiting for a deal';}
 }
 let buyers: Buyer[]=[];
+
+addWeedFarm(); // the walled compound in its hollow across the Rio do Peixe
 // HEAT — the push-your-luck risk. Each deal raises it (city more), it cools over time.
 // Above WARM, deals can be a STING (undercover cop → no pay + a wanted spike); linger
 // at the farm while HOT and you draw a RAID. The run HUD shows it so it's never blind RNG.

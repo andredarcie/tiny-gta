@@ -5,8 +5,9 @@ import {blip} from '@/audio/audio.ts';
 import {animatePed} from '@/core/entities.ts';
 import {say} from '@/ui/speech.ts';
 import {Interior} from '@/world/interior.ts';
-import {HOSP_DOOR,HOSP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,HOSP_HEAL,HOSP_BED,
-  hospFx,hospInterior} from '../../assets/models/city/hospital.ts';
+import {HOSP_DOOR,HOSP_SPAWN_OUT,HOSP_YAW,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,HOSP_HEAL,HOSP_BED,
+  hospFx,hospInterior,addHospital} from '../../assets/models/city/hospital.ts';
+import {solids} from '@/world/solids.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Hospital "SANTA CASA": estende a classe base de interiores (js/world/interior.ts).
@@ -68,10 +69,13 @@ class HospitalInterior extends Interior{
   }
 }
 
+addHospital(solids); // the room off the map + the arrow at the Hospital Regional entrance
+
 export const hospital=new HospitalInterior({
   group:hospInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:HOSP_DOOR,spawnOut:HOSP_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
-  fx:hospFx,exterior:{x:110,z:110,r:24},
+  fx:hospFx,exterior:{...HOSP_SPAWN_OUT,r:30},
+  spawnOutHeading:HOSP_YAW, // out of the glass doors, facing down the hill to the town
   mapIcon:{id:'hospital',label:'HOSPITAL',icon:'hospital',color:'#44e6b1'},
 });
 

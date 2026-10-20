@@ -5,7 +5,9 @@ import {scene} from '@/core/engine.ts';
 import {playerPos,cur,idleCars} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
-import {N,nodeX,pick,irand,clamp,groundHeight} from '@/core/constants.ts';
+import {pick,irand,clamp,groundHeight} from '@/core/constants.ts';
+import {SITE_TABLE} from '@/world/divinolandia/sites-table.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeExportGarage} from '../../assets/models/props/export-garage.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -27,7 +29,8 @@ new MiniGame({id:MiniGameId.IMPORT_EXPORT,name:'Dock Exports',exclusive:false});
 // PAD = doca de exportacao na ORLA NORTE (a beira-mar, fora da rua): exportar
 // carros "pelo mar" faz sentido na orla. Antes ficava no cruzamento (88,88), em
 // cima da ambulancia do paramedico; agora sai de cima dela com folga de sobra.
-const PAD={x:120,z:-198};
+const SITE=SITE_TABLE.exportDock; // by the highway exit east of the town
+const PAD={x:SITE.x+DIV_OX,z:SITE.z+DIV_OZ};
 const ZONE_R=5;          // raio da zona de entrega
 const STOP_SPEED=3;      // velocidade maxima pra contar como "parado"
 
@@ -47,7 +50,7 @@ let job: ExportJob | null=null;  // {car,total,match,phase,t} ou null
 // portao para -z; aqui fica de frente pra rua, mas a orientacao e cosmetica).
 const garage=makeExportGarage();
 garage.position.set(PAD.x,groundHeight(PAD.x,PAD.z),PAD.z);
-garage.rotation.y=Math.PI; // portao (-z no modelo) virado pra cidade (+z), de onde o carro chega
+garage.rotation.y=SITE.face-Math.PI; // gate (model -z) toward the road the cars come in by
 scene.add(garage);
 // guindaste e gancho expostos pelo modelo para a animacao de export
 const hook=garage.userData.hook||null;

@@ -8,9 +8,10 @@ import {Interior} from '@/world/interior.ts';
 import {STRAINS,STRAIN_BY_ID,FERTILIZER} from '@/activities/strains.ts';
 import type {Strain} from '@/activities/strains.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
-import {generalStoreInterior,genStoreFx,GENSTORE_DOOR,GENSTORE_SPAWN_OUT,
+import {generalStoreInterior,genStoreFx,GENSTORE_DOOR,GENSTORE_SPAWN_OUT,GENSTORE_SITE,addGeneralStore,
   INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,SEED_DISPLAYS,FERT_DISPLAY}
   from '../../assets/models/rural/general-store.ts';
+import {solids} from '@/world/solids.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // GENERAL STORE — the rural village's walk-in shop. Extends the base Interior
@@ -42,6 +43,8 @@ class GeneralStoreInterior extends Interior{
   }
 }
 
+addGeneralStore(solids); // the storefront on its town lot + the off-map shop
+
 export const generalStore=new GeneralStoreInterior({
   group:generalStoreInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:GENSTORE_DOOR,spawnOut:GENSTORE_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
@@ -49,7 +52,7 @@ export const generalStore=new GeneralStoreInterior({
   exterior:{x:GENSTORE_DOOR.x,z:GENSTORE_DOOR.z,r:16}, // gang-free apron round the storefront
   mapIcon:{id:'general-store',label:'GENERAL STORE',icon:'store',color:'#f4c542'},
   spawnHeading:Math.PI/2,      // spawn just inside, facing east into the room
-  spawnOutHeading:-Math.PI/2,  // exit looking west down the street (camera clears the body)
+  spawnOutHeading:GENSTORE_SITE.head(Math.PI), // out of the door, facing the street
 });
 
 // Give the shopkeeper a name (women get the female look).

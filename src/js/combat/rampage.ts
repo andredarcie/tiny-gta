@@ -5,7 +5,9 @@ import {scene} from '@/core/engine.ts';
 import {playerPos} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
-import {N,nodeX,irand,groundHeight} from '@/core/constants.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {streetSpot} from '@/world/divinolandia/nav.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {grantWeapon,snapshotArsenal,restoreArsenal} from '@/combat/weapons.ts';
 import {makeRampageSkull} from '../../assets/models/props/rampage-skull.ts';
@@ -46,19 +48,14 @@ let level=1;            // sobe a cada rampage concluído -> meta maior
 const game=new MiniGame({id:MiniGameId.RAMPAGE,name:'Frenzy'});
 
 // ---------- cria os pickups no carregamento -------------------------------
-// interseções da grade: (nodeX(i),nodeX(j)) com i,j em 0..N. Sorteia posições
-// DISTINTAS e longe do spawn (evita o quadrado central [-20,20]).
+// skulls on the pavements of the town, spread out, away from the Matriz (the start) and
+// never inside a gang's turf
 (function spawnPads(){
-  const used=new Set<string>();
   let guard=0;
   while(pads.length<PICKUP_COUNT&&guard++<400){
-    const i=irand(0,N), j=irand(0,N);
-    const key=i+'_'+j;
-    if(used.has(key))continue;
-    const x=nodeX(i), z=nodeX(j);
-    if(Math.abs(x)<20&&Math.abs(z)<20)continue; // longe do spawn
-    if(inGangTerritory(x,z))continue;           // nunca em território de gangue
-    used.add(key);
+    const k=streetSpot({x:DIV_OX,z:DIV_OZ},120,900).kerb,x=k.x,z=k.z;
+    if(inGangTerritory(x,z))continue;
+    if(pads.some(p=>Math.hypot(p.x-x,p.z-z)<150))continue;
     const g=makeRampageSkull();
     g.position.set(x,groundHeight(x,z),z);
     scene.add(g);

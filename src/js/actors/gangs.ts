@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {rand,irand,clamp,nodeX,groundHeight} from '@/core/constants.ts';
+import {rand,irand,clamp,groundHeight} from '@/core/constants.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {state,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN,NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
@@ -62,14 +63,15 @@ function repelFromZones(p:THREE.Vector3){
   }
 }
 
-const GANG_MIN_R=12, GANG_R0=44, KILL_SHRINK=5;
+const GANG_MIN_R=16, GANG_R0=70, KILL_SHRINK=7;
 const GANG_ROSTER=7;
 const GANG_ALIVE=3;
 export const gangs:Gang[]=[
+  // turf: the riverside streets of Beira-Rio (north) and the blocks round Galhano (south-east)
   {name:'VIPERS', color:0x35d435,pants:0x14401c,css:'#35d435',cssA:'rgba(53,212,53,.22)',
-   x:nodeX(6)+22,z:nodeX(1)+22,r:GANG_R0} as unknown as Gang,
+   x:DIV_OX+430,z:DIV_OZ-380,r:GANG_R0} as unknown as Gang,
   {name:'SKULLS', color:0x9d2eff,pants:0x2a1440,css:'#9d2eff',cssA:'rgba(157,46,255,.22)',
-   x:nodeX(1)+22,z:nodeX(6)+22,r:GANG_R0} as unknown as Gang,
+   x:DIV_OX+700,z:DIV_OZ+330,r:GANG_R0} as unknown as Gang,
 ];
 for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;g.remaining=GANG_ROSTER;g.defeated=false;}
 
@@ -116,7 +118,7 @@ function spawnMember(gang:Gang){
     if(Math.hypot(x-pp.x,z-pp.z)>26&&!inSpecialZone(x,z))break;
   }
   const g=makePed(gang.color,gang.pants);
-  g.position.set(x,0,z);
+  g.position.set(x,groundHeight(x,z),z);
   collideStatics(g.position,.4);
   repelFromZones(g.position);
   const m=new GangMember(g,{

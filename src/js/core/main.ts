@@ -13,13 +13,12 @@ import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts
 import {updateBodyRecovery} from '@/world/body-recovery.ts'; // ambulance collects dead NPCs → hospital
 import {updateGangs,gangs,gangPeds,spawnInitialGangs,setGangsHidden} from '@/actors/gangs.ts';
 import {updateNpcLabels,reconcileVehicleNpcs,npcs} from '@/actors/npc.ts'; // name tags + driver→NPC roster
-import {updateRuralFolk,folk} from '@/world/rural-folk.ts'; // smart ambient rural NPCs (rednecks) in the peninsula
-import {updateRuralTraffic,ruralTraffic} from '@/world/rural-traffic.ts'; // sparse country cars on the dirt road
-import {updateBeach,solids} from '@/world/world.ts';
+import {updateRuralFolk,folk} from '@/world/rural-folk.ts'; // the country folk round the sítios outside town
+import {buildDivinolandia,updateDivinolandia} from '@/world/divinolandia/build.ts'; // the town itself
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {cops,officers,heli,updateCops,updateHeli,initPolice} from '@/actors/police.ts';
-import {updatePoliceBoats} from '@/actors/police-boat.ts'; // perseguição marítima: foge p/ a água procurado e a lancha da polícia te caça
 import {updateArmy,initArmy} from '@/actors/army.ts';
-import {delivery,spawnDelivery,updatePickups} from '@/story/missions.ts';
+import {delivery,spawnDelivery,updatePickups} from '@/activities/courier.ts';
 import {updateTaxi} from '@/activities/taxi.ts';
 import {updateRace} from '@/activities/race.ts';
 import {updateBoatRace} from '@/activities/boat-race.ts';
@@ -35,15 +34,14 @@ import {updateImportExport} from '@/activities/import-export.ts';     // Open-wo
 import {updateBombShop} from '@/activities/bomb-shop.ts';             // Open-world: o artificeiro arma o carro-bomba
 import {updateRcToyz} from '@/activities/rc-toyz.ts';                 // Open-world: carrinho de controle destrói alvos
 import {updateWeaponPickups} from '@/combat/weapon-pickups.ts';  // Open-world: as 12 armas escondidas pelo mapa
-import {updateIslandLoot} from '@/loot/island-loot.ts'; // secret heavy-weapon + cash cache out on the island
-import {updateStory,updateStoryPre,storyTest} from '@/story/story.ts'; // pay-phone mission chain (wires its own refs)
-import {updateRick,rickInteract,rickNear,getRickState} from '@/story/rick.ts';
+import {updateIslandLoot} from '@/loot/serra-loot.ts'; // secret heavy-weapon + cash cache up on the Morro da Torre
+import {updateRick,rickInteract,rickNear,getRickState} from '@/activities/rick.ts';
 import {blinkBar} from '@/core/entities.ts';
 import {preloadNature} from '../../assets/models/nature/kit.ts';
 import {finalizeNature,updateNatureCulling} from '../../assets/models/nature/batch.ts';
-// Generate the code-built nature kit, then bake every placement world.ts already
-// recorded (trees/pines/palms/bushes/ferns/mushrooms/rocks + grass/flowers) into merged
-// chunks. Runs after the whole world import graph, so all placements are present.
+// Generate the code-built nature kit, then bake every placement already recorded (the
+// street palms by the shops and props) into merged chunks. Runs after the whole import
+// graph, so all placements are present.
 preloadNature().then(()=>{try{finalizeNature();}catch(e){console.warn('[nature] finalize failed',e);}});
 import {setupInput,updateKeyboardInput,performShoot,performInteract} from '@/core/input.ts';
 import {setupPauseMenu} from '@/ui/pause-menu.ts';
@@ -74,25 +72,19 @@ import {clothesShopState,clothesShopInteract,updateClothesShop} from '@/places/c
 import {initProperty,houseBuyState,houseEatState,houseGarageState,getHouseState} from '@/places/property.ts';
 import {houseTvState,updateHouseTv,getHouseTvState} from '@/places/house-tv.ts';
 import {updateDoors} from '@/world/doors.ts';
-import {updateDoorArrows} from '../../assets/models/city/door-arrow.ts';
-import {updateCityCulling,cityChunks} from '../../assets/models/city/building.ts';
-import {updatePropCulling,propChunks} from '../../assets/models/props/prop-merge.ts';
-import {updateLotCulling,lotChunks} from '../../assets/models/city/abandoned-lot.ts';
-import {updateRuralCulling} from '@/world/rural-cull.ts'; // grandes marcos rurais (rancho/celeiro): corte por névoa
+import {updatePropCulling,propChunks,finalizeProps} from '../../assets/models/props/prop-merge.ts';
+import {updateRuralCulling} from '@/world/rural-cull.ts'; // big authored landmarks (the farmhouse): fog cull
 import * as P from '@/core/profiler.ts'; // profiler embutido (tecla ` ou ?prof na URL)
 import {startWarmup} from '@/core/warmup.ts'; // background shader/geometry warmup (anti-hitch, non-blocking)
 import {validateRefs,auditRefs} from '@/core/refs.ts'; // boot-time check of the late-binding ref contract
-import {divinoModeOn} from '@/world/divinolandia/mode.ts';
 
-// Divinolândia map (?map=divinolandia): the real town is built from its own lazily-loaded
-// chunk (so its ~1 MB of baked data never weighs on the classic map); the run start
-// waits for it (input.ts beginRun awaits refs.divinoPending).
-let updateDivino:((x:number,z:number)=>void)|null=null;
-if(divinoModeOn()){
-  refs.divinoPending=import('@/world/divinolandia/build.ts').then(m=>{
-    m.buildDivinolandia();updateDivino=m.updateDivinolandia;
-  }).catch(e=>{console.error('[divinolandia] build failed',e);});
-}
+// Divinolândia — the real town (OSM + SRTM, see docs/divinolandia/) is the game's only
+// map. The place modules imported above already stood their buildings on their lots
+// (world/divinolandia/sites.ts); now the town itself goes up around them: relief,
+// streets, ~3800 houses, landmarks, vegetation, collision and the radar atlas. Then the
+// props every module recorded are merged into chunks (must come after all of them).
+buildDivinolandia();
+finalizeProps();
 performance.mark('tg:modules-evaluated'); // every module (incl. the whole world build) has run
 
 // Dev/test-only hooks attached to window (see DEBUG_HOOKS block below). Declared
@@ -118,7 +110,6 @@ declare global {
       setHealth: (hp: number) => number;
       vmArms: () => {x: number; y: number; z: number; visible: boolean};
       farm: (cmd: string) => unknown;
-      story: (cmd: string) => unknown;
       audioStart: () => Promise<number>;
       audioStop: () => Promise<string>;
       music: (i: number) => boolean;
@@ -139,7 +130,7 @@ P.setContext(()=>{const p=playerPos();return(state.interior?'INT:'+state.interio
 const _visCount=(arr:Array<{g?:{visible?:boolean}}>)=>{
   let n=0;for(const e of arr){if(e?.g?.visible!==false)n++;}return n;};
 P.setCounts(()=>({
-  cars:_visCount(traffic)+_visCount(idleCars)+_visCount(ruralTraffic),
+  cars:_visCount(traffic)+_visCount(idleCars),
   peds:_visCount(peds),
   gang:_visCount(gangPeds),
   cops:_visCount(cops)+_visCount(officers),
@@ -158,7 +149,7 @@ P.setCounts(()=>({
     return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles};};
   const base=measure();
   const groups:Record<string,Array<{g?:THREE.Object3D}>>={
-    traffic,idleCars,peds,gangPeds,cops,officers,ruralTraffic,ruralFolk:folk,
+    traffic,idleCars,peds,gangPeds,cops,officers,ruralFolk:folk,
   };
   const out:Record<string,{draws:number;tris:number}>={};
   (out as any).__total={draws:base.calls,tris:base.tris};
@@ -184,7 +175,7 @@ P.setCounts(()=>({
   const measure=()=>{renderer.render(scene,camera);
     return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles};};
   const base=measure();
-  const groups:Record<string,THREE.Object3D[]>={buildings:cityChunks,props:propChunks,lots:lotChunks};
+  const groups:Record<string,THREE.Object3D[]>={props:propChunks};
   const out:Record<string,{draws:number;tris:number}>={};
   (out as any).__total={draws:base.calls,tris:base.tris};
   for(const[name,arr]of Object.entries(groups)){
@@ -229,7 +220,7 @@ const _bdFrustum=new THREE.Frustum(),_bdMat=new THREE.Matrix4(),_bdSphere=new TH
     if(draws>0){
       total+=draws;
       const ud=Object.keys(child.userData||{}).join(',');
-      const tag=inArr(child,cityChunks)?'CHUNK':inArr(child,propChunks)?'PROP':inArr(child,lotChunks)?'LOT':'?';
+      const tag=inArr(child,propChunks)?'PROP':'?';
       // dica de identidade: nome do 1º descendente nomeado + posição no mundo
       let hint='';child.traverse(o=>{if(!hint&&o.name&&o!==child)hint=o.name;});
       const px=Math.round(child.position.x),pz=Math.round(child.position.z);
@@ -249,12 +240,10 @@ refs.getRadarHeading=()=>cameraRig.yaw;
 refs.traffic=traffic;
 refs.cops=cops;
 refs.officers=officers; // hud draws each foot officer's vision cone on the minimap
-refs.ruralTraffic=ruralTraffic; // country cars on the dirt road — stealable like city traffic
 refs.trafficPos=trafficPos;
 refs.spawnTraffic=spawnTraffic;
 refs.ejectDriver=ejectDriver;
 refs.addBloodPuddle=addBloodPuddle; // morte do jogador deixa poça igual NPC
-refs.citySolids=solids; // building AABBs — NPC name tags hide when occluded by them
 refs.gangs=gangs; // hud desenha os territórios no minimapa via refs
 refs.setGangsHidden=setGangsHidden; // corrida de rua esconde/restaura as gangues
 refs.interiorBlips=()=>interiors
@@ -358,16 +347,13 @@ function step(dt: number){
     c.position.x+=c.userData.v*dt;
     if(c.position.x>550)c.position.x=-550;
   }
-  P.begin('daynight');updateBeach(state.time);updateDayNight(dt);P.end();
-  { // setinhas de porta: só aparecem nas portas perto do jogador
-    const ap=playerPos();
-    updateDoorArrows(state.time,ap.x,ap.z);
-  }
+  P.begin('daynight');updateDayNight(dt);P.end();
 
   if(!state.started){
-    const a=state.time*.07;
-    camera.position.set(Math.cos(a)*140,65,Math.sin(a)*140);
-    camera.lookAt(0,6,0);
+    // title backdrop: a slow orbit over the Igreja Matriz and the centre of Divinolândia
+    const a=state.time*.07,cy=groundHeight(DIV_OX,DIV_OZ);
+    camera.position.set(DIV_OX+Math.cos(a)*160,cy+75,DIV_OZ+Math.sin(a)*160);
+    camera.lookAt(DIV_OX,cy+8,DIV_OZ);
     updateTraffic(dt);updatePeds(dt);updateGangs(dt);
     renderFrame(dt);return;
   }
@@ -383,11 +369,11 @@ function step(dt: number){
   P.begin('traffic');updateTraffic(dt);P.end();
   P.begin('peds');updatePeds(dt);updateBodyRecovery(dt);P.end();
   P.begin('gangs');updateGangs(dt);P.end();
-  P.begin('rural');updateRuralFolk(dt);updateRuralTraffic(dt);P.end(); // country folk + sparse dirt-road cars
+  P.begin('rural');updateRuralFolk(dt);P.end(); // the country folk round the sítios
   // While the full map is open (even with live NPCs shown) the player is input-locked,
   // so the police/army must NOT chase, shoot or arrest them — freeze those threats.
   const combatOn=state.mode!=='cut'&&!state.cine&&!state.mapOpen;
-  P.begin('cops');if(combatOn){updateCops(dt);updatePoliceBoats(dt);}P.end();
+  P.begin('cops');if(combatOn)updateCops(dt);P.end();
   P.begin('army');if(combatOn)updateArmy(dt);P.end(); // ★6: the army
   P.begin('misc');
   updateHeli(dt);
@@ -429,12 +415,10 @@ function step(dt: number){
   for(const c of idleCars)blinkBar(c.g);
   P.end();
 
-  updateStoryPre(dt); // story hand clips turn the view (before the camera)
   P.begin('camera');updateCamera(dt);updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
-  updateStory(dt); // after the camera: a cut-scene owns the camera
   updateRick(dt);  // Rick's secret mission: campfire + the sicko hunt (uses the story cut-scene)
   P.end();
   P.begin('hud');updateHUD(dt);P.end();
@@ -446,12 +430,10 @@ function step(dt: number){
 
   const pp=playerPos();
   P.begin('culling');
-  updateCityCulling(pp.x,pp.z); // esconde chunks da cidade longe (atrás da névoa)
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
   updateNatureCulling(pp.x,pp.z); // stylized-nature chunks (trees/rocks/grass): same size-LOD cut
-  updateLotCulling(pp.x,pp.z);  // lotes/entulho: corte médio
   updateRuralCulling(pp.x,pp.z); // rancho + celeiro: ~130 draw calls cortados além da névoa
-  updateDivino?.(pp.x,pp.z);     // Divinolândia: houses / woods / coffee chunks by distance
+  updateDivinolandia(pp.x,pp.z);  // Divinolândia: houses / woods / coffee chunks by distance
   // Veículos parados (avião/barco/trator/bombeiro/ambulância/carro do jogador):
   // não desenha os que estão ALÉM da névoa — lá já são invisíveis, então é
   // visual-neutro. O corte acompanha a névoa (que abre na altitude). O carro
@@ -655,7 +637,6 @@ window.__test={
   setHealth:(hp: number)=>{state.health=hp;return state.health;},
   vmArms:()=>viewmodelArms(), // FP arms' camera-space offset (arm-motion test)
   farm:(cmd: string)=>refs.farmTest?.(cmd), // weed farm: 'stock' | 'ripen' | 'thirsty' | 'cure' -> state
-  story:(cmd: string)=>storyTest(cmd), // story: 'state' | 'stage:<name>' | 'killCamp' | 'skipCine' | 'toBooth' | 'toCamp'
   // Gore test: dismember the nearest living outdoor NPC ('head'|'arm'|'leg'|'gib'),
   // first placing the player 5 m away facing it so the result is on screen. Returns what
   // it did (or null) — lets the harness exercise the gore layer directly.

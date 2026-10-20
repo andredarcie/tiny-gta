@@ -1,5 +1,7 @@
 import * as THREE from 'three';
-import {N,clamp,rand,wrapA,nodeX,irand,groundHeight} from '@/core/constants.ts';
+import {clamp,rand,wrapA,irand,groundHeight} from '@/core/constants.ts';
+import {randomRoadPoint} from '@/world/divinolandia/nav.ts';
+import {carRoad} from '@/world/traffic.ts';
 import {state,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
@@ -91,7 +93,14 @@ const SOLDIER_RESPAWN=5;  // seconds a fallen soldier takes to return from afar
 // created ONCE and reused for every ★6 deployment — never spawned "from beyond".
 const MILITARY_DEFS=npcDefsByKind('military');
 const SQUAD_SIZE=MILITARY_DEFS.length||3;
-const BARRACKS={x:nodeX(0)-400,z:nodeX(0)-400}; // off-map spot where stationed soldiers wait, hidden
+const BARRACKS={x:-600,z:-600}; // off-map spot (west of the town, like the rooms) where stationed soldiers wait, hidden
+
+// a street spot in a ring around the player (where the truck turns up / soldiers come back)
+function streetNear(min:number,max:number):[number,number]{
+  const px=playerPos();
+  const sp=randomRoadPoint({f:carRoad,near:{x:px.x,z:px.z},min,max});
+  return[sp.x,sp.z];
+}
 
 // Each soldier carries a DIFFERENT weapon (variety). Fire happens in RHYTHM:
 // it fires `burst` shots spaced by `fire` seconds, then PAUSES for `gap` seconds
@@ -133,16 +142,10 @@ function stationSoldier(o:Soldier){
   o.g.visible=false;
 }
 
-// A killed soldier RETURNS FROM AFAR: revived on foot at a far intersection, running
+// A killed soldier RETURNS FROM AFAR: revived on foot on a street 40–70 m away, running
 // in to rejoin the fight — so the squad is never permanently thinned during a ★6.
 function reviveSoldierFar(o:Soldier){
-  const px=playerPos();
-  let nx=px.x,nz=px.z,best=1e9;
-  for(let t=0;t<40;t++){
-    const x=nodeX(irand(0,N)),z=nodeX(irand(0,N)),d=Math.hypot(x-px.x,z-px.z);
-    if(d>=40&&d<=70){nx=x;nz=z;break;}
-    if(Math.abs(d-55)<best){best=Math.abs(d-55);nx=x;nz=z;}
-  }
+  const[nx,nz]=streetNear(40,70);
   if(o.g.parent!==scene)scene.add(o.g);
   o.dead=false;o.deadT=0;o.respawnT=0;o.grounded=false;
   o.g.position.set(nx,groundHeight(nx,nz),nz);o.g.rotation.set(0,0,0);o.g.visible=true;
@@ -167,17 +170,9 @@ export function initArmy(){
 }
 
 function spawnArmy(){
-  const px=playerPos();
-  // spawn at an intersection 50–85m away: close enough to ARRIVE quickly (not get
-  // stuck across the map), far enough not to appear in your lap. If no spot in
-  // range after 40 tries, use the intersection nearest to 65m.
-  let nx=px.x,nz=px.z,best=1e9;
-  for(let tries=0;tries<40;tries++){
-    const x=nodeX(irand(0,N)),z=nodeX(irand(0,N));
-    const d=Math.hypot(x-px.x,z-px.z);
-    if(d>=50&&d<=85){nx=x;nz=z;break;}
-    if(Math.abs(d-65)<best){best=Math.abs(d-65);nx=x;nz=z;}
-  }
+  // turns up on a street 50–85 m away: close enough to ARRIVE quickly (not stuck across
+  // the town), far enough not to appear in your lap
+  const[nx,nz]=streetNear(50,85);
   const g=makeArmyTruck();
   g.position.set(nx,groundHeight(nx,nz),nz);
   g.rotation.y=rand(0,Math.PI*2);
@@ -205,7 +200,7 @@ function deploy(){
     if(o.dead||o.mode!=='ride')continue;
     o.g.getWorldPosition(_wp);     // current spot in the bed -> ground beside it
     scene.add(o.g);                // reparent (THREE keeps the LOCAL transform, so rewrite it)
-    o.g.position.set(_wp.x,0,_wp.z);
+    o.g.position.set(_wp.x,groundHeight(_wp.x,_wp.z),_wp.z);
     o.g.rotation.set(0,0,0);
     o.mode='hunt';o.bob=rand(0,6);o.shootT=0;o.burstLeft=0;o.restT=rand(.3,1.2);
   }
@@ -213,19 +208,13 @@ function deploy(){
     message('SOLDIERS ON FOOT — OPEN FIRE!','var(--pink)');}
 }
 
-// no pathfinding: when the truck gets STUCK far away (behind a building, making no
-// progress), it reappears at a fresh intersection 30–55m from the player, already
-// aimed at them — as if coming down another street. The squad rides along (children).
+// no pathfinding: when the truck gets STUCK far away (behind a house, making no
+// progress), it reappears on a street 30–55 m from the player, already aimed at them —
+// as if coming down another street. The squad rides along (children).
 function repositionTruck(){
   if(!truck)return;
   const px=playerPos();
-  let nx=px.x,nz=px.z,best=1e9;
-  for(let t=0;t<40;t++){
-    const x=nodeX(irand(0,N)),z=nodeX(irand(0,N));
-    const d=Math.hypot(x-px.x,z-px.z);
-    if(d>=30&&d<=55){nx=x;nz=z;break;}
-    if(Math.abs(d-42)<best){best=Math.abs(d-42);nx=x;nz=z;}
-  }
+  const[nx,nz]=streetNear(30,55);
   truck.g.position.set(nx,groundHeight(nx,nz),nz);
   truck.heading=Math.atan2(px.x-nx,px.z-nz);
   truck.g.rotation.y=truck.heading;
@@ -260,7 +249,7 @@ function killSoldier(o:Soldier){
   if(o.dead)return;
   o.dead=true;o.deadT=0;o.respawnT=SOLDIER_RESPAWN;state.kills++;
   o.g.rotation.set(-Math.PI/2,o.g.rotation.y,0); // falls onto its back like the others
-  o.g.position.y=.35;
+  o.g.position.y=groundHeight(o.g.position.x,o.g.position.z)+.35;
   refs.addBloodPuddle?.(o.g.position.x,o.g.position.z);
   state.lastCrime=state.time; // killing a soldier keeps the heat maxed
 }
@@ -422,12 +411,14 @@ export function updateArmy(dt:number){
       if(truck.stuckT>1.3){truck.backT=.9;truck.stuckT=0;}
     }else truck.stuckT=0;
     tp.y=groundHeight(tp.x,tp.z);
-    truck.g.rotation.y=truck.heading;
+    {const fx=Math.sin(truck.heading),fz=Math.cos(truck.heading);
+     const slope=groundHeight(tp.x+fx*2,tp.z+fz*2)-groundHeight(tp.x-fx*2,tp.z-fz*2);
+     truck.g.rotation.order='YXZ';truck.g.rotation.set(-Math.atan2(slope,4),truck.heading,0);}
     spinWheels(truck.g,truck.speed,dt,clamp(diff,-1,1));
 
     // reached the stationary target with troops still aboard: dismount
     const hasRiders=soldiers.some(o=>!o.dead&&o.mode==='ride');
-    if(hasRiders&&pp.y<6&&
+    if(hasRiders&&pp.y-groundHeight(pp.x,pp.z)<6&&
        (state.mode==='foot'?dist<13:dist<15&&Math.abs(cur?.speed||0)<4))deploy();
 
     // player's car bumps the truck: push apart and dent it (like the cop cruisers)
@@ -439,7 +430,7 @@ export function updateArmy(dt:number){
         cur.speed*=.7;truck.speed*=.6;thud(8);state.shake=.4;
         if(!truck.dentT||state.time-truck.dentT>.5){
           truck.dentT=state.time;
-          const mid=_mid.addVectors(tp,cur.g.position).multiplyScalar(.5).setY(.7);
+          const mid=_mid.addVectors(tp,cur.g.position).multiplyScalar(.5);mid.y+=.7;
           dentCar(cur.g,mid,push,.16);
         }
       }

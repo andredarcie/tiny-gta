@@ -5,7 +5,7 @@
 //   npx playwright test test/weed-farm.spec.ts
 import { test, expect } from './support/game.ts';
 
-const CX = 620, CZ = -90;                       // compound centre (assets/models/rural/weed-farm.ts)
+const CX = 4061.5, CZ = 4222.5;                       // compound centre: sites-table.ts 'weedFarm' + the town offset (5000, 5000)
 const W = (x: number, z: number) => ({ x: CX + x, z: CZ + z });
 const TABLE = W(9.5, 6.5), TRIM = W(8.39, 6.8);    // sale/work table centre and where you stand to trim
 

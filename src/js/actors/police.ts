@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import {N,CELL,HALF,BOUND,clamp,rand,pick,wrapA,nodeX,irand,groundHeight,SWIM_BOUND,
-  RIVER_CX,RIVER_HW,BRIDGE_X0,BRIDGE_X1,BRIDGE_DECK_HW} from '@/core/constants.ts';
+import {clamp,rand,irand,pick,wrapA,groundHeight} from '@/core/constants.ts';
+import {nearestNode,findPath,pathPoints,randomRoadPoint} from '@/world/divinolandia/nav.ts';
+import {carRoad} from '@/world/traffic.ts';
 import {state,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN,NPC_HP_TOUGH} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
@@ -41,16 +42,16 @@ interface Cop{
   dispatchWait?:number;         // >0 = dispatched but still en route to rolling (keeps patrolling)
   siren?:boolean;               // true while actively chasing (lights+siren on) — drives the audio
   sees?:boolean;                // recomputed each frame: this unit's vision cone currently has the player (drives the radar wedge colour + the wanted cooldown)
-  // road-grid route to the player (A*): a list of intersection waypoints to follow.
-  path?:GridNode[];
+  // street route to the player (A* on the town's street graph): the polyline to follow
+  path?:Wp[];
   pathI?:number;                // current waypoint index
   repathT?:number;              // countdown to recompute the route
-  goalI?:number;goalJ?:number;  // the player's node the current path targets (recompute when it moves)
+  goalN?:number;                // the street junction the current path targets (recompute when it changes)
   lastX?:number;lastZ?:number;  // previous-frame position, to measure actual displacement (stall detect)
   stoppedT?:number;             // seconds spent near the suspect but barely moving (→ deploy on foot)
   anchorX?:number;anchorZ?:number;anchorT?:number; // sliding-window net-displacement anchor (strict 4s anti-idle)
 }
-type GridNode=[number,number];
+type Wp=[number,number];
 
 // A foot officer dropped from a cruiser. Extends Npc so weapons can target them
 // via the unified npcs[] registry instead of a separate copOfficers loop.
@@ -61,9 +62,9 @@ export class Officer extends Npc{
   mode!:string; // 'hunt'|'return'
   rocket!:boolean;
   sees=false;   // vision-cone has the player this frame (see policeSeesPlayer / the radar wedge)
-  // Road-grid route to the player (A*), used ONLY when far + a building blocks the straight
-  // line, so a deployed officer rounds the corner instead of wedging against a wall.
-  path?:GridNode[];pathI?:number;repathT?:number;goalI?:number;goalJ?:number;
+  // Street route to the player (A*), used ONLY when far + a house blocks the straight line,
+  // so a deployed officer rounds the block instead of wedging against a wall.
+  path?:Wp[];pathI?:number;repathT?:number;goalN?:number;
   override aliveState():string{return this.mode==='return'?'Returning to car':'In pursuit';}
 }
 
@@ -80,7 +81,7 @@ const SHERIFF_BROWN=0x46381f; // sheriff trousers
 const BUST_TIME=5;            // seconds of officer contact before the player is booked
 // How close a chasing cruiser must be to an on-foot/stopped suspect before — if it has STOPPED
 // MOVING (blocked by buildings/traffic) — it debuses its officer and continues on foot. Generous
-// because the road grid is 44m-spaced (CELL): a suspect mid-block or behind a building can sit
+// because the streets are blocks apart: a suspect mid-block or behind a house can sit
 // ~20-30m from the nearest point a cruiser can reach, so a tighter reach left the car idling in
 // the street, never getting out. The deploy is gated on "barely moving", so a normal fast drive-in
 // through this band never debuses early — only a genuinely stuck/stopped cruiser does.
@@ -111,54 +112,35 @@ let respawnT=0; // throttles how fast a lost cruiser comes back from afar
 const _patrol=new THREE.Vector3();
 
 // ---------------------------------------------------------------------------
-// ROAD-GRID PATHFINDING — the city is a fully-connected grid of intersections at
-// (nodeX(i),nodeX(j)), i,j∈0..N (same graph traffic drives). A* over it gives the
-// cruiser a real route ALONG the roads to the player, so it rounds buildings instead
-// of grinding into walls. Cheap: ≤81 nodes, recomputed only a few times a second.
+// STREET PATHFINDING — A* over Divinolândia's real street graph (world/divinolandia/
+// nav.ts, the same graph traffic drives). The cruiser follows the route ALONG the
+// streets to the player, rounding the blocks instead of grinding into the houses.
+// Recomputed only a few times a second.
 // ---------------------------------------------------------------------------
-function nearestNode(x:number,z:number):GridNode{
-  return[clamp(Math.round((x+HALF)/CELL),0,N),clamp(Math.round((z+HALF)/CELL),0,N)];
+function streetRoute(x:number,z:number,goal:number):Wp[]{
+  const a=nearestNode(x,z,carRoad);
+  return pathPoints(findPath(a,goal,carRoad));
 }
-function gridPath(start:GridNode,goal:GridNode):GridNode[]{
-  const W=N+1,key=(i:number,j:number)=>i*W+j;
-  const sk=key(start[0],start[1]),gk=key(goal[0],goal[1]);
-  if(sk===gk)return[goal];
-  const h=(i:number,j:number)=>Math.abs(i-goal[0])+Math.abs(j-goal[1]);
-  const came=new Map<number,number>(),g=new Map<number,number>([[sk,0]]);
-  const f=new Map<number,number>([[sk,h(start[0],start[1])]]);
-  const open:GridNode[]=[start],closed=new Set<number>();
-  while(open.length){
-    let bi=0;for(let k=1;k<open.length;k++)
-      if((f.get(key(open[k][0],open[k][1]))??1e9)<(f.get(key(open[bi][0],open[bi][1]))??1e9))bi=k;
-    const cur=open.splice(bi,1)[0],ck=key(cur[0],cur[1]);
-    if(ck===gk){
-      const path:GridNode[]=[cur];let k2=ck;
-      while(came.has(k2)){const pk=came.get(k2)!;path.unshift([Math.floor(pk/W),pk%W]);k2=pk;}
-      return path;
-    }
-    closed.add(ck);
-    const[ci,cj]=cur,nbs:GridNode[]=[];
-    if(ci>0)nbs.push([ci-1,cj]);if(ci<N)nbs.push([ci+1,cj]);
-    if(cj>0)nbs.push([ci,cj-1]);if(cj<N)nbs.push([ci,cj+1]);
-    for(const nb of nbs){
-      const nk=key(nb[0],nb[1]);if(closed.has(nk))continue;
-      const ng=(g.get(ck)??1e9)+1;
-      if(ng<(g.get(nk)??1e9)){
-        came.set(nk,ck);g.set(nk,ng);f.set(nk,ng+h(nb[0],nb[1]));
-        if(!open.some(o=>o[0]===nb[0]&&o[1]===nb[1]))open.push(nb);
-      }
-    }
-  }
-  return[goal];
+// steering target along a route, skipping the points already reached (within r metres)
+function followRoute(o:{path?:Wp[];pathI?:number},x:number,z:number,r:number):Wp|null{
+  const P=o.path;if(!P||!P.length)return null;
+  let i=o.pathI??0;
+  while(i<P.length-1&&Math.hypot(x-P[i][0],z-P[i][1])<r)i++;
+  o.pathI=i;return P[i];
 }
 
-// A far road node (≥80m from the player) — where cops spawn/respawn and patrol toward.
+// A street spot well away from the player — where cops spawn/respawn and patrol toward.
 function farNode():[number,number]{
   const px=playerPos();
-  let nx,nz,tries=0;
-  do{nx=nodeX(irand(0,N));nz=nodeX(irand(0,N));tries++;}
-  while(Math.hypot(nx-px.x,nz-px.z)<80&&tries<30);
-  return[nx,nz];
+  const sp=randomRoadPoint({f:carRoad,near:{x:px.x,z:px.z},min:150,max:420});
+  return[sp.x,sp.z];
+}
+// sit a car on the ground under it, pitched with the slope
+function groundCar(g:THREE.Object3D,heading:number):void{
+  const p=g.position;p.y=groundHeight(p.x,p.z);
+  const fx=Math.sin(heading),fz=Math.cos(heading);
+  const slope=groundHeight(p.x+fx*1.3,p.z+fz*1.3)-groundHeight(p.x-fx*1.3,p.z-fz*1.3);
+  g.rotation.order='YXZ';g.rotation.set(-Math.atan2(slope,2.6),heading,0);
 }
 
 // Create one cruiser unit driven by a named officer (an unused name from the roster),
@@ -173,7 +155,7 @@ export function spawnCop(){
   const c:Cop={g:makeCar(0xe8e8ee,true),heading:rand(0,6.28),speed:0,stuckT:0,backT:0,officers:null,patrolTgt:null,
     isSheriff,uniform,name:def?.name,sex:def?.sex};
   c.driver=seatDriver(c.g,uniform,isSheriff?SHERIFF_BROWN:0x1a2440);
-  c.g.position.set(nx,0,nz);
+  c.g.position.set(nx,groundHeight(nx,nz),nz);
   // tag the driver as a named police NPC so it shows in the census (and
   // reconcileVehicleNpcs leaves it be).
   if(c.driver)c.driver.userData.occupantNpc=new Npc(c.driver,{kind:'police',register:false,showLabel:true,
@@ -181,30 +163,26 @@ export function spawnCop(){
   cops.push(c);
 }
 
-// Drive a patrolling cruiser around the streets (no lights, calm speed). It now FOLLOWS
-// THE ROAD GRID (same A* as the chase) toward a far node, so a free-roaming patrol car
-// rounds corners on the streets instead of grinding into buildings.
+// Drive a patrolling cruiser around the streets (no lights, calm speed). It FOLLOWS THE
+// STREETS (same A* as the chase) toward a far spot, so a free-roaming patrol car rounds
+// the corners instead of grinding into the houses.
 function patrolCop(c:Cop,dt:number){
   const p=c.g.position;
   if(!c.patrolTgt||!c.path||_patrol.copy(c.patrolTgt).sub(p).setY(0).length()<8||c.stuckT>1.6){
     const[tx,tz]=farNode();
     c.patrolTgt=new THREE.Vector3(tx,0,tz);
-    c.path=gridPath(nearestNode(p.x,p.z),nearestNode(tx,tz));
-    c.pathI=Math.min(1,c.path.length-1);
+    c.path=streetRoute(p.x,p.z,nearestNode(tx,tz,carRoad));
+    c.pathI=0;
     c.stuckT=0;
   }
-  while((c.pathI??0)<c.path.length-1){
-    const w=c.path[c.pathI!];
-    if(Math.hypot(p.x-nodeX(w[0]),p.z-nodeX(w[1]))<8)c.pathI!++;else break;
-  }
-  const w=c.path[Math.min(c.pathI??0,c.path.length-1)];
-  const desired=Math.atan2(nodeX(w[0])-p.x,nodeX(w[1])-p.z),diff=wrapA(desired-c.heading);
+  const w=followRoute(c,p.x,p.z,6)||[c.patrolTgt.x,c.patrolTgt.z];
+  const desired=Math.atan2(w[0]-p.x,w[1]-p.z),diff=wrapA(desired-c.heading);
   c.heading+=clamp(diff,-1,1)*1.8*dt;
-  c.speed+=(11-c.speed)*1.2*dt;
+  c.speed+=((Math.abs(diff)>.5?6:11)-c.speed)*1.2*dt;
   p.x+=Math.sin(c.heading)*c.speed*dt;
   p.z+=Math.cos(c.heading)*c.speed*dt;
   if(collideStatics(p,1.3)){c.speed*=.4;c.stuckT+=dt*3;}else c.stuckT=Math.max(0,c.stuckT-dt);
-  c.g.rotation.y=c.heading;
+  groundCar(c.g,c.heading);
   spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
 }
 
@@ -333,7 +311,8 @@ function deployOfficers(c:Cop){
   // cruisers respond as the wanted level rises, so the squad still grows with the stars.
   for(const side of[1.1]){
     const g=makePed(c.uniform||COP_BLUE); // the sheriff's officers wear his tan uniform
-    g.position.set(c.g.position.x+Math.cos(h)*side,0,c.g.position.z-Math.sin(h)*side);
+    const gx=c.g.position.x+Math.cos(h)*side,gz=c.g.position.z-Math.sin(h)*side;
+    g.position.set(gx,groundHeight(gx,gz),gz);
     const o=new Officer(g,{
       kind:'officer',hp:NPC_HP_TOUGH,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
       punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name,gender:c.sex, // the cruiser's named cop, on foot — same identity as the driver
@@ -343,7 +322,7 @@ function deployOfficers(c:Cop){
     // Officers fall flat on their back instantly — no ragdoll tumble.
     o.onDeath=()=>{
       o.grounded=true;o.vel.set(0,0,0);
-      o.g.rotation.x=-Math.PI/2;o.g.position.y=.35;
+      o.g.rotation.x=-Math.PI/2;o.g.position.y=groundHeight(o.g.position.x,o.g.position.z)+.35;
       if(o.car?.officers){
         const idx=o.car.officers.indexOf(o);if(idx>=0)o.car.officers.splice(idx,1);
         if(!o.car.officers.length)o.car.officers=null;
@@ -371,8 +350,8 @@ export function clearCops(){
   for(const c of cops){
     c.officers=null;
     const[nx,nz]=farNode();
-    c.g.position.set(nx,0,nz);
-    c.speed=0;c.backT=0;c.stuckT=0;c.patrolTgt=null;
+    c.g.position.set(nx,groundHeight(nx,nz),nz);
+    c.speed=0;c.backT=0;c.stuckT=0;c.patrolTgt=null;c.path=undefined;
     c.siren=false;c.dispatchT=0;c.dispatchWait=0; // kill the siren immediately (e.g. when the player dies / is busted)
   }
   lastRadioStar=0; // re-arm the radio escalation for the next time
@@ -380,7 +359,6 @@ export function clearCops(){
   copMissiles.length=0;
   for(const t of tracers){disposeGeometries(t.line);scene.remove(t.line);}
   tracers.length=0;
-  refs.clearPoliceBoats?.();
 }
 refs.clearCops=clearCops;
 refs.policeOnShot=radioDispatch; // weapons.ts calls this when the player fires
@@ -443,40 +421,33 @@ function officerRocket(o:Officer,pp:THREE.Vector3){
 }
 
 // Walk a deployed officer toward the suspect. Normally a straight beeline, BUT when the
-// officer is still far AND a building blocks the straight line (city only — the rural plain
-// is open), follow the road grid (same A* the cruisers use) so it rounds the corner instead
-// of grinding into a wall and stalling there forever. Always faces the player so it can aim.
+// officer is still far AND a house blocks the straight line, follow the streets (same A* the
+// cruisers use) so it rounds the block instead of grinding into a wall and stalling there
+// forever. Always faces the player so it can aim.
 // Returns the real distance to the player (used for the firing / surrender-bark logic).
 function officerStep(o:Officer,dt:number,pp:THREE.Vector3,stop:number):number{
   const p=o.g.position;
   const dx=pp.x-p.x,dz=pp.z-p.z,distP=Math.hypot(dx,dz);
   if(distP>stop+1){
     let tx=pp.x,tz=pp.z; // default: straight at the suspect
-    // route around buildings only when far, occluded, and inside the gridded city
-    if(distP>9&&pp.x<HALF&&Math.abs(pp.z)<HALF&&!hasLineOfSight(p.x,p.z,pp.x,pp.z)){
-      const goal=nearestNode(pp.x,pp.z);
+    // route around the houses only when far and occluded
+    if(distP>9&&!hasLineOfSight(p.x,p.z,pp.x,pp.z)){
+      const goal=nearestNode(pp.x,pp.z,carRoad);
       o.repathT=(o.repathT??0)-dt;
-      if(!o.path||o.repathT<=0||o.goalI!==goal[0]||o.goalJ!==goal[1]){
-        o.path=gridPath(nearestNode(p.x,p.z),goal);
-        o.pathI=Math.min(1,o.path.length-1);o.repathT=.7;o.goalI=goal[0];o.goalJ=goal[1];
+      if(!o.path||o.repathT<=0||o.goalN!==goal){
+        o.path=streetRoute(p.x,p.z,goal);
+        o.pathI=0;o.repathT=.7;o.goalN=goal;
       }
-      while((o.pathI??0)<o.path.length-1){
-        const w=o.path[o.pathI!];
-        if(Math.hypot(p.x-nodeX(w[0]),p.z-nodeX(w[1]))<6)o.pathI!++;else break;
-      }
-      const w=o.path[Math.min(o.pathI??0,o.path.length-1)];
-      tx=nodeX(w[0]);tz=nodeX(w[1]);
+      const w=followRoute(o,p.x,p.z,4);
+      if(w){tx=w[0];tz=w[1];}
     }else o.path=undefined; // clear sight / close: drop any stale route
     const td=Math.hypot(tx-p.x,tz-p.z)||1;
     p.x+=(tx-p.x)/td*6.4*dt;p.z+=(tz-p.z)/td*6.4*dt;
     o.bob+=dt*11;animatePed(o.g,o.bob,1);
   }else animatePed(o.g,o.bob,0);
   o.g.rotation.y=Math.atan2(dx,dz); // always face the suspect (to aim/shoot)
-  // Ride the rural terrain / BRIDGE DECK and use the rural world bound (same as the cruiser), so
-  // a deployed officer can WALK ACROSS the bridge to a suspect on the far bank instead of being
-  // pinned at y=0 (blocked by the deck structure) or clamped at the city beach (BOUND).
-  if(p.x>HALF)p.y=groundHeight(p.x,p.z);
-  collideStatics(p,.5,p.x>HALF?SWIM_BOUND:BOUND);
+  p.y=groundHeight(p.x,p.z);
+  collideStatics(p,.5);
   return distP;
 }
 
@@ -504,8 +475,8 @@ function updateOfficer(o:Officer,dt:number,pp:THREE.Vector3){
     p.x+=dx/d*7*dt;p.z+=dz/d*7*dt;
     o.g.rotation.y=Math.atan2(dx,dz);
     o.bob+=dt*12;animatePed(o.g,o.bob,1);
-    if(p.x>HALF)p.y=groundHeight(p.x,p.z); // ride the deck/terrain on the way back too
-    collideStatics(p,.5,p.x>HALF?SWIM_BOUND:BOUND);
+    p.y=groundHeight(p.x,p.z);
+    collideStatics(p,.5);
     return;
   }
   if(!policeLethal){
@@ -537,11 +508,11 @@ export function updateHeli(dt:number){
   if(!heli)return;
   const pp=playerPos();
   const tgt=_heliTgt.set(pp.x+Math.sin(state.time*.4)*14,
-    Math.max(0,pp.y)+26+Math.sin(state.time*1.3)*1.5,pp.z+Math.cos(state.time*.4)*14);
+    pp.y+26+Math.sin(state.time*1.3)*1.5,pp.z+Math.cos(state.time*.4)*14);
   heli.position.lerp(tgt,1-Math.exp(-1.2*dt));
   heli.lookAt(pp.x,heli.position.y-4,pp.z);
   heli.userData.rotor.rotation.y+=28*dt;
-  heli.userData.spot.target.position.set(pp.x,0,pp.z);
+  heli.userData.spot.target.position.set(pp.x,pp.y,pp.z);
 }
 
 const _missileProbe=new THREE.Vector3();
@@ -651,42 +622,20 @@ export function updateCops(dt:number){
       for(const o of c.officers)o.mode=fleeing?'return':'hunt';
       continue;
     }
-    // ROUTE along the road grid: steer toward the next intersection waypoint rather than
-    // straight at the player through buildings. Recompute when the player changes block or
-    // the route times out. Close in (last leg / within ~one block), drive straight at them.
-    const goal=nearestNode(pp.x,pp.z);
+    // ROUTE along the streets: steer toward the next point of the street route rather than
+    // straight at the player through the houses. Recompute when the player moves to another
+    // junction or the route times out. Close in (line of sight, within ~40 m), drive
+    // straight at them.
+    const goal=nearestNode(pp.x,pp.z,carRoad);
     c.repathT=(c.repathT??0)-dt;
-    if(!c.path||c.repathT<=0||c.goalI!==goal[0]||c.goalJ!==goal[1]){
-      c.path=gridPath(nearestNode(p.x,p.z),goal);
-      c.pathI=Math.min(1,c.path.length-1); // skip the start node, head to the next one
-      c.repathT=.6;c.goalI=goal[0];c.goalJ=goal[1];
+    if(!c.path||c.repathT<=0||c.goalN!==goal){
+      c.path=streetRoute(p.x,p.z,goal);
+      c.pathI=0;c.repathT=.6;c.goalN=goal;
     }
     let tx=pp.x,tz=pp.z; // default: aim straight at the player
-    const lastLeg=(c.pathI??0)>=c.path.length-1;
-    if(!lastLeg&&dist>=CELL*0.8){
-      // advance past any waypoints already reached, then aim at the current one
-      while((c.pathI??0)<c.path.length-1){
-        const w=c.path[c.pathI!];
-        if(Math.hypot(p.x-nodeX(w[0]),p.z-nodeX(w[1]))<8)c.pathI!++;else break;
-      }
-      const w=c.path[Math.min(c.pathI??0,c.path.length-1)];
-      tx=nodeX(w[0]);tz=nodeX(w[1]);
-    }
-    // VESPER STRAIT: cruisers can't ford the channel — if the suspect is on the FAR bank,
-    // route over the bridge (dry deck at z≈0) instead of driving into the water and stalling
-    // at the shore. Only once the cop is out of the city (p.x>HALF); inside the city the grid
-    // route above carries it to the east edge first. It lines up on the NEAR bridge foot (z≈0),
-    // drives straight across to the far foot, and once on the suspect's side the normal chase
-    // resumes and closes in to deploy. The road grid (≤176m) can't represent the bridge, so
-    // this is an explicit override rather than extra graph nodes.
-    let bridging=false;
-    if(p.x>HALF&&Math.abs(pp.x-RIVER_CX)>RIVER_HW&&(p.x<RIVER_CX)!==(pp.x<RIVER_CX)){
-      bridging=true;
-      const west=p.x<RIVER_CX;
-      const centred=Math.abs(p.z)<BRIDGE_DECK_HW-1;          // already on the deck corridor (z≈0)
-      const atFoot=west?p.x>BRIDGE_X0-3:p.x<BRIDGE_X1+3;     // reached my side's ramp foot
-      if(centred&&atFoot){tx=west?BRIDGE_X1+4:BRIDGE_X0-4;tz=0;} // cross to the far foot
-      else{tx=west?BRIDGE_X0-3:BRIDGE_X1+3;tz=0;}                // line up on the near foot first
+    if(dist>=40||!hasLineOfSight(p.x,p.z,pp.x,pp.z)){
+      const w=followRoute(c,p.x,p.z,7);
+      if(w&&(c.pathI??0)<(c.path?.length??0)-1){tx=w[0];tz=w[1];}
     }
     const desired=Math.atan2(tx-p.x,tz-p.z),diff=wrapA(desired-c.heading);
     if(c.backT>0){
@@ -715,16 +664,8 @@ export function updateCops(dt:number){
       const ax=p.x-pp.x,az=p.z-pp.z,ad=Math.hypot(ax,az)||1;
       if(ad<6){p.x=pp.x+ax/ad*6;p.z=pp.z+az/ad*6;c.speed*=.3;}
     }
-    // In the RURAL peninsula a cruiser rides the actual ground (hills) and the BRIDGE DECK —
-    // without this it stays at y=0, so on the rising ramp the deck solids block it and it can
-    // never cross. City cops keep y=0 (flat streets) as before. Setting y before collideStatics
-    // lets the height test (p.y>solid.h) pass the cruiser OVER the low deck guards.
-    if(p.x>HALF)p.y=groundHeight(p.x,p.z);
-    // Rural-aware world bound: the default BOUND (216) clamps NPCs at the city beach — WEST of
-    // the strait — so cops could never reach the far bank. Pass the larger bound (same peninsula
-    // extension the player gets) ONLY while in rural, so a cruiser can chase across the bridge
-    // and down the peninsula; the city clamp is unchanged.
-    if(collideStatics(p,1.3,p.x>HALF?SWIM_BOUND:BOUND)){c.speed*=.3;c.stuckT+=dt*3;}
+    p.y=groundHeight(p.x,p.z);
+    if(collideStatics(p,1.3)){c.speed*=.3;c.stuckT+=dt*3;}
     // "stuck" only counts while still FAR and meant to be driving. Near an on-foot suspect,
     // stopping is ON PURPOSE (about to deploy), so widen the no-reverse zone there: a cruiser
     // boxed in by traffic or by the other units converging ~15-20m out must NOT keep backing
@@ -734,13 +675,12 @@ export function updateCops(dt:number){
     // of you, stopping is ON PURPOSE (it's about to debus), so it must NOT keep backing away —
     // or it loops back and forth forever and never gets out. This must match the deploy reach
     // below, otherwise a cruiser stalled in the 22-28m band would reverse instead of deploying.
-    // (while bridging, slowing to line up on the ramp is ON PURPOSE — don't treat it as stuck)
     const holdNearFoot=state.mode==='foot'&&dist<DEPLOY_REACH;
-    if(dist>14&&!holdNearFoot&&!bridging){
+    if(dist>14&&!holdNearFoot){
       if(Math.abs(c.speed)<2.5)c.stuckT+=dt;else c.stuckT=Math.max(0,c.stuckT-dt*2);
       if(c.stuckT>1.2){c.backT=.9;c.stuckT=0;}
     }else c.stuckT=0;
-    c.g.rotation.y=c.heading;
+    groundCar(c.g,c.heading);
     spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
     // DEPLOY. A chasing cruiser gets its officer out the moment it has pulled up to the suspect:
     //   • dist<13 — the clean "arrived right next to you" case (anti-runover parks it ~6m off).
@@ -772,10 +712,8 @@ export function updateCops(dt:number){
     else c.anchorT=(c.anchorT??0)+dt;
     const stuck4s=near&&(c.anchorT??0)>=4;
     const arrived=!c.backT&&((dist<13&&playerStill)||(c.stoppedT??0)>.6);
-    // Never debus mid-crossing: while bridging, the cruiser is still on the wrong bank / on the
-    // ramp, and officers dropped there would be stuck on the span. It deploys once it has crossed
-    // to the suspect's side (bridging clears), so the men get out next to you, not on the bridge.
-    if(pp.y<6&&!bridging&&(arrived||stuck4s)){
+    // only when the suspect is on the ground (not on a roof or in the air)
+    if(pp.y-groundHeight(pp.x,pp.z)<6&&(arrived||stuck4s)){
       deployOfficers(c);
       if(state.time-lastShout>6){lastShout=state.time;message('POLICE! FREEZE!','var(--blue)');}
       continue;
@@ -789,8 +727,7 @@ export function updateCops(dt:number){
         activeCur.speed*=.75;c.speed*=.6;thud(8);state.shake=.35;
         if(!c.dentT||state.time-c.dentT>.5){
           c.dentT=state.time;
-          const mid=_mid.addVectors(p,activeCur.g.position)
-            .multiplyScalar(.5).setY(.7);
+          const mid=_mid.addVectors(p,activeCur.g.position).multiplyScalar(.5);mid.y+=.7;
           dentCar(activeCur.g,mid,push,.16);
           dentCar(c.g,mid,push.clone().negate(),.16);
         }
@@ -822,7 +759,7 @@ export function updateCops(dt:number){
     m.left-=step;
     m.g.userData.flame.scale.setScalar(.7+Math.random()*.6);
     _missileProbe.copy(m.g.position);
-    if(m.left<=0||collideStatics(_missileProbe,.3,SWIM_BOUND)||
+    if(m.left<=0||collideStatics(_missileProbe,.3)||
       m.g.position.y<=groundHeight(m.g.position.x,m.g.position.z)){
       refs.explodeAt?.(m.g.position.clone());
       disposeGeometries(m.g);scene.remove(m.g);copMissiles.splice(i,1);

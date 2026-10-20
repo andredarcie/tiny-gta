@@ -8,8 +8,9 @@ import {clubMusicOn,clubMusicOff} from '@/audio/club-music.ts';
 import {openDanceGame,danceGameActive} from '@/places/dance-game.ts';
 import {openMiniGameIntro,markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {MiniGameId} from '@/activities/minigame.ts';
-import {CLUB_DOOR,CLUB_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior}
+import {CLUB_DOOR,CLUB_SPAWN_OUT,CLUB_SITE,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,clubFx,clubInterior,addNightclub}
   from '../../assets/models/city/nightclub.ts';
+import {solids} from '@/world/solids.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Boate "THE FLAMINGO": estende a classe base de interiores (js/world/interior.ts),
@@ -46,11 +47,14 @@ class ClubInterior extends Interior{
   }
 }
 
+addNightclub(solids); // the building on its Rua São José lot + the off-map room
+
 export const club=new ClubInterior({
   group:clubInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:CLUB_DOOR,spawnOut:CLUB_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:clubFx,enterMsg:'WELCOME TO THE FLAMINGO',enterColor:'var(--pink)',
-  exterior:{x:-154,z:-22,r:24}, // fachada: gangue não chega perto
+  exterior:{...CLUB_SITE.P(-154,-22),r:24}, // fachada: gangue não chega perto
+  spawnOutHeading:CLUB_SITE.head(-Math.PI/2), // stepping out faces the street
   mapIcon:{id:'club',label:'THE FLAMINGO',icon:'club',color:'#ff2e88'},
 });
 

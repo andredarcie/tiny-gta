@@ -30,9 +30,9 @@
     { "field": "tipPerMeter", "value": 0.18, "description": "Tip added per meter of trip distance" },
     { "field": "maxFare", "value": 400, "description": "Hard cap on a single ride's total payout (fare + tip)" },
     { "field": "deadlineBaseSec", "value": 24, "description": "Base time allowed to reach the drop-off" },
-    { "field": "deadlinePerMeterDiv", "value": 10, "description": "Extra drop-off time = trip distance divided by this" },
+    { "field": "deadlinePerMeterDiv", "value": 8, "description": "Extra drop-off time = trip distance divided by this (Divinolândia streets wind up and down the hills)" },
     { "field": "deadlineMinSec", "value": 38, "description": "Minimum drop-off time" },
-    { "field": "deadlineMaxSec", "value": 120, "description": "Maximum drop-off time" },
+    { "field": "deadlineMaxSec", "value": 160, "description": "Maximum drop-off time" },
     { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked cab returns to the stand" }
   ],
   "carCrusher": [
@@ -51,8 +51,8 @@
     { "field": "perPatient", "value": 30, "description": "Cash per patient delivered" },
     { "field": "perLevel", "value": 40, "description": "Cash bonus multiplied by the level on delivery" },
     { "field": "maxReward", "value": 600, "description": "Hard cap on a single delivery payout (perPatient*onboard + perLevel*level)" },
-    { "field": "levelTimeBaseSec", "value": 45, "description": "Base time per level" },
-    { "field": "levelTimePerLevelSec", "value": 12, "description": "Extra time added per level number" },
+    { "field": "levelTimeBaseSec", "value": 75, "description": "Base time per level (the hospital is up on the hill)" },
+    { "field": "levelTimePerLevelSec", "value": 15, "description": "Extra time added per level number" },
     { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked ambulance returns" }
   ],
   "firefighter": [
@@ -63,7 +63,7 @@
     { "field": "fireBaseSec", "value": 8, "description": "Base time granted per fire" },
     { "field": "timePerMeterSec", "value": 0.12, "description": "Extra time granted per meter to the fire" },
     { "field": "timeMinSec", "value": 12, "description": "Floor on the time granted per fire" },
-    { "field": "timeMaxSec", "value": 30, "description": "Ceiling on the time granted per fire" },
+    { "field": "timeMaxSec", "value": 45, "description": "Ceiling on the time granted per fire" },
     { "field": "startBufferSec", "value": 6, "description": "Extra grace time on the very first fire" },
     { "field": "lowTimeSec", "value": 8, "description": "Below this the HUD clock flashes red and beeps" },
     { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked fire truck returns" }

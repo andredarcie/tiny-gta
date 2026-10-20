@@ -1,8 +1,8 @@
 import {state} from '@/core/state.ts';
-import {camera,sea} from '@/core/engine.ts';
+import {camera} from '@/core/engine.ts';
 import {setSkyHidden} from '@/world/daynight.ts';
 import {player,playerPos,cameraRig} from '@/actors/player.ts';
-import {clamp} from '@/core/constants.ts';
+import {clamp,groundHeight} from '@/core/constants.ts';
 import {message} from '@/ui/hud.ts';
 import {arrowBob} from '../../assets/models/city/door-arrow.ts';
 import type * as THREE from 'three';
@@ -56,6 +56,9 @@ export interface InteriorFx{
   facade?:THREE.Object3D|null;
   facadeArrow?:THREE.Object3D|null;
   footprint?:{x0:number;x1:number;z0:number;z1:number}|null;
+  // the building's Divinolândia lot: when set, `footprint` is in the model's own
+  // coordinates and is tested through the lot's rotation (sites.ts)
+  site?:{inside(x:number,z:number,f:{x0:number;x1:number;z0:number;z1:number}):boolean}|null;
   exitArrow?:THREE.Object3D|null;
   [k:string]:any;
 }
@@ -121,10 +124,11 @@ export class Interior{
   }
 
   teleport(x:number,z:number,h:number):void{
-    player.g.position.set(x,0,z);
+    const y=groundHeight(x,z); // the rooms are flat (0); out in town this is the street
+    player.g.position.set(x,y,z);
     player.heading=h;player.g.rotation.y=h;
     cameraRig.yaw=h;
-    camera.position.set(x-Math.sin(h)*6,3,z-Math.cos(h)*6);
+    camera.position.set(x-Math.sin(h)*6,y+3,z-Math.cos(h)*6);
     if(this.active){ // o spawn fica perto da parede: o snap não pode cair fora
       camera.position.x=clamp(camera.position.x,this.bounds.x0,this.bounds.x1);
       camera.position.z=clamp(camera.position.z,this.bounds.z0,this.bounds.z1);
@@ -179,7 +183,7 @@ export class Interior{
   updateFacade():void{
     const fx=this.fx;if(!fx||!fx.facade)return;
     const c=camera.position,f=fx.footprint;
-    const inside=f&&c.x>f.x0&&c.x<f.x1&&c.z>f.z0&&c.z<f.z1;
+    const inside=!!f&&(fx.site?fx.site.inside(c.x,c.z,f):c.x>f.x0&&c.x<f.x1&&c.z>f.z0&&c.z<f.z1);
     fx.facade.visible=!inside;
     if(!inside&&fx.facadeArrow)fx.facadeArrow.position.y=1.7+arrowBob(state.time);
   }
@@ -208,14 +212,10 @@ export function nearestDoor():Interior|null{
   return null;
 }
 
-// Correção DEFINITIVA dos "blocos" externos cortando ambientes internos:
-// - o mar é um disco gigante centrado na origem;
-// - o céu é uma esfera de raio 900, e interiores como a loja ficam perto dessa
-//   borda, então o domo azul/roxo entrava na sala conforme o horário.
-// Como enterAt()/leave() são os ÚNICOS pontos onde state.interior muda,
-// esconder essas camadas aqui cobre QUALQUER ambiente interno atual ou futuro.
+// The sky dome (radius 900) reaches into the off-map rooms, so its blue/purple
+// would cut into them depending on the hour. enterAt()/leave() are the ONLY places
+// state.interior changes, so hiding the sky here covers every room, present or future.
 function setExteriorWorldHidden(hidden:boolean):void{
-  sea.visible=!hidden;
   setSkyHidden(hidden);
 }
 

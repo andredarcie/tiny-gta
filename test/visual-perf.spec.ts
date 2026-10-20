@@ -21,7 +21,7 @@ test('graphics settings FPS matrix', async ({page}) => {
     await page.goto('/?tod=0.5', {waitUntil: 'load'});
     await page.waitForFunction(() => !!(window as any).render_game_to_text
       && JSON.parse((window as any).render_game_to_text()).started === true, null, {timeout: 60_000});
-    await page.evaluate(() => (window as any).__test.teleport(10, 22, 10, 120));
+    await page.evaluate(() => (window as any).__test.teleport(5110, 4980, 5110, 4880));
     await page.waitForTimeout(4000);
     const samples: number[] = [];
     for (let i = 0; i < 6; i++) {

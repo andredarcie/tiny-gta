@@ -8,8 +8,9 @@ import {Interior} from '@/world/interior.ts';
 import {openGymGame,gymGameActive} from '@/places/gym-game.ts';
 import {openMiniGameIntro} from '@/activities/minigame-intro.ts';
 import {MiniGameId,dailyLockCleared} from '@/activities/minigame.ts';
-import {GYM_DOOR,GYM_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
-  gymFx,gymInterior} from '../../assets/models/city/gym.ts';
+import {GYM_DOOR,GYM_SPAWN_OUT,GYM_SITE,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,GYM_TRAIN,
+  gymFx,gymInterior,addGym} from '../../assets/models/city/gym.ts';
+import {solids} from '@/world/solids.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Academia "IRON TEMPLE": estende a classe base de interiores (js/world/interior.ts),
@@ -47,11 +48,14 @@ class GymInterior extends Interior{
   }
 }
 
+addGym(solids); // the building on its Rua Joaquim Garcia lot + the off-map room
+
 export const gym=new GymInterior({
   group:gymInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:GYM_DOOR,spawnOut:GYM_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:gymFx,
-  exterior:{x:154,z:-110,r:24}, // fachada: gangue não chega perto
+  exterior:{...GYM_SITE.P(154,-110),r:24}, // fachada: gangue não chega perto
+  spawnOutHeading:GYM_SITE.head(-Math.PI/2), // stepping out faces the street
   mapIcon:{id:'gym',label:'IRON TEMPLE',icon:'gym',color:'#ff8a1e'},
 });
 

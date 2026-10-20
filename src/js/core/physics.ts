@@ -1,17 +1,20 @@
-import {clamp,BOUND,RURAL_X1,RURAL_HALF,RURAL_SWIM_MARGIN,DIVINO_X_MIN} from '@/core/constants.ts';
-import {solids} from '@/world/world.ts';
-import {divinoCollide} from '@/world/divinolandia/collide.ts';
+import {clamp,DIVINO_X_MIN,groundHeight} from '@/core/constants.ts';
+import {solids} from '@/world/solids.ts';
+import {divinoCollide,obbSegmentBlocked} from '@/world/divinolandia/collide.ts';
 import {state} from '@/core/state.ts';
 import {addStars,heatGain,MAX_STARS,GUNFIRE_HEAT_GAP} from '@/core/wanted.ts';
 import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 
-// bound: NPCs param no calção da praia (BOUND); jogador pode nadar até SWIM_BOUND
-export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOUND){
-  if(p.x>DIVINO_X_MIN)return divinoCollide(p,r); // Divinolândia: its own oriented boxes + bounds
+// Push a body (circle of radius r) out of the static collision. Out in Divinolândia
+// that is the town's oriented boxes + the playable-area clamp (divinolandia/collide.ts);
+// in the off-map rooms (x ≈ -700…-1000) it is their axis-aligned walls (world/solids.ts).
+// Returns true on any contact.
+export function collideStatics(p:{x:number;y:number;z:number},r:number){
+  if(p.x>DIVINO_X_MIN)return divinoCollide(p,r);
   let hit=false;
   for(const b of solids){
-    if(b.h!==undefined&&p.y>b.h)continue; // avião passa por cima dos prédios
+    if(b.h!==undefined&&p.y>b.h)continue; // flying over it
     const cx=clamp(p.x,b.x0,b.x1),cz=clamp(p.z,b.z0,b.z1);
     const dx=p.x-cx,dz=p.z-cz,d2=dx*dx+dz*dz;
     if(d2<r*r){
@@ -25,17 +28,6 @@ export function collideStatics(p:{x:number;y:number;z:number},r:number,bound=BOU
       hit=true;
     }
   }
-  // Dentro da boate/academia o jogador está a ~600m do mapa: o limite do mundo
-  // não vale lá (senão o clamp o arrasta pro meio do mar); as paredes da sala
-  // já são sólidas. NPCs (bound===BOUND) continuam presos à praia.
-  if(state.interior&&bound>BOUND)return hit;
-  // Jogador (bound>BOUND) pode seguir a península rural para +x até a montanha.
-  // A folga da península (rext) é FIXA (RURAL_SWIM_MARGIN), não escala com `bound`:
-  // SWIM_BOUND cresceu pra ilha a oeste, mas o alcance a leste fica igual ao de antes.
-  const rext=bound>BOUND?RURAL_SWIM_MARGIN:0;
-  const maxX=rext>0&&Math.abs(p.z)<RURAL_HALF+rext?RURAL_X1+rext:bound;
-  if(p.x<-bound){p.x=-bound;hit=true} if(p.x>maxX){p.x=maxX;hit=true}
-  if(p.z<-bound){p.z=-bound;hit=true} if(p.z>bound){p.z=bound;hit=true}
   return hit;
 }
 
@@ -57,6 +49,8 @@ function segHitsBox(ax:number,az:number,bx:number,bz:number,b:{x0:number;x1:numb
 const LOS_MIN_H=2;
 export function hasLineOfSight(ax:number,az:number,bx:number,bz:number):boolean{
   if(state.interior)return true;
+  // out in Divinolândia: a house (its roof ≥2 m above the lower end) blocks the view
+  if(ax>DIVINO_X_MIN)return !obbSegmentBlocked(ax,az,bx,bz,Math.min(groundHeight(ax,az),groundHeight(bx,bz))+LOS_MIN_H);
   for(const b of solids){
     if(b.h===undefined||b.h<LOS_MIN_H)continue;
     if(segHitsBox(ax,az,bx,bz,b))return false;

@@ -6,9 +6,9 @@
 import { test } from './support/game.ts';
 
 const SPOTS: [string, number, number, number, number][] = [
-  ['downtown street', 10, 22, 10, 120],
-  ['downtown crossing', 0, 0, 60, 60],
-  ['eastside avenue', 90, 20, 90, -80],
+  ['centro street', 5110, 4980, 5110, 4880],
+  ['matriz square', 5060, 5030, 5000, 5000],
+  ['rosário avenue', 5550, 4950, 5550, 4850],
 ];
 
 test('NPC render cost at busy city spots', async ({ game }) => {

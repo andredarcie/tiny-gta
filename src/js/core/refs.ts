@@ -57,8 +57,8 @@ export const KNOWN = new Set<string>([
   'playerPos','getCur','getPlayerHeading','getRadarHeading','isWasted','traffic','cops',
   'trafficPos','spawnTraffic','ejectDriver','addBloodPuddle','spawnBlood','severHead','severArm','severLeg','gibNpc','maimRandom','addBloodPool','gangs','setGangsHidden',
   'interiorBlips','getDelivery','rickNear','rickInteract','getRickState',
-  // story (js/story/story.ts + story-fp.ts)
-  'storyAction','storyBlips','getStoryState','getStorySave','restoreStory','storyHandsActive','storyFpLock',
+  // story hooks (the main story is being rewritten; its modules will wire these)
+  'storyAction','storyInteract','storyBlips','getStoryState','getStorySave','restoreStory','storyHandsActive','storyFpLock',
   'getBusted','getWasted','getHeli','nearestCar',
   'canPickWeapon','isWeaponHeld','canAttack','switchWeapon','selectWeaponSlot',
   'getWeaponHud','confiscateWeapon','gymTrainState','clubDanceState','modShopState',
@@ -78,7 +78,7 @@ export const KNOWN = new Set<string>([
   'boatRaceNear','startBoatRaceInteract','clearArmy','armyTargets','blastArmy',
   'armyDist','getArmyState','clearCops',
   'getOffroadState','offroadNear','startOffroadInteract','getGeneralStoreState',
-  'getFirefighterState','clearPoliceBoats','policeBoats','getHiddenPackagesState',
+  'getFirefighterState','getHiddenPackagesState',
   'getPackagesSave','restorePackages','isCarryingDrugs','startDrugBust',
   'getGymSave','restoreGym','isAmbulanceCar','paramedicBlips','paramedicStart',
   'getParamedicState','getImportExportState','overkillBlip','getRampageState',
@@ -87,8 +87,8 @@ export const KNOWN = new Set<string>([
   'getWeaponsSave','restoreWeapons','explodeAt','vigilanteBlips','vigilanteStart',
   'isVigilanteCar','getVigilanteState','getWeaponPickupsState','taxiTarget','isTaxiCar',
   'getTaxiState','seizeDrugBackpack','getFarmSave','restoreFarm','getWeedFarmState',
-  // Divinolândia map (js/world/divinolandia/build.ts + main.ts / input.ts)
-  'divinoPending','divinoReady','divinoMinimap','divinoFullMap','divinoPlace','divinoAltitude','divinoWelcome',
+  // Divinolândia (js/world/divinolandia/build.ts)
+  'divinoMinimap','divinoFullMap','divinoPlace','divinoAltitude','divinoWelcome',
 ]);
 
 // Paint (or update) a single fixed red banner at the top of the screen. Dev-only;

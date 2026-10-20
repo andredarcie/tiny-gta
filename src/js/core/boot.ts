@@ -17,14 +17,6 @@ import '@fontsource/yellowtail/latin-400.css';
 const queuePlay = (): void => { (window as unknown as {__playQueued?: boolean}).__playQueued = true; };
 document.getElementById('play')?.addEventListener('click', queuePlay, { once: true });
 
-// Map switch on the title: on the Divinolândia map it offers the way back to the classic one.
-if (/[?&]map=divinolandia\b/.test(location.search)) {
-  const sw = document.getElementById('map-switch') as HTMLAnchorElement | null;
-  if (sw) { sw.href = location.pathname; sw.textContent = 'Classic map'; }
-  const play = document.getElementById('play');
-  if (play) play.textContent = 'Play · Divinolândia';
-}
-
 // Two rAFs guarantee the browser has PAINTED the title before we start evaluating the game.
 const loadGame = (): void => { performance.mark('tg:import-start'); void import('./main.ts'); };
 requestAnimationFrame(() => requestAnimationFrame(loadGame));

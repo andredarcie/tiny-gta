@@ -5,7 +5,10 @@ import {scene} from '@/core/engine.ts';
 import {playerPos,cur,idleCars,cameraRig} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
-import {N,nodeX,HALF,CELL,ROAD,SIDE,irand,pick,clamp,wrapA,groundHeight} from '@/core/constants.ts';
+import {pick,irand,clamp,wrapA,groundHeight} from '@/core/constants.ts';
+import {LaneRunner,randomRoadPoint,streetSpot,edges,laneOff,fleeChooser,type RoadPos} from '@/world/divinolandia/nav.ts';
+import {carRoad} from '@/world/traffic.ts';
+import {GUNSHOP_SITE} from '../../assets/models/city/gun-shop.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeCar,spinWheels} from '@/core/entities.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
@@ -70,7 +73,7 @@ function callout(c: number): Callout|null{ for(const m of CALLOUTS)if(c>=m.c)ret
 const CRUISE_SLOW=7, CRUISE_FAST=15;
 const PANIC_R=16, PANIC_TIME=REWARDS.rcToyz.panicTimeSec; // RC proximity that makes a car scatter, and for how long
 
-// Power-up crates: one hue per type. They hover over road intersections; drive the
+// Power-up crates: one hue per type. They hover over the streets; drive the
 // RC through one to grab it. Staggered respawn keeps a few on the map at all times.
 const CRATE_POOL=3, CRATE_RANGE=2.6, CRATE_RESPAWN=REWARDS.rcToyz.crateRespawnSec;
 const CRATE_TIME=REWARDS.rcToyz.crateTimeSec;                 // seconds a TIME crate adds
@@ -88,11 +91,10 @@ const cssHex=(n: number)=>'#'+n.toString(16).padStart(6,'0');
 const GANG_COLORS=[0x8b1a1a,0x14422a,0x1a2f6b,0x6b2f6b,0xb5862a];
 let gangColor=GANG_COLORS[0];
 
-// Pad/RC rest on the SIDEWALK CORNER of block (1,4), just off the intersection in
-// front of the gun shop — NOT on the asphalt. nodeX(i) is a road centerline, so
-// offsetting by ROAD/2+SIDE/2 lands on the curb; -z keeps it on the block whose
-// north edge faces the road, so heading 0 (north, +z) drives straight out.
-const PAD_X=nodeX(1)+ROAD/2+SIDE/2, PAD_Z=nodeX(5)-ROAD/2-SIDE/2; // (-123, 35)
+// Pad/RC rest on the pavement in front of the gun shop (AMMO DEPOT, Rua Barão do Rio
+// Branco), beside its door — in the shop's own frame, so the RC faces the street.
+const {x:PAD_X,z:PAD_Z}=GUNSHOP_SITE.P(-121.5,72);
+const PAD_H=GUNSHOP_SITE.head(-Math.PI/2);
 const padY=groundHeight(PAD_X,PAD_Z);
 
 // pad on the ground (decoration only, fixed). Scaled to fit the 4 m sidewalk band.
@@ -109,7 +111,7 @@ const RC_SCALE=1.5;
 const rc=makeRcRager();
 rc.scale.setScalar(RC_SCALE);
 scene.add(rc); // makeRcRager is a PURE build() (no scene.add), so we add it here
-const rcObj: any={g:rc,heading:0,speed:0,name:'RC RAGER',remote:true};
+const rcObj: any={g:rc,heading:PAD_H,speed:0,name:'RC RAGER',remote:true};
 
 // grab the antenna parts to wobble them (search the built group)
 let _ant: THREE.Object3D|null=null,_antTip: THREE.Object3D|null=null;
@@ -129,23 +131,23 @@ const _antBaseRotZ=_ant?(_ant as THREE.Object3D).rotation.z:0;
 // is. With keepIfDriving=false (a fresh RC after a detonation, or arranging
 // the parked one) it always teleports back to the pad, facing the road.
 function parkRc(keepIfDriving=false){
-  rcObj.speed=0;rcObj.heading=0;
+  rcObj.speed=0;rcObj.heading=PAD_H;
   if(keepIfDriving&&cur===rcObj)return;
   rc.position.set(PAD_X,padY,PAD_Z);
-  rc.rotation.set(0,0,0);
+  rc.rotation.set(0,PAD_H,0);
 }
 parkRc();
 idleCars.push(rcObj);
 
-// a gang car target cruising the grid (or the rare golden bonus car)
-interface Target{g:THREE.Object3D;ring:THREE.Mesh|null;beacon:Beacon|null;alive:boolean;gold:boolean;moving:boolean;axis:string;dir:number;speed:number;nextNode:number;panic:number;}
+// a gang car target cruising the streets (or the rare golden bonus car)
+interface Target{g:THREE.Object3D;ring:THREE.Mesh|null;beacon:Beacon|null;alive:boolean;gold:boolean;moving:boolean;run:LaneRunner|null;speed:number;panic:number;}
 // a floating power-up crate
 interface Crate{g:THREE.Object3D;type:CrateType;base:number;t:number;alive:boolean;}
 
 let active=false;
 let timeLeft=0;
 let destroyed=0;
-let targets: Target[]=[]; // [{g, ring, beacon, alive, gold, moving, axis, dir, speed, nextNode, panic}]
+let targets: Target[]=[]; // [{g, ring, beacon, alive, gold, moving, run, speed, panic}]
 let crates: Crate[]=[];  // [{g, type, base, t, alive}]
 let cooldown=0; // pause between rounds (lets the result banner be read)
 let _firePrev=false; // edge-detect the (held) fire button for manual detonation
@@ -196,95 +198,46 @@ function occupied(x: number,z: number){
   return false;
 }
 
-// ---------- road-cruise helpers (keep moving targets on the street grid) ----------
-// Snap a world coordinate to the nearest road-centerline node value.
-const snapNode=(v: number)=>nodeX(clamp(Math.round((v+HALF)/CELL),0,N));
-// Car yaw for an axis-aligned heading (engine forward = (sin h, cos h)).
-const axisYaw=(ax: string,dr: number)=>ax==='x'?(dr>0?Math.PI/2:-Math.PI/2):(dr>0?0:Math.PI);
+// ---------- street cruising (moving targets follow the town's streets) ----------
+const _rp:RoadPos={x:0,z:0,dx:0,dz:0};
 function turnTo(g: THREE.Object3D,yaw: number,dt: number){ g.rotation.y+=wrapA(yaw-g.rotation.y)*Math.min(1,10*dt); }
-// Aim a cruiser at the next intersection along its current axis/dir, bouncing off
-// the city edge if it would drive off the grid.
-function aimNextNode(t: Target){
-  const on=t.axis==='x'?t.g.position.x:t.g.position.z;
-  const fi=(on+HALF)/CELL;
-  let ni=t.dir>0?Math.floor(fi+1e-4)+1:Math.ceil(fi-1e-4)-1;
-  if(ni<0||ni>N){t.dir=-t.dir;ni=t.dir>0?Math.floor(fi+1e-4)+1:Math.ceil(fi-1e-4)-1;}
-  t.nextNode=nodeX(clamp(ni,0,N));
-}
-// At an intersection, choose where to go next. Fleeing cars pick the turn that
-// moves most directly away from the RC; otherwise they mostly go straight.
-function chooseAtNode(t: Target,rp: THREE.Vector3,fleeing: boolean){
-  const x=t.g.position.x,z=t.g.position.z;
-  const ix=Math.round((x+HALF)/CELL),iz=Math.round((z+HALF)/CELL);
-  const cands: {ax:string;dr:number;rev:boolean}[]=[];
-  for(const[ax,dr]of[['x',1],['x',-1],['z',1],['z',-1]] as [string,number][]){
-    if(ax==='x'){if(dr>0&&ix>=N)continue;if(dr<0&&ix<=0)continue;}
-    else{if(dr>0&&iz>=N)continue;if(dr<0&&iz<=0)continue;}
-    cands.push({ax,dr,rev:ax===t.axis&&dr===-t.dir});
-  }
-  let pool=cands.filter(c=>!c.rev);
-  if(!pool.length)pool=cands; // dead-end: U-turn is the only way out
-  let ch;
-  if(fleeing){
-    let best=pool[0],bs=-Infinity;
-    for(const c of pool){
-      const fx=c.ax==='x'?c.dr:0,fz=c.ax==='z'?c.dr:0;
-      const away=fx*(x-rp.x)+fz*(z-rp.z); // dot with the "away from RC" vector
-      if(away>bs){bs=away;best=c;}
-    }
-    ch=best;
-  }else{
-    const straight=pool.find(c=>c.ax===t.axis&&c.dr===t.dir);
-    ch=(straight&&Math.random()<.6)?straight:pick(pool);
-  }
-  t.axis=ch.ax;t.dir=ch.dr;
-  aimNextNode(t);
-}
-// Drive a cruising target one frame along the grid; scatter when the RC is near.
+// Drive a cruising target one frame along its street; scatter when the RC is near
+// (a fleeing car turns away from the RC at every junction, nav.fleeChooser).
 function moveTarget(t: Target,dt: number,rp: THREE.Vector3){
   const near=Math.hypot(t.g.position.x-rp.x,t.g.position.z-rp.z)<PANIC_R;
   if(near)t.panic=PANIC_TIME;else if(t.panic>0)t.panic-=dt;
   const fleeing=t.panic>0;
   const tgt=(fleeing||t.gold)?CRUISE_FAST:CRUISE_SLOW;
   t.speed+=(tgt-t.speed)*Math.min(1,3.5*dt);
-  if(t.axis==='x')t.g.position.x+=t.speed*dt*t.dir;else t.g.position.z+=t.speed*dt*t.dir;
-  const on=t.axis==='x'?t.g.position.x:t.g.position.z;
-  if((t.dir>0&&on>=t.nextNode)||(t.dir<0&&on<=t.nextNode)){
-    if(t.axis==='x')t.g.position.x=t.nextNode;else t.g.position.z=t.nextNode;
-    chooseAtNode(t,rp,fleeing);
-  }
-  turnTo(t.g,axisYaw(t.axis,t.dir),dt);
-  t.g.position.y=groundHeight(t.g.position.x,t.g.position.z);
+  const run=t.run!;
+  run.choose=fleeing?fleeOfRc:null;
+  run.advance(t.speed*dt);
+  const p=run.at(0,_rp);
+  t.g.position.set(p.x,groundHeight(p.x,p.z),p.z);
+  turnTo(t.g,Math.atan2(p.dx,p.dz),dt);
   spinWheels(t.g,t.speed,dt,0);
 }
+const fleeOfRc=fleeChooser(()=>rc.position,carRoad);
 
-// spawn a gang car SPAWN_MIN–SPAWN_MAX away from the player. Most cruise the streets;
-// a rare one is the GOLDEN bonus car. Never stacks two on the same crossing.
+// spawn a gang car SPAWN_MIN–SPAWN_MAX away from the player, on a street. Most cruise;
+// a rare one is the GOLDEN bonus car. Never stacks two on the same spot.
 function spawnTarget(){
   const pp=playerPos();
-  let x=PAD_X,z=PAD_Z,tries=0;
-  do{
-    x=nodeX(irand(1,N-1));z=nodeX(irand(1,N-1));tries++;
-    const d=Math.hypot(x-pp.x,z-pp.z);
-    if(d>=SPAWN_MIN&&d<=SPAWN_MAX&&!occupied(x,z))break;
-  }while(tries<40);
+  let sp=randomRoadPoint({f:carRoad,near:{x:pp.x,z:pp.z},min:SPAWN_MIN,max:SPAWN_MAX});
+  for(let tries=0;tries<10&&occupied(sp.x,sp.z);tries++)sp=randomRoadPoint({f:carRoad,near:{x:pp.x,z:pp.z},min:SPAWN_MIN,max:SPAWN_MAX});
   const gold=!goldAlive&&Math.random()<GOLD_CHANCE;
   const g=makeCar(gold?GOLD_COLOR:gangColor,false);
-  g.position.set(x,groundHeight(x,z),z);
-  g.rotation.y=irand(0,3)*Math.PI/2;
-  const ring=makeMarkerRing(gold?GOLD_COLOR:GREEN);
-  ring.position.set(x,.4,z);
-  const beacon=new Beacon(gold?GOLD_COLOR:GREEN).at(x,z).mount();
-  scene.add(ring);
   const moving=gold||Math.random()<MOVE_CHANCE;
-  const t: Target={g,ring,beacon,alive:true,gold,moving,axis:'x',dir:1,speed:0,nextNode:0,panic:0};
-  if(moving){ // park exactly on the grid and pick a road to cruise
-    g.position.x=snapNode(x);g.position.z=snapNode(z);
-    ring.position.set(g.position.x,.4,g.position.z);
-    beacon.at(g.position.x,g.position.z);
-    t.axis=Math.random()<.5?'x':'z';t.dir=Math.random()<.5?1:-1;
-    aimNextNode(t);
-  }
+  const dir:1|-1=Math.random()<.5?1:-1;
+  const run=new LaneRunner(sp.e,dir,dir>0?sp.s:edges[sp.e].len-sp.s,{off:laneOff,f:carRoad,round:6});
+  const p=run.at(0,_rp);
+  g.position.set(p.x,groundHeight(p.x,p.z),p.z);
+  g.rotation.y=Math.atan2(p.dx,p.dz);
+  const ring=makeMarkerRing(gold?GOLD_COLOR:GREEN);
+  ring.position.set(p.x,g.position.y+.4,p.z);
+  const beacon=new Beacon(gold?GOLD_COLOR:GREEN).at(p.x,p.z).mount();
+  scene.add(ring);
+  const t: Target={g,ring,beacon,alive:true,gold,moving,run:moving?run:null,speed:0,panic:0};
   if(gold)goldAlive=true;
   targets.push(t);
 }
@@ -312,12 +265,9 @@ function crateAt(x: number,z: number){
 }
 function spawnCrate(){
   const pp=playerPos();
-  let x=PAD_X,z=PAD_Z,tries=0;
-  do{
-    x=nodeX(irand(0,N));z=nodeX(irand(0,N));tries++;
-    const d=Math.hypot(x-pp.x,z-pp.z);
-    if(d>=14&&d<=90&&!crateAt(x,z))break;
-  }while(tries<30);
+  let sp=streetSpot({x:pp.x,z:pp.z},14,90);
+  for(let tries=0;tries<10&&crateAt(sp.road.x,sp.road.z);tries++)sp=streetSpot({x:pp.x,z:pp.z},14,90);
+  const x=sp.road.x,z=sp.road.z;
   const type=pick(CRATE_TYPES);
   const base=groundHeight(x,z)+1.3;
   const g=makeRcCrate(type.color);
@@ -533,7 +483,7 @@ export function updateRcToyz(dt: number){
     if(t.moving)moveTarget(t,dt,rp); // cruise the streets / flee the RC
     if(t.ring){
       if(t.moving){ // keep the marker glued to the moving car
-        t.ring.position.set(t.g.position.x,.4,t.g.position.z);
+        t.ring.position.set(t.g.position.x,t.g.position.y+.4,t.g.position.z);
         t.beacon!.at(t.g.position.x,t.g.position.z);
       }
       t.ring.rotation.z+=2*dt;

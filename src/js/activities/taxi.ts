@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,nodeX,rand,irand,pick,ROAD,clamp} from '@/core/constants.ts';
+import {pick,clamp,groundHeight} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs,saveBest} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
@@ -7,7 +7,8 @@ import {scene} from '@/core/engine.ts';
 import {makeCar,makePed,animatePed,shirtColors} from '@/core/entities.ts';
 import {Npc} from '@/actors/npc.ts';
 import {idleCars,cur,playerPos} from '@/actors/player.ts';
-import {parks} from '@/world/world.ts';
+import {roadside,streetSpot} from '@/world/divinolandia/nav.ts';
+import {divData} from '@/world/divinolandia/data.ts';
 import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
 import {Beacon} from '@/core/beacon.ts';
 import {message} from '@/ui/hud.ts';
@@ -38,23 +39,18 @@ class Fare extends Npc{
 // census once it has wandered off and is removed).
 interface LeavingPed{g: THREE.Object3D; npc: Fare; t: number; bob: number; h: number;}
 
-// Minigame de táxi estilo Open-world: um táxi amarelo fica estacionado na rua ao
-// lado de uma praça. Entrou nele, começa o expediente: sempre tem um
-// passageiro acenando em algum canto da cidade — pare do lado que ele
-// embarca (e fica sentado no banco do carona, visível pelo vidro), leve até
-// o marcador e ele desce pagando a corrida. Emenda corridas sem limite;
-// sair do táxi encerra o expediente.
+// Open-world taxi mini-game: a yellow cab waits at the kerb by the Praça da Matriz.
+// Get in and the shift starts: there is always a passenger waving on some street of
+// Divinolândia — stop beside them, they board (sitting in the passenger seat, seen
+// through the glass), drive to the marker and they pay the fare. Chain rides forever;
+// getting out ends the shift.
 
 const TAXI_BUILD=' ◆ CAB HUSTLE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',TAXI_BUILD);
 
-const standKey=[...parks][0]||'4_4';
-const[standI,standJ]=standKey.split('_').map(Number);
-const stand={
-  x:nodeX(standI)+3.5,
-  z:nodeX(standJ)+ROAD/2+10,
-  heading:0,
-};
+// the cab rank: parked on the kerb of the square in front of the Matriz
+const rank=roadside(divData.landmarks.pracaMatriz.x,divData.landmarks.pracaMatriz.z-14,-1.6);
+const stand={x:rank.x,z:rank.z,heading:rank.h};
 
 export const taxi: any={g:makeCar(0xffd24a,false),heading:stand.heading,speed:0,
   name:'TAXI CAB',police:false,taxi:true};
@@ -66,8 +62,8 @@ export const taxi: any={g:makeCar(0xffd24a,false),heading:stand.heading,speed:0,
   const sign=new THREE.Mesh(new THREE.BoxGeometry(.7,.24,.36),
     new THREE.MeshBasicMaterial({color:0xfff0a0}));
   sign.position.set(0,1.56,-.2);taxi.g.add(sign);
-  // estacionado na rua que margeia a primeira praça sorteada
-  taxi.g.position.set(stand.x,0,stand.z);
+  // parked at the rank by the Praça da Matriz
+  taxi.g.position.set(stand.x,groundHeight(stand.x,stand.z),stand.z);
   taxi.g.rotation.y=taxi.heading;
   idleCars.push(taxi);
 }
@@ -110,24 +106,17 @@ refs.getTaxiState=()=>({
   active:phase!=='off',
 });
 
-function pickSpot(minD: number,fx: number,fz: number): [number, number]{
-  // Sample candidate spots and return the first that is at least minD away.
-  // If none clears the threshold within the try budget, return the FARTHEST
-  // sampled candidate (not the last one), so pickup->dropoff stays as far
-  // apart as the samples allow and trivial near-zero-distance fares can't occur.
-  let bestX=0,bestZ=0,bestD=-1;
-  for(let tries=0;tries<30;tries++){
-    const x=nodeX(irand(0,N))+rand(-3.5,3.5),z=nodeX(irand(0,N))+rand(-3.5,3.5);
-    const d=Math.hypot(x-fx,z-fz);
-    if(d>=minD)return[x,z];      // good enough, take it immediately
-    if(d>bestD){bestD=d;bestX=x;bestZ=z;} // track the farthest fallback
-  }
-  return[bestX,bestZ];
+// A street spot of the town between minD and maxD metres from (fx,fz): the kerb for a
+// waiting passenger (stop the cab beside them), or the lane for a drop-off marker.
+function pickSpot(minD: number,maxD: number,fx: number,fz: number,kerb: boolean): [number, number]{
+  const s=streetSpot({x:fx,z:fz},minD,maxD);
+  const p=kerb?s.kerb:s.road;
+  return[p.x,p.z];
 }
 
 function setMarker(x: number,z: number){
   const ring=makeMarkerRing(0x5eff8a);
-  ring.rotation.x=Math.PI/2;ring.position.set(x,.4,z);scene.add(ring);
+  ring.rotation.x=Math.PI/2;ring.position.set(x,groundHeight(x,z)+.4,z);scene.add(ring);
   const beacon=new Beacon(0x5eff8a).at(x,z).mount();
   fare!.ring=ring;fare!.beacon=beacon;
 }
@@ -172,7 +161,7 @@ function updateTaxiHud(){
 function resetTaxiCar(){
   taxi.speed=0;taxi.sinkT=0;taxi.heading=stand.heading;
   taxi.g.userData.bulletHits=0;
-  taxi.g.position.set(stand.x,0,stand.z);
+  taxi.g.position.set(stand.x,groundHeight(stand.x,stand.z),stand.z);
   taxi.g.rotation.set(0,taxi.heading,0);
   for(const d of taxi.g.userData.doors||[])d.rotation.y=0;
 }
@@ -194,9 +183,9 @@ function unseatPose(g: THREE.Object3D){
 
 function spawnFare(announce=true){
   const pp=playerPos();
-  const[x,z]=pickSpot(70,pp.x,pp.z);
+  const[x,z]=pickSpot(90,450,pp.x,pp.z,true);
   const ped=makePed(pick(shirtColors));
-  ped.position.set(x,0,z);
+  ped.position.set(x,groundHeight(x,z),z);
   ped.rotation.y=Math.random()*Math.PI*2;
   // makePed already added the ped to the scene; boardFare reparents it into the cab
   fare=new Fare(ped,x,z);
@@ -213,7 +202,7 @@ function boardFare(){
   seatPassengerPose(ped);                 // sit in the passenger seat
   ped.position.set(.38,-.52,-.15); // banco do carona, ao lado do jogador
   taxi.g.add(ped); // reparenta da cena pro carro: anda junto, visível pelo vidro
-  const[dx,dz]=pickSpot(80,fare!.x,fare!.z);
+  const[dx,dz]=pickSpot(250,900,fare!.x,fare!.z,false);
   fare!.dropX=dx;fare!.dropZ=dz;
   const dist=Math.hypot(dx-fare!.x,dz-fare!.z);
   // Base pay scales with the REAL pickup->dropoff distance so trivial fares
@@ -298,6 +287,7 @@ export function updateTaxi(dt: number){
     p.t+=dt;p.bob+=dt*8;
     p.g.position.x+=Math.sin(p.h)*1.6*dt;
     p.g.position.z+=Math.cos(p.h)*1.6*dt;
+    p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
     animatePed(p.g,p.bob,.5);
     if(p.t>3.5){p.npc.despawn();leaving.splice(i,1);} // despawn clears the scene + census
 

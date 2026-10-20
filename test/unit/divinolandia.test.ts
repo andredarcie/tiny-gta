@@ -2,7 +2,7 @@
 import { describe, it, expect } from 'vitest';
 import { divData, divinoHeight, nearGrid, altitudeAt, DIV_OX, DIV_OZ, PLAY } from '@/world/divinolandia/data.ts';
 import { addObb, divinoCollide, setPlayBounds } from '@/world/divinolandia/collide.ts';
-import { groundHeight, setDivinoTerrain, isLand, DIVINO_X_MIN } from '@/core/terrain.ts';
+import { groundHeight, setDivinoTerrain, DIVINO_X_MIN } from '@/core/terrain.ts';
 import * as THREE from 'three';
 import { makeTerrainMesh } from '../../src/assets/models/divinolandia/terreno.ts';
 import { makeStreets, makeWater } from '../../src/assets/models/divinolandia/rua.ts';
@@ -50,13 +50,12 @@ describe('Divinolândia ground = the drawn triangles', () => {
     const b = h[j * nx + i + 1], c = h[(j + 1) * nx + i];
     expect(divinoHeight(x0 + (i + .5) * cell, z0 + (j + .5) * cell)).toBeCloseTo((b + c) / 2, 4);
   });
-  it('plugs into groundHeight/isLand only east of DIVINO_X_MIN', () => {
+  it('plugs into groundHeight east of DIVINO_X_MIN', () => {
     setDivinoTerrain(divinoHeight);
     const [x, z] = W([0, 0]);
     expect(groundHeight(x, z)).toBeCloseTo(divinoHeight(x, z), 6);
-    expect(isLand(x, z)).toBe(true);
     expect(DIVINO_X_MIN).toBeLessThan(PLAY.x0);
-    expect(groundHeight(0, 0)).toBeLessThan(1);             // classic map untouched
+    expect(groundHeight(-800, 0)).toBe(0);                  // the off-map rooms stay flat
   });
 });
 

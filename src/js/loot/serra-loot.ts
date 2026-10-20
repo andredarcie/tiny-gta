@@ -5,23 +5,26 @@ import {playerPos} from '@/actors/player.ts';
 import {economy} from '@/core/economy.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
-import {groundHeight,ISLAND_CX,ISLAND_CZ} from '@/core/constants.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {divData,DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {byId} from '@/combat/weapon-catalog.ts';
 import {pickupArsenalWeapon} from '@/combat/weapons.ts';
 import {makeMoneyDrop} from '../../assets/models/missions/money-drop.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 
-// HIDDEN ISLAND LOOT — a secret cache of heavy weapons and fat cash stashes salted
-// across the paradise island far to the west (ISLAND_CX/CZ). No map/radar blip: you
-// only find it by sailing/flying out there and exploring on foot. Fat payouts, since
-// reaching the island is the cost. Same spin/bob/cull/respawn idea as weapon-pickups.ts.
+// HIDDEN SERRA LOOT — a secret cache of heavy weapons and fat cash stashes salted round
+// the top of the Morro da Torre, the 1380 m hill two kilometres south of Divinolândia.
+// No map/radar blip: you only find it by climbing (or flying) up there and exploring on
+// foot. Fat payouts, since the climb is the cost. Same spin/bob/cull/respawn idea as
+// weapon-pickups.ts.
+const SX=divData.landmarks.torre[0]+DIV_OX,SZ=divData.landmarks.torre[1]+DIV_OZ;
 
 const PICK_R=2.8;          // collection radius (on foot)
 const RESPAWN_CD=90;       // seconds before a collected stash reappears (longer: it's a trek)
 const GUN_SCALE=1.3;
 const ANIM2=80*80;         // beyond this distance: no spin/bob and no collection
 
-// a collectible salted on the island: either a weapon cache or a cash stash
+// a collectible salted on the hilltop: either a weapon cache or a cash stash
 interface LootItem{
   kind: 'gun'|'cash';
   id?: string;
@@ -35,21 +38,20 @@ interface LootItem{
   respawnAt: number;
 }
 
-// All spots sit well inside the island coast (radius ~70 from the centre) so the
-// model always lands on island ground, not in the surf.
+// All spots are on the hilltop and its upper slopes, clear of the tower and its deck.
 // heavy-weapon caches (reuse arsenal ids — independent of the global hidden weapons)
 const GUNS=[
-  {id:'rocket', x:ISLAND_CX-32, z:ISLAND_CZ+14},  // west shore stash
-  {id:'flame',  x:ISLAND_CX+30, z:ISLAND_CZ-26},  // south-east cove
-  {id:'sniper', x:ISLAND_CX+4,  z:ISLAND_CZ+48},  // north ridge (long sightline)
-  {id:'m16',    x:ISLAND_CX-34, z:ISLAND_CZ-44},  // south-west thicket
+  {id:'rocket', x:SX-32, z:SZ+14},  // west slope
+  {id:'flame',  x:SX+30, z:SZ-26},  // south-east hollow
+  {id:'sniper', x:SX+4,  z:SZ+48},  // north ridge, looking down on the town
+  {id:'m16',    x:SX-34, z:SZ-44},  // south-west scrub
 ];
-// cash stashes {x,z,val} — the centrepiece is a fortune on the very peak
+// cash stashes {x,z,val} — the centrepiece is a fortune right by the summit
 const CASH=[
-  {x:ISLAND_CX,    z:ISLAND_CZ,    val:500}, // buried treasure on top of the island hill
-  {x:ISLAND_CX+18, z:ISLAND_CZ+24, val:240}, // north-east slope
-  {x:ISLAND_CX-22, z:ISLAND_CZ,    val:280}, // west side
-  {x:ISLAND_CX+8,  z:ISLAND_CZ-30, val:300}, // south beach
+  {x:SX+12, z:SZ+12, val:500}, // by the tower on the summit
+  {x:SX+18, z:SZ+34, val:240}, // north-east slope
+  {x:SX-22, z:SZ,    val:280}, // west side
+  {x:SX+8,  z:SZ-30, val:300}, // south shoulder
 ];
 
 const items: LootItem[]=[];
@@ -99,7 +101,7 @@ export function updateIslandLoot(dt: number): void{
         }
       }else{
         economy.earn(p.val!,'loot');
-        message('ISLAND TREASURE +$'+p.val,'var(--gold)');
+        message('SERRA TREASURE +$'+p.val,'var(--gold)');
         blip([660,880,1175],0.08,'square',.16);
       }
       p.active=false;

@@ -3,7 +3,7 @@
 import { test } from '@playwright/test';
 import { Director } from '../director.ts';
 
-const CX = 620, CZ = -90;                         // compound centre (assets/models/rural/weed-farm.ts)
+const CX = 4061.5, CZ = 4222.5;                         // compound centre: sites-table.ts 'weedFarm' + the town offset (5000, 5000)
 const W = (x: number, z: number) => ({ x: CX + x, z: CZ + z });
 
 test('video: weed farm', async ({ page }) => {

@@ -53,3 +53,33 @@ export function divinoCollide(p:{x:number;y:number;z:number},r:number):boolean{
   if(p.z<PLAY.z0){p.z=PLAY.z0;hit=true;}else if(p.z>PLAY.z1){p.z=PLAY.z1;hit=true;}
   return hit;
 }
+
+// Does a TALL box (top at least `minH` above the ground under it… approximated by the
+// box's own top height above the lower of the two end points) stand between (ax,az) and
+// (bx,bz)? Walks the hash cells along the segment and tests each oriented box with a slab
+// test in its own frame. Used for line of sight (police vision, NPC aim, name tags):
+// a house between two people blocks the view, low things (walls, poles) don't.
+export function obbSegmentBlocked(ax:number,az:number,bx:number,bz:number,minTop:number):boolean{
+  const len=Math.hypot(bx-ax,bz-az),steps=Math.max(1,Math.ceil(len/(CELL*.5)));
+  const seen=new Set<Obb>();
+  for(let k=0;k<=steps;k++){
+    const t=k/steps,x=ax+(bx-ax)*t,z=az+(bz-az)*t;
+    const arr=grid.get(key(Math.floor(x/CELL),Math.floor(z/CELL)));
+    if(!arr)continue;
+    for(const o of arr){
+      if(seen.has(o))continue;seen.add(o);
+      if(o.h<minTop)continue;
+      // the segment in the box frame
+      const pax=(ax-o.x)*o.c+(az-o.z)*o.s,paz=-(ax-o.x)*o.s+(az-o.z)*o.c;
+      const pbx=(bx-o.x)*o.c+(bz-o.z)*o.s,pbz=-(bx-o.x)*o.s+(bz-o.z)*o.c;
+      const dx=pbx-pax,dz=pbz-paz;
+      let t0=0,t1=1;
+      if(Math.abs(dx)<1e-9){if(pax<-o.hw||pax>o.hw)continue;}
+      else{let ta=(-o.hw-pax)/dx,tb=(o.hw-pax)/dx;if(ta>tb){const q=ta;ta=tb;tb=q;}t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)continue;}
+      if(Math.abs(dz)<1e-9){if(paz<-o.hd||paz>o.hd)continue;}
+      else{let ta=(-o.hd-paz)/dz,tb=(o.hd-paz)/dz;if(ta>tb){const q=ta;ta=tb;tb=q;}t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)continue;}
+      return true;
+    }
+  }
+  return false;
+}

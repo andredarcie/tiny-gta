@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,nodeX,rand,irand,pick,clamp} from '@/core/constants.ts';
+import {pick,clamp,groundHeight} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
@@ -11,13 +11,14 @@ import {Beacon} from '@/core/beacon.ts';
 import {makeAmbulance} from '../../assets/models/vehicles/ambulance.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
-import {HOSP_I,HOSP_J} from '../../assets/models/city/hospital.ts';
+import {HOSP_DOOR} from '../../assets/models/city/hospital.ts';
+import {nearestRoad,pointAt,laneOff,streetSpot} from '@/world/divinolandia/nav.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import {Npc} from '@/actors/npc.ts';
 
 // Side-mission de paramédico estilo open-world (Vigilante/Paramedic): uma ambulância
-// fica estacionada na esquina do hospital. Entrou nela, começa o plantão: feridos
+// fica estacionada na rua em frente ao Hospital Regional. Entrou nela, começa o plantão: feridos
 // caídos pela cidade precisam ser recolhidos (passe perto e pare) e levados ao
 // hospital. Cada nível tem MAIS feridos e um tempo MENOR de folga; entregar todos
 // paga e sobe de nível. Estourou o tempo, perdeu os pacientes — e como o jogador
@@ -28,12 +29,20 @@ const MED_BUILD=' ◆ MEDIC';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',MED_BUILD);
 
 const PATIENT_CAP=6;                 // teto de feridos simultâneos por nível
-const dropX=nodeX(HOSP_I)+4,dropZ=nodeX(HOSP_J); // entrega na frente do ponto da ambulância
+// the ambulance bay: the lane of the street nearest the Hospital Regional's entrance,
+// which is also where the patients are delivered
+const bay=(()=>{
+  const r=nearestRoad(HOSP_DOOR.x,HOSP_DOOR.z,300);
+  if(!r)return{x:HOSP_DOOR.x,z:HOSP_DOOR.z,h:0};
+  const p=pointAt(r.e,r.s,1);
+  return{x:r.x-p.dz*laneOff(r.e),z:r.z+p.dx*laneOff(r.e),h:Math.atan2(p.dx,p.dz)};
+})();
+const dropX=bay.x,dropZ=bay.z;
 
-// Ambulância estacionada no asfalto da interseção do hospital
-const amb: any={g:makeAmbulance(),heading:0,speed:0,name:'AMBULANCE',police:false,ambulance:true};
-amb.g.position.set(nodeX(HOSP_I)+4,0,nodeX(HOSP_J));
-amb.g.rotation.y=0;
+// Ambulância estacionada na rua em frente ao hospital
+const amb: any={g:makeAmbulance(),heading:bay.h,speed:0,name:'AMBULANCE',police:false,ambulance:true};
+amb.g.position.set(bay.x,groundHeight(bay.x,bay.z),bay.z);
+amb.g.rotation.y=bay.h;
 idleCars.push(amb);
 
 // An injured civilian collapsed in the street (ped + ground marker). Extends Npc
@@ -87,7 +96,7 @@ refs.getParamedicState=()=>({phase,level,onboard,needed,timeLeft,active:phase!==
 // ----- marcadores -----
 function spawnMarker(col: number,x: number,z: number,y=.4): Marker{
   const ring=makeMarkerRing(col);
-  ring.rotation.x=Math.PI/2;ring.position.set(x,y,z);scene.add(ring);
+  ring.rotation.x=Math.PI/2;ring.position.set(x,groundHeight(x,z)+y,z);scene.add(ring);
   const beacon=new Beacon(col).at(x,z).mount();
   return{ring,beacon};
 }
@@ -97,20 +106,16 @@ function pulse(mk: {ring:THREE.Mesh|null}|null,dt: number){
   const sc=1+Math.sin(state.time*4)*.12;mk.ring.scale.set(sc,sc,1);
 }
 
-// ----- spawn de feridos longe do jogador, deitados na beira da rua -----
-function pickSpot(minD: number,fx: number,fz: number): [number,number]{
-  let x,z,tries=0;
-  do{x=nodeX(irand(0,N))+rand(-3.5,3.5);z=nodeX(irand(0,N))+rand(-3.5,3.5);tries++;}
-  while(Math.hypot(x-fx,z-fz)<minD&&tries<30);
-  return[x,z];
-}
-
+// ----- injured people lying in the street, in the neighbourhoods down the hill from the
+// hospital (within a run of the ambulance bay) -----
 function spawnPatients(){
   const pp=playerPos();
   for(let i=0;i<needed;i++){
-    const[x,z]=pickSpot(50,pp.x,pp.z);
+    const s=streetSpot({x:dropX,z:dropZ},120,520);
+    let x=s.road.x,z=s.road.z;
+    if(Math.hypot(x-pp.x,z-pp.z)<40){const t=streetSpot({x:dropX,z:dropZ},120,520);x=t.road.x;z=t.road.z;}
     const g=makePed(pick(shirtColors));
-    g.position.set(x,.35,z);             // caído como os mortos do jogo
+    g.position.set(x,groundHeight(x,z)+.35,z); // lying down like the game's dead
     g.rotation.x=-Math.PI/2;
     g.rotation.y=Math.random()*Math.PI*2;
     scene.add(g);
@@ -214,10 +219,10 @@ function timeout(){
 
 // ----- ambulância destruída: reaparece no ponto do hospital -----
 function resetAmbulance(){
-  amb.speed=0;amb.sinkT=0;amb.heading=0;
+  amb.speed=0;amb.sinkT=0;amb.heading=bay.h;
   amb.g.userData.bulletHits=0;
-  amb.g.position.set(nodeX(HOSP_I)+4,0,nodeX(HOSP_J));
-  amb.g.rotation.set(0,0,0);
+  amb.g.position.set(bay.x,groundHeight(bay.x,bay.z),bay.z);
+  amb.g.rotation.set(0,bay.h,0);
   for(const d of amb.g.userData.doors||[])d.rotation.y=0;
 }
 

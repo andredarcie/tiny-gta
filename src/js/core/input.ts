@@ -2,7 +2,6 @@ import {state,keys,input,refs} from '@/core/state.ts';
 import {initAudio,AC} from '@/audio/audio.ts';
 import {radioSwitch} from '@/ui/radio.ts';
 import {enterCar,exitCar,cur,player,cameraRig,applyMouseLook} from '@/actors/player.ts';
-import {storyInteract,storyHint} from '@/story/story.ts';
 import {advanceCine} from '@/story/cutscene.ts';
 import {gymTrain} from '@/places/gym.ts';
 import {gymGameActive,gymGamePress,closeGymGame} from '@/places/gym-game.ts';
@@ -12,7 +11,7 @@ import {modShopActive,closeModShop} from '@/places/mod-shop.ts';
 import {houseBuy,houseEat,houseGaragePark} from '@/places/property.ts';
 import {houseTvInteract,closeHouseTv} from '@/places/house-tv.ts';
 import {startOverkill} from '@/combat/overkill.ts';
-import {setMissionHUD} from '@/story/missions.ts';
+import {setMissionHUD} from '@/activities/courier.ts';
 import {message,drawFullMap,toggleMapNpcs} from '@/ui/hud.ts';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from '@/combat/weapons.ts';
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.ts';
@@ -139,7 +138,7 @@ export function performInteract(): void {
   if(state.dlgActive)return; // cut-scene: legendas correm sozinhas
   if(isBlocked())return;
   if(state.mode==='foot'){
-    if(refs.storyFpLock?.())return; // a story hand clip (phone / shovel) is playing
+    if(refs.storyFpLock?.())return; // a story hand clip is playing (hook for the story)
     if(canPickWeapon()){pickupWeapon();return;}
     if(houseEat())return;  // comer da geladeira dentro de casa (cura)
     if(houseBuy())return;  // comprar a casa de campo (perto da placa FOR SALE)
@@ -151,7 +150,7 @@ export function performInteract(): void {
     // num mini game não dá pra começar outro (um por vez): overkill e zonas travados
     if(!MiniGame.busy&&startOverkill())return; // liga o modo overkill (perto do totem)
     if(refs.rickInteract?.())return; // missão secreta do Rick no acampamento rural
-    if(storyInteract())return;       // story: answer the pay phone / take the shovel / bury a body
+    if(refs.storyInteract?.())return; // the story's own action, when it defines one
     if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a&&a.run){a.run();return;}} // minigames de zona (chão)
     enterCar();
   }else if(state.mode==='car'){
@@ -189,7 +188,7 @@ export function startGameFromUserGesture(opts: {mobile?: boolean}={}): void {
     orient?.catch?.(()=>{});
   }else lockPointer();
   setMissionHUD();
-  message(storyHint()||(mobile?'TAKE THE PINK CAR':'TAKE THE PINK CAR - PRESS E'),'var(--gold)');
+  message(mobile?'TAKE THE PINK CAR':'TAKE THE PINK CAR - PRESS E','var(--gold)');
 }
 
 const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').matches;
@@ -200,18 +199,12 @@ const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').mat
 // state.started, so a double-tap can't restore twice.
 function beginRun(): void {
   if(state.started)return;
-  // Divinolândia map: the town is still being built from its lazy chunk — start right after
-  const pending=refs.divinoPending as Promise<void>|undefined;
-  if(pending&&!refs.divinoReady){void pending.then(()=>{refs.divinoReady=true;beginRun();});return;}
   performance.mark('tg:run-started');
   startGameFromUserGesture({mobile:isMobileEnv()});
   const save=loadLocalSave();
   if(save){
     applySave(save);
-    // the restored story may be further along: say what to do next (or welcome back)
-    const hint=storyHint();
-    if(hint)message(hint,'var(--gold)');
-    else if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
+    if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
   }
   startLocalSave();
   (refs.divinoWelcome as (()=>void)|undefined)?.();

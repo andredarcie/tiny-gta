@@ -11,7 +11,8 @@
 // (DIV_OX, DIV_OZ) so it lives far away from the old map (whose content, interiors
 // included, stays within |x| < 1000). y = real altitude − data.ref.
 import data from '../../../data/divinolandia.json';
-import {DIVINO_X_MIN} from '@/core/terrain.ts';
+import {DIVINO_X_MIN,setDivinoTerrain} from '@/core/terrain.ts';
+import {SITE_TABLE,SITE_PAD,SITE_BLEND,type SiteId} from './sites-table.ts';
 
 export const DIV_OX=5000, DIV_OZ=5000;
 // Anything east of DIVINO_X_MIN (terrain.ts) is Divinolândia (the old map never reaches it).
@@ -47,13 +48,44 @@ function triH(g:Grid,x:number,z:number):number{
 }
 const NEAR_X1=nearGrid.x0+(nearGrid.nx-1)*nearGrid.cell, NEAR_Z1=nearGrid.z0+(nearGrid.nz-1)*nearGrid.cell;
 export const inNearGrid=(x:number,z:number):boolean=>x>=nearGrid.x0&&x<=NEAR_X1&&z>=nearGrid.z0&&z<=NEAR_Z1;
+// ---- level pads under the game's places (sites-table.ts) ----
+// Each site's footprint is flattened to its mean ground height and blended back into
+// the natural slope, straight in the heightfield — so the terrain mesh, the physics and
+// every groundHeight() read agree on the pad. SITE_FLOOR is that height (world y).
+export const SITE_FLOOR={} as Record<SiteId,number>;
+{
+  const g=nearGrid;
+  for(const id of Object.keys(SITE_TABLE) as SiteId[]){
+    const s=SITE_TABLE[id],x=s.x+DIV_OX,z=s.z+DIV_OZ;
+    const fx=Math.sin(s.face),fz=Math.cos(s.face);         // toward the street (depth axis)
+    const ux=fz,uz=-fx;                                     // along the facade
+    let sum=0,n=0;
+    for(let a=-1;a<=1;a+=.25)for(let b=-1;b<=1;b+=.25){sum+=triH(g,x+ux*a*s.w/2+fx*b*s.d/2,z+uz*a*s.w/2+fz*b*s.d/2);n++;}
+    const floor=sum/n;SITE_FLOOR[id]=floor;
+    const R=Math.hypot(s.w,s.d)/2+SITE_PAD+SITE_BLEND;
+    const i0=Math.max(0,Math.floor((x-R-g.x0)/g.cell)),i1=Math.min(g.nx-1,Math.ceil((x+R-g.x0)/g.cell));
+    const j0=Math.max(0,Math.floor((z-R-g.z0)/g.cell)),j1=Math.min(g.nz-1,Math.ceil((z+R-g.z0)/g.cell));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+      const dx=g.x0+i*g.cell-x,dz=g.z0+j*g.cell-z;
+      const u=Math.abs(dx*ux+dz*uz)-s.w/2,v=Math.abs(dx*fx+dz*fz)-s.d/2;
+      const d=Math.hypot(Math.max(u,0),Math.max(v,0));
+      if(d>=SITE_PAD+SITE_BLEND)continue;
+      const t=d<=SITE_PAD?0:(d-SITE_PAD)/SITE_BLEND,k=t*t*(3-2*t);
+      const k0=j*g.nx+i;g.h[k0]=floor+(g.h[k0]-floor)*k;
+    }
+  }
+}
+
 // Playable box: the near grid minus a margin (the far serras are scenery only).
 export const PLAY={x0:nearGrid.x0+40,x1:NEAR_X1-40,z0:nearGrid.z0+40,z1:NEAR_Z1-40};
 
-// Ground height in WORLD coordinates (registered into groundHeight via setDivinoTerrain).
+// Ground height in WORLD coordinates. Registered into groundHeight right here, as soon as
+// the town data is decoded, so anything placed while the modules load (shop facades,
+// palms, garages) already stands on the real relief.
 export function divinoHeight(x:number,z:number):number{
   return inNearGrid(x,z)?triH(nearGrid,x,z):triH(farGrid,x,z);
 }
+setDivinoTerrain(divinoHeight);
 export const farHeight=(x:number,z:number):number=>triH(farGrid,x,z);
 
 // local (baked) → world

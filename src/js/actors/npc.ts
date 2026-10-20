@@ -1,8 +1,8 @@
 import * as THREE from 'three';
 import {state,refs} from '@/core/state.ts';
 import {groundHeight,rand,irand} from '@/core/constants.ts';
-import {addWanted} from '@/core/physics.ts';
-import {spawnDrop} from '@/story/missions.ts';
+import {addWanted,hasLineOfSight} from '@/core/physics.ts';
+import {spawnDrop} from '@/activities/courier.ts';
 import {setOpacity,addFemaleLook,vehicleOccupants} from '@/core/entities.ts';
 import {scene} from '@/core/engine.ts';
 import {NPC_DEFS,type NpcDef} from '@/core/npc-defs.ts';
@@ -328,36 +328,9 @@ export class Npc{
 // ---------------------------------------------------------------------------
 const LABEL_DIST=20;
 const _wp=new THREE.Vector3();
-// An occluder solid: only walls/buildings (tall boxes) should hide a label, not low
-// props/curbs — so we ignore anything shorter than a person+label.
-interface OccluderBox{x0:number;x1:number;z0:number;z1:number;h:number;}
-const OCCLUDE_MIN_H=2;
-
-// 2D segment (a→b) vs an axis-aligned rectangle, slab method. Used to tell whether a
-// building stands between the camera and an NPC (so its name tag must be hidden).
-function segHitsBox(ax:number,az:number,bx:number,bz:number,b:OccluderBox):boolean{
-  const dx=bx-ax,dz=bz-az;
-  let t0=0,t1=1;
-  // X slab
-  if(Math.abs(dx)<1e-9){if(ax<b.x0||ax>b.x1)return false;}
-  else{
-    let ta=(b.x0-ax)/dx,tb=(b.x1-ax)/dx;if(ta>tb){const t=ta;ta=tb;tb=t;}
-    t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return false;
-  }
-  // Z slab
-  if(Math.abs(dz)<1e-9){if(az<b.z0||az>b.z1)return false;}
-  else{
-    let ta=(b.z0-az)/dz,tb=(b.z1-az)/dz;if(ta>tb){const t=ta;ta=tb;tb=t;}
-    t0=Math.max(t0,ta);t1=Math.min(t1,tb);if(t0>t1)return false;
-  }
-  return t1>=t0;
-}
-
 export function updateNpcLabels(camera:THREE.Camera,playerPos:THREE.Vector3){
-  // Building occlusion only applies OUTDOORS — inside an interior the solids list
-  // holds the room's own walls/bars (e.g. jail cell bars), which must NOT hide the
-  // tags of the people in that room. So skip occlusion while in an interior.
-  const solids=state.interior?undefined:(refs.citySolids as OccluderBox[]|undefined);
+  // Building occlusion only applies OUTDOORS (the houses of the town, via the town's
+  // line-of-sight test) — inside a room everyone in it keeps their tag.
   const camX=camera.position.x,camZ=camera.position.z;
   for(const n of allNpcs){
     const el=n.label;
@@ -367,14 +340,7 @@ export function updateNpcLabels(camera:THREE.Camera,playerPos:THREE.Vector3){
     const dx=_wp.x-playerPos.x,dz=_wp.z-playerPos.z;
     if(dx*dx+dz*dz>LABEL_DIST*LABEL_DIST){el.style.display='none';continue;}
     // occlusion: a building between the camera and the NPC hides the tag (outdoors only)
-    if(solids){
-      let blocked=false;
-      for(const b of solids){
-        if(b.h<OCCLUDE_MIN_H)continue;
-        if(segHitsBox(camX,camZ,_wp.x,_wp.z,b)){blocked=true;break;}
-      }
-      if(blocked){el.style.display='none';continue;}
-    }
+    if(!state.interior&&!hasLineOfSight(camX,camZ,_wp.x,_wp.z)){el.style.display='none';continue;}
     _wp.y+=2.2; // float above the head
     _wp.project(camera as THREE.PerspectiveCamera);
     if(_wp.z>=1){el.style.display='none';continue;} // behind the camera

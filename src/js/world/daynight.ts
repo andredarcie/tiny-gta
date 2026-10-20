@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {clamp,RURAL_X0,DIVINO_X_MIN} from '@/core/constants.ts';
+import {clamp} from '@/core/constants.ts';
 import {scene,renderer,hemi,dlight,sunDir,clouds,camera,setBloomStrength,setNightBloom} from '@/core/engine.ts';
-import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
+import {lampGlowMat,lampHaloMat,lampBulbMat} from '../../assets/models/props/street-lamp.ts';
 import {state,refs} from '@/core/state.ts';
 import {beamMat} from '@/core/entities.ts';
 import {makeSkyDome} from '../../assets/models/daynight/sky-dome.ts';
@@ -136,10 +136,6 @@ skyLayer.scale.setScalar(SKY_SCALE);
 for(const c of clouds)c.userData.op0=(c.material as THREE.SpriteMaterial).opacity;
 
 const SUNSET_TINT=new THREE.Color(0xff5a28);
-// Rural fog tint: a FOREST-GREEN haze (keyed to the ground/foliage) so the dense
-// countryside fog reads as green woodland mist instead of a white/grey wall. Applied
-// only in the rural zone (scaled by ruralF), so the city fog stays the sky colour.
-const RURAL_HAZE=new THREE.Color(0x4a6b28);
 // Bulbo do poste: apagado (cinza) de dia, quente e brilhante à noite
 const BULB_DAY=new THREE.Color(0x9a948e),BULB_NIGHT=new THREE.Color(0xffd9a0);
 
@@ -185,40 +181,12 @@ export function updateDayNight(dt:number){
   if(skyAccum>=.08){skyAccum=0;drawSky();} // redesenho/upload do céu throttlado (~12fps)
 
   scene.fog!.color.copy(cur.fog);
-  // Fog por zona: na cidade o alcance é amplo (vê a cidade inteira); ao entrar na
-  // zona rural ele fica bem mais denso (ver distâncias abaixo), escondendo a cidade
-  // distante na névoa — e, da cidade, a zona rural distante. Transição suave no
-  // corredor de pasto. Mirante: do alto da montanha o horizonte reabre.
-  const ppos=refs.playerPos?.();
-  const ruralF=ppos&&ppos.x>DIVINO_X_MIN?0:clamp(((ppos?ppos.x:0)-RURAL_X0)/120,0,1); // Divinolândia isn't the peninsula
-  // De dia com sol, a névoa rural densa deve parecer uma BRUMA luminosa (não um
-  // cinza de tempo fechado): clareia a cor da névoa em direção ao haze, na medida
-  // de quão rural se está E de quão forte está o sol (sunI ~2.4 ao meio-dia, ~.5 à
-  // noite) — então amanhecer/entardecer/noite mantêm a própria névoa. Não mexe no
-  // sol nem nas distâncias; só na cor.
-  const dayF=clamp((cur.sunI-1.2)/1.0,0,1);
-  (scene.fog as THREE.Fog).color.lerp(RURAL_HAZE,ruralF*(.42+dayF*.45));
-  // Fog por zona. Na zona rural ele fica BEM mais denso (perto e longe puxados pra
-  // dentro): props (pinheiros, postes, igreja e o forte, todos assados) somem no
-  // culling a ~160m, então a névoa precisa fechar ANTES disso pra esconder o
-  // "pop-in" do carregamento. far rural ~155 (< culling) + near antecipado deixam
-  // o objeto totalmente no haze quando é cortado. Cap em 430 e o termo de altitude
-  // mantêm o mirante: do alto da montanha o horizonte reabre.
-  // Perf: névoa da cidade puxada de 300→205 (a cidade é o pior caso de FPS — como ela
-  // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
-  // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
-  // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
-  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the dense
-  // rural forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
-  // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
-  // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
-  // horizon from the mountaintop mirante.
-  // Divinolândia (the real town, far east): a long, light haze so the green serras around
-  // the town read on the horizon (the town is drawn in a few big batches, the serra is one
-  // coarse mesh — far cheaper than the classic map's prop chunks).
-  const divino=!!ppos&&ppos.x>DIVINO_X_MIN;
-  (scene.fog as THREE.Fog).near=divino?320:100-ruralF*76;
-  const fogFar=divino?2600:Math.min(200-ruralF*150+(ppos?Math.max(0,ppos.y)*15:0),430);
+  // Fog: out in Divinolândia a long, light haze so the green serras around the town read
+  // on the horizon (the town is drawn in a few big batches, the far serra is one coarse
+  // mesh). Inside the off-map rooms a short one (they are small and enclosed).
+  const inside=!!state.interior;
+  (scene.fog as THREE.Fog).near=inside?100:320;
+  const fogFar=inside?200:2600;
   (scene.fog as THREE.Fog).far=fogFar;
   // REGRA MESTRA (só desenha o que o jogador VÊ): o plano FAR da câmera acompanha a
   // névoa. Tudo além de `fogFar` já é 100% opaco de neblina — invisível —, então deixar
@@ -244,7 +212,6 @@ export function updateDayNight(dt:number){
    setBloomStrength((.3+nightF*1.1)*ramp,.92-nightF*.32);}
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;
-  for(const m of buildingMats)m.emissiveIntensity=cur.win;
   for(const c of clouds){
     (c.material as THREE.SpriteMaterial).color.copy(cur.cloud);
     (c.material as THREE.SpriteMaterial).opacity=c.userData.op0*(.55+.45*clamp(cur.sunI/2.2,0,1));
@@ -284,8 +251,9 @@ export function updateDayNight(dt:number){
   const c=refs.getCur?.();
   if(nightF>0&&state.mode==='car'&&c&&!c.plane){
     _fwd.set(0,0,1).applyQuaternion(c.g.quaternion);
-    headSpot.position.set(c.g.position.x+_fwd.x*2.2,1.1,c.g.position.z+_fwd.z*2.2);
-    headSpot.target.position.set(c.g.position.x+_fwd.x*16,.4,c.g.position.z+_fwd.z*16);
+    const cy=c.g.position.y; // headlights ride with the car (the town is hundreds of metres up)
+    headSpot.position.set(c.g.position.x+_fwd.x*2.2,cy+1.1,c.g.position.z+_fwd.z*2.2);
+    headSpot.target.position.set(c.g.position.x+_fwd.x*16,cy+.4,c.g.position.z+_fwd.z*16);
     headSpot.intensity=nightF*140;
   }else headSpot.intensity=0;
 }

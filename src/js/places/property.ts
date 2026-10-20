@@ -7,9 +7,11 @@ import {message} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {Interior} from '@/world/interior.ts';
 import {arrowBob} from '../../assets/models/city/door-arrow.ts';
-import {RANCH_CX,RANCH_CZ,RANCH_DOOR,RANCH_SPAWN_OUT,RANCH_SALE,GARAGE_PAD,
+import {RANCH_CX,RANCH_CZ,RANCH_DOOR,RANCH_SPAWN_OUT,RANCH_SALE,GARAGE_PAD,GARAGE_HEADING,RANCH_SITE,
   INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,FOOD,HOUSE_PRICE,
-  ranchFx,ranchInterior} from '../../assets/models/rural/ranch-house.ts';
+  ranchFx,ranchInterior,addRanchHouse} from '../../assets/models/rural/ranch-house.ts';
+import {solids} from '@/world/solids.ts';
+import {groundHeight} from '@/core/constants.ts';
 import type * as THREE from 'three';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world). Estende a classe base de
@@ -110,12 +112,14 @@ class HouseInterior extends Interior{
   }
 }
 
+addRanchHouse(solids); // the farmhouse + garage on its sítio by the hospital road + the off-map rooms
+
 export const house=new HouseInterior({
   group:ranchInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:RANCH_DOOR,spawnOut:RANCH_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:ranchFx,exterior:{x:RANCH_CX,z:RANCH_CZ,r:16}, // gangue não chega perto da casa
   mapIcon:{id:'house',label:'SAFE HOUSE',icon:'house',color:'#9dff2e'},
-  spawnOutHeading:Math.PI, // sai pela porta norte olhando pra frente do alpendre
+  spawnOutHeading:RANCH_SITE.head(Math.PI), // sai pela porta da frente olhando pro alpendre
 });
 
 // ===================== COMPRA =====================
@@ -174,8 +178,8 @@ function spawnGarageCar():void{
   const name=d.name||(type==='bike'?'GARAGE BIKE':'GARAGE CAR');
   const g=type==='bike'?makeMotorcycle(color):makeCar(color,false);
   if(type==='car')applyCarMods(g,d); // re-install the saved spoiler/rims/neon/hood/engine
-  const heading=Math.PI; // nariz (+z) virado pro norte: pronto pra sair da garagem
-  g.position.set(GARAGE_PAD.x,0,GARAGE_PAD.z);g.rotation.y=heading;
+  const heading=GARAGE_HEADING; // nariz pra fora: pronto pra sair da garagem
+  g.position.set(GARAGE_PAD.x,groundHeight(GARAGE_PAD.x,GARAGE_PAD.z),GARAGE_PAD.z);g.rotation.y=heading;
   const v:GarageVehicle={g,heading,speed:0,name,police:false};
   if(type==='bike')v.bike=true;
   garageVehicle=v;

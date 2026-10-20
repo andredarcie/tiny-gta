@@ -6,6 +6,7 @@ import {cur} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {clamp,groundHeight} from '@/core/constants.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeStuntRamp} from '../../assets/models/props/stunt-ramp.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -14,7 +15,7 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 // mini games. As rampas NÃO aparecem no mapa/radar — o jogador descobre sozinho.
 new MiniGame({id:MiniGameId.STUNT_JUMPS,name:'Daredevil Jumps',exclusive:false});
 
-// DAREDEVIL JUMPS — rampas escondidas pela praia e pela zona rural (NUNCA no
+// DAREDEVIL JUMPS — rampas escondidas na beira das estradas de Divinolândia (NUNCA no
 // meio da rua). O jogador chega de carro em alta velocidade, decola num arco e
 // ganha dinheiro proporcional à velocidade; completar cada rampa pela primeira vez
 // dá um bônus ("DAREDEVIL JUMP").
@@ -35,19 +36,15 @@ const REPEAT_PAY_CD=REWARDS.stuntJump.repeatPayCooldownSec; // segundos entre pa
 // uma rampa colocada no mundo: posição, heading, modelo 3D e estado de pagamento
 interface Ramp{x:number;z:number;heading:number;g:THREE.Object3D;done:boolean;paidAt:number;}
 
-// Locais escolhidos a dedo, SEMPRE fora das ruas: o anel de areia da praia (corrida
-// longa e plana) e o pasto da zona rural (península a leste). Coordenadas de MUNDO.
-// heading = rotation.y; a cunha sobe ao longo de +z local, então no mundo a subida
-// aponta em (sin h, cos h) — o carro precisa chegar nessa direção pra decolar.
-// Praia = anel de areia ~183–218 do centro (lados N/S/O); rural = x>183, |z|<120
-// (longe das fazendas/silo, que começam em x≈342). Aterrissagem sempre em terra.
-const SPOTS=[
-  {x:  90, z: 200, heading:Math.PI/2}, // praia sul — corre rente ao mar (+x)
-  {x: -90, z:-200, heading:Math.PI/2}, // praia norte (+x)
-  {x:-200, z: -70, heading:Math.PI},   // praia oeste — desce a areia (-z)
-  {x: 210, z:  18, heading:Math.PI/2}, // pasto rural, ao lado da estrada de terra (+x)
-  {x: 260, z: -45, heading:Math.PI/2}, // pasto rural, mais fundo na península (+x)
-];
+// Hand-picked spots, always on the shoulder beside a long straight (room to build up
+// speed): the Rodovia Lourival Lindorio de Faria east and west of town, its northern
+// stretch past the river, the dirt road by the sítio and the open pasture of the
+// off-road circuit. Town-local coordinates snapped to the street edge (nav.roadside);
+// the ramp climbs along the road's direction, so you take off driving down the road.
+const SPOTS=[[720,-410,1],[-610,-430,-1],[200,-600,1],[-260,700,1],[60,1180,-1]].map(([lx,lz,d])=>{
+  const r=roadside(lx,lz,1.2);
+  return{x:r.x,z:r.z,heading:d>0?r.h:r.h+Math.PI};
+});
 
 const ramps: Ramp[]=[];
 for(const s of SPOTS.slice(0,TOTAL)){

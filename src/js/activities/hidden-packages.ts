@@ -5,7 +5,9 @@ import {scene} from '@/core/engine.ts';
 import {playerPos} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
-import {N,nodeX,groundHeight} from '@/core/constants.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {randomRoadPoint,edges,pointAt,anyRoad} from '@/world/divinolandia/nav.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeHiddenPackage} from '../../assets/models/props/hidden-package.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -66,31 +68,23 @@ function saveTaken(): void{
   }catch(e){}
 }
 
-// Gera posições FIXAS (semente constante) e variadas: mistura interseções exatas
-// e pontos perto de quarteirões (com offset). Evita o spawn (0,0) e dois pacotes
-// quase no mesmo lugar. Determinístico -> o pacote de índice k é sempre o mesmo
-// lugar, então a coleta persistida por índice continua válida entre refreshes.
+// FIXED (constant seed), varied positions all over Divinolândia: along the streets
+// and dirt roads, a few metres off to one side (in the yards, ditches and verges).
+// Keeps away from the Matriz square (the start) and never puts two packages almost on
+// the same spot. Deterministic -> package k is always the same place, so the
+// collection saved by index stays valid across reloads.
 function buildPositions(): {x:number;z:number}[]{
   const rng=makeRng(0x7ACE51);
-  const ri=(a: number,b: number)=>a+Math.floor(rng()*(b-a+1)); // inteiro em [a,b]
-  const rf=(a: number,b: number)=>a+rng()*(b-a);               // float em [a,b)
   const pos: {x:number;z:number}[]=[];
   const seen=new Set<string>();
   let guard=0;
   while(pos.length<TOTAL&&guard<5000){
     guard++;
-    const i=ri(0,N),j=ri(0,N);
-    let x=nodeX(i),z=nodeX(j);
-    // parte dos pacotes ganha offset pra cair perto do quarteirão, não na
-    // interseção exata — espalha melhor.
-    if(rng()<.55){
-      x+=rf(-16,16);
-      z+=rf(-16,16);
-    }
-    // longe do spawn (0,0)
-    if(Math.hypot(x,z)<14)continue;
-    // sem dois pacotes praticamente no mesmo lugar (grade de ~5m)
-    const key=Math.round(x/5)+','+Math.round(z/5);
+    const sp=randomRoadPoint({f:anyRoad,rnd:rng});
+    const d=pointAt(sp.e,sp.s,1),side=rng()<.5?1:-1,off=(edges[sp.e].hw+2+rng()*5)*side;
+    const x=sp.x-d.dz*off,z=sp.z+d.dx*off;
+    if(Math.hypot(x-DIV_OX,z-DIV_OZ)<60)continue;      // away from the start
+    const key=Math.round(x/40)+','+Math.round(z/40);  // spread out (one per ~40 m cell)
     if(seen.has(key))continue;
     seen.add(key);
     pos.push({x,z});

@@ -1,4 +1,5 @@
-import {N,nodeX,irand,rand} from '@/core/constants.ts';
+import {groundHeight} from '@/core/constants.ts';
+import {randomRoadPoint,pavedRoad} from '@/world/divinolandia/nav.ts';
 import {state,saveBest} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -12,11 +13,16 @@ import {inGangTerritory} from '@/actors/gangs.ts';
 import type * as THREE from 'three';
 import type {Vehicle} from '@/core/types.ts';
 
+// Courier jobs: a briefcase to drop at a marked spot somewhere in Divinolândia (the
+// cyan ring + light beacon, a blip on the radar), plus the floating money pickups that
+// kills and crashes leave behind.
+
 // A money pickup floating in the world (collected by walking over it).
 interface Drop {
   g: THREE.Object3D;
   val: number;
   t: number;
+  y: number;   // ground under it
 }
 
 // A briefcase-drop courier mission (delivery marker + payout descriptor).
@@ -38,8 +44,9 @@ interface Delivery {
 // Money pickups
 export const drops: Drop[]=[];
 export function spawnDrop(x: number,z: number,val: number){
-  const m=makeMoneyDrop();m.position.set(x,.5,z);scene.add(m);
-  drops.push({g:m,val,t:0});
+  const y=groundHeight(x,z);
+  const m=makeMoneyDrop();m.position.set(x,y+.5,z);scene.add(m);
+  drops.push({g:m,val,t:0,y});
 }
 
 const MISSIONS: Mission[]=[
@@ -77,11 +84,12 @@ function nextMission(): Mission{
 export let delivery: Delivery | null=null;
 export function spawnDelivery(){
   if(delivery){scene.remove(delivery.g);delivery.beacon.dispose();}
-  const px=playerPos();let x,z,tries=0;
-  do{x=nodeX(irand(0,N))+rand(-3.5,3.5);z=nodeX(irand(0,N))+rand(-3.5,3.5);tries++;}
-  while((Math.hypot(x-px.x,z-px.z)<90||inGangTerritory(x,z))&&tries<30);
+  // a street of the town a fair drive away (not inside a gang's turf)
+  const px=playerPos();let x=px.x,z=px.z,tries=0;
+  do{const p=randomRoadPoint({f:pavedRoad,near:{x:px.x,z:px.z},min:250,max:900});x=p.x;z=p.z;tries++;}
+  while(inGangTerritory(x,z)&&tries<30);
   const ring=makeMarkerRing(0x19e3ff);
-  ring.rotation.x=Math.PI/2;ring.position.set(x,.4,z);scene.add(ring);
+  ring.rotation.x=Math.PI/2;ring.position.set(x,groundHeight(x,z)+.4,z);scene.add(ring);
   const beacon=new Beacon(0x19e3ff).at(x,z).mount();
   curMission=nextMission();
   delivery={g:ring,beacon,x,z,t0:state.time};
@@ -91,13 +99,12 @@ export function spawnDelivery(){
 // HUD minimalista estilo mundo aberto: missão atual não aparece mais na tela
 export function setMissionHUD(){}
 
-// Sem seta 3D para entregas: o blip amarelo no radar já basta (a seta sobre o
-// jogador é exclusiva da história — ver story.js)
+// No 3D arrow for deliveries: the radar blip is enough.
 export function updatePickups(dt: number){
   const pp=playerPos();
   for(let i=drops.length-1;i>=0;i--){
     const d=drops[i];d.t+=dt;
-    d.g.rotation.y+=3*dt;d.g.position.y=.5+Math.sin(d.t*4)*.12;
+    d.g.rotation.y+=3*dt;d.g.position.y=d.y+.5+Math.sin(d.t*4)*.12;
     if(d.t>25){scene.remove(d.g);drops.splice(i,1);continue;}
     if(pp.distanceTo(d.g.position)<2.6){
       economy.earn(d.val,'cash-drop');blip([660,990],0.07,'sine',.15);
@@ -109,7 +116,7 @@ export function updatePickups(dt: number){
     const sc=1+Math.sin(state.time*4)*.12;delivery.g.scale.set(sc,sc,1);
     // entrega só no chão e fora do avião (sobrevoar o marcador não conta)
     const inPlane=state.mode==='car'&&(cur as Vehicle | null)?.plane;
-    if(!inPlane&&pp.y<3&&Math.hypot(pp.x-delivery.x,pp.z-delivery.z)<3.2){
+    if(!inPlane&&pp.y-groundHeight(pp.x,pp.z)<3&&Math.hypot(pp.x-delivery.x,pp.z-delivery.z)<3.2){
       const base=curMission?curMission.reward:150;
       const fast=Math.max(0,Math.round(120-(state.time-delivery.t0)*4));
       economy.earn(base+fast,'delivery');state.deliveries++;

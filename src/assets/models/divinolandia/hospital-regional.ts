@@ -10,8 +10,9 @@ import placa from './placa.ts';
 // façade faces +z. Footprint ~64×46 m (see HOSP_FOOT for collision).
 const wallM=matte({color:0xeeeae0}),bandM=matte({color:0x2f6fa0}),glassM=matte({color:0x334450});
 const roofM=matte({color:0x8f8b84}),baseM=matte({color:0xb7b0a2}),crossM=new THREE.MeshBasicMaterial({color:0xd8282a});
-// collision boxes in the model frame: [cx, cz, w, d, height]
-export const HOSP_FOOT:[number,number,number,number,number][]=[[0,0,60,16,11],[-22,-19,16,26,8],[0,10.5,14,5,4]];
+// collision boxes in the model frame: [cx, cz, w, d, height] — the entrance canopy has
+// none (you walk under it to the glass doors, the game's hospital entrance)
+export const HOSP_FOOT:[number,number,number,number,number][]=[[0,0,60,16,11],[-22,-19,16,26,8]];
 
 function block(g:THREE.Group,cx:number,cz:number,w:number,d:number,floors:number):void{
   const H=floors*3.4;

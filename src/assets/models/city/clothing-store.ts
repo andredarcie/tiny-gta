@@ -3,6 +3,7 @@ import {matte} from '../matte.ts';
 import {scene} from '@/core/engine.ts';
 import {makeDoorArrow} from './door-arrow.ts';
 import {buildToonPlayer} from '../characters/pedestrian.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // Clothing store "THREADS": a storefront on a reserved city block plus a separate interior
 // ~1000m off the map (a Group toggled visible only while the player is inside). Same mould
@@ -10,12 +11,14 @@ import {buildToonPlayer} from '../characters/pedestrian.ts';
 // open the custom-cars-style outfit menu (see js/places/clothing-store.ts). Display
 // mannequins wear sample outfits and slowly turn.
 
-export const CLOTHES_I=3,CLOTHES_J=6;                 // reserved block (see js/world/world-gen.ts RESERVED)
-const CX=44*CLOTHES_I-154, CZ=44*CLOTHES_J-154;       // building centre = (-22,110)
+// Exterior authored around (-22,110) with the door on its west (-x) face; the Site puts it
+// on its Divinolândia lot (sites-table.ts) with the door to the street.
+const CX=-22, CZ=110;
+export const CLOTHES_SITE=new Site('clothes',{cx:CX,cz:CZ,front:-Math.PI/2});
 
-// street door (west face) + spawn back onto the street
-export const CLOTHES_DOOR={x:CX-8.6,z:CZ};
-export const CLOTHES_SPAWN_OUT={x:CX-10.6,z:CZ};
+// street door (west face) + spawn back onto the street — world coordinates
+export const CLOTHES_DOOR=CLOTHES_SITE.P(CX-8.6,CZ);
+export const CLOTHES_SPAWN_OUT=CLOTHES_SITE.P(CX-10.6,CZ);
 // interior: centre, exit door, entry spawn, camera bounds, and the changing station
 export const INT_CENTER={x:-900,z:-380};
 export const INT_DOOR={x:-913.2,z:-377};
@@ -23,8 +26,8 @@ export const INT_SPAWN={x:-911.3,z:-377};
 export const INT_BOUNDS={x0:-914,x1:-886,z0:-390,z1:-370,y1:5};
 export const CLOTHES_STATION={x:-900,z:-384};         // mirror/podium: press E here to open the menu
 
-export const clothesFx:{facade:THREE.Group|null;facadeArrow:THREE.Object3D|null;footprint:{x0:number;x1:number;z0:number;z1:number}|null;exitArrow:THREE.Object3D|null;stationArrow:THREE.Object3D|null;mannequins:THREE.Object3D[];}={
-  facade:null,facadeArrow:null,footprint:null,exitArrow:null,stationArrow:null,mannequins:[]};
+export const clothesFx:{facade:THREE.Group|null;facadeArrow:THREE.Object3D|null;footprint:{x0:number;x1:number;z0:number;z1:number}|null;exitArrow:THREE.Object3D|null;stationArrow:THREE.Object3D|null;mannequins:THREE.Object3D[];site:Site;}={
+  facade:null,facadeArrow:null,footprint:null,exitArrow:null,stationArrow:null,mannequins:[],site:CLOTHES_SITE};
 export const clothesInterior=new THREE.Group();
 clothesInterior.visible=false;
 
@@ -110,12 +113,13 @@ function addMannequin(x:number,z:number,shirt:number,pants:number,shoe:number):v
 
 export function addClothingStore(solids:{x0:number;x1:number;z0:number;z1:number;h:number}[]):void{
   // ---- exterior: storefront with a pink band, canopy and THREADS sign ----
+  const ext=CLOTHES_SITE.group; // model coordinates; the Site places it on the town lot
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),wallM);
-  bld.position.set(CX,3.5,CZ);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
+  bld.position.set(CX,3.5,CZ);bld.castShadow=true;bld.receiveShadow=true;ext.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,16.2),darkM);
-  roof.position.set(CX,7.1,CZ);scene.add(roof);
+  roof.position.set(CX,7.1,CZ);ext.add(roof);
   const band=new THREE.Mesh(new THREE.BoxGeometry(16.3,.5,16.3),accentM);
-  band.position.set(CX,5.4,CZ);scene.add(band);
+  band.position.set(CX,5.4,CZ);ext.add(band);
 
   const facade=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.6),darkM);
@@ -137,10 +141,10 @@ export function addClothingStore(solids:{x0:number;x1:number;z0:number;z1:number
   sign.position.set(CX-8.12,6,CZ);sign.rotation.y=-Math.PI/2;facade.add(sign);
   clothesFx.facadeArrow=makeDoorArrow();
   clothesFx.facadeArrow.position.set(CX-9.3,1.7,CZ);facade.add(clothesFx.facadeArrow);
-  scene.add(facade);
+  ext.add(facade);
   clothesFx.facade=facade;
   clothesFx.footprint={x0:CX-8.2,x1:CX+8.2,z0:CZ-8.2,z1:CZ+8.2};
-  solids.push({x0:CX-8.2,x1:CX+8.2,z0:CZ-8.2,z1:CZ+8.2,h:7.2});
+  CLOTHES_SITE.box({x0:CX-8.2,x1:CX+8.2,z0:CZ-8.2,z1:CZ+8.2},7.2);
 
   // ---- interior: 28x20 room ~1000m off the map, in a toggled group ----
   addBox(-900,5.92,-380,28.4,.22,20.4,darkM);                      // ceiling

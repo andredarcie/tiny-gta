@@ -4,7 +4,9 @@ import {camera} from '@/core/engine.ts';
 import {playerPos,resetCarDamage} from '@/actors/player.ts';
 import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
-import {WORKSHOP_PAD,workshopFx} from '../../assets/models/city/workshop.ts';
+import {WORKSHOP_PAD,WORKSHOP_SITE,workshopFx,addWorkshop} from '../../assets/models/city/workshop.ts';
+
+addWorkshop(); // the open-front garage on its Praça Nossa Senhora do Rosário lot
 import {applyPaint,setRims,setSpoiler,setHood,setNeon,repairCar} from
   '../../assets/models/vehicles/car-customs.ts';
 import type * as THREE from 'three';
@@ -341,9 +343,11 @@ export function updateModShop(dt:number):boolean{
   t+=dt;spin+=dt*.55;
   c.g.rotation.y=spin;          // turntable do showroom
   c.g.rotation.z=0;c.g.rotation.x=0;
-  const px=c.g.position.x,pz=c.g.position.z;
-  camera.position.set(px+4.4,2.8,pz-6.2);
-  camera.lookAt(px,.85,pz);
+  const px=c.g.position.x,py=c.g.position.y,pz=c.g.position.z;
+  // showroom camera: front-right of the car, in the garage's own frame (it faces its street)
+  const cy=Math.cos(WORKSHOP_SITE.yaw),sy=Math.sin(WORKSHOP_SITE.yaw);
+  camera.position.set(px+4.4*cy-6.2*sy,py+2.8,pz-4.4*sy-6.2*cy);
+  camera.lookAt(px,py+.85,pz);
   camera.fov+=(50-camera.fov)*.6;camera.updateProjectionMatrix();
   if(workshopFx.ring)(workshopFx.ring.material as THREE.Material).opacity=.55+.4*Math.abs(Math.sin(t*3));
   if(toastT>0){toastT-=dt;if(toastT<=0)toastEl?.classList.remove('show');}

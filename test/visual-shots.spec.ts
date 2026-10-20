@@ -9,9 +9,9 @@ const LABEL = process.env.SHOTS_LABEL || 'current';
 const TODS: [string, number][] = [['noon', .5], ['sunset', .74], ['night', .02]];
 // [name, x, z, lookAtX, lookAtZ, pitch] — pitch >0 looks down (fpPitch)
 const SPOTS: [string, number, number, number, number, number][] = [
-  ['street', 10, 22, 10, 120, .02],
-  ['plaza', -30, -30, 40, 40, .08],
-  ['rural', 196, 4, 260, -60, .02],
+  ['street', 5110, 4980, 5110, 4880, .02],
+  ['plaza', 5060, 5030, 5000, 5000, .08],
+  ['rural', 4890, 6300, 5000, 6300, .02],
 ];
 
 for (const [todName, tod] of TODS) {

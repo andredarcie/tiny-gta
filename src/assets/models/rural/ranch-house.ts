@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {scene} from '@/core/engine.ts';
-import {RURAL_GAP} from '@/core/constants.ts';
 import {makeDoorArrow} from '../city/door-arrow.ts';
 import {registerRuralStatic} from '@/world/rural-cull.ts';
 import {mergeStatic} from '../props/prop-merge.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
+import {addFenceRun} from './fence.ts';
 
 // Casa de campo COMPRÁVEL (safehouse estilo open-world), no mesmo molde dos demais
 // interiores (boate/academia/hospital/presídio): fachada no mapa + ambiente
@@ -14,12 +15,18 @@ import {mergeStatic} from '../props/prop-merge.ts';
 //   - tem uma GARAGEM ao lado pra guardar um carro, que volta salvo até depois
 //     de fechar o jogo (localStorage).
 
-// ----- fachada: casa + garagem perto da montanha, no fim da zona rural -----
-export const RANCH_CX=420+RURAL_GAP, RANCH_CZ=-80;   // centro do corpo da casa, longe da cidade
-export const RANCH_DOOR={x:420+RURAL_GAP,z:-85.5};   // porta da frente (face norte): entra ao encostar
-export const RANCH_SPAWN_OUT={x:420+RURAL_GAP,z:-88};// onde o jogador nasce ao sair pro quintal
-export const RANCH_SALE={x:420+RURAL_GAP,z:-88};     // placa FOR SALE / gatilho de compra
-export const GARAGE_PAD={x:409+RURAL_GAP,z:-80};     // vaga dentro da garagem (carro salvo fica aqui)
+// ----- fachada: casa + garagem num sítio na estrada do hospital (sites-table.ts) -----
+// Authored around (550,-80) — the model's own frame; the Site moves it onto the lot.
+const M_CX=550,M_CZ=-80;
+export const RANCH_SITE=new Site('ranch',{cx:M_CX,cz:M_CZ,front:Math.PI});
+const M_SALE={x:M_CX,z:-88}, M_GARAGE={x:M_CX-11,z:M_CZ};
+// world coordinates for the gameplay (js/places/property.ts)
+export const {x:RANCH_CX,z:RANCH_CZ}=RANCH_SITE.P(M_CX,M_CZ); // centro do corpo da casa
+export const RANCH_DOOR=RANCH_SITE.P(M_CX,-85.5);     // porta da frente (face norte): entra ao encostar
+export const RANCH_SPAWN_OUT=RANCH_SITE.P(M_CX,-88);  // onde o jogador nasce ao sair pro quintal
+export const RANCH_SALE=RANCH_SITE.at(M_SALE);        // placa FOR SALE / gatilho de compra
+export const GARAGE_PAD=RANCH_SITE.at(M_GARAGE);      // vaga dentro da garagem (carro salvo fica aqui)
+export const GARAGE_HEADING=RANCH_SITE.head(Math.PI); // a car parked there noses out of the garage
 
 // ----- interior: sala a ~600m do mapa (z=80 fica livre entre boate(-22) e hospital(180)) -----
 export const INT_CENTER={x:-800,z:80};
@@ -47,9 +54,9 @@ const warmLampM=new THREE.MeshBasicMaterial({color:0xffd37a});
 
 export const ranchFx: {
   facade:THREE.Group|null,facadeArrow:THREE.Object3D|null,footprint:{x0:number;x1:number;z0:number;z1:number}|null,
-  exitArrow:THREE.Object3D|null,saleSign:THREE.Group|null,soldSign:THREE.Group|null,food:THREE.Group|null,tv:THREE.Mesh|null
+  exitArrow:THREE.Object3D|null,saleSign:THREE.Group|null,soldSign:THREE.Group|null,food:THREE.Group|null,tv:THREE.Mesh|null,site:Site
 }={facade:null,facadeArrow:null,footprint:null,
-  exitArrow:null,saleSign:null,soldSign:null,food:null,tv:null};
+  exitArrow:null,saleSign:null,soldSign:null,food:null,tv:null,site:RANCH_SITE};
 export const ranchInterior=new THREE.Group();
 ranchInterior.visible=false;
 
@@ -440,7 +447,7 @@ function furnishInterior(g: THREE.Object3D,ix: number,iz: number,live: boolean):
 
 // monta tudo no mapa (chamado por js/world/world.ts). Empurra colisões em `solids`.
 export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[]): void{
-  const cx=RANCH_CX,cz=RANCH_CZ;
+  const cx=M_CX,cz=M_CZ; // model frame (the Site places it)
 
   // ===== EXTERIOR: casa de fazenda tradicional (lambris claros, telhado de
   // duas águas, alpendre, chaminé, venezianas e quinas brancas) =====
@@ -603,7 +610,7 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   walk.rotation.x=-Math.PI/2;walk.position.set(cx,.035,fz-3.55);walk.receiveShadow=true;ranchExterior.add(walk);
 
   // garagem ao lado oeste (open front pro norte), centrada em (cx-11, cz)
-  const gx=GARAGE_PAD.x,gz=GARAGE_PAD.z;
+  const gx=M_GARAGE.x,gz=M_GARAGE.z;
   const gWall=matte({color:0xe7d9bb,roughness:.95});
   // três paredes (fundo + duas laterais), frente aberta pro carro entrar
   const back=new THREE.Mesh(new THREE.BoxGeometry(6,3.4,.3),gWall);
@@ -625,7 +632,7 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   // Depois da compra ela some por completo (js/places/property.ts apenas alterna
   // .visible — nunca remove da cena —, então pode entrar no grupo do exterior).
   ranchFx.saleSign=makeSign(false);
-  ranchFx.saleSign.position.set(RANCH_SALE.x,0,RANCH_SALE.z);ranchExterior.add(ranchFx.saleSign);
+  ranchFx.saleSign.position.set(M_SALE.x,0,M_SALE.z);ranchExterior.add(ranchFx.saleSign);
   ranchFx.soldSign=null;
   // seta quicando na porta (só visível quando comprada — js/places/property.ts)
   ranchFx.facadeArrow=makeDoorArrow();
@@ -634,8 +641,7 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   // Exterior montado: entra na cena como UM objeto, com a matriz congelada e
   // registrado pro corte por névoa. A setinha da porta (property.ts anima o .y
   // quando a casa é comprada) volta a recompor a matriz por frame.
-  scene.add(ranchExterior);
-  registerRuralStatic(ranchExterior,cx,cz);
+  registerRuralStatic(ranchExterior,RANCH_CX,RANCH_CZ); // freeze (still unparented) + far cull
   ranchFx.facadeArrow.matrixAutoUpdate=true;
   // Funde os ~185 meshes soltos do rancho em um punhado de draw calls (era a maior
   // geometria estática não-fundida do campo). A fachada continua um grupo próprio
@@ -644,14 +650,18 @@ export function addRanchHouse(solids: {x0:number;x1:number;z0:number;z1:number;h
   mergeStatic(facade,new Set([ranchFx.facadeArrow as THREE.Object3D]));
   if(ranchFx.saleSign)mergeStatic(ranchFx.saleSign);
   mergeStatic(ranchExterior,new Set<THREE.Object3D>([facade,ranchFx.saleSign as THREE.Object3D]));
+  // merged in the model frame while unparented; now it goes onto its town lot
+  RANCH_SITE.group.add(ranchExterior);
+  // paddock fence round the yard (the garage approach stays open)
+  for(const[ax,az,bx,bz]of[[cx-16,cz-16,cx+16,cz-16],[cx+16,cz-16,cx+16,cz+16],[cx+16,cz+16,cx-2,cz+16]]){
+    const a=RANCH_SITE.P(ax,az),b=RANCH_SITE.P(bx,bz);addFenceRun(a.x,a.z,b.x,b.z);
+  }
 
   // colisões: corpo da casa + três paredes da garagem (frente aberta)
-  solids.push(
-    {x0:cx-6,x1:cx+6,z0:cz-5,z1:cz+5,h:5.3},        // casa
-    {x0:gx-3,x1:gx+3,z0:gz+3.35,z1:gz+3.65,h:3.4},  // fundo da garagem
-    {x0:gx-3.15,x1:gx-2.85,z0:gz-3.5,z1:gz+3.5,h:3.4}, // lateral oeste
-    {x0:gx+2.85,x1:gx+3.15,z0:gz-3.5,z1:gz+3.5,h:3.4}, // lateral leste
-  );
+  RANCH_SITE.box({x0:cx-6,x1:cx+6,z0:cz-5,z1:cz+5},5.3);         // casa
+  RANCH_SITE.box({x0:gx-3,x1:gx+3,z0:gz+3.35,z1:gz+3.65},3.4);   // fundo da garagem
+  RANCH_SITE.box({x0:gx-3.15,x1:gx-2.85,z0:gz-3.5,z1:gz+3.5},3.4); // lateral oeste
+  RANCH_SITE.box({x0:gx+2.85,x1:gx+3.15,z0:gz-3.5,z1:gz+3.5},3.4); // lateral leste
 
   // ===== INTERIOR (sala a ~600m, no Group liga/desliga) =====
   const ix=INT_CENTER.x,iz=INT_CENTER.z;

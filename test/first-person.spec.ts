@@ -4,7 +4,7 @@
 // src/js/actors/doom-physics.ts). Real-time loop, so the tolerance is loose.
 import { test, expect } from './support/game.ts';
 
-const OPEN = { x: 196, z: 4 };   // off-road race start: open prairie, nothing to bump into
+const OPEN = { x: 4890, z: 6300 };   // off-road race start: open pasture south of the town, nothing to bump into
 
 async function measureSpeed(game: any, keys: string[]): Promise<number> {
   await game.inPage((p: { x: number; z: number }) => (window as any).__test.teleport(p.x, p.z, p.x, p.z + 100), OPEN);
@@ -40,7 +40,7 @@ test('first person on foot moves at DOOM speeds', async ({ game }) => {
 // (__test.vmArms) over a second and compares how far they travel.
 test('first-person arms sway while walking', async ({ game }) => {
   const page = game.page;
-  await page.evaluate(() => (window as any).__test.teleport(196, 4, 196, 104)); // open prairie
+  await page.evaluate(() => (window as any).__test.teleport(4890, 6300, 4890, 6400)); // open prairie
   await page.waitForTimeout(1500);
   const travel = async (): Promise<number> => {
     const xs: number[] = [], ys: number[] = [];
@@ -64,7 +64,7 @@ test('first-person arms sway while walking', async ({ game }) => {
 // Firing kicks the arms back with the gun's recoil (not just the weapon).
 test('first-person arms recoil when firing', async ({ game }) => {
   const page = game.page;
-  await page.evaluate(() => (window as any).__test.teleport(196, 4, 196, 104));
+  await page.evaluate(() => (window as any).__test.teleport(4890, 6300, 4890, 6400));
   await page.evaluate(() => (window as any).__test.giveGun());
   await page.waitForTimeout(1200);
   const rest = await page.evaluate(() => (window as any).__test.vmArms().z);

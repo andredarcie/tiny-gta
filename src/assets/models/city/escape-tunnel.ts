@@ -14,8 +14,9 @@ export const TUNNEL_CENTER={x:(X0+X1)/2,z:TZ};
 export const TUNNEL_START ={x:-716,z:TZ};       // ladder bottom (under the prison hole)
 export const TUNNEL_GATE  ={x:-684,z:TZ};       // metal gate (-> fort)
 export const TUNNEL_BOUNDS={x0:X0-1,x1:X1+1,z0:TZ-ZW-1,z1:TZ+ZW+1,y1:WH+1};
-export const FORT_BUTTON={x:606,z:88};          // floor plate in the fort courtyard (-> tunnel)
-export const FORT_EXIT  ={x:606,z:82};          // where the gate drops you (a few m off the button)
+// the fort's courtyard plate (-> tunnel) and where the gate drops you, out in the serra
+import {FORT_BUTTON,FORT_EXIT} from '../rural/abandoned-fort.ts';
+export {FORT_BUTTON,FORT_EXIT};
 
 const dirtM =matte({color:0x6e5538,roughness:1});
 const dirtDk=matte({color:0x49381f,roughness:1});

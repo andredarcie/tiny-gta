@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {nodeX,irand,rand,groundHeight} from '@/core/constants.ts';
+import {rand,irand,groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {NPC_HP_CIVILIAN} from '@/core/difficulty.ts';
 import {scene} from '@/core/engine.ts';
@@ -9,25 +9,25 @@ import {collideStatics,addWanted} from '@/core/physics.ts';
 import {thud} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {playerPos,cur} from '@/actors/player.ts';
-import {spawnDrop} from '@/story/missions.ts';
+import {spawnDrop} from '@/activities/courier.ts';
 import {makeBloodPuddle} from '../../assets/models/effects/blood-puddle.ts';
 import {Npc,NPC_SEED} from '@/actors/npc.ts';
 import {makeRng} from '@/core/rng.ts';
 import {npcDefsByKind} from '@/core/npc-defs.ts';
-import {CITY_NEIGHBORHOODS,randomBlockIn} from '@/world/neighborhoods.ts';
+import {CITY_NEIGHBORHOODS,neighborhoodStreets,inNeighborhood} from '@/world/neighborhoods.ts';
 import type {Neighborhood} from '@/world/neighborhoods.ts';
+import {LaneRunner,randomRoadPoint,nearestRoad,edges,walkOff,type RoadPos} from '@/world/divinolandia/nav.ts';
 
 // ============================================================================
-// Pedestrians — 42 PERSISTENT city civilians with fixed identities.
-// Each ped belongs to a neighborhood (one of 4 city quadrants) and only ever
-// walks within its district. On death they go to the hospital (60 s) then
-// return to their neighborhood, keeping the streets populated at all times.
+// Pedestrians — the PERSISTENT town civilians with fixed identities (npcs.json).
+// Each ped belongs to a Divinolândia neighbourhood (world/neighborhoods.ts) and only
+// ever walks the sidewalks of that area's streets, turning at random at the corners
+// (a LaneRunner on the street graph, offset past the kerb). On death they go to the
+// hospital (60 s) then return to their neighbourhood.
 // ============================================================================
 
 export class Ped extends Npc{
-  block!:[number,number];
-  corner!:number;
-  dir!:number;
+  run!:LaneRunner;  // the sidewalk being walked (the "carrot" a few steps ahead)
   aiState!:string; // 'walk'|'idle'|'panic'|'flee'|'weed'  (dead/grounded live on the base Npc)
   baseState!:string; // 'walk' or 'idle' — what they return to after a transient state
   t!:number;
@@ -44,20 +44,23 @@ export class Ped extends Npc{
   }
   override pathTarget():{x:number;z:number}|null{
     if(this.aiState==='weed')return null; // standing still, flagging you down
-    const c=pedCorner(this); // the street corner it is currently walking toward
-    return{x:c[0],z:c[1]};
+    const c=this.run.at(4,_carrot); // a few steps along the sidewalk it is walking
+    return{x:c.x,z:c.z};
   }
   // Called by the weed-farm deal logic after a sale: back to walking, on cooldown.
   markWeedSold(){this.weedCdT=WEED_DEAL_CD;this.aiState='walk';}
 }
 
-const _corner:[number,number]=[0,0];
-export function pedCorner(p:Ped):[number,number]{
-  const[i,j]=p.block;
-  const xa=nodeX(i)+9,xb=nodeX(i+1)-9,za=nodeX(j)+9,zb=nodeX(j+1)-9;
-  _corner[0]=(p.corner===1||p.corner===2)?xb:xa;
-  _corner[1]=p.corner>=2?zb:za;
-  return _corner;
+const _carrot:RoadPos={x:0,z:0,dx:0,dz:0};
+// a sidewalk runner on a random street of the neighbourhood (or, with `at`, the street
+// nearest to that world point — after a panic run, so they pick up where they are)
+function sidewalkRunner(nh:Neighborhood,rnd:()=>number=Math.random,at?:{x:number;z:number}):LaneRunner{
+  const f=neighborhoodStreets(nh);
+  const hit=at?nearestRoad(at.x,at.z,80,f):null;
+  if(hit){const dir:1|-1=rnd()<.5?1:-1;return new LaneRunner(hit.e,dir,dir>0?hit.s:edges[hit.e].len-hit.s,{off:walkOff,f,round:2,rnd});}
+  const sp=randomRoadPoint({f,rnd,inPlay:false});
+  const dir:1|-1=rnd()<.5?1:-1;
+  return new LaneRunner(sp.e,dir,dir>0?sp.s:edges[sp.e].len-sp.s,{off:walkOff,f,round:2,rnd});
 }
 
 export const peds:Ped[]=[];
@@ -119,33 +122,24 @@ export function addBloodPuddle(x:number,z:number){
   while(bloodPuddles.length>36)scene.remove(bloodPuddles.shift()!);
 }
 
-// Build 42 peds distributed across the 4 city neighborhoods (11+11+10+10).
-// DETERMINISTIC: a fixed-seed stream drives every identity/placement choice, so
-// every player gets the exact same 42 named civilians in the same homes. The 50/50
-// male/female split is computed up-front across the whole population.
-// The city civilians are DEFINED in npcs.json — a fixed roster, no random identities
-// and nobody spawning "from beyond". Each 'civilian' entry becomes one Ped placed in
-// its named neighborhood; name / sex / likes (e.g. smoke_weed) come straight from the
-// file, so every player meets the same people. Position is seeded for determinism.
+// The town civilians are DEFINED in npcs.json — a fixed roster, no random identities
+// and nobody spawning "from beyond". Each 'civilian' entry becomes one Ped placed on a
+// sidewalk of its named neighbourhood; name / sex / likes (e.g. smoke_weed) come
+// straight from the file, so every player meets the same people. Placement is seeded.
 const pedRng=makeRng(NPC_SEED+1);
 for(const def of npcDefsByKind('civilian')){
   const nh=CITY_NEIGHBORHOODS.find(n=>n.name===def.neighborhood);
   if(!nh)continue; // unknown neighborhood in the data — skip rather than misplace
-  const[bi,bj]=randomBlockIn(nh,pedRng);
-  const tmpCorner=pedRng.irand(0,3);
-  const xa=nodeX(bi)+9,xb=nodeX(bi+1)-9,za=nodeX(bj)+9,zb=nodeX(bj+1)-9;
-  const cx=(tmpCorner===1||tmpCorner===2)?xb:xa;
-  const cz=tmpCorner>=2?zb:za;
+  const run=sidewalkRunner(nh,pedRng.random);
+  const c=run.at(0,_carrot);
   const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
-  g.position.set(cx+pedRng.rand(-2,2),0,cz+pedRng.rand(-2,2));
+  g.position.set(c.x,groundHeight(c.x,c.z),c.z);
   const p=new Ped(g,{
     kind:'ped',hp:NPC_HP_CIVILIAN,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
     punchToDown:3,showLabel:true,area:nh.name,
     gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,dialogues:def.dialogues,
   });
-  p.block=[bi,bj];
-  p.corner=tmpCorner;
-  p.dir=pedRng.random()<.5?1:-1;
+  p.run=run;
   p.baseState=def.state==='idle'?'idle':'walk'; // some people just stand around
   p.aiState=p.baseState;
   p.t=pedRng.rand(0,6);
@@ -170,12 +164,11 @@ export function ejectDriver(x:number,z:number,heading:number){
   }
   if(!best)return;
   const right=new THREE.Vector3(Math.cos(heading),0,-Math.sin(heading));
-  best.g.position.set(x,0,z).addScaledVector(right,1.6);
+  best.g.position.set(x,groundHeight(x,z),z).addScaledVector(right,1.6);
   best.g.rotation.set(0,heading,0);
   best.aiState='panic';best.panicT=rand(3.5,5);best.t=0;
-  // when the panic ends it walks back to a block inside its OWN neighborhood
-  best.block=randomBlockIn(best.neighborhood);
-  best.corner=irand(0,3);
+  // when the panic ends it walks back to a sidewalk inside its OWN neighbourhood
+  best.run=sidewalkRunner(best.neighborhood);
 }
 
 export function updatePeds(dt:number){
@@ -188,10 +181,9 @@ export function updatePeds(dt:number){
       p.hospitalT-=dt;
       p.g.visible=false;
       if(p.hospitalT<=0){
-        const[bi,bj]=randomBlockIn(p.neighborhood);
-        p.block=[bi,bj];p.corner=irand(0,3);
-        const c=pedCorner(p);
-        p.revive(c[0]+rand(-2,2),c[1]+rand(-2,2));
+        p.run=sidewalkRunner(p.neighborhood);
+        const c=p.run.at(0,_carrot);
+        p.revive(c.x,c.z);
         p.aiState=p.baseState;
         Entities.animatePed?.(p.g,0,0);
       }
@@ -275,21 +267,19 @@ export function updatePeds(dt:number){
         p.t+=dt;p.g.position.y=groundHeight(p.g.position.x,p.g.position.z);
         Entities.animatePed?.(p.g,p.t,.05);continue;
       }else{
-        const c=pedCorner(p);tgt.set(c[0],0,c[1]);
+        // walk the sidewalk: the carrot moves along it at walking pace while the ped is
+        // close to it, and waits when the ped was pushed away (they walk back to it)
+        const c=p.run.at(0,_carrot);
+        if(Math.hypot(c.x-p.g.position.x,c.z-p.g.position.z)<1.6)p.run.advance(p.speed*dt*1.05);
+        const n=p.run.at(1.2,_carrot);tgt.set(n.x,0,n.z);
       }
     }
     const d=_d.subVectors(tgt,p.g.position);d.y=0;
     const dist=d.length();
-    if(p.aiState==='walk'&&dist<1){
-      p.corner=(p.corner+p.dir+4)%4;
-      // If somehow outside neighborhood bounds, snap back.
-      const[bi,bj]=p.block;
-      if(bi<p.neighborhood.iMin||bi>p.neighborhood.iMax||bj<p.neighborhood.jMin||bj>p.neighborhood.jMax){
-        const[nbi,nbj]=randomBlockIn(p.neighborhood);
-        p.block=[nbi,nbj];p.corner=irand(0,3);
-      }
-      continue;
-    }
+    if(dist<.05)continue;
+    // a ped that panicked out of its neighbourhood picks up the nearest sidewalk back home
+    if(p.aiState==='walk'&&dist>40&&!inNeighborhood(p.neighborhood,p.g.position.x,p.g.position.z))
+      p.run=sidewalkRunner(p.neighborhood,Math.random,p.g.position);
     d.normalize();
     const spd=p.aiState==='flee'?5.5:p.aiState==='panic'?6.8:p.speed;
     p.g.position.addScaledVector(d,spd*dt);

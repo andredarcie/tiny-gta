@@ -5,7 +5,9 @@ import {scene} from '@/core/engine.ts';
 import {playerPos,cur,idleCars} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
-import {N,nodeX,clamp,groundHeight} from '@/core/constants.ts';
+import {clamp,groundHeight} from '@/core/constants.ts';
+import {SITE_TABLE} from '@/world/divinolandia/sites-table.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeCarCrusher} from '../../assets/models/props/car-crusher.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -22,10 +24,10 @@ new MiniGame({id:MiniGameId.CAR_CRUSHER,name:'Scrap Crusher',exclusive:false});
 // desce sobre o carro, ele é achatado, vira sucata e some — pagando dinheiro.
 // Rústico e funcional: esmaga o carro comum do jogador (recusa veículos únicos).
 
-// posição da prensa: ferro-velho na ORLA SUL (areia, fora da rua). Antes ficava
-// no centro do cruzamento (-88,-88) — em cima da viatura do vigilante e "no meio
-// da rua". Agora é um pátio industrial à parte, com folga dos outros mini games.
-export const PAD={x:-120,z:198};
+// the crusher stands in a scrapyard by the rodovia west of the town, on its own levelled
+// yard (sites-table.ts 'crusher'), its open bed toward the road
+const SITE=SITE_TABLE.crusher;
+export const PAD={x:SITE.x+DIV_OX,z:SITE.z+DIV_OZ};
 const PAD_RANGE=4;        // raio da zona de esmagamento (m)
 const STOP_SPEED=3;       // velocidade máxima pra a ação aparecer (carro "parado")
 
@@ -33,8 +35,8 @@ const STOP_SPEED=3;       // velocidade máxima pra a ação aparecer (carro "pa
 const crusher=makeCarCrusher();
 const PAD_Y=groundHeight(PAD.x,PAD.z);
 crusher.position.set(PAD.x,PAD_Y,PAD.z);
-// vira a "boca" da cama (lado -x, sem batente) pra rua de baixo, só por estética
-crusher.rotation.y=0;
+// turn the bed's open mouth (model -x, no end stop) toward the road
+crusher.rotation.y=SITE.face+Math.PI/2;
 scene.add(crusher);
 const press=crusher.userData.press;            // placa que desce
 const PRESS_UP=press.userData.upY;             // altura de repouso da placa
@@ -234,7 +236,7 @@ export function updateCarCrusher(dt: number){
       // achata o carro: scale.y 1 → ~0.14 e abaixa pra encostar no chão
       const sy=_car0.scaleY+(0.14-_car0.scaleY)*e;
       car.g.scale.y=sy;
-      car.g.position.y=_car0.y*sy;     // mantém a base no chão enquanto achata
+      car.g.position.y=_car0.y;        // the base stays on the ground while it flattens (origin at the wheels)
     }
     if(k>=1){
       payAndScrap();                   // impacto: paga e marca como sucata

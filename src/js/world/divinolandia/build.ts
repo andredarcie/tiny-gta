@@ -15,7 +15,6 @@ import {refs} from '@/core/state.ts';
 import {setDivinoTerrain} from '@/core/terrain.ts';
 import {player,playerCar,idleCars,cameraRig} from '@/actors/player.ts';
 import {message} from '@/ui/hud.ts';
-import {HOSP_SPAWN_OUT} from '../../../assets/models/city/hospital.ts';
 import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
 import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt} from './data.ts';
 import {addObb,setPlayBounds} from './collide.ts';
@@ -38,6 +37,7 @@ import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildJoseAugustoMachado} from './ruas/build-rua.ts';
 import {RUA as RUA_JAM} from './ruas/jose-augusto-machado.ts';
 import {planRoadPoles} from './postes-rua.ts';
+import {SITE_TABLE,onSiteLot,siteLotPolygon,type SiteId} from './sites-table.ts';
 
 type P2=[number,number];
 const H=divinoHeight;
@@ -185,10 +185,7 @@ export function buildDivinolandia():void{
     const [hx,hz]=w(L.hospital),th=yawTo(hx,hz,DIV_OX,DIV_OZ),y=H(hx,hz);
     const hosp=Hospital.build();hosp.position.set(hx,y,hz);hosp.rotation.y=th;placeStatic(hosp);
     for(const[cx,cz,bw,bd,ht]of HOSP_FOOT)obbFromModel(hx,hz,th,cx,cz,bw,bd,y+ht);
-    // waking up after WASTED: step out at the hospital door (the classic-map hospital
-    // interior is reused; its exit point is redirected here)
-    const ox=Math.sin(th)*16,oz=Math.cos(th)*16;
-    HOSP_SPAWN_OUT.x=hx+ox;HOSP_SPAWN_OUT.z=hz+oz;
+    // its glass entrance is the street door of the game's hospital (models/city/hospital.ts)
   }
 
   // ---------- Morro da Torre: the tower + the mirante deck facing the town ----------
@@ -218,6 +215,7 @@ export function buildDivinolandia():void{
   for(let i=0;i<D.houses.length;i++){
     const[hx0,hz0,hw,hd,rot,fl,c,roof,shop]=D.houses[i];
     if(hx0>105&&hx0<116&&hz0>207&&hz0<224)continue;
+    if(houseOnSite(hx0,hz0,hw,hd,rot))continue;           // the lot of a game place (sites-table.ts)
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
     const corner=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
     const hs=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
@@ -238,7 +236,8 @@ export function buildDivinolandia():void{
         enabled:line.sidewalk||arterial&&townAt(mid[0],mid[1])>0};
     }),
     houses:D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
-    protectedAreas:[...D.areas,...D.plazas].map(area=>area.pts.map(point=>w(point))),
+    protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(SITE_TABLE) as SiteId[]).map(id=>siteLotPolygon(id,3))]
+      .map(area=>area.map(point=>w(point))),
     surveyedStreet:RUA_JAM,
   }).map(route=>route.map(site=>({...site,y:H(site.x,site.z)})));
   const poles=poleRoutes.flat();
@@ -246,10 +245,16 @@ export function buildDivinolandia():void{
   for(const pole of poles)addObb(pole.x,pole.z,.36,.36,0,pole.y+10.5);
 
   // ---------- vegetation ----------
-  for(let i=0;i<D.trees.length;i+=3){const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});}
+  for(let i=0;i<D.trees.length;i+=3){
+    if(onSiteLot(D.trees[i],D.trees[i+1],3))continue;
+    const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});
+  }
   for(const g of makeTrees(trees)){scene.add(g);cullGroups.push({g,r:900});}
   const cof:{x:number;y:number;z:number;s:number;r:number}[]=[];
-  for(let i=0;i<D.coffee.length;i+=3){const[x,z]=w([D.coffee[i],D.coffee[i+1]]);cof.push({x,y:H(x,z)-.15,z,s:1,r:D.coffee[i+2]});}
+  for(let i=0;i<D.coffee.length;i+=3){
+    if(onSiteLot(D.coffee[i],D.coffee[i+1],3))continue;
+    const[x,z]=w([D.coffee[i],D.coffee[i+1]]);cof.push({x,y:H(x,z)-.15,z,s:1,r:D.coffee[i+2]});
+  }
   for(const g of makeCoffee(cof)){scene.add(g);cullGroups.push({g,r:650});}
 
   // ---------- parked cars on the streets around the Matriz (enter with E) ----------
@@ -283,6 +288,14 @@ export function updateDivinolandia(px:number,pz:number):void{
 }
 
 // ---------- helpers ----------
+// a generated house touching a game place's lot (its centre or any corner on it)
+function houseOnSite(x:number,z:number,hw:number,hd:number,rot:number):boolean{
+  if(onSiteLot(x,z))return true;
+  const cs=Math.cos(rot),sn=Math.sin(rot);
+  for(const[u,v]of[[-1,-1],[1,-1],[1,1],[-1,1]])
+    if(onSiteLot(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs,0))return true;
+  return false;
+}
 function pointIn(p:P2,poly:P2[],inset:number):boolean{
   let ins=false;
   for(let i=0,j=poly.length-1;i<poly.length;j=i++){

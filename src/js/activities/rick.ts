@@ -3,7 +3,9 @@ import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {groundHeight,rand} from '@/core/constants.ts';
 import {playerPos} from '@/actors/player.ts';
-import {solids} from '@/world/world.ts';
+import {addObb} from '@/world/divinolandia/collide.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {message} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
 import {playCutscene} from '@/story/cutscene.ts';
@@ -18,14 +20,13 @@ import {makeRng} from '@/core/rng.ts';
 import type * as THREE from 'three';
 
 // ============================================================================
-// MISSÃO SECRETA DO RICK — acampamento na zona rural, no pé sul da montanha (do
-// lado OPOSTO à casa de campo, que fica em z=-80). Rick é um eremita hippie que
-// pede pra caçar os "doentes da floresta": criaturinhas verdes escondidas pela
-// zona rural. SEM blip no mapa, SEM seta de navegação — é procurar de verdade.
-// Everything here is separate from the story (js/story/story.ts): only the cut-scene
-// engine (js/story/cutscene.ts) is reused.
+// RICK'S SECRET MISSION — a camp in the woods off the dirt road that climbs the Morro
+// da Torre, south of Divinolândia. Rick is a hippie hermit who asks you to hunt the
+// "forest sickos": little green creatures hidden around the countryside. NO map blip,
+// NO navigation arrow — you really search. Only the cut-scene engine
+// (js/story/cutscene.ts) is shared with the rest of the game.
 // ============================================================================
-const CAMP={x:474,z:62};       // centro do acampamento, no sopé sul da montanha
+const CAMP=roadside(600,1800,18); // camp centre, a little way into the woods off the road
 const TOTAL=5;                  // doentes a caçar
 const REWARD=800;
 const TALK_R=3.2;              // distância pra falar com o Rick
@@ -45,15 +46,13 @@ const OUTRO=[
   "Take this for your trouble. And hey... this stays between us and the trees.",
 ];
 
-// Esconderijos curados pela zona rural: atrás de fazendas, dentro das roças, no
-// sopé da montanha, no canto distante da península. Pequeno jitter no spawn.
+// Hiding places across the countryside round the town (town-local metres): among the
+// coffee rows south-west, the riverbank woods south-east, the far side of the river
+// north-west, the slope below the Morro da Torre and the pasture north-east. Small
+// jitter at spawn.
 const SPOTS=[
-  {x:340,z:-20},   // atrás da fazenda noroeste
-  {x:416,z:70},    // no meio da roça nordeste
-  {x:486,z:46},    // no sopé sul da montanha, junto às pedras
-  {x:558,z:-96},   // canto distante da península, no matagal
-  {x:350,z:-55},   // na beira da roça sudoeste
-];
+  {x:-700,z:520},{x:1250,z:700},{x:-1150,z:-400},{x:350,z:1300},{x:950,z:-650},
+].map(p=>({x:p.x+DIV_OX,z:p.z+DIV_OZ}));
 
 // ---- monta o acampamento e o Rick (uma vez, no load do módulo) ----
 function place(obj: THREE.Object3D,x: number,z: number,ry=0){
@@ -83,8 +82,8 @@ place(woodPile.build(),CAMP.x+2.0,CAMP.z-1.5,.6);
 for(const[dx,dz]of[[1.7,.4],[-1.1,1.7],[-.3,-1.8]])
   place(logSeat.build(),CAMP.x+dx,CAMP.z+dz,Math.atan2(dx,dz)+Math.PI/2);
 
-// colisão só da barraca (o resto é decorativo, dá pra passar perto do fogo)
-solids.push({x0:CAMP.x-3.7,x1:CAMP.x-1.3,z0:CAMP.z-2.7,z1:CAMP.z+.3,h:1.5});
+// collision for the tent only (the rest is decorative, you can walk up to the fire)
+addObb(CAMP.x-2.5,CAMP.z-1.2,2.4,3,0,groundHeight(CAMP.x,CAMP.z)+1.5);
 
 // ---- mission state ----
 // A forest sicko extends Npc (so 100% of NPCs share the base class) but with
@@ -164,9 +163,8 @@ export function getRickState(){
 }
 
 export function updateRick(dt: number){
-  // Perf: a fogueira do acampamento (~29 draws) fica no extremo leste (x=474). Da
-  // cidade ela estava sendo desenhada a 300m+ atrás da névoa. Só desenha/anima
-  // dentro de ~155m — é o acampamento SECRETO do Rick, então não custa visual.
+  // Perf: the campfire (~29 draws) is only drawn/animated within ~155 m — it is
+  // Rick's SECRET camp, far out of town, so it costs nothing visible.
   const pFire=playerPos();
   const nearCamp=(pFire.x-CAMP.x)*(pFire.x-CAMP.x)+(pFire.z-CAMP.z)*(pFire.z-CAMP.z)<155*155;
   if(fire.visible!==nearCamp)fire.visible=nearCamp;

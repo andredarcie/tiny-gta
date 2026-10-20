@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import {EffectComposer,RenderPass,EffectPass,BloomEffect,ToneMappingEffect,ToneMappingMode,SMAAEffect,SMAAPreset} from 'postprocessing';
-import {makeSea} from '../../assets/models/environment/sea.ts';
 import {makeClouds} from '../../assets/models/environment/clouds.ts';
 
 export const canvas=document.getElementById('game') as HTMLCanvasElement;
@@ -100,12 +99,6 @@ dlight.shadow.camera.top=66;dlight.shadow.camera.bottom=-66;
 dlight.shadow.camera.far=420;dlight.shadow.bias=-.0004;dlight.shadow.normalBias=.04;
 dlight.shadow.radius=3; // PCFSoft kernel spread
 scene.add(dlight);scene.add(dlight.target);
-
-// O mar é um disco GIGANTE (raio 1400) centrado na origem — ele se estende por
-// baixo da região dos ambientes internos (que vivem ~600m fora do mapa).
-// Fica exportado porque js/world/interior.ts esconde as camadas externas enquanto
-// qualquer interior está ativo.
-export const sea=makeSea();scene.add(sea);
 
 export const clouds:THREE.Sprite[]=[];
 {

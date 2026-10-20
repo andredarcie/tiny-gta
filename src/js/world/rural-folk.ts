@@ -1,4 +1,5 @@
-import {rand,wrapA,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {rand,wrapA,groundHeight} from '@/core/constants.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {makeRedneck} from '../../assets/models/characters/redneck.ts';
 import * as Entities from '@/core/entities.ts';
 import {collideStatics} from '@/core/physics.ts';
@@ -10,7 +11,7 @@ import {makeRng} from '@/core/rng.ts';
 import {npcDefsByKind} from '@/core/npc-defs.ts';
 import type * as THREE from 'three';
 
-// Ambient rural NPCs ("rednecks") living across the eastern peninsula. Each one now
+// Ambient rural NPCs ("rednecks") living on the sítios round Divinolândia. Each one now
 // EXTENDS the shared Npc base (js/actors/npc.ts), so it inherits the COMMON combat
 // behaviour for free: it takes bullets / punches / explosions / fire, dies in a
 // ragdoll tumble with a blood pool and a little dropped cash (+1 wanted star for
@@ -41,7 +42,7 @@ class RuralFolk extends Npc{
   constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string,likes?:string[],dialogues?:string[]){
     // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
     super(g,{kind:'rural',hp:NPC_HP_CIVILIAN,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
-      area:role==='town'?'Pine Hollow':'Countryside',gender,name,likes,dialogues});
+      area:role==='town'?'Sítios':'Zona Rural',gender,name,likes,dialogues});
     this.role=role;
     this.home={x:g.position.x,z:g.position.z};
     this.wander=role==='farm'?14:11;
@@ -67,19 +68,18 @@ class RuralFolk extends Npc{
 export const folk:RuralFolk[]=[];
 const CULL2=120*120; // perf: 150→120 (rednecks distantes são SkinnedMesh de ~7930 tris; névoa rural ~150 os cobre)
 
-// Home anchors [x,z,role]. Each folk wanders a patch around its anchor. 'farm' folk
-// also tend the fields; 'town' folk loiter the Pine Hollow square (cx 650). The
-// abandoned fort (~606,88) is left deserted on purpose — no folk there. Farm spots
-// stay at x>=345 so nobody stands in the off-road race circuit (x<=320, |z|<=84).
-const spots:[number,number,string][]=[
-  // Pine Hollow village square (town folk)
-  [641,5,'town'],[660,7,'town'],[650,-7,'town'],[632,3,'town'],[668,-4,'town'],
-  // farms and fields (farm folk)
-  [360,20,'farm'],[430,26,'farm'],[470,-30,'farm'],[352,42,'farm'],[455,34,'farm'],
-];
+// Home anchors [x,z,role] (town-local). Each folk wanders a patch around its anchor.
+// 'town' folk loiter round the general store at the south end of Rua Barão do Rio
+// Branco; 'farm' folk tend the coffee rows by the sítio on the hospital road and out
+// south-east. The ruined fort up the serra is left deserted on purpose, and nobody
+// stands in the off-road circuit (centred at (0,1300)).
+const spots:[number,number,string][]=([
+  [-140,490,'town'],[-170,500,'town'],[-130,455,'town'],[-185,470,'town'],[-150,515,'town'],
+  [-175,845,'farm'],[-235,805,'farm'],[690,640,'farm'],[720,600,'farm'],[660,610,'farm'],
+] as [number,number,string][]).map(([x,z,r])=>[x+DIV_OX,z+DIV_OZ,r]);
 
 // The country folk are DEFINED in npcs.json (kind 'rural') — fixed identities, no
-// random people. Each 'rural' entry takes one home spot below (Pine Hollow square
+// random people. Each 'rural' entry takes one home spot below (the general store
 // for town folk, the fields for farm folk); name / sex / likes come from the file.
 // Placement is seeded for determinism.
 const townSpots=spots.filter(s=>s[2]==='town');
@@ -87,14 +87,14 @@ const farmSpots=spots.filter(s=>s[2]==='farm');
 const folkRng=makeRng(NPC_SEED+2);
 let townI=0,farmI=0;
 for(const def of npcDefsByKind('rural')){
-  const role=def.neighborhood==='Pine Hollow'?'town':'farm';
+  const role=def.neighborhood==='Sítios'?'town':'farm';
   const spot=role==='town'?townSpots[townI++]:farmSpots[farmI++];
   if(!spot)continue; // more rural defs than home spots — skip the overflow
   const[x,z]=spot;
   const g=makeRedneck();
   const px=x+folkRng.rand(-1.5,1.5),pz=z+folkRng.rand(-1.5,1.5);
   g.position.set(px,groundHeight(px,pz),pz);
-  collideStatics(g.position,.4,SWIM_BOUND);   // never start stuck; SWIM_BOUND keeps the peninsula reachable
+  collideStatics(g.position,.4);   // never start stuck inside a house
   g.rotation.y=folkRng.rand(-Math.PI,Math.PI);
   folk.push(new RuralFolk(g,role,def.sex,def.name,def.likes,def.dialogues));
 }
@@ -197,7 +197,7 @@ export function updateRuralFolk(dt:number){
       const m=Math.hypot(ax,az)||1;ax/=m;az/=m;
       const spd=5.5;
       f.g.position.x+=ax*spd*dt;f.g.position.z+=az*spd*dt;
-      collideStatics(f.g.position,.4,SWIM_BOUND);
+      collideStatics(f.g.position,.4);
       turnTo(f,Math.atan2(ax,az),12,dt);
       f.phase+=dt*spd*2.2;
       f.g.position.y=groundHeight(f.g.position.x,f.g.position.z)+Math.abs(Math.sin(f.phase))*.06;
@@ -212,7 +212,7 @@ export function updateRuralFolk(dt:number){
       if(dist<.6||f.stateT<=0){startIdle(f);continue;}
       const nx=dxw/dist,nz=dzw/dist,spd=f.role==='farm'?1.2:1.5;
       f.g.position.x+=nx*spd*dt;f.g.position.z+=nz*spd*dt;
-      collideStatics(f.g.position,.4,SWIM_BOUND);
+      collideStatics(f.g.position,.4);
       turnTo(f,Math.atan2(nx,nz),8,dt);
       f.phase+=dt*spd*2.4;
       f.g.position.y=groundHeight(f.g.position.x,f.g.position.z)+Math.abs(Math.sin(f.phase))*.06;

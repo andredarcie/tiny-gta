@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
-import {scene} from '@/core/engine.ts'; // halo sprites are added individually (bakeProp skips sprites)
+import {Site} from '@/world/divinolandia/sites.ts';
 // Shared night-faded lamp materials (driven by js/world/daynight.ts): the ground-glow
 // pool + bulb tint + halo sprite that street lamps use. Reusing them lights the
 // grow yard at night for free — no real lights, no daynight edits.
@@ -29,10 +28,11 @@ const HALF_W=12, HALF_D=9;                // wall ring half-extents (a touch out
 const WALL_H=3, WALL_T=0.4;               // wall height / thickness
 export const GATE_HALF=1.9;               // half-width of the gate opening (north wall)
 
-// World placement: an open, deserted pocket of the south-east shore — clear of
-// the ploughed fields (x<=440), the ranch (550,-80), the mountain (x~509) and
-// the village (x~650). Flat ground; js/world/world.ts also keeps pines off it.
-export const WEED_CX=620, WEED_CZ=-90;
+// World placement: a hidden hollow across the Rio do Peixe, far north-west of the town
+// (sites-table.ts 'weedFarm'). The compound keeps its own axes (the Site only moves it
+// onto the levelled pad), so WEED_CX/CZ + the LOCAL offsets below are world positions.
+export const WEED_SITE=new Site('weedFarm',{cx:0,cz:0,front:0});
+export const WEED_CX=WEED_SITE.x, WEED_CZ=WEED_SITE.z;
 // Approach point just outside the gate (north). Kept for reference.
 export const WEED_GATE={x:WEED_CX, z:WEED_CZ+HALF_D+1.5};
 
@@ -570,26 +570,24 @@ export default {category:'Rural',label:'Weed farm',build,
 // Place the compound at WEED_CX/CZ, bake it, and register collision for the
 // perimeter WALLS (with the gate gap), the shack and the greenhouse. The yard,
 // beds, tap and sale table stay walkable. Called by world.js.
-export function addWeedFarm(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[]): void {
+export function addWeedFarm(): void {
   const g=build();
-  g.position.set(WEED_CX,-.02,WEED_CZ);
-  bakeProp(g);
-  // bloom halos on the flood-lamp bulbs (sprites can't bake — added to the scene,
+  g.position.set(0,-.02,0);
+  WEED_SITE.bake(g);
+  // bloom halos on the flood-lamp bulbs (sprites can't bake — they ride the site group,
   // invisible by day, faded in at night by the shared lampHaloMat)
   for(const f of FLOOD_POS){
     const lx=f.x+FLOOD_ARM*Math.cos(f.yaw), lz=f.z-FLOOD_ARM*Math.sin(f.yaw);
     const halo=new THREE.Sprite(lampHaloMat);
-    halo.position.set(WEED_CX+lx,FLOOD_H-.28,WEED_CZ+lz);halo.scale.set(2.6,2.6,1);
-    scene.add(halo);
+    halo.position.set(lx,FLOOD_H-.28,lz);halo.scale.set(2.6,2.6,1);
+    WEED_SITE.group.add(halo);
   }
-  const cx=WEED_CX,cz=WEED_CZ,T=WALL_T/2+.1;
-  solids.push(
-    {x0:cx-HALF_W-T,x1:cx-HALF_W+T,z0:cz-HALF_D,z1:cz+HALF_D,h:WALL_H}, // west
-    {x0:cx+HALF_W-T,x1:cx+HALF_W+T,z0:cz-HALF_D,z1:cz+HALF_D,h:WALL_H}, // east
-    {x0:cx-HALF_W,x1:cx+HALF_W,z0:cz-HALF_D-T,z1:cz-HALF_D+T,h:WALL_H}, // south
-    {x0:cx-HALF_W,x1:cx-GATE_HALF,z0:cz+HALF_D-T,z1:cz+HALF_D+T,h:WALL_H}, // north-west of gate
-    {x0:cx+GATE_HALF,x1:cx+HALF_W,z0:cz+HALF_D-T,z1:cz+HALF_D+T,h:WALL_H}, // north-east of gate
-    {x0:cx-7.5-2.5,x1:cx-7.5+2.5,z0:cz-8.3,z1:cz-4.1,h:2.9},  // shack
-    {x0:cx+6.5-2.0,x1:cx+6.5+2.0,z0:cz-8.9,z1:cz-2.3,h:1.9},  // greenhouse
-  );
+  const T=WALL_T/2+.1,box=(x0:number,x1:number,z0:number,z1:number,h:number):void=>WEED_SITE.box({x0,x1,z0,z1},h);
+  box(-HALF_W-T,-HALF_W+T,-HALF_D,HALF_D,WALL_H);         // west
+  box(HALF_W-T,HALF_W+T,-HALF_D,HALF_D,WALL_H);           // east
+  box(-HALF_W,HALF_W,-HALF_D-T,-HALF_D+T,WALL_H);         // south
+  box(-HALF_W,-GATE_HALF,HALF_D-T,HALF_D+T,WALL_H);       // north-west of gate
+  box(GATE_HALF,HALF_W,HALF_D-T,HALF_D+T,WALL_H);         // north-east of gate
+  box(-7.5-2.5,-7.5+2.5,-8.3,-4.1,2.9);                   // shack
+  box(6.5-2.0,6.5+2.0,-8.9,-2.3,1.9);                     // greenhouse
 }

@@ -4,9 +4,10 @@ import {state,input,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK,LIMB_HIT_DAMAGE,MELEE_DAMAGE} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
-import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
-import {isPark} from '@/world/world.ts';
+import {divData,DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
 import {blip,thud,gunshot,pistolShot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
@@ -71,22 +72,20 @@ const weaponPickups: THREE.Object3D[]=[];
 function makeWeaponPickup(x: number,z: number){
   const g=makePistolModel({pickup:true});
   g.scale.set(1.05,1.05,1.05);
-  g.position.set(x,.82,z);
-  g.userData.baseY=.82;
+  const y=groundHeight(x,z)+.82;
+  g.position.set(x,y,z);
+  g.userData.baseY=y;
   scene.add(g);
   weaponPickups.push(g);
 }
 
-for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  if(!isPark(i,j))continue;
-  const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE;
-  const tucked=Math.random()<.5?-1:1;
-  makeWeaponPickup(
-    x0+BLOCK*.5+tucked*rand(7,12),
-    z0+BLOCK*.5+rand(-11,11)
-  );
+// a pistol tucked away in each of the town's named squares (off-centre, by the trees)
+for(const p of divData.plazas){
+  if(!p.n)continue;
+  let cx=0,cz=0;for(const q of p.pts){cx+=q[0];cz+=q[1];}cx/=p.pts.length;cz/=p.pts.length;
+  const a=rand(0,Math.PI*2),r=rand(3,6);
+  makeWeaponPickup(DIV_OX+cx+Math.cos(a)*r,DIV_OZ+cz+Math.sin(a)*r);
 }
-if(!weaponPickups.length)makeWeaponPickup(nodeX(4)+12,nodeX(4)+12);
 
 // ----- INVENTÁRIO -----
 // `owned` é o que o jogador tem (sempre ao menos o punho); `curWeapon` é a
@@ -178,7 +177,8 @@ const rampage={active:false,end:0,kills:0};
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.
 const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Frenzy'});
 const missiles: MissileFx[]=[];
-const ROCKET_X=320,ROCKET_Z=0; // fim da estrada de terra, no pé da montanha
+// the rocket launcher lies by the Estádio Municipal, on the east edge of town
+const {x:ROCKET_X,z:ROCKET_Z}=roadside(divData.landmarks.estadio[0]-40,divData.landmarks.estadio[1]+30,3);
 const rocketPickup=makeRocketLauncherModel({pickup:true});
 rocketPickup.scale.set(1.4,1.4,1.4);
 rocketPickup.position.set(ROCKET_X,groundHeight(ROCKET_X,ROCKET_Z)+.95,ROCKET_Z);
@@ -942,7 +942,7 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
 }
 
 function makeExplosion(pos: THREE.Vector3){
-  const g=makeExplosionModel();g.position.copy(pos);g.position.y=1.2;scene.add(g);
+  const g=makeExplosionModel();g.position.copy(pos);g.position.y=groundHeight(pos.x,pos.z)+1.2;scene.add(g);
   explosions.push({g,t:0});
   thud(18);blip([80,52],.12,'sawtooth',.28);
 }
@@ -953,7 +953,7 @@ function makeExplosion(pos: THREE.Vector3){
 // explosions (RC Toyz) whose tiny car is always within the blast radius of its
 // own kills, which otherwise dents and brakes it every hit.
 function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
-  const bp=pos.clone().setY(.6);
+  const bp=pos.clone().setY(groundHeight(pos.x,pos.z)+.6);
   const pp=playerPos();
   if(!opts?.noSelf&&pp.distanceTo(pos)<5){
     // on foot: a heavy hit that falls off with distance (not an instant death)
@@ -1043,7 +1043,7 @@ function addImpact(pos: THREE.Vector3,hit: WeaponHit|{kind: string}|null){
   const missed=hit?.kind==='miss';
   const impactRadius=missed ? .16 : .28;
   const ring=makeImpactRing(impactRadius,missed?0xfff2b0:0xffd24a);
-  ring.position.set(pos.x,.08,pos.z);
+  ring.position.set(pos.x,groundHeight(pos.x,pos.z)+.08,pos.z);
   scene.add(ring);impacts.push({ring,t:0});
 }
 
@@ -1445,7 +1445,7 @@ export function updateWeapons(dt: number){
     m.g.position.addScaledVector(m.dir,step);
     m.dist+=step;
     _missileProbe.copy(m.g.position);
-    if(collideStatics(_missileProbe,.3,SWIM_BOUND)||m.dist>=m.range||
+    if(collideStatics(_missileProbe,.3)||m.dist>=m.range||
       m.g.position.y<=groundHeight(m.g.position.x,m.g.position.z)){ // encosta da montanha
       missileBlast(m.g.position.clone(),null);
       disposeGeometries(m.g);scene.remove(m.g);missiles.splice(i,1);continue;

@@ -7,13 +7,15 @@
 // checkpoints, so an autopilot there needs road-following — out of scope here).
 import { test, expect } from './support/game.ts';
 
-// Fixed off-road circuit from js/activities/offroad.ts (start gate + the 8 ordered
-// checkpoints; the last one, back by the gate, is the finish line).
-const OFFROAD_START = { x: 196, z: 4 };
-const OFFROAD_CPS = [
-  { x: 230, z: -54 }, { x: 280, z: -80 }, { x: 318, z: -46 }, { x: 320, z: 24 },
-  { x: 286, z: 72 }, { x: 238, z: 84 }, { x: 208, z: 48 }, { x: 198, z: 8 },
-];
+// Fixed off-road circuit from js/activities/offroad.ts: an oval on the pasture south of
+// Divinolândia (centre = town (0,1300) + the world offset), start gate on its west point
+// and 12 ordered checkpoints; the last one, back by the gate, is the finish line.
+const C = { x: 5000, z: 6300 }, RX = 110, RZ = 76;
+const OFFROAD_START = { x: C.x - RX, z: C.z };
+const OFFROAD_CPS = [.17, .33, .5, .67, .83, 1, 1.17, 1.33, 1.5, 1.67, 1.83, 1.97].map(k => {
+  const a = Math.PI + k * Math.PI;
+  return { x: C.x + Math.cos(a) * RX, z: C.z - Math.sin(a) * RZ };
+});
 
 test('AI drives and finishes the off-road race', async ({ game }) => {
   // get in the pink car, then set up at the off-road start gate

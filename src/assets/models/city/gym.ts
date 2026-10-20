@@ -4,17 +4,20 @@ import {scene} from '@/core/engine.ts';
 import {rand,pick} from '@/core/constants.ts';
 import {makePed,shirtColors} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from './door-arrow.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // Academia "IRON TEMPLE", no mesmo molde da boate (nightclub.js): prédio num
 // quarteirão reservado pelo world.js, com letreiro e entrada coberta. O interior
 // é um cenário separado a ~600m do mapa, dentro de um Group com visible=false,
 // renderizado só enquanto o jogador está lá (js/places/gym.ts liga/desliga no teleporte).
 
-export const GYM_I=7,GYM_J=1; // quarteirão reservado (nordeste da cidade)
+// Exterior authored around (154,-110), door on its west (-x) face; the Site puts it on
+// its Divinolândia lot (sites-table.ts) with the door to the street.
+export const GYM_SITE=new Site('gym',{cx:154,cz:-110,front:-Math.PI/2});
 
-// porta externa (fachada oeste, de frente pra rua) e spawn de saída
-export const GYM_DOOR={x:145.4,z:-110};
-export const GYM_SPAWN_OUT={x:143.4,z:-110};
+// porta externa (fachada oeste, de frente pra rua) e spawn de saída — coords de mundo
+export const GYM_DOOR=GYM_SITE.P(145.4,-110);
+export const GYM_SPAWN_OUT=GYM_SITE.P(143.4,-110);
 // interior: centro da sala, porta de saída e spawn de entrada
 export const INT_CENTER={x:-800,z:-200};
 export const INT_DOOR={x:-812.2,z:-200};
@@ -53,8 +56,8 @@ function makeDumbbell(len=1.2,r=.34,mat:THREE.Material=steelM):THREE.Group{
   return g;
 }
 
-export const gymFx:{lifters:{g:any,t:number,sp:number}[],sign:THREE.Mesh|null,exitArrow:THREE.Mesh|null,barbell:THREE.Group|null,facade:THREE.Group|null,facadeArrow:THREE.Mesh|null,footprint:{x0:number,x1:number,z0:number,z1:number}|null}={lifters:[],sign:null,exitArrow:null,barbell:null,
-  facade:null,facadeArrow:null,footprint:null};
+export const gymFx:{lifters:{g:any,t:number,sp:number}[],sign:THREE.Mesh|null,exitArrow:THREE.Mesh|null,barbell:THREE.Group|null,facade:THREE.Group|null,facadeArrow:THREE.Mesh|null,footprint:{x0:number,x1:number,z0:number,z1:number}|null,site:Site}={lifters:[],sign:null,exitArrow:null,barbell:null,
+  facade:null,facadeArrow:null,footprint:null,site:GYM_SITE};
 export const gymInterior=new THREE.Group();
 gymInterior.visible=false;
 
@@ -62,17 +65,18 @@ export function addGym(solids:{x0:number,x1:number,z0:number,z1:number,h:number}
   const cx=154,cz=-110; // centro do prédio no quarteirão (7,1)
 
   // ----- exterior: galpão cinza com faixa laranja, marquise e letreiro -----
+  const ext=GYM_SITE.group; // model coordinates; the Site places it on the town lot
   // O corpo (caixa) some sozinho por culling quando a câmera entra; os objetos
   // da PORTA vão num grupo 'facade' que js/world/interior.ts esconde junto (senão
   // ficariam flutuando ao sair). Ver gymFx.facade/footprint/facadeArrow.
   const wallM=matte({color:0x2c3038,roughness:.96});
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),wallM);
-  bld.position.set(cx,3.5,cz);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
+  bld.position.set(cx,3.5,cz);bld.castShadow=true;bld.receiveShadow=true;ext.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,16.2),darkM);
-  roof.position.set(cx,7.1,cz);scene.add(roof);
+  roof.position.set(cx,7.1,cz);ext.add(roof);
   // faixa laranja em volta do prédio
   const band=new THREE.Mesh(new THREE.BoxGeometry(16.3,.5,16.3),accentM);
-  band.position.set(cx,5.4,cz);scene.add(band);
+  band.position.set(cx,5.4,cz);ext.add(band);
 
   const facade=new THREE.Group();
   // porta dupla escura na fachada oeste (x menor)
@@ -102,10 +106,10 @@ export function addGym(solids:{x0:number,x1:number,z0:number,z1:number,h:number}
   // grupo, pra sumir junto; animada por js/world/interior.ts)
   gymFx.facadeArrow=makeDoorArrow();
   gymFx.facadeArrow.position.set(cx-9.3,1.7,cz);facade.add(gymFx.facadeArrow);
-  scene.add(facade);
+  ext.add(facade);
   gymFx.facade=facade;
   gymFx.footprint={x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2};
-  solids.push({x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2,h:7.2});
+  GYM_SITE.box({x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2},7.2);
 
   // ----- interior: sala 26x16 a ~600m do mapa, num grupo liga/desliga -----
   // casca BackSide: de dentro é parede/teto/chão; de fora invisível, então a
