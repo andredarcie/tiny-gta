@@ -89,6 +89,6 @@ export const DIVINO={
   // Prefeitura Municipal (Rua XV de Novembro), from Street View: royal-blue limewash with
   // white frieze and porch interiors, a thin red stripe under the eaves, clay pavers and
   // red tubular railings on the forecourt
-  civicBlue:0x3f62a9, civicWhite:0xf1efe8, civicStripe:0xb3392f,
-  pavers:0xb4805f, paversDark:0x9c6a4e, railing:0xb83a30, stepTread:0xc9c4b8,
+  civicBlue:0x5675b6, civicWhite:0xf1efe8, civicStripe:0xb3392f, civicRoof:0x9a5444,
+  pavers:0xa98a78, paversDark:0x8c6f60, railing:0xb83a30, stepTread:0xc9c4b8,
 };

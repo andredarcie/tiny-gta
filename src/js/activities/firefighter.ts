@@ -54,9 +54,10 @@ const DOUSE_RATE=0.7;      // "vida" do fogo apagada por segundo de jato
 const REGEN_RATE=0.6;      // "vida" recuperada por segundo quando ninguém borrifa
 const WRECK_RESPAWN=REWARDS.firefighter.wreckRespawnSec;    // caminhão destruído: volta à esquina depois disso (s)
 
-// The truck waits in the street lane beside the Prefeitura (town hall), downtown.
+// The truck waits in the street lane a block west of the Prefeitura (town hall),
+// downtown — not in front of it, where it would hide the building.
 const spawn=(()=>{
-  const[px,pz]=divData.landmarks.prefeitura,x=px+DIV_OX,z=pz+DIV_OZ;
+  const[px,pz]=divData.landmarks.prefeitura,x=px+DIV_OX-70,z=pz+DIV_OZ+20;
   const r=nearestRoad(x,z,200);
   if(!r)return{x,z,heading:0};
   const p=pointAt(r.e,r.s,1);
