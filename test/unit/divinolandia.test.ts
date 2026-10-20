@@ -9,6 +9,7 @@ import { makeStreets, makeWater } from '../../src/assets/models/divinolandia/rua
 import { addCasa, finalizeCasas, casaTop } from '../../src/assets/models/divinolandia/casa.ts';
 import { makeTrees, makeCoffee } from '../../src/assets/models/divinolandia/vegetacao.ts';
 import { makeSurface, type Surface } from '../../src/assets/models/divinolandia/praca.ts';
+import { buildEuclidesSchool, EUCLIDES_SITE } from '../../src/assets/models/divinolandia/escola-euclides.ts';
 
 const W = (p: number[]): [number, number] => [p[0] + DIV_OX, p[1] + DIV_OZ];
 const L = divData.landmarks;
@@ -123,11 +124,40 @@ describe('Divinolândia town geometry builds cleanly from the baked data', () =>
     expect(chunks.length).toBeGreaterThan(10);
     for (const g of chunks) checkPositions(g, 0, ymax);
   });
+  it('keeps UVs aligned with every merged house vertex', () => {
+    for (const flat of [false, true]) addCasa({ x: 5000, z: 5000, w: 8, d: 12, rot: .4, floor: 300, base: 299, floors: 2, color: 2, flat, shop: 0, seed: flat ? 1 : 2 });
+    const groups = finalizeCasas();
+    for (const group of groups) group.traverse(object => {
+      const geometry = (object as THREE.Mesh).geometry as THREE.BufferGeometry | undefined;
+      if (!geometry) return;
+      expect(geometry.getAttribute('uv').count).toBe(geometry.getAttribute('position').count);
+    });
+  });
   it('woods and coffee rows', () => {
     const t = []; for (let i = 0; i < divData.trees.length; i += 3) { const [x, z] = W([divData.trees[i], divData.trees[i + 1]]); t.push({ x, y: H(x, z), z, s: divData.trees[i + 2], r: i }); }
     expect(makeTrees(t).length).toBeGreaterThan(5);
     const c = []; for (let i = 0; i < divData.coffee.length; i += 3) { const [x, z] = W([divData.coffee[i], divData.coffee[i + 1]]); c.push({ x, y: H(x, z), z, s: 1, r: divData.coffee[i + 2] }); }
     expect(makeCoffee(c).length).toBeGreaterThan(5);
+  });
+  it('builds the dedicated Euclides da Cunha campus within its mapped footprint', () => {
+    const school = buildEuclidesSchool();
+    expect(school.userData.name).toBe('EMEB Euclides da Cunha');
+    expect(school.userData.width).toBe(EUCLIDES_SITE.width);
+    expect(school.userData.depth).toBe(EUCLIDES_SITE.depth);
+    expect(checkPositions(school, -4, 12)).toBeGreaterThan(100);
+  });
+  it('aligns its street fence with the actual school parcel front', () => {
+    const parcel = divData.areas.find(area => area.n === 'Escola Municipal Euclides da Cunha');
+    expect(parcel).toBeDefined();
+    const {x,z,yaw,front,width} = EUCLIDES_SITE;
+    expect(EUCLIDES_SITE.centerZ+EUCLIDES_SITE.depth/2).toBeCloseTo(front,5);
+    const corners = [-width/2,width/2].map(localX => [
+      x+localX*Math.cos(yaw)+front*Math.sin(yaw),
+      z-localX*Math.sin(yaw)+front*Math.cos(yaw),
+    ]);
+    for (const [index, target] of [parcel!.pts[2],parcel!.pts[3]].entries()) {
+      expect(Math.hypot(corners[index][0]-target[0],corners[index][1]-target[1])).toBeLessThan(1.5);
+    }
   });
 });
 

@@ -24,11 +24,12 @@ import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divi
 import {addCasa,finalizeCasas,casaTop} from '../../../assets/models/divinolandia/casa.ts';
 import {makeTrees,makeCoffee} from '../../../assets/models/divinolandia/vegetacao.ts';
 import {makeSurface,makeWall,makeTomb,makeGoal,makeGardenBed,type Surface} from '../../../assets/models/divinolandia/praca.ts';
-import {makePostes} from '../../../assets/models/divinolandia/poste.ts';
+import {makePostes,makePoleWires} from '../../../assets/models/divinolandia/poste.ts';
 import Hospital,{HOSP_FOOT} from '../../../assets/models/divinolandia/hospital-regional.ts';
 import Torre from '../../../assets/models/divinolandia/torre-mirante.ts';
 import Placa from '../../../assets/models/divinolandia/placa.ts';
 import Predio from '../../../assets/models/divinolandia/predio-publico.ts';
+import {buildEuclidesSchool,EUCLIDES_SITE} from '../../../assets/models/divinolandia/escola-euclides.ts';
 import Igreja from '../../../assets/models/rural/igreja-divino.ts';
 import Coreto from '../../../assets/models/rural/coreto.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
@@ -36,6 +37,7 @@ import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildJoseAugustoMachado} from './ruas/build-rua.ts';
 import {RUA as RUA_JAM} from './ruas/jose-augusto-machado.ts';
+import {planRoadPoles} from './postes-rua.ts';
 
 type P2=[number,number];
 const H=divinoHeight;
@@ -113,7 +115,7 @@ export function buildDivinolandia():void{
     const pts=p.pts.map(q=>w(q)) as P2[];
     const k=p.k as Surface|'hospital'|'torre';
     if(k==='hospital'||k==='torre')continue;
-    ground.add(makeSurface(k,pts,H));
+    if(p.n!=='Escola Municipal Euclides da Cunha')ground.add(makeSurface(k,pts,H));
     let cx=0,cz=0;for(const q of pts){cx+=q[0];cz+=q[1];}cx/=pts.length;cz/=pts.length;
     if(k==='praca'||k==='verde'){
       // a ring of shade trees + benches around the middle of each plaza
@@ -138,9 +140,20 @@ export function buildDivinolandia():void{
         const g=makeGoal();g.position.set(gx,H(gx,gz)+.16,gz);g.rotation.y=Math.atan2(-Math.cos(o.a)*s,-Math.sin(o.a)*s);deco.add(g);
       }
     }else if(k==='escola'){
-      const o=longAxis(pts),bw=Math.min(40,o.len*.55),th=Math.atan2(-Math.sin(o.a),Math.cos(o.a));
-      const b=Predio.build({w:bw,d:11,floors:2,color:0xdfe6cf});b.position.set(cx,H(cx,cz),cz);b.rotation.y=th;deco.add(b);
-      obbFromModel(cx,cz,th,0,0,bw,11,H(cx,cz)+8);
+      if(p.n==='Escola Municipal Euclides da Cunha'){
+        // The photographed façade faces Rua São Vicente de Paula at the parcel's north edge.
+        const schoolX=DIV_OX+EUCLIDES_SITE.x,schoolZ=DIV_OZ+EUCLIDES_SITE.z,schoolYaw=EUCLIDES_SITE.yaw;
+        const sine=Math.sin(schoolYaw),cosine=Math.cos(schoolYaw);
+        const localHeight=(localX:number,localZ:number):number=>H(schoolX+localX*cosine+localZ*sine,schoolZ-localX*sine+localZ*cosine);
+        const baseHeight=localHeight(0,24.5);
+        const school=buildEuclidesSchool({groundAt:(x,z)=>localHeight(x,z)-baseHeight});
+        school.position.set(schoolX,baseHeight,schoolZ);school.rotation.y=schoolYaw;deco.add(school);
+        obbFromModel(schoolX,schoolZ,schoolYaw,0,EUCLIDES_SITE.centerZ,EUCLIDES_SITE.width,EUCLIDES_SITE.depth,baseHeight+10);
+      }else{
+        const o=longAxis(pts),bw=Math.min(40,o.len*.55),th=Math.atan2(-Math.sin(o.a),Math.cos(o.a));
+        const b=Predio.build({w:bw,d:11,floors:2,color:0xdfe6cf});b.position.set(cx,H(cx,cz),cz);b.rotation.y=th;deco.add(b);
+        obbFromModel(cx,cz,th,0,0,bw,11,H(cx,cz)+8);
+      }
     }
   }
   for(const g of ground.children){(g as THREE.Mesh).matrixAutoUpdate=false;}
@@ -204,6 +217,7 @@ export function buildDivinolandia():void{
   // ---------- houses ----------
   for(let i=0;i<D.houses.length;i++){
     const[hx0,hz0,hw,hd,rot,fl,c,roof,shop]=D.houses[i];
+    if(hx0>105&&hx0<116&&hz0>207&&hz0<224)continue;
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
     const corner=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
     const hs=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
@@ -215,23 +229,21 @@ export function buildDivinolandia():void{
   }
   for(const g of finalizeCasas()){scene.add(g);cullGroups.push({g,r:1100});}
 
-  // ---------- street lamps along the paved town streets ----------
-  const lamps:{x:number;y:number;z:number;r:number}[]=[];
-  for(const r of lines){
-    if(!r.sidewalk)continue;
-    let acc=12,side=1;
-    for(let i=1;i<r.pts.length;i++){
-      const[ax,az]=r.pts[i-1],[bx,bz]=r.pts[i],Lg=Math.hypot(bx-ax,bz-az);if(Lg<1)continue;
-      const ux=(bx-ax)/Lg,uz=(bz-az)/Lg;
-      for(let s=acc;s<Lg;s+=34){
-        const nx=-uz*side,nz=ux*side,o=r.hw+1.5;
-        const x=ax+ux*s+nx*o,z=az+uz*s+nz*o;
-        lamps.push({x,y:H(x,z),z,r:Math.atan2(-nx,-nz)});side=-side;acc=s+34-Lg;
-      }
-      if(acc<0)acc=0;
-    }
-  }
-  scene.add(makePostes(lamps));
+  // ---------- utility poles along inhabited streets ----------
+  const poleRoutes=planRoadPoles({
+    roads:lines.map((line,index)=>{
+      const road=D.roads[index],mid=line.pts[Math.floor(line.pts.length/2)];
+      const arterial=road.k==='primary'||road.k==='secondary';
+      return{name:road.n,pts:line.pts,halfWidth:line.hw,paved:line.paved,sidewalk:line.sidewalk,
+        enabled:line.sidewalk||arterial&&townAt(mid[0],mid[1])>0};
+    }),
+    houses:D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
+    protectedAreas:[...D.areas,...D.plazas].map(area=>area.pts.map(point=>w(point))),
+    surveyedStreet:RUA_JAM,
+  }).map(route=>route.map(site=>({...site,y:H(site.x,site.z)})));
+  const poles=poleRoutes.flat();
+  scene.add(makePostes(poles),makePoleWires(poleRoutes));
+  for(const pole of poles)addObb(pole.x,pole.z,.36,.36,0,pole.y+10.5);
 
   // ---------- vegetation ----------
   for(let i=0;i<D.trees.length;i+=3){const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});}
