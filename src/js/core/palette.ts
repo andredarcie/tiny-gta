@@ -91,4 +91,11 @@ export const DIVINO={
   // red tubular railings on the forecourt
   civicBlue:0x86a0d8, civicWhite:0xf1efe8, civicStripe:0xb3392f, civicRoof:0x9b5a44,
   pavers:0xa98a78, paversDark:0x8c6f60, railing:0xb83a30, stepTread:0xc9c4b8,
+  // Hospital Regional (the 1945 Sanatório Adhemar de Barros), from Street View + photos:
+  // sun-faded ochre-yellow render, cream slab bands and parapet caps, clay hipped roofs
+  // with white hip flashing, grey steel window grids, the dark brick boiler chimney;
+  // the modern annex in pale beige with a brown fascia under light-grey metal roofs
+  hospWall:'#dcbd74', hospTrim:'#eee8d8', hospBase:'#b8ad95', hospRoof:'#bf6f57', hospHip:'#ebe8e1',
+  hospFrame:'#80878a', hospChimney:'#41372f', hospSlab:'#9a958c',
+  annexWall:'#dccaa0', annexFascia:'#7b5537', annexRoof:'#f4f6f7', annexWing:'#a9aeb0',
 };

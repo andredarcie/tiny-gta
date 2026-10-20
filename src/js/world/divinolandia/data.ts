@@ -12,7 +12,7 @@
 // included, stays within |x| < 1000). y = real altitude − data.ref.
 import data from '../../../data/divinolandia.json';
 import {DIVINO_X_MIN,setDivinoTerrain} from '@/core/terrain.ts';
-import {SITE_TABLE,SITE_PAD,SITE_BLEND,type SiteId} from './sites-table.ts';
+import {SITE_TABLE,SITE_PAD,SITE_BLEND,type SiteId,type SiteSpec} from './sites-table.ts';
 
 export const DIV_OX=5000, DIV_OZ=5000;
 // Anything east of DIVINO_X_MIN (terrain.ts) is Divinolândia (the old map never reaches it).
@@ -56,21 +56,21 @@ export const SITE_FLOOR={} as Record<SiteId,number>;
 {
   const g=nearGrid;
   for(const id of Object.keys(SITE_TABLE) as SiteId[]){
-    const s=SITE_TABLE[id],x=s.x+DIV_OX,z=s.z+DIV_OZ;
+    const s:SiteSpec=SITE_TABLE[id],x=s.x+DIV_OX,z=s.z+DIV_OZ,blend=s.blend??SITE_BLEND;
     const fx=Math.sin(s.face),fz=Math.cos(s.face);         // toward the street (depth axis)
     const ux=fz,uz=-fx;                                     // along the facade
     let sum=0,n=0;
     for(let a=-1;a<=1;a+=.25)for(let b=-1;b<=1;b+=.25){sum+=triH(g,x+ux*a*s.w/2+fx*b*s.d/2,z+uz*a*s.w/2+fz*b*s.d/2);n++;}
     const floor=sum/n;SITE_FLOOR[id]=floor;
-    const R=Math.hypot(s.w,s.d)/2+SITE_PAD+SITE_BLEND;
+    const R=Math.hypot(s.w,s.d)/2+SITE_PAD+blend;
     const i0=Math.max(0,Math.floor((x-R-g.x0)/g.cell)),i1=Math.min(g.nx-1,Math.ceil((x+R-g.x0)/g.cell));
     const j0=Math.max(0,Math.floor((z-R-g.z0)/g.cell)),j1=Math.min(g.nz-1,Math.ceil((z+R-g.z0)/g.cell));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
       const dx=g.x0+i*g.cell-x,dz=g.z0+j*g.cell-z;
       const u=Math.abs(dx*ux+dz*uz)-s.w/2,v=Math.abs(dx*fx+dz*fz)-s.d/2;
       const d=Math.hypot(Math.max(u,0),Math.max(v,0));
-      if(d>=SITE_PAD+SITE_BLEND)continue;
-      const t=d<=SITE_PAD?0:(d-SITE_PAD)/SITE_BLEND,k=t*t*(3-2*t);
+      if(d>=SITE_PAD+blend)continue;
+      const t=d<=SITE_PAD?0:(d-SITE_PAD)/blend,k=t*t*(3-2*t);
       const k0=j*g.nx+i;g.h[k0]=floor+(g.h[k0]-floor)*k;
     }
   }

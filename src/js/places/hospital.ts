@@ -75,7 +75,7 @@ export const hospital=new HospitalInterior({
   group:hospInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:HOSP_DOOR,spawnOut:HOSP_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:hospFx,exterior:{...HOSP_SPAWN_OUT,r:30},
-  spawnOutHeading:HOSP_YAW, // out of the glass doors, facing down the hill to the town
+  spawnOutHeading:HOSP_YAW, // out of the glass doors, facing out from the porch
   mapIcon:{id:'hospital',label:'HOSPITAL',icon:'hospital',color:'#44e6b1'},
 });
 

@@ -10,7 +10,8 @@
 // (tools of the 2026-10-20 migration: nearest street snapped, facade parallel to it,
 // set back past the kerb) and keep clear of the surveyed Rua José Augusto Machado and
 // the Euclides da Cunha school.
-export interface SiteSpec{x:number;z:number;face:number;w:number;d:number;name:string}
+// blend (optional) overrides SITE_BLEND for a lot whose slope must end sooner
+export interface SiteSpec{x:number;z:number;face:number;w:number;d:number;name:string;blend?:number}
 
 export const SITE_TABLE={
   // ---- downtown (shops on the real commercial blocks around the Matriz)
@@ -33,6 +34,14 @@ export const SITE_TABLE={
   // the Prefeitura's front (its porch steps) sits on the Rua XV de Novembro pavement;
   // face = the street's heading (1.4316) − 90°. Model origin = this centre − 0.8 m along face.
   prefeitura:{x:-48.35,z:-72.28,face:-0.13917,w:34,d:30,name:'Rua XV de Novembro'},
+  // the Hospital Regional on the hill: the 1945 sanatorium (veranda front toward the
+  // NNW, face = bearing 335.2°, measured on the satellite; placed from the satellite
+  // footprint, then checked against the Street View panoramas' bearings) and its modern
+  // annex to the west. Both models share one origin (the sanatorium's tower); each lot
+  // centre is HOSP_LOT / ANNEX_LOT of that frame (hospital-regional.ts, hospital-anexo.ts).
+  hospital:     {x:-327.68,z:692.15,face:-2.7088,w:78,d:68, name:'Hospital Regional'},
+  // (short blend: the road and the houses below its west end keep their slope)
+  hospitalAnnex:{x:-414.59,z:738.91,face:-2.7088,w:72,d:108,name:'Hospital Regional (anexo)',blend:8},
 } satisfies Record<string,SiteSpec>;
 export type SiteId=keyof typeof SITE_TABLE;
 

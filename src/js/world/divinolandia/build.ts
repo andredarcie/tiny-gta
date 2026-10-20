@@ -24,7 +24,8 @@ import {addCasa,finalizeCasas,casaTop} from '../../../assets/models/divinolandia
 import {makeTrees,makeCoffee} from '../../../assets/models/divinolandia/vegetacao.ts';
 import {makeSurface,makeWall,makeTomb,makeGoal,makeGardenBed,type Surface} from '../../../assets/models/divinolandia/praca.ts';
 import {makePostes,makePoleWires} from '../../../assets/models/divinolandia/poste.ts';
-import Hospital,{HOSP_FOOT} from '../../../assets/models/divinolandia/hospital-regional.ts';
+import Hospital,{HOSP_FOOT,HOSP_LOT} from '../../../assets/models/divinolandia/hospital-regional.ts';
+import HospitalAnexo,{ANNEX_FOOT,ANNEX_LOT} from '../../../assets/models/divinolandia/hospital-anexo.ts';
 import Torre from '../../../assets/models/divinolandia/torre-mirante.ts';
 import Placa from '../../../assets/models/divinolandia/placa.ts';
 import Predio from '../../../assets/models/divinolandia/predio-publico.ts';
@@ -190,13 +191,15 @@ export function buildDivinolandia():void{
     obbFromModel(bx,bz,th,0,0,Math.max(8,b.w),Math.max(8,b.d),H(bx,bz)+fl*3.4+1);
   }
 
-  // ---------- Hospital Regional (up on the hill, façade toward the town) ----------
-  {
-    const [hx,hz]=w(L.hospital),th=yawTo(hx,hz,DIV_OX,DIV_OZ),y=H(hx,hz);
-    const hosp=Hospital.build();hosp.position.set(hx,y,hz);hosp.rotation.y=th;placeStatic(hosp);
-    for(const[cx,cz,bw,bd,ht]of HOSP_FOOT)obbFromModel(hx,hz,th,cx,cz,bw,bd,y+ht);
-    // its glass entrance is the street door of the game's hospital (models/city/hospital.ts)
+  // ---------- Hospital Regional: the old sanatorium + its modern annex, on their real
+  // footprint (sites-table.ts); both share the sanatorium's frame, each on its own lot ----------
+  for(const[id,model,lot,foot]of[['hospital',Hospital,HOSP_LOT,HOSP_FOOT],['hospitalAnnex',HospitalAnexo,ANNEX_LOT,ANNEX_FOOT]] as const){
+    const s=SITE_TABLE[id],th=s.face,c=Math.cos(th),sn=Math.sin(th),y=SITE_FLOOR[id];
+    const ox=s.x+DIV_OX-(lot.x*c+lot.z*sn),oz=s.z+DIV_OZ-(-lot.x*sn+lot.z*c);
+    const m=model.build();m.position.set(ox,y,oz);m.rotation.y=th;placeStatic(m);
+    for(const[cx,cz,bw,bd,ht]of foot)obbFromModel(ox,oz,th,cx,cz,bw,bd,y+ht);
   }
+  // the sanatorium's glass entrance is the street door of the game's hospital (models/city/hospital.ts)
 
   // ---------- Morro da Torre: the tower + the mirante deck facing the town ----------
   {

@@ -4,7 +4,9 @@ import {scene} from '@/core/engine.ts';
 import {rand} from '@/core/constants.ts';
 import {makePed} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from './door-arrow.ts';
-import {divData,W as townW,DIV_OX,DIV_OZ,divinoHeight} from '@/world/divinolandia/data.ts';
+import {DIV_OX,DIV_OZ,divinoHeight} from '@/world/divinolandia/data.ts';
+import {SITE_TABLE} from '@/world/divinolandia/sites-table.ts';
+import {HOSP_LOT,HOSP_DOOR_Z} from '../divinolandia/hospital-regional.ts';
 
 // Hospital "SANTA CASA": the room you wake up in after WASTED (js/actors/player.ts), with
 // a healing kit in the middle for whoever walks in hurt. Its interior is a separate set
@@ -13,13 +15,17 @@ import {divData,W as townW,DIV_OX,DIV_OZ,divinoHeight} from '@/world/divinolandi
 // placed by js/world/divinolandia/build.ts): its glass entrance is this room's street door.
 // See js/places/hospital.ts.
 
-// the regional hospital stands on its landmark, façade turned toward the town centre
-const [HX,HZ]=townW(divData.landmarks.hospital[0],divData.landmarks.hospital[1]);
-export const HOSP_YAW=Math.atan2(DIV_OX-HX,DIV_OZ-HZ);
+// the regional hospital on its real footprint: the model origin (the sanatorium's tower
+// centre line) is its lot centre minus HOSP_LOT, turned by the lot's facing
+const HS=SITE_TABLE.hospital;
+export const HOSP_YAW=HS.face;
+const HX=HS.x+DIV_OX-(HOSP_LOT.x*Math.cos(HOSP_YAW)+HOSP_LOT.z*Math.sin(HOSP_YAW));
+const HZ=HS.z+DIV_OZ-(-HOSP_LOT.x*Math.sin(HOSP_YAW)+HOSP_LOT.z*Math.cos(HOSP_YAW));
 const fwd=(d:number)=>({x:HX+Math.sin(HOSP_YAW)*d,z:HZ+Math.cos(HOSP_YAW)*d});
-// street door (the glass entrance under the canopy, model z≈8) and the spot you step out to
-export const HOSP_DOOR=fwd(9.2);
-export const HOSP_SPAWN_OUT=fwd(14);
+// street door (the glass entrance under the porch canopy) and the spot you step out to,
+// past the porch columns and steps
+export const HOSP_DOOR=fwd(HOSP_DOOR_Z+.7);
+export const HOSP_SPAWN_OUT=fwd(HOSP_DOOR_Z+6);
 // interior: centro da sala, porta de saída e spawn (leito) de entrada/acordar.
 // z=180 (não -380): mantém a sala BEM dentro do domo do céu (esfera raio 900
 // na origem). Em z=-380 a parede oeste ficava em raio ~897 e o céu (azul,
@@ -278,7 +284,7 @@ export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   const facade=new THREE.Group();
   facade.position.set(HX,divinoHeight(HX,HZ),HZ);facade.rotation.y=HOSP_YAW;
   hospFx.facadeArrow=makeDoorArrow();
-  hospFx.facadeArrow.position.set(0,1.7,9.8);facade.add(hospFx.facadeArrow);
+  hospFx.facadeArrow.position.set(0,2.3,HOSP_DOOR_Z+1.3);facade.add(hospFx.facadeArrow); // over the porch floor
   scene.add(facade);
   hospFx.facade=facade;
   hospFx.footprint=null; // the arrow stays out under the canopy: nothing to hide
