@@ -29,6 +29,10 @@ export const SITE_TABLE={
   ranch:    {x:-203.5,z:827.4, face:Math.PI,w:38,d:38,name:'sítio da estrada do hospital'},
   weedFarm: {x:-938.5,z:-777.5,face:0,      w:30,d:24,name:'grota além do Rio do Peixe'},
   fort:     {x:-168.0,z:1668.2,face:Math.PI,w:50,d:50,name:'serra ao sul'},
+  // ---- real landmarks rebuilt from Street View (levelled + cleared the same way)
+  // the Prefeitura's front (its porch steps) sits on the Rua XV de Novembro pavement;
+  // face = the street's heading (1.4316) − 90°. Model origin = this centre − 0.8 m along face.
+  prefeitura:{x:-48.35,z:-72.28,face:-0.13917,w:27,d:28,name:'Rua XV de Novembro'},
 } satisfies Record<string,SiteSpec>;
 export type SiteId=keyof typeof SITE_TABLE;
 

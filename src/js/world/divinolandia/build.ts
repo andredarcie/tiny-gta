@@ -16,7 +16,7 @@ import {setDivinoTerrain} from '@/core/terrain.ts';
 import {player,playerCar,idleCars,cameraRig} from '@/actors/player.ts';
 import {message} from '@/ui/hud.ts';
 import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
-import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt} from './data.ts';
+import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR} from './data.ts';
 import {addObb,setPlayBounds} from './collide.ts';
 import {makeTerrainMesh,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
 import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
@@ -28,6 +28,7 @@ import Hospital,{HOSP_FOOT} from '../../../assets/models/divinolandia/hospital-r
 import Torre from '../../../assets/models/divinolandia/torre-mirante.ts';
 import Placa from '../../../assets/models/divinolandia/placa.ts';
 import Predio from '../../../assets/models/divinolandia/predio-publico.ts';
+import Prefeitura,{PREF_FOOT} from '../../../assets/models/divinolandia/prefeitura.ts';
 import {buildEuclidesSchool,EUCLIDES_SITE} from '../../../assets/models/divinolandia/escola-euclides.ts';
 import Igreja from '../../../assets/models/rural/igreja-divino.ts';
 import Coreto from '../../../assets/models/rural/coreto.ts';
@@ -172,10 +173,18 @@ export function buildDivinolandia():void{
   for(const[a,r]of[[0,9],[1.6,9],[3.2,9],[4.8,9]]){const bed=makeGardenBed(2.2);const x=px+Math.cos(a)*r,z=pz+Math.sin(a)*r;bed.position.set(x,H(x,z)+.12,z);placeStatic(bed);}
 
   // ---------- Prefeitura and the other mapped public buildings ----------
+  // the Prefeitura, rebuilt from Street View on its levelled lot (sites-table.ts)
+  {
+    const s=SITE_TABLE.prefeitura,th=s.face;
+    const ox=s.x+DIV_OX-Math.sin(th)*.8,oz=s.z+DIV_OZ-Math.cos(th)*.8,y=SITE_FLOOR.prefeitura;
+    const pref=Prefeitura.build();pref.position.set(ox,y,oz);pref.rotation.y=th;placeStatic(pref);
+    for(const[cx,cz,bw,bd,ht]of PREF_FOOT)obbFromModel(ox,oz,th,cx,cz,bw,bd,y+ht);
+  }
   for(const b of D.buildings){
-    const [bx,bz]=w([b.cx,b.cz]),th=-b.rot,isPref=b.kind==='townhall';
-    const fl=isPref?2:b.kind==='church'||b.kind==='place_of_worship'?1:2;
-    const pr=Predio.build({w:Math.max(8,b.w),d:Math.max(8,b.d),floors:fl,flag:isPref,color:isPref?0xefe6cf:0xe7e1d3});
+    if(b.kind==='townhall')continue;                      // built above
+    const [bx,bz]=w([b.cx,b.cz]),th=-b.rot;
+    const fl=b.kind==='church'||b.kind==='place_of_worship'?1:2;
+    const pr=Predio.build({w:Math.max(8,b.w),d:Math.max(8,b.d),floors:fl,color:0xe7e1d3});
     pr.position.set(bx,H(bx,bz),bz);pr.rotation.y=th;placeStatic(pr);
     obbFromModel(bx,bz,th,0,0,Math.max(8,b.w),Math.max(8,b.d),H(bx,bz)+fl*3.4+1);
   }

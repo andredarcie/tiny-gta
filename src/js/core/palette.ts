@@ -86,4 +86,9 @@ export const DIVINO={
   coffee:0x2b5226, coffeeLight:0x3d6b2f,
   tree:[0x3f7a34,0x356b2c,0x4c8a3a,0x2f5f2a] as number[], trunk:0x5e4330,
   river:0x55786a,            // Rio do Peixe: green-brown, not pool blue
+  // Prefeitura Municipal (Rua XV de Novembro), from Street View: royal-blue limewash with
+  // white frieze and porch interiors, a thin red stripe under the eaves, clay pavers and
+  // red tubular railings on the forecourt
+  civicBlue:0x3f62a9, civicWhite:0xf1efe8, civicStripe:0xb3392f,
+  pavers:0xb4805f, paversDark:0x9c6a4e, railing:0xb83a30, stepTread:0xc9c4b8,
 };
