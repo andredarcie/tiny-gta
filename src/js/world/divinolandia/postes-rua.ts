@@ -1,7 +1,7 @@
 export type PoleSite={x:number;z:number;r:number};
 export type PoleRoad={name:string;pts:[number,number][];halfWidth:number;paved:boolean;enabled:boolean;sidewalk:boolean};
 export type HouseFootprint={x:number;z:number;width:number;depth:number;rotation:number};
-export type PolePlan={roads:PoleRoad[];houses:HouseFootprint[];protectedAreas:[number,number][][];surveyedStreet:string};
+export type PolePlan={roads:PoleRoad[];houses:HouseFootprint[];protectedAreas:[number,number][][];surveyedStreets:string[]};
 
 const POLE_SPACING=34;
 const FIRST_POLE=16;
@@ -100,7 +100,7 @@ export function planRoadPoles(plan:PolePlan):PoleSite[][]{
   })));
   const placed:PoleSite[]=[],routes:PoleSite[][]=[];
   for(const road of plan.roads){
-    if(!road.enabled||!road.paved||road.name===plan.surveyedStreet||road.pts.length<2)continue;
+    if(!road.enabled||!road.paved||plan.surveyedStreets.includes(road.name)||road.pts.length<2)continue;
     const context={houses,areas:plan.protectedAreas,junctions,placed,segments,roadName:road.name};
     const length=roadLength(road.pts);
     if(length<FIRST_POLE+END_CLEARANCE)continue;

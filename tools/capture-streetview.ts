@@ -32,6 +32,14 @@ try{
   if(!panos.size)throw new Error('no panorama found near '+lat+','+lng+' (url: '+page.url()+')');
   const main=[...panos][0];
   const log:string[]=[`point ${lat},${lng}`,`panorama ${main}`];
+  // where the panorama really stands (Maps puts it in the URL as @lat,lng), and the same
+  // spot in game WORLD metres (bake projection of tools/bake-divinolandia.ts + DIV_OX/OZ)
+  const at=page.url().match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if(at){
+    const plat=+at[1],plng=+at[2],LAT0=-21.66209,LON0=-46.739323;
+    const MX=111320*Math.cos(LAT0*Math.PI/180),MZ=110574;
+    log.push(`pano at ${plat},${plng}`,`world x=${(5000+(plng-LON0)*MX).toFixed(1)} z=${(5000+(LAT0-plat)*MZ).toFixed(1)}`);
+  }
   for(const h of headings){
     const url=`https://streetviewpixels-pa.googleapis.com/v1/thumbnail?cb_client=maps_sv.tactile&w=1280&h=720&pitch=0&thumbfov=80&panoid=${main}&yaw=${h}`;
     const r=await page.request.get(url);

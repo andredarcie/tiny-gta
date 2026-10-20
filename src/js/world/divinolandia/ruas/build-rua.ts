@@ -1,18 +1,18 @@
-// Builds a SURVEYED street of Divinolândia: every lot of the street spec (e.g.
-// ruas/jose-augusto-machado.ts) placed along the real OSM centreline, at the real terrain
-// height, facing the street, with its collision; the raised sidewalks in each owner's
-// paving behind a kerb; the concrete power poles with their wiring and service drops;
-// the street trees; and — for José Augusto Machado — the dedicated model of the pink
-// corner house. The bake leaves the street free of generated houses
-// (tools/bake-divinolandia.ts SURVEYED), so only the surveyed lots stand there.
+// Builds a SURVEYED street of Divinolândia from its StreetSpec (ruas/spec.ts, one file per
+// street listed in ruas/index.ts): every lot placed along the real OSM centreline, at the
+// real terrain height, facing the street, with its collision; the raised sidewalks in each
+// owner's paving behind a kerb; the concrete power poles with their wiring and service
+// drops; the street trees; and the street's dedicated models (ruas/extras.ts). The bake
+// leaves surveyed streets free of generated houses (tools/bake-divinolandia.ts), so only
+// the surveyed lots stand there.
 import * as THREE from 'three';
 import {buildFachada,FLOOR_H} from '../../../../assets/models/divinolandia/fachada.ts';
 import Arvore from '../../../../assets/models/divinolandia/arvore-rua.ts';
-import CasaRosa,{ROSA_SOLIDS} from '../../../../assets/models/divinolandia/casa-rosa-esquina.ts';
 import {makeSidewalks,KERB_H,type Paving} from '../../../../assets/models/divinolandia/calcada.ts';
 import Poste,{makeWires} from '../../../../assets/models/divinolandia/poste-rede.ts';
 import {addObb} from '../collide.ts';
-import {LOTS,TREES,ROSA_AT,CROSS} from './jose-augusto-machado.ts';
+import type {StreetSpec} from './spec.ts';
+import {EXTRAS} from './extras.ts';
 
 export const SIDEWALK=2.2;                  // kerb → façade line
 
@@ -28,10 +28,11 @@ export function alongPolyline(pts:[number,number][],s:number):Frame{
   return{x:pts[0][0],z:pts[0][1],ux:1,uz:0};
 }
 // unit normal pointing AWAY from the street toward the lots of that side (north = -z)
-const sideNormal=(f:Frame,side:'N'|'S'):[number,number]=>side==='N'?[f.uz,-f.ux]:[-f.uz,f.ux];
+export const sideNormal=(f:Frame,side:'N'|'S'):[number,number]=>side==='N'?[f.uz,-f.ux]:[-f.uz,f.ux];
 
-export function buildJoseAugustoMachado(pts:[number,number][],hw:number,crossHw:number,H:(x:number,z:number)=>number,
+export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:number,H:(x:number,z:number)=>number,
   place:(o:THREE.Object3D)=>void):{lots:number;wires:THREE.Object3D}{
+  const{lots:LOTS,trees:TREES,cross:CROSS}=spec,crossHw=spec.crossHw??3.6;
   let n=0;
   const lift=KERB_H+.15;                                       // house floor = top of the raised sidewalk
   const drops:[number,number,number][]=[];
@@ -68,7 +69,7 @@ export function buildJoseAugustoMachado(pts:[number,number][],hw:number,crossHw:
       if(l.s0>cur)strip(side,cur,l.s0,'cimento');
       strip(side,Math.max(cur,l.s0),Math.min(b,l.s1),l.walk||'ceramica');cur=Math.min(b,l.s1);
     }
-    strip(side,cur,b,side==='S'&&i===2?'ceramica':'cimento');
+    strip(side,cur,b,spec.gapWalk?.find(g=>g.side===side&&g.block===i)?.k??'cimento');
   }
   place(makeSidewalks(strips,H));
   // street trees on the sidewalk
@@ -77,28 +78,19 @@ export function buildJoseAugustoMachado(pts:[number,number][],hw:number,crossHw:
     const tr=Arvore.build({kind:t.kind});tr.position.set(x,H(x,z)+lift-.05,z);tr.rotation.y=t.s;place(tr);
     addObb(x,z,.5,.5,0,H(x,z)+3);
   }
-  // power poles along the south kerb (skipping the crossings), with the wiring between them
+  // power poles along one kerb (skipping the crossings), with the wiring between them
   const poles:{x:number;y:number;z:number;ry:number}[]=[];
-  for(let s=16;s<pts.reduce((a,_,i)=>i?a+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]):0,0)-4;s+=34){
+  const P=spec.poles??{side:'S',start:16,every:34};
+  for(let s=P.start;s<pts.reduce((a,_,i)=>i?a+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]):0,0)-4;s+=P.every){
     if(CROSS.some(c=>Math.abs(c-s)<9))continue;
-    const f=alongPolyline(pts,s),[nx,nz]=sideNormal(f,'S'),x=f.x+nx*(hw+.35),z=f.z+nz*(hw+.35),ry=Math.atan2(-nx,-nz);
-    const y=H(x,z)+lift-.05,pole=Poste.build({transformer:s===152||s===288});
+    const f=alongPolyline(pts,s),[nx,nz]=sideNormal(f,P.side),x=f.x+nx*(hw+.35),z=f.z+nz*(hw+.35),ry=Math.atan2(-nx,-nz);
+    const y=H(x,z)+lift-.05,pole=Poste.build({transformer:!!P.transformers?.includes(s)});
     pole.position.set(x,y,z);pole.rotation.y=ry;place(pole);
     poles.push({x,y,z,ry});addObb(x,z,.4,.4,0,y+11);
   }
   const wires=makeWires(poles,drops);
-  // the pink corner house: SW corner of Francisco Pereira de Souza (west of it, south of JAM)
-  {
-    const f=alongPolyline(pts,ROSA_AT-1),[nx,nz]=sideNormal(f,'S');
-    const cx=f.x+nx*(hw+SIDEWALK)-f.ux*(crossHw+SIDEWALK),cz=f.z+nz*(hw+SIDEWALK)-f.uz*(crossHw+SIDEWALK);
-    const th=Math.atan2(-f.uz,f.ux),y=H(cx,cz)+lift;               // model +x = east along the street, +z = south
-    const g=CasaRosa.build();g.position.set(cx,y,cz);g.rotation.y=th;place(g);
-    const c=Math.cos(th),s=Math.sin(th);
-    for(const[x0,x1,z0,z1,top]of ROSA_SOLIDS){
-      const mx=(x0+x1)/2,mz=(z0+z1)/2;
-      addObb(cx+mx*c+mz*s,cz-mx*s+mz*c,x1-x0,z1-z0,-th,y+top);
-    }
-    n++;
-  }
+  // the street's dedicated models (corner houses, churches…)
+  const extra=EXTRAS[spec.rua];
+  if(extra)n+=extra({spec,pts,hw,crossHw,lift,sidewalk:SIDEWALK,H,place,along:s=>alongPolyline(pts,s),normal:sideNormal});
   return{lots:n,wires};
 }

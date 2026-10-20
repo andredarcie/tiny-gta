@@ -12,14 +12,12 @@
 // FachadaOpts (src/assets/models/divinolandia/fachada.ts), width = s1-s0. Opening x is
 // measured from the lot centre as SEEN FROM THE STREET (left negative). Colours are picked
 // from the photos. Pure data (no THREE) so it can be unit-tested.
-import type {FachadaOpts} from '../../../../assets/models/divinolandia/fachada.ts';
-import type {ArvoreKind} from '../../../../assets/models/divinolandia/arvore-rua.ts';
-import type {Paving} from '../../../../assets/models/divinolandia/calcada.ts';
+import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
+export type {Lot} from './spec.ts';
 
-export type Lot={side:'N'|'S';s0:number;s1:number;f:Omit<FachadaOpts,'w'>;walk?:Paving};
 export const CROSS=[0,100,172,272,367];   // cross-street centrelines (arc length)
 export const RUA='Rua José Augusto Machado';
-export const SURFACE:[number,number,'asphalt'|'sett'][]=[[0,100,'asphalt'],[100,272,'sett'],[272,400,'asphalt']];
+export const SURFACE:Surface[]=[[0,100,'asphalt'],[100,272,'sett'],[272,400,'asphalt']];
 // cross streets that are cobbled too (seen at the corners)
 export const SETT_STREETS=['Rua Francisco Pereira de Souza','Rua Barão do Rio Branco','Rua Leonor Mendes de Barros'];
 // the pink corner house (dedicated model) stands on the SW corner of s=272
@@ -128,9 +126,16 @@ export const LOTS:Lot[]=[
   {side:'S',s0:338,s1:356,f:{wall:'#b9b7b2',wallOnly:true,front:{h:1.6,c:'#c9c6c0',rail:{h:1.2,style:'bars',c:'#8c9093'},gates:[{t:'gate',x:-1.2,w:4,c:'#3d6fb0'}]},
     behind:{w:5,d:4,at:12,roof:'flat',roofColor:'#8f8b84',wall:'#a8553e'}}},
 ];
-export const TREES:{side:'N'|'S';s:number;kind:ArvoreKind}[]=[
+export const TREES:Tree[]=[
   {side:'N',s:132,kind:'ficus'},{side:'N',s:158,kind:'ficus'},
   {side:'N',s:182,kind:'palmeira'},{side:'N',s:189,kind:'palmeira'},{side:'N',s:195,kind:'palmeira'},
   {side:'N',s:207,kind:'reseda'},{side:'N',s:281,kind:'reseda'},{side:'N',s:288,kind:'reseda'},
   {side:'N',s:300,kind:'reseda'},{side:'N',s:352,kind:'resedaBranca'},{side:'S',s:128,kind:'ficus'},
 ];
+
+export const SPEC:StreetSpec={
+  rua:RUA,cross:CROSS,surface:SURFACE,settStreets:SETT_STREETS,lots:LOTS,trees:TREES,
+  poles:{side:'S',start:16,every:34,transformers:[152,288]},
+  gapWalk:[{side:'S',block:2,k:'ceramica'}],
+  keepOut:[{side:'S',s0:249,s1:266,why:'pink corner house (casa-rosa-esquina.ts, ruas/extras.ts)'}],
+};

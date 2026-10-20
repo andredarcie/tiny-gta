@@ -35,8 +35,8 @@ import Coreto from '../../../assets/models/rural/coreto.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
-import {buildJoseAugustoMachado} from './ruas/build-rua.ts';
-import {RUA as RUA_JAM} from './ruas/jose-augusto-machado.ts';
+import {buildSurveyedStreet} from './ruas/build-rua.ts';
+import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
 import {SITE_TABLE,onSiteLot,siteLotPolygon,type SiteId} from './sites-table.ts';
 
@@ -81,24 +81,25 @@ export function buildDivinolandia():void{
   scene.add(makeTerrainMesh(farGrid,{skip:{x0:nearGrid.x0+m,x1:nx1-m,z0:nearGrid.z0+m,z1:nz1-m},drop:1.2,mat:farTerrainMat}));
 
   // ---------- streets, sidewalks, water ----------
+  const SURVEYED=new Set(STREETS.map(s=>s.rua));
   const lines:StreetLine[]=D.roads.map(r=>{
     const pts=r.pts.map(p=>w(p));
     const mid=pts[Math.floor(pts.length/2)];
-    // the surveyed street draws its own raised sidewalks, poles and lamps (ruas/build-rua.ts)
-    return{pts,hw:r.hw,paved:!!r.p,sett:r.sf==='sett',sidewalk:r.n!==RUA_JAM&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
+    // surveyed streets draw their own raised sidewalks, poles and lamps (ruas/build-rua.ts)
+    return{pts,hw:r.hw,paved:!!r.p,sett:r.sf==='sett',sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
   scene.add(makeStreets(lines,H));
 
   // ---------- surveyed streets (lot by lot from Street View) ----------
-  {
-    const jam:[number,number][]=[];
-    for(const r of D.roads)if(r.n===RUA_JAM)for(const p of r.pts){const q=w(p);const last=jam[jam.length-1];if(!last||Math.hypot(last[0]-q[0],last[1]-q[1])>.5)jam.push(q);}
-    const fps=D.roads.find(r=>r.n==='Rua Francisco Pereira de Souza');
+  // the bake chained each one into a single polyline (ruas/spec.ts chainPieces), cut into
+  // its surface pieces in order: concatenating them gives the arc-length frame of the spec
+  for(const spec of STREETS){
+    const pts:[number,number][]=[];
+    for(const r of D.roads)if(r.n===spec.rua)for(const p of r.pts){const q=w(p);const last=pts[pts.length-1];if(!last||Math.hypot(last[0]-q[0],last[1]-q[1])>.5)pts.push(q);}
+    if(pts.length<2)continue;
     const street=new THREE.Group();                          // all lots merged together (few draw calls)
-    if(jam.length>1){
-      const r=buildJoseAugustoMachado(jam,D.roads.find(r=>r.n===RUA_JAM)!.hw,fps?fps.hw:3.6,H,o=>{street.add(o);});
-      scene.add(r.wires);                                    // lines aren't merged with the meshes
-    }
+    const r=buildSurveyedStreet(spec,pts,D.roads.find(r=>r.n===spec.rua)!.hw,H,o=>{street.add(o);});
+    scene.add(r.wires);                                      // lines aren't merged with the meshes
     placeStatic(street);
   }
   // ---------- the cell towers of the centre (seen over the roofs from the street) ----------
@@ -247,7 +248,7 @@ export function buildDivinolandia():void{
     houses:D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
     protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(SITE_TABLE) as SiteId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),
-    surveyedStreet:RUA_JAM,
+    surveyedStreets:[...SURVEYED],
   }).map(route=>route.map(site=>({...site,y:H(site.x,site.z)})));
   const poles=poleRoutes.flat();
   scene.add(makePostes(poles),makePoleWires(poleRoutes));

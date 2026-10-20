@@ -24,7 +24,10 @@ import {fileURLToPath} from 'node:url';
 import {dirname,join} from 'node:path';
 import {makeRng} from '@/core/rng.ts';
 // surveyed streets (lot-by-lot from Street View): no generated houses there, real paving
-import {RUA as SURVEYED,SURFACE as SURVEYED_SURFACE,SETT_STREETS} from '@/world/divinolandia/ruas/jose-augusto-machado.ts';
+import {STREETS} from '@/world/divinolandia/ruas/index.ts';
+import {chainPieces} from '@/world/divinolandia/ruas/spec.ts';
+const SURVEYED=new Map(STREETS.map(s=>[s.rua,s]));
+const SETT_STREETS=STREETS.flatMap(s=>s.settStreets??[]);
 
 const here=dirname(fileURLToPath(import.meta.url));
 const DOCS=join(here,'..','docs','divinolandia');
@@ -306,7 +309,7 @@ const landmarkKeep:[number,number,number][]=[
   [landmarks.torre[0],landmarks.torre[1],40],[landmarks.prefeitura[0],landmarks.prefeitura[1],16],
 ];
 // keep generated houses off the surveyed street (its lots come from the street spec)
-const surveyedPts=roads.filter(r=>r.name===SURVEYED).map(r=>r.pts);
+const surveyedPts=roads.filter(r=>SURVEYED.has(r.name)).map(r=>r.pts);
 function nearSurveyed(x:number,z:number,m:number):boolean{
   for(const pts of surveyedPts)for(let i=1;i<pts.length;i++)
     if(segDist(x,z,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1])[0]<m)return true;
@@ -315,7 +318,7 @@ function nearSurveyed(x:number,z:number,m:number):boolean{
 const townStreet=new Set(['residential','tertiary','secondary','primary','living_street','unclassified']);
 let tried=0;
 for(const r of roads){
-  if(!townStreet.has(r.k)||r.name===SURVEYED)continue;
+  if(!townStreet.has(r.k)||SURVEYED.has(r.name))continue;
   for(const side of[-1,1]){
     for(let k=1;k<r.pts.length;k++){
       const[ax,az]=r.pts[k-1],[bx,bz]=r.pts[k],L=Math.hypot(bx-ax,bz-az);
@@ -421,8 +424,17 @@ function cut(pts:P2[],a:number,b:number):P2[]{             // sub-polyline betwe
 }
 {
   const out:Road[]=[];
+  // each surveyed street: its OSM pieces chained into one polyline (the spec's arc-length
+  // frame), then cut into the surveyed surface pieces, in order
+  const done=new Set<string>();
   for(const r of roads){
-    if(r.name===SURVEYED){for(const[a,b,sf]of SURVEYED_SURFACE){const p=cut(r.pts,a,b);if(p.length>1)out.push({...r,pts:p,sf,paved:true});}continue;}
+    const spec=SURVEYED.get(r.name);
+    if(spec){
+      if(done.has(r.name))continue;done.add(r.name);
+      const pts=chainPieces(roads.filter(q=>q.name===r.name).map(q=>q.pts));
+      for(const[a,b,sf]of spec.surface){const p=cut(pts,a,b);if(p.length>1)out.push({...r,pts:p,sf,paved:true});}
+      continue;
+    }
     if(SETT_STREETS.includes(r.name))r.sf='sett';
     out.push(r);
   }

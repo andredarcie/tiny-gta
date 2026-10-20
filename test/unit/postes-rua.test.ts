@@ -4,7 +4,7 @@ import {makePoleWires,makePostes} from '../../src/assets/models/divinolandia/pos
 import * as THREE from 'three';
 
 const ROAD:PoleRoad={name:'Rua A',pts:[[0,0],[200,0]],halfWidth:4,paved:true,enabled:true,sidewalk:true};
-const plan=(overrides:Partial<PolePlan>={})=>planRoadPoles({roads:[ROAD],houses:[],protectedAreas:[],surveyedStreet:'Rua X',...overrides});
+const plan=(overrides:Partial<PolePlan>={})=>planRoadPoles({roads:[ROAD],houses:[],protectedAreas:[],surveyedStreets:['Rua X'],...overrides});
 
 describe('street utility pole placement',()=>{
   it('lines poles along one curb, facing their lamps into the street',()=>{
@@ -15,7 +15,7 @@ describe('street utility pole placement',()=>{
 
   it('does not populate unsurveyed dirt roads or duplicate a surveyed street',()=>{
     expect(plan({roads:[{...ROAD,paved:false}]})).toEqual([]);
-    expect(plan({surveyedStreet:ROAD.name})).toEqual([]);
+    expect(plan({surveyedStreets:[ROAD.name]})).toEqual([]);
     expect(plan({roads:[{...ROAD,pts:[[0,0],[20,0]]}]})).toEqual([]);
   });
 
