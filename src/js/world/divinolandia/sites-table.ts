@@ -52,7 +52,7 @@ export const SITE_TABLE={
 export type SiteId=keyof typeof SITE_TABLE;
 
 // Real places DRAPED on the terrain instead of levelled: the town's four fuel stations,
-// rebuilt from Street View on their sloping forecourts (src/assets/models/divinolandia/
+// rebuilt from Street View on their sloping forecourts, and the Monumento ao Ciclista (src/assets/models/divinolandia/
 // posto-*.ts; build.ts places them). The lot (same rectangle convention as above, face 0 =
 // x along w, z along d) only keeps the generated houses, poles and trees off the station.
 export const DRAPED_LOTS={
@@ -60,6 +60,8 @@ export const DRAPED_LOTS={
   postoPassoni:  {x:1137.75,z:-142.75,face:0,w:48.5,d:26.5,name:'Posto Petrobras (Auto Posto Passoni)'},
   postoLurain:   {x:1280.5,z:-229,face:0,w:35,d:34,name:'Posto Lurain'},
   postoTaurus:   {x:55.5,z:-481.75,face:0,w:29,d:46.5,name:'Posto Taurus'},
+  // the Monumento ao Ciclista and its half-moon square at the east entrance (monumento-ciclista.ts)
+  monumentoCiclista:{x:1480.3,z:-171.5,face:0,w:24,d:16,name:'Monumento ao Ciclista'},
 } satisfies Record<string,SiteSpec>;
 export type LotId=SiteId|keyof typeof DRAPED_LOTS;
 export const ALL_LOTS:Record<LotId,SiteSpec>={...SITE_TABLE,...DRAPED_LOTS};

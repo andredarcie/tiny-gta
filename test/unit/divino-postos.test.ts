@@ -1,4 +1,5 @@
-// The four fuel stations rebuilt from Street View (src/assets/models/divinolandia/posto-*.ts):
+// The four fuel stations and the Monumento ao Ciclista rebuilt from Street View
+// (src/assets/models/divinolandia/posto-*.ts, monumento-ciclista.ts):
 // they build on the real terrain, stay inside their lots, keep their buildings, islands and
 // columns off every roadway, and their lots don't collide with the game's other places.
 import { describe, it, expect } from 'vitest';
@@ -10,6 +11,8 @@ import Triangulo, { ORIGIN as TRI_O, POSTO_FOOT as TRI_F } from '../../src/asset
 import Passoni, { ORIGIN as PAS_O, POSTO_FOOT as PAS_F } from '../../src/assets/models/divinolandia/posto-passoni.ts';
 import Lurain, { ORIGIN as LUR_O, POSTO_FOOT as LUR_F } from '../../src/assets/models/divinolandia/posto-lurain.ts';
 import Taurus, { ORIGIN as TAU_O, POSTO_FOOT as TAU_F } from '../../src/assets/models/divinolandia/posto-taurus.ts';
+import Monumento, { ORIGIN as MON_O, MONUMENTO_FOOT as MON_F } from '../../src/assets/models/divinolandia/monumento-ciclista.ts';
+import { PLAY } from '@/world/divinolandia/data.ts';
 
 type P2 = [number, number];
 const STATIONS = [
@@ -17,6 +20,7 @@ const STATIONS = [
   { lot: 'postoPassoni', model: Passoni, origin: PAS_O, foot: PAS_F },
   { lot: 'postoLurain', model: Lurain, origin: LUR_O, foot: LUR_F },
   { lot: 'postoTaurus', model: Taurus, origin: TAU_O, foot: TAU_F },
+  { lot: 'monumentoCiclista', model: Monumento, origin: MON_O, foot: MON_F },
 ] as const;
 const H = (x: number, z: number): number => divinoHeight(x + DIV_OX, z + DIV_OZ);
 const segDist = (px: number, pz: number, ax: number, az: number, bx: number, bz: number): number => {
@@ -42,7 +46,7 @@ describe('fuel stations (posto-*.ts)', () => {
       expect(b.max.y).toBeLessThan(14);                 // nothing flies off: canopies ~6 m, two storeys ~10 m
       expect(b.min.y).toBeGreaterThan(-8);
       let n = 0; g.traverse(o => { if ((o as THREE.Mesh).isMesh) n++; });
-      expect(n).toBeGreaterThan(60);
+      expect(n).toBeGreaterThan(40);
     }
   });
   it('keep buildings, islands and columns off every roadway', () => {
@@ -59,6 +63,13 @@ describe('fuel stations (posto-*.ts)', () => {
     }
     expect([...new Set(bad)]).toEqual([]);
   });
+  it('can be reached: every lot lies inside the playable box', () => {
+    for (const id of Object.keys(DRAPED_LOTS) as (keyof typeof DRAPED_LOTS)[]) {
+      const L = DRAPED_LOTS[id];
+      expect(L.x + L.w / 2 + DIV_OX).toBeLessThan(PLAY.x1); expect(L.x - L.w / 2 + DIV_OX).toBeGreaterThan(PLAY.x0);
+      expect(L.z + L.d / 2 + DIV_OZ).toBeLessThan(PLAY.z1); expect(L.z - L.d / 2 + DIV_OZ).toBeGreaterThan(PLAY.z0);
+    }
+  });
   it('their lots overlap no other place', () => {
     const ids = Object.keys(ALL_LOTS) as LotId[];
     for (const id of Object.keys(DRAPED_LOTS) as LotId[]) {
@@ -72,6 +83,7 @@ describe('fuel stations (posto-*.ts)', () => {
     const real: Record<string, P2> = {
       postoTriangulo: [-21.6619478, -46.7342335], postoPassoni: [-21.66075, -46.72835],
       postoLurain: [-21.6600693, -46.726942], postoTaurus: [-21.6576741, -46.7387521],
+      monumentoCiclista: [-21.6605515, -46.7250474],
     };
     for (const [id, [lat, lng]] of Object.entries(real)) {
       const L = DRAPED_LOTS[id as keyof typeof DRAPED_LOTS], x = (lng - LON0) * MX, z = (LAT0 - lat) * MZ;

@@ -41,6 +41,7 @@ import PostoTriangulo,{ORIGIN as TRI_O,POSTO_FOOT as TRI_FOOT} from '../../../as
 import PostoPassoni,{ORIGIN as PAS_O,POSTO_FOOT as PAS_FOOT} from '../../../assets/models/divinolandia/posto-passoni.ts';
 import PostoLurain,{ORIGIN as LUR_O,POSTO_FOOT as LUR_FOOT} from '../../../assets/models/divinolandia/posto-lurain.ts';
 import PostoTaurus,{ORIGIN as TAU_O,POSTO_FOOT as TAU_FOOT} from '../../../assets/models/divinolandia/posto-taurus.ts';
+import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../../../assets/models/divinolandia/monumento-ciclista.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
@@ -253,9 +254,11 @@ export function buildDivinolandia():void{
   }
   // the sanatorium's glass entrance is the street door of the game's hospital (models/city/hospital.ts)
 
-  // ---------- the four fuel stations, 1:1 from Street View (posto-*.ts): each is built in
-  // town-local metres and stands on the real slope of its lot (sites-table.ts DRAPED_LOTS) ----------
-  for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT]] as const){
+  // ---------- the four fuel stations and the Monumento ao Ciclista, 1:1 from Street View
+  // (posto-*.ts, monumento-ciclista.ts): each is built in town-local metres and stands on the
+  // real slope of its lot (sites-table.ts DRAPED_LOTS) ----------
+  for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT],
+    [MonumentoCiclista,MON_O,MON_FOOT]] as const){
     const[ox,oz]=w(origin),y0=H(ox,oz);
     const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
     at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
