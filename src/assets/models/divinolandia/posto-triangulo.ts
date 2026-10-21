@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import type {GroundAt,P2} from './praca-chao.ts';
 import {BR,canopy,brFascia,plainFascia,column,island,apron,floorLine,block,tiledBlock,tileWall,brick,flat,walls,face,onFace,opening,
-  glassM,darkM,hipRoof,latticeRail,signMat,canvasTex,brLogo,board,type Face} from './posto-kit.ts';
+  glassM,darkM,hipRoofQuad,latticeRail,signMat,canvasTex,brLogo,board,type Face} from './posto-kit.ts';
 import Bomba from './bomba-combustivel.ts';
 
 // Auto Posto Triângulo (Petrobras) — Rua Lourival de Medeiros 81, on the TRIANGULAR block
@@ -152,7 +152,7 @@ function building(g:THREE.Group,at:GroundAt,F1:number):void{
   // the upper floor in exposed brick, set back from the ends where the balconies are
   const UP:P2[]=[[495,-26.6],[504,-24.9],[504,-5.6],[495,-1.5]];
   walls(g,UP,F1,TOP,brick(),1,inside);
-  hipRoof(g,494.7,504.3,-27,-1.4,TOP,2.4,'#9a5a43',.6);
+  hipRoofQuad(g,UP,TOP,2.4,'#9a5a43',.6);                                          // follows the wedge
 
   // ---- east face, under the canopy (seen from the forecourt: left = south)
   const E=face([504,-25.5],[504,-4.9],inside);      // len 20.6; s = 0 at the south end

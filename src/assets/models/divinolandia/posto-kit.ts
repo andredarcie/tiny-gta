@@ -257,7 +257,7 @@ export function island(g:THREE.Group,at:GroundAt,x:number,z:number,rot:number,l:
   const top=hi+(o.h??.22),b=new THREE.Mesh(new THREE.BoxGeometry(l,top-lo+.3,w),flat(o.base));
   b.position.set(x,(top+lo-.3)/2,z);b.rotation.y=-rot;b.castShadow=true;b.receiveShadow=true;g.add(b);
   if(o.edge){
-    const e=new THREE.Mesh(new THREE.BoxGeometry(l+.02,.1,w+.02),flat(o.edge));e.position.set(x,top-.05,z);e.rotation.y=-rot;g.add(e);
+    const e=new THREE.Mesh(new THREE.BoxGeometry(l+.02,.1,w+.02),flat(o.edge));e.position.set(x,top-.044,z);e.rotation.y=-rot;g.add(e);   // (its top just over the block's)
     const t=new THREE.Mesh(new THREE.BoxGeometry(l-.16,.02,w-.16),flat(o.base));t.position.set(x,top+.002,z);t.rotation.y=-rot;g.add(t);
   }
   return top;
@@ -374,4 +374,36 @@ export function latticeRail(g:THREE.Group,f:Face,s0:number,s1:number,y:number,h:
     const bar=new THREE.Mesh(new THREE.BoxGeometry(.025,L,.025),m);bar.position.set(x,yy,z);
     bar.rotation.set(0,f.ry,k*Math.atan2(step,h),'YXZ');g.add(bar);
   }
+}
+
+// A hipped clay roof over a convex QUAD [A,B,C,D] whose short ends are AB and CD (a
+// trapezoid building on a wedge lot): eaves offset `ov` out of every wall, the ridge
+// between the two hip apexes (each set back from its end by half that end's width).
+export function hipRoofQuad(g:THREE.Group,q:P2[],y:number,rise:number,c:string,ov=.5):void{
+  const cen=centre(q),n=q.length;
+  // offset every edge outward by ov and intersect the neighbouring offset lines
+  const off=q.map((a,i)=>{const b=q[(i+1)%n],dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz);let nx=dz/L,nz=-dx/L;
+    if((a[0]+b[0])/2*nx+(a[1]+b[1])/2*nz<cen[0]*nx+cen[1]*nz){nx=-nx;nz=-nz;}return{p:[a[0]+nx*ov,a[1]+nz*ov] as P2,d:[dx,dz] as P2};});
+  const E=q.map((_,i)=>{const L1=off[(i+n-1)%n],L2=off[i];
+    const den=L1.d[0]*L2.d[1]-L1.d[1]*L2.d[0],t=((L2.p[0]-L1.p[0])*L2.d[1]-(L2.p[1]-L1.p[1])*L2.d[0])/den;
+    return[L1.p[0]+L1.d[0]*t,L1.p[1]+L1.d[1]*t] as P2;});
+  const[A,B,C,D]=E,mid=(p:P2,r:P2):P2=>[(p[0]+r[0])/2,(p[1]+r[1])/2];
+  const m1=mid(A,B),m2=mid(C,D),ax=m2[0]-m1[0],az=m2[1]-m1[1],al=Math.hypot(ax,az);
+  const h1=Math.hypot(B[0]-A[0],B[1]-A[1])/2,h2=Math.hypot(D[0]-C[0],D[1]-C[1])/2;
+  const R1:P2=[m1[0]+ax/al*h1,m1[1]+az/al*h1],R2:P2=[m2[0]-ax/al*h2,m2[1]-az/al*h2];
+  const V=(p:P2,top=false):[number,number,number]=>[p[0],top?y+rise:y,p[1]];
+  const tris:[number,number,number][][]=[[V(A),V(B),V(R1,true)],[V(B),V(C),V(R2,true)],[V(B),V(R2,true),V(R1,true)],
+    [V(C),V(D),V(R2,true)],[V(D),V(A),V(R1,true)],[V(D),V(R1,true),V(R2,true)]];
+  const pos:number[]=[],uv:number[]=[];
+  for(const t of tris){
+    // wind every face to look up and out
+    const[a,b,cc]=t,ux=b[0]-a[0],uz=b[2]-a[2],vx=cc[0]-a[0],vz=cc[2]-a[2];
+    const tt=uz*vx-ux*vz<0?[a,cc,b]:t;                  // (the y of the face normal)
+    for(const v of tt){pos.push(...v);uv.push((v[0]+v[2])/1.2,v[1]/.45);}
+  }
+  const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));geo.computeVertexNormals();
+  const m=new THREE.Mesh(geo,get('telha'+c,()=>matte({color:c,map:tileTex(),side:THREE.DoubleSide})));m.castShadow=true;g.add(m);
+  // the white soffit under the eaves
+  const s=hPoly(E,y-.04,flat('#e7e3da'),true);g.add(s);
 }

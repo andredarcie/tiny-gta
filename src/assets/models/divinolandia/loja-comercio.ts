@@ -97,7 +97,7 @@ function addSign(g:THREE.Group,s:Sign):void{
   // a blade sign stands out from the wall, its face on both sides; a wall sign faces the street
   const m=new THREE.Mesh(new THREE.BoxGeometry(s.w,s.h,d),[edge,edge,edge,edge,face,s.side?face:edge]);
   if(s.side){m.rotation.y=Math.PI/2;m.position.set(s.x??0,s.y+s.h/2,(s.out??.1)+s.w/2);}
-  else m.position.set(s.x??0,s.y+s.h/2,(s.out??.04)+d/2);
+  else m.position.set(s.x??0,s.y+s.h/2,(s.out??.065)+d/2);     // (clear of a parapet's cap, 5 cm out)
   m.castShadow=d>.1;g.add(m);
 }
 
@@ -235,9 +235,19 @@ export function buildLoja(o:LojaOpts):THREE.Group{
     :op.t==='open'&&!op.c?{...op,c:theme}:op);
   const g=buildFachada({...o.f,open,w:o.w,base:o.base??o.f.base,seed:o.seed});
   const s=o.shop,front=new THREE.Group();front.position.z=-(o.f.setback??0);g.add(front);
+  // a sign or an awning that would run into the balcony slab over the shop (fachada.ts: the
+  // slab hangs 0.2 m under the upper floor and reaches `depth` out) goes under it instead
+  const bal=o.f.balcony,slab=bal?{y0:bal.fl*3-.2,x0:bal.x-bal.w/2,x1:bal.x+bal.w/2,dp:bal.depth??1.1}:null;
+  const under=(x:number,w:number,y0:number,y1:number,out:number):boolean=>!!slab&&x+w/2>slab.x0&&x-w/2<slab.x1&&y1>slab.y0-.02&&y0<slab.y0+.2&&out<slab.dp;
+  const fitSign=(sg:Sign):Sign=>{
+    if(sg.side||!under(sg.x??0,sg.w,sg.y,sg.y+sg.h,sg.out??.04))return sg;
+    const top=slab!.y0-.04,h=Math.min(sg.h,Math.max(.3,top-2.15));
+    return{...sg,y:top-h,h};
+  };
+  const fitAwning=(a:Awning):Awning=>under(a.x??0,a.w,a.y-.3,a.y+.5,0)?{...a,y:Math.min(a.y,slab!.y0-.5)}:a;
   for(const c of s.clad??[])addClad(front,c);
-  for(const a of s.awnings??[])addAwning(front,a);
-  for(const sg of s.signs??[])addSign(front,sg);
+  for(const a of s.awnings??[])addAwning(front,fitAwning(a));
+  for(const sg of s.signs??[])addSign(front,fitSign(sg));
   for(const e of s.extras??[])addExtra(front,e,o);
   details(front,o,open);
   return g;

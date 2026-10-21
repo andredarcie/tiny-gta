@@ -58,8 +58,8 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
   const white=flat('#f2f2ef'),blue=flat(TAURUS.blue);
   for(const z of ISL){
     const top=island(g,at,54.5,z,0,6.6,1.3,{base:'#d9d9d4',edge:'#3b6fb5'});
-    column(g,at,56.6,z,CY,.6,white);
-    block(g,blue,56.6,CY-1.25,z,.62,1.25,.62);block(g,flat(TAURUS.orange),56.6,CY-1.3,z,.63,.06,.63);
+    column(g,at,56.6,z,CY-1.3,.6,white);                // (the blue head box carries it to the ceiling)
+    block(g,blue,56.6,CY-1.25,z,.62,1.25,.62);block(g,flat(TAURUS.orange),56.6,CY-1.3,z,.64,.06,.64);
     for(const x of[51.8,54.2]){const p=Bomba.build({kind:'taurus'});p.position.set(x,top,z);g.add(p);}
     // yellow-and-black guard posts at the island's ends
     for(const x of[51.25,57.75])for(const dz of[-.4,.4]){
@@ -103,7 +103,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
       ['GASOLINA','ETANOL','DIESEL S10','DIESEL S500'].forEach((r,k)=>{c.fillStyle='#ffffff';c.font='700 18px Arial';c.textAlign='left';c.fillText(r,10,40+k*58);
         c.fillStyle='#ff6a2a';c.font='700 34px monospace';c.textAlign='right';c.fillText(['6,08','3,99','5,98','5,99'][k],w-10,44+k*58);});})});
     const head=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.7,.4),[white,white,white,white,logo,logo]);head.position.set(x,y+7,z);head.rotation.y=Math.PI/2;g.add(head);
-    const pr=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.6,.36),[blue,blue,blue,blue,prices,prices]);pr.position.set(x,y+5.4,z);pr.rotation.y=Math.PI/2;g.add(pr);
+    const pr=new THREE.Mesh(new THREE.BoxGeometry(1.7,1.6,.36),[blue,blue,blue,blue,prices,prices]);pr.position.set(x,y+5.33,z);   // (its top meets the logo box's foot)pr.rotation.y=Math.PI/2;g.add(pr);
     block(g,blue,x,y+7.85,z,1.75,.12,.45,Math.PI/2);
   }
   // ---- the PROMOÇÃO A-frame at the north entrance
@@ -127,7 +127,7 @@ function shop(g:THREE.Group,at:GroundAt):void{
   const P:P2[]=[[61.5,-503.6],[69.6,-503.6],[69.6,-478],[61.5,-478]],ins:P2=[65.5,-491];
   const y0=at(61.5,-491)+.12,base=Math.min(...P.map(([x,z])=>at(x,z)))-.5,top=y0+3.7,tw=tileWall();
   walls(g,P,base,top,tw,.6,ins);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(8.1,.15,25.6),flat('#c9c9c4'));roof.position.set(65.55,top,-490.8);g.add(roof);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(7.96,.15,25.46),flat('#c9c9c4'));roof.position.set(65.55,top,-490.8);g.add(roof);   // inside the walls
   const F=face(P[3],P[0],ins);                         // the front, seen from the forecourt: left = north
   onFace(g,F,flat(TAURUS.orange),F.len/2,y0+2.95,F.len,.08,.03);
   onFace(g,F,signMat(['+ Conveniência'],{bg:TAURUS.blue,fg:'#ffffff',w:512,h:80}),9.5,y0+3.05,3.4,.5,.04,.04);
@@ -148,7 +148,7 @@ function oilChange(g:THREE.Group,at:GroundAt):void{
   const P:P2[]=[[47.5,-477.3],[64,-477.3],[64,-459],[47.5,-459]],ins:P2=[55.75,-468.15];
   const y0=at(47.5,-468)+.1,base=Math.min(...P.map(([x,z])=>at(x,z)))-.5,top=y0+5.1,tw=tileWall();
   walls(g,P,base,top,tw,.6,ins);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(16.5,.15,18.5),flat('#c4c4bf'));roof.position.set(55.75,top-.6,-468.25);g.add(roof);
+  const roof=new THREE.Mesh(new THREE.BoxGeometry(16.36,.15,18.16),flat('#c4c4bf'));roof.position.set(55.75,top-.6,-468.15);g.add(roof);
   solarArray(g,49,62,-476.5,-461,top-.55);
   const F=face(P[3],P[0],ins);                         // seen from the forecourt: left = north, s = z + 477.3
   onFace(g,F,flat(TAURUS.orange),F.len/2,y0+4.15,F.len,.1,.03);

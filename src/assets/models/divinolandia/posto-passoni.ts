@@ -73,7 +73,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
       const nb=new THREE.Mesh(new THREE.BoxGeometry(.06,.55,.5),[signMat([i.n[s<0?0:1]],{bg:BR.green,fg:'#ffffff',w:96,h:96}),flat(BR.green),flat(BR.green),flat(BR.green),flat(BR.green),flat(BR.green)]);
       nb.position.set(i.x+s*.36,CY-1.2,IZ+.6);nb.rotation.y=s<0?Math.PI:0;g.add(nb);
       const f=face([i.x+s*.3,IZ+1],[i.x+s*.3,IZ+.2],[i.x,IZ+.6]);
-      onFace(g,f,fuelMat(i.fuel),.4,top+1.2,.32,1.6,.005);
+      onFace(g,f,fuelMat(i.fuel),.4,top+1.2,.32,1.6,.02);
     }
     const p=Bomba.build({kind:'petrobras'});p.position.set(i.x,top,IZ-1.2);p.rotation.y=Math.PI/2;g.add(p);
     // the potted plant at the back end of the island (a clay pot and a sprig of leaves)

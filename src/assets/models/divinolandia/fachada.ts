@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {leafMat,leafMass} from './copa.ts';
-import {Kit,P,STONE,CORR,plain,holedWall,holeOf,fillOpening,wallX,wallZ,dirt,railing,roof,shade,
+import {Kit,P,STONE,CORR,plain,holedWall,holeOf,fillOpening,wallX,wallZ,dirt,railing,roof,shade,setRoomBounds,
   meterBox,houseNumber,waterTank,dish,acUnit,solarHeater,FH,type Op,type RoofKind} from './kit-fachada.ts';
 
 // Fachada — one REAL lot of a Divinolândia street, described from Street View: the house
@@ -84,6 +84,7 @@ export function buildFachada(o:FachadaOpts):THREE.Group{
   if(o.behind)behindHouse(k,o.behind,w,base);
   if(!o.wallOnly){
     const z0=-set,ops=o.open||[];
+    setRoomBounds(-w/2,w/2,z0-d);                         // shop rooms stay inside this building
     // storeys: each its own skin (colour) with the holes of its openings
     for(let f=0;f<fl;f++){
       const y0=f===0?base:f*FH,y1=(f+1)*FH,c=f===0?o.wall:(o.upper||o.wall),m=P(c);
@@ -101,13 +102,13 @@ export function buildFachada(o:FachadaOpts):THREE.Group{
     if(o.plinth){
       if(o.plinth.stone)holedWall(k,STONE(),-w/2,w/2,Math.max(base,-.4),o.plinth.h,z0+.012,ops.map(holeOf),.012);
       else{const pm=P(o.plinth.c||shade(o.wall,.72));holedWall(k,pm,-w/2-.02,w/2+.02,base,o.plinth.h,z0+.03,ops.map(holeOf),.03);
-        k.box(plain('#d8d4cb'),-w/2-.03,w/2+.03,o.plinth.h,o.plinth.h+.04,z0,z0+.06);}
+        k.box(plain('#d8d4cb'),-w/2-.03,w/2+.03,o.plinth.h,o.plinth.h+.04,z0+.004,z0+.06);}
     }
     dirt(k,-w/2,w/2,Math.max(base,-.3),.8,z0+.035);
     if(o.band){k.box(plain(o.band),-w/2,w/2,2.75,3.0,z0,z0+.9);k.box(plain(shade(o.band,.8)),-w/2,w/2,2.7,2.75,z0+.85,z0+.9);}
     if(o.balcony){
       const b=o.balcony,y=b.fl*FH,dp=b.depth??1.1,bx0=b.x-b.w/2,bx1=b.x+b.w/2,rc=b.rail==='iron'?'#2b2b2e':'#f2f2ee';
-      k.box(plain('#ebe8e1'),bx0,bx1,y-.2,y,z0,z0+dp);
+      k.box(plain('#ebe8e1'),bx0,bx1,y-.2,y,z0+.012,z0+dp);           // (its back face off the wall)
       if(b.rail==='glass'){const gl=new THREE.Mesh(new THREE.PlaneGeometry(b.w,1),glassRail);gl.position.set(b.x,y+.5,z0+dp);k.add(gl);
         k.box(plain('#c9ccce'),bx0,bx1,y+.98,y+1.03,z0+dp-.03,z0+dp+.03);}
       else railing(k,bx0,bx1,y,1.05,z0+dp-.05,rc,'bars');

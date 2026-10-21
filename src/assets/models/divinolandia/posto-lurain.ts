@@ -50,7 +50,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
     plainFascia(LURAIN.black),
   ],attached:[3]});                                    // the west edge leans on the restaurant
   const steel=flat(LURAIN.steel);
-  for(const z of[-219.5,-226.5,-216.2,-227.8])truss(g,[1285,z],[1297.5,z],CY+.15,.95,steel);
+  for(const z of[-219.5,-226.5,-216.2,-227.8])truss(g,[1285.06,z],[1297.44,z],CY+.15,.95,steel);   // (inside the fascia)
   for(let x=1286;x<1297.5;x+=1.5){const p=new THREE.Mesh(new THREE.BoxGeometry(.08,.12,13),steel);p.position.set(x,CY+1.15,-222);g.add(p);}
 
   // ---- columns, islands, pumps

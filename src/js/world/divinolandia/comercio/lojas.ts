@@ -57,7 +57,7 @@ const SURVEY:LojaSpec[]=[
     shop:{clad:[{kind:'ripado',c:'#a36a3e',x0:-4.5,x1:.7,y0:2.55,y1:3.0},{kind:'pedra',x0:-4.5,x1:-4.1,y0:3,y1:6}],
       signs:[{lines:['BELISCÃO'],bg:'#a36a3e',fg:'#ffffff',font:'serif',x:-1.9,y:2.5,w:4.6,h:.5,depth:.02,logo:'circle',logoC:'#e8d0b0'}],extras:[{t:'vase',x:-3.5}]}},
   {id:'sm-saojose2',nome:'São José Supermercado — Loja 02',kind:'supermercado',at:[-21.660870,-46.729589],rua:'Lourival',w:15,ref:'com-sm-saojose2',
-    f:{wall:'#de2f2b',roof:'flat',parapet:true,open:[{t:'open',x:-3.8,w:7,h:2.7},{t:'glass',x:2.6,w:4.2,y:1.6,h:.9},{t:'shop',x:5.2,w:2.6,h:2.6,c:'#2c2c2c'}]},
+    f:{wall:'#de2f2b',roof:'flat',parapet:true,open:[{t:'open',x:-3.8,w:7,h:2.7},{t:'glass',x:2.2,w:3.2,y:1.6,h:.9},{t:'shop',x:5.2,w:2.6,h:2.6,c:'#2c2c2c'}]},
     shop:{signs:[{lines:['SÃO JOSÉ','SUPERMERCADO'],bg:'#ffffff',fg:'#d1262b',x:-.5,y:3.05,w:12,h:1.45,logo:'cart',logoC:'#d1262b',frame:'#3c9b45'}],
       awnings:[{kind:'curved',c:'#f3f3f0',x:-1,w:12,y:2.75,depth:.9}],extras:[{t:'carts',x:-1.4,n:8,c:'#e84a2c'},{t:'crates',x:3.6,n:3,c:'#2c62b0'}]}},
   {id:'sm-martins',nome:'Supermercado Martins',kind:'supermercado',at:[-21.661446,-46.740437],rua:'XV de Novembro',w:20,ref:'com-lj-sara',
@@ -118,7 +118,7 @@ const SURVEY:LojaSpec[]=[
     shop:{signs:[{lines:['magazineluiza'],bg:'#2f9bf0',fg:'#ffffff',x:-.4,y:3.3,w:12,h:1.4,lit:true},{lines:['www.magazineluiza.com.br'],bg:'#f07a2a',fg:'#ffffff',x:-.4,y:2.95,w:12,h:.3},
       {lines:['BLACK','FRIDAY'],bg:'#1d1d1d',fg:'#f5a623',x:-5,y:.3,w:2.2,h:2.2,out:.02,depth:.02}],extras:[{t:'tower',x:0,w:2,h:3.4,c:'#2a90e0'},{t:'spots',xs:[-4,-1.5,1.5,4],y:4.8}]}},
   {id:'lj-originalclass',nome:'Original Class Boutique',kind:'loja',at:[-21.661894,-46.737479],rua:'XV de Novembro',w:9,ref:'com-lj-originalclass',
-    f:{floors:2,wall:'#a07a5a',upper:'#f0d6c4',roof:'hip',roofColor:'#b0603f',open:[{t:'glass',x:-1.6,w:2.8,y:.4,h:2,grille:true,frame:W},{t:'glass',x:1.6,w:1.8,y:.05,h:2.5,frame:W},{t:'arch',x:-4,w:1.1,c:'#4a2f20'},
+    f:{floors:2,wall:'#a07a5a',upper:'#f0d6c4',roof:'hip',roofColor:'#b0603f',open:[{t:'glass',x:-1.6,w:2.8,y:.4,h:2,grille:true,frame:W},{t:'glass',x:1.6,w:1.8,y:.05,h:2.5,frame:W},{t:'arch',x:-3.85,w:1.1,c:'#4a2f20'},
       {t:'arch',x:-1.6,w:1.2,fl:1},{t:'window',x:2,w:3,fl:1,frame:'#6a4630'}],balcony:{x:2,w:4.4,fl:1,rail:'iron',depth:1}},
     shop:{clad:[{kind:'pedra',c:'#c99a72',x0:-4.5,x1:4.5,y0:0,y1:3}],awnings:[{kind:'tile',c:'#b0603f',w:7.6,y:2.75,depth:1.1}],
       signs:[{lines:['ORIGINAL'],bg:'#1b1b1b',fg:'#f0f0ee',font:'serif',x:-.4,y:2.25,w:1.3,h:.45}],extras:[{t:'mannequins',x:-2.2,n:2,c:['#c42b2b','#f2f2ee']}]}},
@@ -133,7 +133,7 @@ const SURVEY:LojaSpec[]=[
       signs:[{lines:['ODONTO','company'],bg:'#2bb06e',fg:'#ffffff',x:-5,y:2.45,w:9,h:.75,logo:'tooth',logoC:'#ffffff'},{lines:['Agro Pet','acessórios'],bg:'#3c8a3c',fg:'#ffffff',x:2,y:2.5,w:2.8,h:.6},
         {lines:['SANTA25','CELULARES'],bg:'#1b1b1b',fg:'#ffffff',x:7.2,y:2.5,w:4.2,h:.65,logo:'circle',logoC:'#e8417a'}]}},
   {id:'lj-zema',nome:'Loja Zema',kind:'loja',at:[-21.662276,-46.736252],rua:'XV de Novembro',w:11,ref:'com-lj-zema',
-    f:{floors:2,wall:'#d6d6d2',upper:'#d6d6d2',roof:'flat',parapet:true,open:[{t:'glass',x:-4.3,w:2,y:.05,h:5.4,frame:'#888'},{t:'glass',x:-1.4,w:2.2,y:.05,h:2.6,frame:'#222'},{t:'open',x:2.8,w:5.6,h:2.6},{t:'window',x:2,w:5,fl:1,frame:GL}]},
+    f:{floors:2,wall:'#d6d6d2',upper:'#d6d6d2',roof:'flat',parapet:true,open:[{t:'glass',x:-4.3,w:2,y:.05,h:5.4,frame:'#888'},{t:'glass',x:-1.4,w:2.2,y:.05,h:2.6,frame:'#222'},{t:'open',x:2.75,w:5.4,h:2.6},{t:'window',x:2,w:5,fl:1,frame:GL}]},
     shop:{signs:[{lines:['zema'],bg:'#2a3fbf',fg:'#ffffff',x:1.2,y:2.95,w:8.6,h:1.25,logo:'star',logoC:'#f2b51e',logoAt:'left',lit:true},{lines:[''],bg:'#f2a51e',fg:'#f2a51e',x:1.2,y:2.75,w:8.6,h:.2}],
       extras:[{t:'mannequins',x:-1.8,n:3,c:['#f2f2ee','#e9e6e0','#3b6fb0']}]}},
   {id:'lj-alebru',nome:'Alebru II Modas e Perfumaria',kind:'loja',at:[-21.662153,-46.736607],rua:'XV de Novembro',w:8,ref:'com2-alebru',
@@ -354,7 +354,7 @@ const SURVEY:LojaSpec[]=[
       awnings:[{kind:'slab',c:'#e8e7e2',w:30,y:3,depth:1}],
       signs:[{lines:['Cancian','bebidas'],bg:'#f2d24a',fg:'#2a2a2a',x:.4,y:1.5,w:1.2,h:1.2,logo:'circle',logoC:'#1d1d1d',logoAt:'centre'},{lines:['CERVEJAS · VINHOS · CACHAÇAS · DESTILADOS · GELO · CARVÃO'],bg:'#1d1d1d',fg:'#f2f2ee',x:.4,y:.3,w:1,h:1.1},
         {lines:['A cerveja mais gelada da cidade'],bg:'#f2d24a',fg:'#2a2a2a',x:5,y:1,w:2,h:1.2},{lines:['Cancian'],bg:'#f2d24a',fg:'#2a2a2a',x:14,y:1.6,w:1.6,h:1.2},
-        {lines:['JUBILEU'],bg:'#ffffff',fg:'#2a4fa0',x:-14,y:9.4,w:3,h:.8}]}},
+        {lines:['JUBILEU'],bg:'#ffffff',fg:'#2a4fa0',x:-13.3,y:9.4,w:3,h:.8}]}},
 ];
 
 // the survey with the second pass of details (detalhes.ts) merged in
