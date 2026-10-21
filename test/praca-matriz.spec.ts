@@ -11,7 +11,8 @@ const P={
   e:{x:5142.3,z:5016.6},s1:{x:5082.3,z:5056.5},n2:{x:5089.5,z:4972.2},nw:{x:4970.8,z:4950.1},
   w:{x:4967.9,z:4998.5},n1:{x:5001.0,z:4956.8},
 };
-const VIEWS:{name:string;camera:{x:number;z:number};heading:number}[]=[
+const VIEWS:{name:string;camera:{x:number;z:number};heading:number;pitch?:number}[]=[
+  {name:'pm-front3-h325-up',camera:P.front3,heading:325,pitch:-.49},
   {name:'pm-front3-h315',camera:P.front3,heading:315},
   {name:'pm-front-h315',camera:P.front,heading:315},
   {name:'pm-front-h090',camera:P.front,heading:90},
@@ -41,6 +42,7 @@ test('Praça da Matriz matches its Street View panoramas',async({page})=>{
     const moved=await page.evaluate(({x,z,tx,tz})=>(window as any).__test.teleport(x,z,tx,tz),
       {x:v.camera.x,z:v.camera.z,tx:v.camera.x+Math.sin(a)*100,tz:v.camera.z-Math.cos(a)*100});
     expect(moved).toBe(true);
+    await page.evaluate(p=>(window as any).__test.lookPitch(p),v.pitch??0);
     await page.waitForTimeout(1500);
     await page.screenshot({path:`output/visual/praca-${v.name}.png`});
   }

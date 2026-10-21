@@ -103,6 +103,7 @@ declare global {
       clearKeys: () => void;
       placeVehicle: (x: number, z: number, fx: number, fz: number) => boolean;
       teleport: (x: number, z: number, fx: number, fz: number) => boolean;
+      lookPitch: (p: number) => number;
       attack: () => string;
       giveGun: () => string;
       startRampage: () => boolean;
@@ -623,6 +624,8 @@ window.__test={
     player.heading=h;cameraRig.yaw=h;
     return true;
   },
+  // Set the first-person look pitch (rad, negative = look up) so a capture can frame tall things.
+  lookPitch:(p: number)=>{cameraRig.fpPitch=p;return cameraRig.fpPitch;},
   // Fire the current weapon once through the real fire path (same as a click).
   // On foot with fists it is a melee swing. Returns the move mode for convenience.
   attack:()=>{performShoot();return state.mode;},

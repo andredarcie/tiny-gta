@@ -19,8 +19,8 @@ import {telhaTexture,ROOF_TILE_M} from './texturas.ts';
 // build() is pure. Frame: +x = east (toward the front), +z = south, y = 0 the nave floor
 // (the plinth runs down to y = -6 so the church can stand on the square's slope); the
 // origin is the middle of the nave. IGREJA_FOOT are collision boxes [cx, cz, w, d, h].
-const WALL=0xf4efe4,PINK=0xc86f60;
-const wallM=matte({color:WALL}),pinkM=matte({color:PINK});
+const WALL=0xf4efe4,PINK=0xdc8a78;
+const wallM=matte({color:WALL}),pinkM=matte({color:PINK}),darkM=matte({color:0x2a2622});
 const tileBaseM=matte({color:0xffffff,map:baseTileTexture()});
 const glassM=matte({color:0xffffff,map:stainedTexture(),emissive:0x0d1424});
 const plainGlassM=matte({color:0x2c3a52});
@@ -30,9 +30,9 @@ const roofM=matte({color:0xe0aa86,map:telhaTexture(),side:THREE.DoubleSide});
 const shutterM=matte({color:0x7f9f86}),doorM=matte({color:0x4a3324}),stepM=matte({color:0xcfc8bb});
 
 export const NAVE={x0:-16,x1:18,z:6.25,H:13.2},AISLE={z:10,H:6.2};
-export const TOWER={x0:17.5,x1:23.1,z0:6.5,z1:12.1,H:30.5};
+export const TOWER={x0:17.8,x1:22.8,z0:6.8,z1:11.8,H:30.5};
 export const IGREJA_FOOT:[number,number,number,number,number][]=[
-  [1,0,34,20,14],[-17.75,0,3.5,20,7],[20,0,4,8,15],[20.3,9.3,5.6,5.6,33],
+  [1,0,34,20,14],[-17.75,0,3.5,20,7],[20,0,4,8,15],[20.3,9.3,5,5,33],
 ];
 
 // ---------------- textures ----------------
@@ -47,7 +47,7 @@ function stainedTexture():THREE.Texture{
     const cols=['#1d3f8f','#2a5bb8','#1f6e5a','#2f8f63','#183070','#8f2a2a','#c79a2a','#3c78c8'];
     let s=7;const r=():number=>{s=(s*16807)%2147483647;return s/2147483647;};
     x.fillStyle='#111';x.fillRect(0,0,64,128);
-    for(let j=0;j<8;j++)for(let i=0;i<2;i++){x.fillStyle=cols[Math.floor(r()*r()*cols.length*1.6)%cols.length];x.fillRect(i*32+2,j*16+2,28,12);}
+    for(let j=0;j<6;j++)for(let i=0;i<3;i++){x.fillStyle=cols[Math.floor(r()*r()*cols.length*1.6)%cols.length];x.fillRect(i*21+2,j*21+2,18,18);}
   });
 }
 // cobogó: red-brown pierced concrete blocks (square openings in a grid)
@@ -60,8 +60,8 @@ function cobogoTexture():THREE.Texture{
 // salmon ceramic tile cladding of the plinth
 function baseTileTexture():THREE.Texture{
   return canvas(64,64,x=>{
-    x.fillStyle='#e9c7b9';x.fillRect(0,0,64,64);
-    for(let j=0;j<2;j++)for(let i=0;i<2;i++){x.fillStyle=(i+j)%2?'#d8957f':'#dc9c86';x.fillRect(i*32+1,j*32+1,30,30);}
+    x.fillStyle='#ead2c6';x.fillRect(0,0,64,64);
+    for(let j=0;j<2;j++)for(let i=0;i<2;i++){x.fillStyle=(i+j)%2?'#cf7c66':'#d98d77';x.fillRect(i*32+2,j*32+2,28,28);}
   });
 }
 // balustrade: a row of turned balusters (alpha cut-out), 1 tile = 1 m
@@ -90,7 +90,7 @@ function roundShape(w:number,h:number,grow=0):THREE.Shape{
 // a window on a face: pink frame shape behind, glass shape in front (shape uv in metres)
 function win(f:THREE.Group,x:number,y:number,shape:(grow:number)=>THREE.Shape,glass:THREE.Material=glassM,frame=.12):void{
   const fr=new THREE.Mesh(new THREE.ShapeGeometry(shape(frame),6),pinkM);fr.position.set(x,y,.02);f.add(fr);
-  const gl=new THREE.Mesh(uvScale(new THREE.ShapeGeometry(shape(0),6),2,1),glass);gl.position.set(x,y,.04);f.add(gl);
+  const gl=new THREE.Mesh(uvScale(new THREE.ShapeGeometry(shape(0),6),1,.5),glass);gl.position.set(x,y,.04);f.add(gl);
 }
 // pink balustrade on a wall head: base rail, balusters, top rail (local x a..b, at height y)
 function balustrade(f:THREE.Group,a:number,b:number,y:number,h=.8,t=.22):void{
@@ -128,8 +128,8 @@ function side(g:THREE.Group,s:1|-1):void{
   for(let i=0;i<=nb;i++){const x=a0+i*bay;box(fc,pinkM,x-.25,x+.25,AISLE.H+1.5,NAVE.H-.5,-.15,.1);}
   for(let i=0;i<nb;i++){
     const cx=a0+(i+.5)*bay;
-    box(fc,pinkM,cx-1.55,cx+1.55,8.75,12.35,-.02,.03);                                             // pink panel round the triplet
-    box(fc,wallM,cx-1.4,cx+1.4,8.85,12.25,0,.04);
+    box(fc,pinkM,cx-1.55,cx+1.55,8.75,12.35,-.02,.005);                                            // pink panel round the triplet
+    box(fc,wallM,cx-1.4,cx+1.4,8.85,12.25,0,.01);
     for(const dx of[-.85,0,.85])win(fc,cx+dx,9.1,gr=>lancetShape(.5,2.3,.7,gr),glassM,.08);
   }
   box(fc,pinkM,a0-.1,a1+.1,NAVE.H-.45,NAVE.H,-.25,.14);
@@ -227,21 +227,24 @@ function build():THREE.Group{
   // ---- the tower ----
   {
     const {x0:tx0,x1:tx1,z0:tz0,z1:tz1,H:TH}=TOWER,W=tx1-tx0,cx=(tx0+tx1)/2,cz=(tz0+tz1)/2;
-    box(g,wallM,tx0,tx1,0,TH,tz0,tz1);box(g,tileBaseM,tx0-.05,tx1+.05,-6,1.3,tz0-.05,tz1+.05,false);
+    box(g,wallM,tx0,tx1,0,TH,tz0,tz1);box(g,tileBaseM,tx0-.05,tx1+.05,-6,2.6,tz0-.05,tz1+.05,false);
+    // each face (as in the Street View close-ups, pm-front h315 / pm-front3 h325): wide pink
+    // corner pilasters; one pink-framed panel down the shaft holding TWO very tall
+    // stained-glass lancets side by side (a pink mullion between); above it a second panel
+    // with two short lancets and the clock; on top one big cobogó belfry panel
     for(const[fx,fz,ry]of[[cx,tz1,0],[tx1,cz,Math.PI/2],[cx,tz0,Math.PI],[tx0,cz,-Math.PI/2]] as [number,number,number][]){
       const f=face(g,fx,fz,ry),hw=W/2;
       for(const x of[-hw,hw])box(f,pinkM,x-.4,x+.4,0,TH,-.4,.18);                                  // corner pilasters
-      box(f,pinkM,-.28,.28,1.3,TH,-.1,.14);                                                         // middle pilaster
-      for(const bx of[-hw/2-.05,hw/2+.05]){
-        box(f,pinkM,bx-1.0,bx+1.0,1.5,21.3,-.02,.03);box(f,wallM,bx-.86,bx+.86,1.65,21.2,0,.04);
-        for(const dx of[-.42,.42])win(f,bx+dx,1.9,gr=>lancetShape(.66,18.4,.6,gr),glassM,.05);
-        box(f,pinkM,bx-.8,bx+.8,22.2,25.6,-.02,.03);box(f,wallM,bx-.68,bx+.68,22.3,25.5,0,.04);
-        for(const dx of[-.27,.27])win(f,bx+dx,22.6,gr=>lancetShape(.36,2.1,.45,gr),glassM,.04);
-        const clock=new THREE.Mesh(new THREE.CircleGeometry(.32,16),wallM);clock.position.set(bx,26.25,.06);f.add(clock);
-        const rim=new THREE.Mesh(new THREE.RingGeometry(.32,.4,16),pinkM);rim.position.set(bx,26.25,.065);f.add(rim);
-        box(f,pinkM,bx-.08,bx+.08,26.25,26.5,.06,.08);
-        box(f,pinkM,bx-.9,bx+.9,26.9,30,-.02,.03);box(f,cobogoM,bx-.75,bx+.75,27.05,29.85,0,.05);
-      }
+      // (the white panels sit at z ≤ .01, under the window frames at .02 and the glass at .04)
+      box(f,pinkM,-1.75,1.75,2.6,21.3,-.02,.005);box(f,wallM,-1.6,1.6,2.75,21.15,0,.01);
+      box(f,pinkM,-.11,.11,2.75,21.15,0,.06);                                                       // mullion
+      for(const bx of[-.78,.78])win(f,bx,3.0,gr=>lancetShape(.9,17.2,.75,gr),glassM,.06);
+      box(f,pinkM,-1.65,1.65,21.8,27.0,-.02,.005);box(f,wallM,-1.5,1.5,21.95,26.85,0,.01);
+      for(const dx of[-.6,.6])win(f,dx,22.4,gr=>lancetShape(.5,2.4,.55,gr),glassM,.07);
+      const clock=new THREE.Mesh(new THREE.CircleGeometry(.36,20),wallM);clock.position.set(0,26.05,.06);f.add(clock);
+      const rim=new THREE.Mesh(new THREE.RingGeometry(.36,.46,20),pinkM);rim.position.set(0,26.05,.065);f.add(rim);
+      box(f,darkM,-.025,.025,26.05,26.33,.07,.08);box(f,darkM,0,.2,26.025,26.075,.07,.08);           // hands
+      box(f,pinkM,-1.7,1.7,27.4,30.25,-.02,.005);box(f,cobogoM,-1.55,1.55,27.55,30.1,0,.03);
       box(f,pinkM,-hw-.5,hw+.5,TH-.1,TH+.35,-.6,.28);                                              // top cornice
     }
     box(g,wallM,tx0+.2,tx1-.2,TH+.35,TH+.9,tz0+.2,tz1-.2);
