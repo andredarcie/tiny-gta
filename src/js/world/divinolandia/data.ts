@@ -12,7 +12,7 @@
 // included, stays within |x| < 1000). y = real altitude − data.ref.
 import data from '../../../data/divinolandia.json';
 import {DIVINO_X_MIN,setDivinoTerrain} from '@/core/terrain.ts';
-import {SITE_TABLE,SITE_PAD,SITE_BLEND,type SiteId,type SiteSpec} from './sites-table.ts';
+import {SITE_TABLE,SITE_PAD,SITE_BLEND,SQUARES,SQUARE_BLEND,type SiteId,type SiteSpec} from './sites-table.ts';
 
 export const DIV_OX=5000, DIV_OZ=5000;
 // Anything east of DIVINO_X_MIN (terrain.ts) is Divinolândia (the old map never reaches it).
@@ -53,24 +53,59 @@ export const inNearGrid=(x:number,z:number):boolean=>x>=nearGrid.x0&&x<=NEAR_X1&
 // the natural slope, straight in the heightfield — so the terrain mesh, the physics and
 // every groundHeight() read agree on the pad. SITE_FLOOR is that height (world y).
 export const SITE_FLOOR={} as Record<SiteId,number>;
+// ---- the Matriz squares (sites-table.ts SQUARES): each block's ground becomes the surface
+// spanned by the street beds round it (a Coons patch over the heights sampled along the four
+// streets just outside its edges), blended back over SQUARE_BLEND m — so the sidewalks meet
+// the streets all the way round. Before the site pads: the church terrace levels on top ----
+{
+  const g=nearGrid,src=new Float32Array(g.h),N=24,OUT=4.5;
+  const srcH=(px:number,pz:number):number=>triH({...g,h:src},px,pz);
+  for(const sq of Object.values(SQUARES)){
+    const x=sq.x+DIV_OX,z=sq.z+DIV_OZ,c=Math.cos(sq.rot),s=Math.sin(sq.rot);
+    const wp=(u:number,v:number):[number,number]=>[x+u*c-v*s,z+u*s+v*c];
+    // street heights along each edge (t = 0..1), lightly smoothed
+    const edge=(f:(t:number)=>[number,number]):number[]=>{
+      const raw=Array.from({length:N+1},(_,k)=>{const[u,v]=f(k/N);return srcH(...wp(u,v));});
+      return raw.map((_,k)=>(raw[Math.max(0,k-1)]+2*raw[k]+raw[Math.min(N,k+1)])/4);
+    };
+    const nE=edge(t=>[sq.u0+t*(sq.u1-sq.u0),sq.v0-OUT]),sE=edge(t=>[sq.u0+t*(sq.u1-sq.u0),sq.v1+OUT]);
+    const wE=edge(t=>[sq.u0-OUT,sq.v0+t*(sq.v1-sq.v0)]),eE=edge(t=>[sq.u1+OUT,sq.v0+t*(sq.v1-sq.v0)]);
+    const at=(arr:number[],t:number):number=>{const f=Math.min(N,Math.max(0,t*N)),k=Math.min(N-1,Math.floor(f));return arr[k]+(arr[k+1]-arr[k])*(f-k);};
+    const c00=(nE[0]+wE[0])/2,c10=(nE[N]+eE[0])/2,c01=(sE[0]+wE[N])/2,c11=(sE[N]+eE[N])/2;
+    const patch=(u:number,v:number):number=>{
+      const a=Math.min(1,Math.max(0,(u-sq.u0)/(sq.u1-sq.u0))),b=Math.min(1,Math.max(0,(v-sq.v0)/(sq.v1-sq.v0)));
+      return(1-b)*at(nE,a)+b*at(sE,a)+(1-a)*at(wE,b)+a*at(eE,b)
+        -(c00*(1-a)*(1-b)+c10*a*(1-b)+c01*(1-a)*b+c11*a*b);
+    };
+    const R=Math.hypot(sq.u1-sq.u0,sq.v1-sq.v0)/2+SQUARE_BLEND+8,[ccx,ccz]=wp((sq.u0+sq.u1)/2,(sq.v0+sq.v1)/2);
+    const i0=Math.max(0,Math.floor((ccx-R-g.x0)/g.cell)),i1=Math.min(g.nx-1,Math.ceil((ccx+R-g.x0)/g.cell));
+    const j0=Math.max(0,Math.floor((ccz-R-g.z0)/g.cell)),j1=Math.min(g.nz-1,Math.ceil((ccz+R-g.z0)/g.cell));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
+      const dx=g.x0+i*g.cell-x,dz=g.z0+j*g.cell-z,u=dx*c+dz*s,v=-dx*s+dz*c;
+      const d=Math.hypot(Math.max(sq.u0-u,0,u-sq.u1),Math.max(sq.v0-v,0,v-sq.v1));
+      if(d>=SQUARE_BLEND)continue;
+      const t=d/SQUARE_BLEND,k=t*t*(3-2*t),k0=j*g.nx+i,p=patch(u,v);g.h[k0]=p+(g.h[k0]-p)*k;
+    }
+  }
+}
 {
   const g=nearGrid;
   for(const id of Object.keys(SITE_TABLE) as SiteId[]){
-    const s:SiteSpec=SITE_TABLE[id],x=s.x+DIV_OX,z=s.z+DIV_OZ,blend=s.blend??SITE_BLEND;
+    const s:SiteSpec=SITE_TABLE[id],x=s.x+DIV_OX,z=s.z+DIV_OZ,blend=s.blend??SITE_BLEND,pad=s.pad??SITE_PAD;
     const fx=Math.sin(s.face),fz=Math.cos(s.face);         // toward the street (depth axis)
     const ux=fz,uz=-fx;                                     // along the facade
     let sum=0,n=0;
     for(let a=-1;a<=1;a+=.25)for(let b=-1;b<=1;b+=.25){sum+=triH(g,x+ux*a*s.w/2+fx*b*s.d/2,z+uz*a*s.w/2+fz*b*s.d/2);n++;}
     const floor=sum/n;SITE_FLOOR[id]=floor;
-    const R=Math.hypot(s.w,s.d)/2+SITE_PAD+blend;
+    const R=Math.hypot(s.w,s.d)/2+pad+blend;
     const i0=Math.max(0,Math.floor((x-R-g.x0)/g.cell)),i1=Math.min(g.nx-1,Math.ceil((x+R-g.x0)/g.cell));
     const j0=Math.max(0,Math.floor((z-R-g.z0)/g.cell)),j1=Math.min(g.nz-1,Math.ceil((z+R-g.z0)/g.cell));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){
       const dx=g.x0+i*g.cell-x,dz=g.z0+j*g.cell-z;
       const u=Math.abs(dx*ux+dz*uz)-s.w/2,v=Math.abs(dx*fx+dz*fz)-s.d/2;
       const d=Math.hypot(Math.max(u,0),Math.max(v,0));
-      if(d>=SITE_PAD+blend)continue;
-      const t=d<=SITE_PAD?0:(d-SITE_PAD)/blend,k=t*t*(3-2*t);
+      if(d>=pad+blend)continue;
+      const t=d<=pad?0:(d-pad)/blend,k=t*t*(3-2*t);
       const k0=j*g.nx+i;g.h[k0]=floor+(g.h[k0]-floor)*k;
     }
   }

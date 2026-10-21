@@ -1,83 +1,82 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
+import {telhaTexture,ROOF_TILE_M} from '../divinolandia/texturas.ts';
 
-// Coreto (bandstand) octogonal da praça — como o da Praça da Matriz de Divinolândia
-// (ver reference/divinolandia-praca/praca_natal_01.jpg): plataforma elevada com
-// alguns degraus, guarda-corpo branco, colunas brancas e um telhado piramidal
-// octogonal de telha (terracota). Lados abertos; entrada (vão + escada) virada
-// para +z. build() é puro (coreto na origem); addCoreto posiciona, faz bake e
-// devolve a colisão (mesmo padrão de church/farm-house).
-const baseM=matte({color:0xc9c2b4,roughness:1});    // concreto da plataforma
-const floorM=matte({color:0xddd6c8,roughness:.9});  // piso de cima
-const colM=matte({color:0xf2efe8,roughness:.85});   // colunas brancas
-const railM=matte({color:0xeae6dd,roughness:.85});  // guarda-corpo branco
-const roofM=matte({color:0xb9532b,roughness:.9});   // telha (terracota)
-const finialM=matte({color:0xcfc6b6,roughness:.7});
+// Coreto (bandstand) of the Praça Dr. Alcindo Cardoso de Paiva, Divinolândia — rebuilt
+// from Street View (panorama on the street east of the square, heading 270): an octagon
+// ~7.4 m across on a tall white base (~1.3 m) pierced by a band of cobogó vents, a short
+// flight of steps on one face, eight slim white columns, a white ornamental lattice
+// balustrade between them, a deep white fascia band with a white soffit under the eaves,
+// and a low octagonal pyramid of clay tiles with a small finial. build() is pure: the
+// steps face +z, origin on the ground at the centre (the base runs 1 m below ground so the
+// coreto can stand on a slope).
+const whiteM=matte({color:0xf1eee7}),soffitM=matte({color:0xf4f2ec,emissive:0x3b3a37,side:THREE.DoubleSide});
+const ventM=matte({color:0x8f8a80}),floorM=matte({color:0xd9d2c4}),stepM=matte({color:0xc9c3b6});
+const latticeM=matte({color:0xf4f2ec,map:latticeTexture(),transparent:true,alphaTest:.5,side:THREE.DoubleSide});
+const roofM=matte({color:0xd99a74,map:telhaTexture(),side:THREE.DoubleSide}),finialM=matte({color:0xcfc6b6});
 
-const R=2.45;          // raio das colunas (vértices do octógono)
-const FLOOR_Y=0.58;    // topo da plataforma
-const COL_H=2.55;      // altura das colunas
-const ENTRY=2;         // índice da face da ENTRADA (voltada p/ +z) — sem guarda-corpo, com escada
+const R=3.7;            // circumradius of the column octagon
+const BASE=1.3;         // floor level
+const COL_H=2.7;        // column height
+const ENTRY=2;          // face index of the entrance (toward +z): steps, no balustrade
+
+// white ornamental lattice ("rendado") of the balustrade: rings and diagonals, alpha cut-out
+function latticeTexture():THREE.Texture{
+  if(typeof document==='undefined')return new THREE.Texture();
+  const c=document.createElement('canvas');c.width=128;c.height=64;const x=c.getContext('2d')!;
+  x.clearRect(0,0,128,64);x.strokeStyle='#fff';x.lineWidth=5;
+  x.strokeRect(2,2,124,60);
+  for(let i=0;i<4;i++){x.beginPath();x.arc(16+i*32,32,12,0,Math.PI*2);x.stroke();x.beginPath();x.moveTo(i*32,2);x.lineTo(i*32+32,62);x.moveTo(i*32+32,2);x.lineTo(i*32,62);x.stroke();}
+  const t=new THREE.CanvasTexture(c);t.wrapS=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;return t;
+}
 
 function build(): THREE.Group {
   const g=new THREE.Group();
-  // plataforma octogonal (prisma de 8 lados) levemente tronco-cônica + piso
-  const base=new THREE.Mesh(new THREE.CylinderGeometry(R+.35,R+.55,FLOOR_Y,8),baseM);
-  base.position.y=FLOOR_Y/2;base.rotation.y=Math.PI/8;base.castShadow=true;base.receiveShadow=true;g.add(base);
-  const floor=new THREE.Mesh(new THREE.CylinderGeometry(R+.2,R+.2,.08,8),floorM);
-  floor.position.y=FLOOR_Y+.04;floor.rotation.y=Math.PI/8;g.add(floor);
-  // 8 colunas brancas nos vértices do octógono
-  for(let k=0;k<8;k++){
-    const a=Math.PI/8+k*Math.PI/4;
-    const col=new THREE.Mesh(new THREE.CylinderGeometry(.12,.13,COL_H,10),colM);
-    col.position.set(Math.cos(a)*R,FLOOR_Y+COL_H/2,Math.sin(a)*R);col.castShadow=true;g.add(col);
-  }
-  // guarda-corpo branco nas faces (menos a da entrada): mureta + corrimão + balaústres.
-  // O painel corre TANGENTE à circunferência (ao longo da aresta do octógono, entre duas
-  // colunas), por isso a caixa é girada para -a-π/2 — não -a, que a deixaria radial.
-  const side=2*R*Math.sin(Math.PI/8);          // comprimento da aresta do octógono
-  const len=side*0.9;                          // painel encaixa entre as colunas
+  const oct=(r:number,h:number,y:number,m:THREE.Material,open=false):THREE.Mesh=>{
+    const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,8,1,open),m);o.position.y=y;o.rotation.y=Math.PI/8;g.add(o);return o;
+  };
+  // the base: white octagonal drum from below ground up to the floor, cobogó vent band
+  const base=oct(R+.3,BASE+1,(BASE-1)/2,whiteM);base.castShadow=true;base.receiveShadow=true;
+  const side=2*(R+.3)*Math.sin(Math.PI/8),ap=(R+.3)*Math.cos(Math.PI/8);
   for(let k=0;k<8;k++){
     if(k===ENTRY)continue;
-    const a=k*Math.PI/4;                       // centro da face
-    const cx=Math.cos(a)*(R-.05),cz=Math.sin(a)*(R-.05);
-    const ry=-a-Math.PI/2;                     // eixo do painel = tangente à face
-    const low=new THREE.Mesh(new THREE.BoxGeometry(len,.5,.12),railM);
-    low.position.set(cx,FLOOR_Y+.28,cz);low.rotation.y=ry;g.add(low);
-    const top=new THREE.Mesh(new THREE.BoxGeometry(len,.1,.18),railM);
-    top.position.set(cx,FLOOR_Y+.92,cz);top.rotation.y=ry;g.add(top);
-    // balaústres distribuídos ao longo da face (mesma direção tangente do painel)
-    const tdx=Math.cos(a-Math.PI/2),tdz=Math.sin(a-Math.PI/2);
-    for(const t of[-.36,-.12,.12,.36]){
-      const bal=new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.5,8),railM);
-      bal.position.set(cx+tdx*t*len,FLOOR_Y+.62,cz+tdz*t*len);g.add(bal);
-    }
+    const a=k*Math.PI/4,v=new THREE.Mesh(new THREE.PlaneGeometry(side*.7,.32),ventM);
+    v.position.set(Math.cos(a)*(ap+.01),.62,Math.sin(a)*(ap+.01));v.rotation.y=-a+Math.PI/2;g.add(v);
+    for(let i=1;i<7;i++){const b=new THREE.Mesh(new THREE.BoxGeometry(.05,.32,.03),whiteM);const t=(i/7-.5)*side*.7;
+      b.position.set(Math.cos(a)*(ap+.02)-Math.sin(a)*t,.62,Math.sin(a)*(ap+.02)+Math.cos(a)*t);b.rotation.y=-a+Math.PI/2;g.add(b);}
   }
-  // escada de acesso na entrada (+z)
-  for(let s=0;s<2;s++){
-    const step=new THREE.Mesh(new THREE.BoxGeometry(1.7,.22,.5),baseM);
-    step.position.set(0,.11+s*.22,R+.55-s*.34);
-    g.add(step);
+  const cap=oct(R+.42,.12,BASE-.04,whiteM);cap.receiveShadow=true;
+  oct(R+.25,.04,BASE+.03,floorM);
+  // steps on the entrance face
+  for(let s=0;s<4;s++){const st=new THREE.Mesh(new THREE.BoxGeometry(2.1,BASE-s*BASE/4,.42),stepM);st.position.set(0,(BASE-s*BASE/4)/2,ap+.2+s*.42);g.add(st);}
+  // eight columns at the octagon's vertices
+  for(let k=0;k<8;k++){
+    const a=Math.PI/8+k*Math.PI/4,col=new THREE.Mesh(new THREE.CylinderGeometry(.09,.1,COL_H,10),whiteM);
+    col.position.set(Math.cos(a)*R,BASE+COL_H/2,Math.sin(a)*R);col.castShadow=true;g.add(col);
   }
-  // telhado piramidal octogonal (telha) + beiral + pináculo
-  const eaveY=FLOOR_Y+COL_H;
-  const eave=new THREE.Mesh(new THREE.CylinderGeometry(R+.55,R+.55,.16,8),roofM);
-  eave.position.y=eaveY+.02;eave.rotation.y=Math.PI/8;g.add(eave);
-  const roof=new THREE.Mesh(new THREE.ConeGeometry(R+.75,1.9,8),roofM);
-  roof.position.y=eaveY+.1+1.9/2;roof.rotation.y=Math.PI/8;roof.castShadow=true;g.add(roof);
-  const finial=new THREE.Mesh(new THREE.SphereGeometry(.16,10,8),finialM);
-  finial.position.y=eaveY+.1+1.9+.1;g.add(finial);
-  const spike=new THREE.Mesh(new THREE.CylinderGeometry(.03,.03,.5,6),finialM);
-  spike.position.y=eaveY+.1+1.9+.35;g.add(spike);
-
-  g.userData.r=R+.8;g.userData.h=eaveY+2.2;
+  // lattice balustrade on every face but the entrance: lattice panel, top rail, bottom rail
+  const fl=2*R*Math.sin(Math.PI/8),aR=R*Math.cos(Math.PI/8);
+  for(let k=0;k<8;k++){
+    if(k===ENTRY)continue;
+    const a=k*Math.PI/4,cx=Math.cos(a)*aR,cz=Math.sin(a)*aR,ry=-a+Math.PI/2;
+    const p=new THREE.Mesh(new THREE.PlaneGeometry(fl-.2,.78),latticeM);p.position.set(cx,BASE+.47,cz);p.rotation.y=ry;
+    const pu=p.geometry.getAttribute('uv') as THREE.BufferAttribute;for(let i=0;i<pu.count;i++)pu.setX(i,pu.getX(i)*2);
+    g.add(p);
+    for(const[y,h]of[[BASE+.9,.1],[BASE+.06,.1]] as [number,number][]){const r=new THREE.Mesh(new THREE.BoxGeometry(fl-.15,h,.12),whiteM);r.position.set(cx,y,cz);r.rotation.y=ry;g.add(r);}
+  }
+  // eaves: the deep white fascia band, the soffit, the clay pyramid, the finial
+  const eaveY=BASE+COL_H;
+  oct(R+.15,.18,eaveY+.02,whiteM);
+  const fascia=oct(R+.95,.45,eaveY+.3,whiteM,true);fascia.castShadow=true;
+  const sof=new THREE.Mesh(new THREE.CircleGeometry(R+.95,8),soffitM);sof.rotation.x=Math.PI/2;sof.rotation.z=Math.PI/8;sof.position.y=eaveY+.08;g.add(sof);
+  const rise=1.9,rr=R+1.05,roof=new THREE.Mesh(new THREE.ConeGeometry(rr,rise,8,1,true),roofM);
+  const uv=roof.geometry.getAttribute('uv') as THREE.BufferAttribute;
+  for(let i=0;i<uv.count;i++)uv.setXY(i,uv.getX(i)*2*Math.PI*rr/ROOF_TILE_M/2,uv.getY(i)*Math.hypot(rr,rise)/ROOF_TILE_M);
+  roof.position.y=eaveY+.52+rise/2;roof.rotation.y=Math.PI/8;roof.castShadow=true;g.add(roof);
+  const fin=new THREE.Mesh(new THREE.SphereGeometry(.13,8,6),finialM);fin.position.y=eaveY+.52+rise+.08;g.add(fin);
+  const spike=new THREE.Mesh(new THREE.CylinderGeometry(.025,.025,.45,6),finialM);spike.position.y=eaveY+.52+rise+.3;g.add(spike);
+  g.userData.r=R+1.1;g.userData.h=eaveY+.52+rise+.5;
   return g;
 }
-
-export default {category:'Rural',label:'Coreto (bandstand)',build};
-
-export function addCoreto(cx: number,cz: number): {x0:number;x1:number;z0:number;z1:number;h:number} {
-  const g=build();g.position.set(cx,-.02,cz);bakeProp(g);
-  return{x0:cx-(R+.5),x1:cx+(R+.5),z0:cz-(R+.5),z1:cz+(R+.5),h:g.userData.h};
-}
+export const CORETO_R=R+.42;
+export default {category:'Divinolândia',label:'Coreto da Praça da Matriz',build};

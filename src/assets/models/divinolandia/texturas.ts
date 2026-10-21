@@ -172,3 +172,56 @@ export function frisoTexture():THREE.CanvasTexture{
     }
   });
 }
+// Bloquete sextavado (hexagonal concrete pavers ~25 cm): the red-pink paths of the town
+// squares and the grey sidewalks and squares' borders. Seamless (8 hexes across, 8 rows);
+// the tile is SEXT_W × SEXT_H metres, so geometry maps uv = (x/SEXT_W, z/SEXT_H).
+export const SEXT_W=2.0,SEXT_H=2.0*240/277;
+export function sextavadoTexture(kind:'vermelho'|'cinza'|'rosa'):THREE.CanvasTexture{
+  const hit=cache.get('sext-'+kind);if(hit)return hit;
+  if(typeof document==='undefined')return new THREE.Texture() as THREE.CanvasTexture;
+  const R=20,DX=Math.sqrt(3)*R,W=Math.round(DX*8),H=240,c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d')!,r=rng(kind.length*7+3);
+  const base=kind==='vermelho'?[176,92,80]:kind==='rosa'?[196,128,116]:[156,154,148];
+  x.fillStyle=kind==='cinza'?'#6f6d68':'#6e3a32';x.fillRect(0,0,W,H);
+  for(let j=-1;j<=8;j++)for(let i=-1;i<=8;i++){
+    const cx=i*DX+(j%2?DX/2:0),cy=j*1.5*R,v=.88+r()*.22;
+    x.fillStyle=`rgb(${base[0]*v|0},${base[1]*v|0},${base[2]*v|0})`;x.beginPath();
+    for(let k=0;k<6;k++){const a=Math.PI/6+k*Math.PI/3,px=cx+Math.cos(a)*(R-1.6),py=cy+Math.sin(a)*(R-1.6);k?x.lineTo(px,py):x.moveTo(px,py);}
+    x.closePath();x.fill();
+  }
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;
+  cache.set('sext-'+kind,t);return t;
+}
+// Calçada portuguesa in zigzag (the chevron band of the Praça Dr. Alcindo's dry square):
+// white limestone with dark basalt chevrons, small cubes. 1 tile = 4 m along the band.
+export const ZIGZAG_TILE_M=4;
+export function zigzagTexture():THREE.CanvasTexture{
+  return make('zigzag',256,(x,s)=>{
+    const r=rng(11);
+    x.fillStyle='#e2ddd2';x.fillRect(0,0,s,s);
+    x.fillStyle='#4a4743';
+    for(const y0 of[s*.18,s*.62]){                         // two chevron rows per tile
+      x.beginPath();
+      for(let k=0;k<=4;k++){const px=k*s/4,py=y0+(k%2?s*.16:0);k?x.lineTo(px,py):x.moveTo(px,py);}
+      for(let k=4;k>=0;k--){const px=k*s/4,py=y0+s*.08+(k%2?s*.16:0);x.lineTo(px,py);}
+      x.closePath();x.fill();
+    }
+    for(let k=0;k<2200;k++){const g=r()<.5?'rgba(0,0,0,.10)':'rgba(255,255,255,.12)';x.fillStyle=g;x.fillRect(r()*s,r()*s,3,3);}  // the stone cubes
+  });
+}
+// Lawn: soft mottled green, multiplied by the grass colour. 1 tile = 3 m.
+export const GRAMA_TILE_M=3;
+export function gramaTexture():THREE.CanvasTexture{
+  return make('grama',128,(x,s)=>{
+    const r=rng(17);x.fillStyle='#f0f0f0';x.fillRect(0,0,s,s);
+    for(let k=0;k<700;k++){const g=200+Math.floor(r()*55);x.fillStyle=`rgba(${g},${g},${g},.5)`;x.beginPath();x.arc(r()*s,r()*s,1+r()*5,0,Math.PI*2);x.fill();}
+  });
+}
+// Degraus: a flight of light stone steps seen on a slope — tread, nosing shadow, riser.
+// 1 tile = 1 m across, 2 steps (tread .5 m) along v.
+export function degrausTexture():THREE.CanvasTexture{
+  return make('degraus',64,(x,s)=>{
+    for(let k=0;k<2;k++){const y=k*s/2;
+      x.fillStyle='#d7d2c6';x.fillRect(0,y,s,s/2);x.fillStyle='#a9a397';x.fillRect(0,y+s/2-9,s,6);x.fillStyle='#7e786d';x.fillRect(0,y+s/2-3,s,3);}
+  });
+}

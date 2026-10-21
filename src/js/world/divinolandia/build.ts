@@ -22,7 +22,7 @@ import {makeTerrainMesh,farTerrainMat} from '../../../assets/models/divinolandia
 import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
 import {addCasa,finalizeCasas,casaTop} from '../../../assets/models/divinolandia/casa.ts';
 import {makeTrees,makeCoffee} from '../../../assets/models/divinolandia/vegetacao.ts';
-import {makeSurface,makeWall,makeTomb,makeGoal,makeGardenBed,type Surface} from '../../../assets/models/divinolandia/praca.ts';
+import {makeSurface,makeWall,makeTomb,makeGoal,type Surface} from '../../../assets/models/divinolandia/praca.ts';
 import {makePostes,makePoleWires} from '../../../assets/models/divinolandia/poste.ts';
 import Hospital,{HOSP_FOOT,HOSP_LOT} from '../../../assets/models/divinolandia/hospital-regional.ts';
 import HospitalAnexo,{ANNEX_FOOT,ANNEX_LOT} from '../../../assets/models/divinolandia/hospital-anexo.ts';
@@ -31,8 +31,10 @@ import Placa from '../../../assets/models/divinolandia/placa.ts';
 import Predio from '../../../assets/models/divinolandia/predio-publico.ts';
 import Prefeitura,{PREF_FOOT} from '../../../assets/models/divinolandia/prefeitura.ts';
 import {buildEuclidesSchool,EUCLIDES_SITE} from '../../../assets/models/divinolandia/escola-euclides.ts';
-import Igreja from '../../../assets/models/rural/igreja-divino.ts';
-import Coreto from '../../../assets/models/rural/coreto.ts';
+import Igreja,{IGREJA_FOOT} from '../../../assets/models/divinolandia/igreja-matriz.ts';
+import PracaAlcindo,{ALCINDO} from '../../../assets/models/divinolandia/praca-alcindo.ts';
+import PracaLadislau,{LADISLAU,MATRIZ_AT} from '../../../assets/models/divinolandia/praca-ladislau.ts';
+import {CORETO_R} from '../../../assets/models/rural/coreto.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
@@ -87,7 +89,10 @@ export function buildDivinolandia():void{
     const pts=r.pts.map(p=>w(p));
     const mid=pts[Math.floor(pts.length/2)];
     // surveyed streets draw their own raised sidewalks, poles and lamps (ruas/build-rua.ts)
-    return{pts,hw:r.hw,paved:!!r.p,sett:r.sf==='sett',sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
+    // granite setts: tagged in OSM, or round the Matriz squares (every Street View panorama
+    // there shows paralelepípedo; OSM does not tag it)
+    const sett=r.sf==='sett'||!!r.p&&Math.hypot(mid[0]-DIV_OX-45,mid[1]-DIV_OZ-5)<130;
+    return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
   scene.add(makeStreets(lines,H));
 
@@ -118,6 +123,7 @@ export function buildDivinolandia():void{
     const pts=p.pts.map(q=>w(q)) as P2[];
     const k=p.k as Surface|'hospital'|'torre';
     if(k==='hospital'||k==='torre')continue;
+    if(p.n&&MATRIZ_SQUARES.has(p.n))continue;             // laid out 1:1 below (praca-alcindo/ladislau)
     if(p.n!=='Escola Municipal Euclides da Cunha')ground.add(makeSurface(k,pts,H));
     let cx=0,cz=0;for(const q of pts){cx+=q[0];cz+=q[1];}cx/=pts.length;cz/=pts.length;
     if(k==='praca'||k==='verde'){
@@ -163,16 +169,33 @@ export function buildDivinolandia():void{
   scene.add(ground);
   placeStatic(deco);
 
-  // ---------- Igreja Matriz (Paróquia do Divino Espírito Santo) + Praça Dr. Alcindo ----------
+  // ---------- Igreja Matriz + its two squares, 1:1 from the satellite and Street View ----------
+  // Each square is laid out in its own frame (u along the street grid, v across) and draped
+  // on the real terrain; the church stands on its terrace, the levelled `matriz` lot.
   const L=D.landmarks;
   const [mx,mz]=w([L.matriz.cx,L.matriz.cz]);
-  const S=1.9,church=Igreja.build();church.scale.setScalar(S);
-  church.position.set(mx,H(mx,mz)-.05,mz);church.rotation.y=L.matriz.face;placeStatic(church);
-  obbFromModel(mx,mz,L.matriz.face,0,0,11.4*S,12.4*S,H(mx,mz)+30);
   const [px,pz]=w([L.pracaMatriz.x,L.pracaMatriz.z]);
-  const coreto=Coreto.build();coreto.position.set(px,H(px,pz)+.12,pz);placeStatic(coreto);
-  addObb(px,pz,7,7,0,H(px,pz)+6);
-  for(const[a,r]of[[0,9],[1.6,9],[3.2,9],[4.8,9]]){const bed=makeGardenBed(2.2);const x=px+Math.cos(a)*r,z=pz+Math.sin(a)*r;bed.position.set(x,H(x,z)+.12,z);placeStatic(bed);}
+  const square=(sq:{x:number;z:number;rot:number})=>{
+    const ox=sq.x+DIV_OX,oz=sq.z+DIV_OZ,c=Math.cos(sq.rot),s=Math.sin(sq.rot),y0=H(ox,oz);
+    const at=(u:number,v:number):number=>H(ox+u*c-v*s,oz+u*s+v*c)-y0;
+    const world=(u:number,v:number):[number,number]=>[ox+u*c-v*s,oz+u*s+v*c];
+    return{ox,oz,y0,th:-sq.rot,at,world};
+  };
+  {
+    const A=square(ALCINDO);
+    const g=PracaAlcindo.build({groundAt:A.at});g.position.set(A.ox,A.y0,A.oz);g.rotation.y=A.th;placeStatic(g);
+    const top=(u:number,v:number,h:number):number=>A.y0+A.at(u,v)+h;
+    obbFromModel(A.ox,A.oz,A.th,40.5,4.5,CORETO_R*2,CORETO_R*2,top(40.5,4.5,1.3));        // coreto (stand on it: floor 1.3)
+    obbFromModel(A.ox,A.oz,A.th,4.5,4.5,10.8,10.8,top(4.5,4.5,.6));                       // fountain basin
+    obbFromModel(A.ox,A.oz,A.th,-32.2,-29.8,10.5,8.5,top(-32.2,-29.8,3.3));               // shelter
+    obbFromModel(A.ox,A.oz,A.th,-36.4,35.5,2.8,5.6,top(-36.4,35.5,2.9));                  // snack kiosk
+    {const[x,z]=A.world(4.6,-26.2);addObb(x,z,9.4,9.4,ALCINDO.rot+.56,top(4.6,-26.2,4.2));} // white pavilion
+    const Ld=square(LADISLAU);
+    const gl=PracaLadislau.build({groundAt:Ld.at});gl.position.set(Ld.ox,Ld.y0,Ld.oz);gl.rotation.y=Ld.th;placeStatic(gl);
+    const[cx,cz]=Ld.world(MATRIZ_AT.u,MATRIZ_AT.v),fy=SITE_FLOOR.matriz;
+    const church=Igreja.build();church.position.set(cx,fy,cz);church.rotation.y=Ld.th;placeStatic(church);
+    for(const[bx,bz,bw,bd,ht]of IGREJA_FOOT)obbFromModel(cx,cz,Ld.th,bx,bz,bw,bd,fy+ht);
+  }
 
   // ---------- Prefeitura and the other mapped public buildings ----------
   // the Prefeitura, rebuilt from Street View on its levelled lot (sites-table.ts)
@@ -260,6 +283,7 @@ export function buildDivinolandia():void{
   // ---------- vegetation ----------
   for(let i=0;i<D.trees.length;i+=3){
     if(onSiteLot(D.trees[i],D.trees[i+1],3))continue;
+    if(inMatrizSquare(D.trees[i],D.trees[i+1]))continue;      // their trees are the surveyed ones
     const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});
   }
   for(const g of makeTrees(trees)){scene.add(g);cullGroups.push({g,r:900});}
@@ -436,4 +460,14 @@ function placeName(x:number,z:number):string{
   }
   lastQ={x,z,name};
   return name;
+}
+
+// the two squares of the Matriz, laid out 1:1 (praca-alcindo.ts / praca-ladislau.ts)
+const MATRIZ_SQUARES=new Set(['Praça Doutor Alcindo Cardoso de Paiva','Praça Professor Ladislau Rodrigues Pinto']);
+function inMatrizSquare(lx:number,lz:number):boolean{
+  for(const sq of[ALCINDO,LADISLAU]){
+    const dx=lx-sq.x,dz=lz-sq.z,c=Math.cos(sq.rot),s=Math.sin(sq.rot),u=dx*c+dz*s,v=-dx*s+dz*c;
+    if(u>sq.u0-1&&u<sq.u1+1&&v>sq.v0-1&&v<sq.v1+1)return true;
+  }
+  return false;
 }
