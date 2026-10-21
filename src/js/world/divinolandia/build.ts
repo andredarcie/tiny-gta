@@ -306,7 +306,7 @@ export function buildDivinolandia():void{
       let lo=y;for(const[lx,lz]of lojaCorners(p))lo=Math.min(lo,H(lx+DIV_OX,lz+DIV_OZ));
       // built at its surveyed frontage (signs and openings are laid out for it), then squeezed
       // to the frontage the planner could give it at a street corner
-      const g=buildLoja({w:p.spec.w,f:{...p.spec.f,d:p.d-(p.spec.f.setback??0)},shop:p.spec.shop,base:Math.min(-.4,lo-y-.4),seed:p.spec.id.length*31});
+      const g=buildLoja({w:p.spec.w,f:{...p.spec.f,d:p.d-(p.spec.f.setback??0)},shop:p.spec.shop,kind:p.spec.kind,base:Math.min(-.4,lo-y-.4),seed:[...p.spec.id].reduce((h,c)=>(h*31+c.charCodeAt(0))%9973,7)});
       g.position.set(x,y,z);g.rotation.y=Math.atan2(p.nx,p.nz);g.scale.x=p.w/p.spec.w;shops.add(g);
       const c=p.d/2;addObb(x-p.nx*c,z-p.nz*c,p.w,p.d,-Math.atan2(p.nx,p.nz),y+(p.spec.f.floors??1)*3+1.2);
     }

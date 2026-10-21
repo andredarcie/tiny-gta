@@ -4,7 +4,8 @@ import {buildFachada,type FachadaOpts} from './fachada.ts';
 import {canvasTex,brLogo} from './posto-kit.ts';
 import {telhaTexture,stoneTexture,corrugatedTexture,ROOF_TILE_M,STONE_TILE_M} from './texturas.ts';
 import Palmeira from './palmeira-fenix.ts';
-import type {ShopOpts,Sign,Awning,Clad,Extra,Logo} from '@/world/divinolandia/comercio/spec.ts';
+import type {ShopOpts,Sign,Awning,Clad,Extra,Logo,Kind} from '@/world/divinolandia/comercio/spec.ts';
+import type {Interior,Op} from './kit-fachada.ts';
 
 // Loja (comércio) — a real business front of Divinolândia, as Street View shows it: the
 // building is a Fachada (fachada.ts: storeys, openings with real holes, roof, balcony) and
@@ -24,7 +25,7 @@ import type {ShopOpts,Sign,Awning,Clad,Extra,Logo} from '@/world/divinolandia/co
 //    coolers, bollards, railings.
 // Frame (as fachada.ts): the façade is the plane z = 0 facing +z (the street), x across it
 // (centre 0, left = negative as seen from the street), y = 0 the shop floor.
-export type LojaOpts={w:number;f:Omit<FachadaOpts,'w'>;shop:ShopOpts;base?:number;seed?:number};
+export type LojaOpts={w:number;f:Omit<FachadaOpts,'w'>;shop:ShopOpts;base?:number;seed?:number;kind?:Kind;theme?:Interior};
 
 const cache=new Map<string,THREE.Material>();
 const get=(k:string,f:()=>THREE.Material):THREE.Material=>{let m=cache.get(k);if(!m){m=f();cache.set(k,m);}return m;};
@@ -201,17 +202,85 @@ function addExtra(g:THREE.Group,e:Extra,o:LojaOpts):void{
       const b=new THREE.Mesh(new THREE.BoxGeometry(.8,1.75,.7),[col(e.c),col(e.c),col(e.c),col(e.c),f,col(e.c)]);b.position.set(e.x,.88,.5);b.castShadow=true;g.add(b);break;}
     case'bollards':for(let x=e.x0;x<=e.x1+.01;x+=1.6){const b=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.8,8),col(e.c??'#e3c23a'));b.position.set(x,.4,1.9);g.add(b);}break;
     case'rail':{const y=e.y??0,c=col(e.c);box(c,e.x1-e.x0,.05,.05,(e.x0+e.x1)/2,y+1,.9);for(let x=e.x0;x<=e.x1+.01;x+=.12)box(c,.025,1,.025,x,y,.9);break;}
+    case'motos':for(let i=0;i<e.n;i++){const m=new THREE.Group(),c=['#c42b2b','#1d1d1d','#2a4fa0','#e8e6df'][i%4];
+      m.position.set(e.x+i*.9,0,2.3);m.rotation.y=Math.PI/2+.25;g.add(m);
+      for(const wx of[-.65,.65]){const w=new THREE.Mesh(new THREE.TorusGeometry(.28,.07,6,14),col('#151515'));w.position.set(wx,.32,0);m.add(w);}
+      const b=new THREE.Mesh(new THREE.BoxGeometry(1,.3,.28),col(c));b.position.set(0,.65,0);m.add(b);
+      const t=new THREE.Mesh(new THREE.BoxGeometry(.45,.22,.3),col(c));t.position.set(.2,.85,0);m.add(t);
+      const s2=new THREE.Mesh(new THREE.BoxGeometry(.55,.1,.26),col('#1d1d1d'));s2.position.set(-.2,.86,0);m.add(s2);
+      const h=new THREE.Mesh(new THREE.BoxGeometry(.05,.05,.7),col('#2a2a2a'));h.position.set(.55,1.05,0);m.add(h);}break;
+    case'balls':for(let i=0;i<e.n;i++){const b=new THREE.Mesh(new THREE.SphereGeometry(.12,10,8),col(['#f2c418','#e8e6df','#d42c2c','#2a4fa0','#3a9a4a','#ee7a2a'][i%6]));
+      b.position.set(e.x+(i%2)*.26,2.3-Math.floor(i/2)*.26,.18);g.add(b);}box('#2a2a2a',.02,.02,.2,e.x+.13,2.45,.08);break;
+    case'racks':{const c=e.c??['#c43c5a','#3b6fb0','#e9e6e0','#2a2a2a','#e8b421'];box('#9a9c9e',1.2,.03,.03,e.x,1.5,1);
+      for(const sx of[-.6,.6])box('#9a9c9e',.03,1.5,.03,e.x+sx,0,1);
+      for(let i=0;i<9;i++)box(c[i%c.length],.1,.75,.4,e.x-.5+i*.125,.72,1);break;}
+    case'sacks':for(let i=0;i<e.n;i++){const s3=new THREE.Mesh(new THREE.BoxGeometry(.6,.2,.42),col(e.c??(i%2?'#e8e2cf':'#cfd8c2')));
+      s3.position.set(e.x+Math.floor(i/4)*.65,.1+(i%4)*.2,.45);g.add(s3);}break;
+    case'aframe':{const m=matte({map:signTexture({lines:e.lines,bg:e.bg??'#1d1d1d',fg:e.fg??'#f2f2ee',w:.6,h:.9,y:0,font:'script'})});
+      for(const sd of[-1,1]){const p=new THREE.Mesh(new THREE.PlaneGeometry(.6,.9),m);p.position.set(e.x,.45,1.4+sd*.14);p.rotation.set(sd*.18,sd<0?Math.PI:0,0,'YXZ');g.add(p);}break;}
+    case'plants':for(let x=e.x0;x<=e.x1+.01;x+=1.1){const v=new THREE.Mesh(new THREE.CylinderGeometry(.22,.16,.4,10),col('#a0583a'));v.position.set(x,.2,.35);g.add(v);
+      const b=new THREE.Mesh(new THREE.SphereGeometry(.3,8,6),col('#4a7a3a'));b.position.set(x,.62,.35);b.scale.set(1,.85,1);g.add(b);}break;
+    case'drums':for(let i=0;i<e.n;i++){const d=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.88,12),col(e.c??'#2d5aa0'));d.position.set(e.x+i*.62,.44,.5);g.add(d);}break;
+    case'bin':{const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.75,12,1,true),get('binM'+(e.c??''),()=>matte({color:e.c??'#3a9a4a',wireframe:true})));
+      b.position.set(e.x,.95,2.25);g.add(b);box('#3a9a4a',.05,.6,.05,e.x,0,2.25);break;}
   }
 }
 
+// the goods a kind of business shows through its windows and doors
+const THEME:{[k in Kind]:Interior}={supermercado:'super',banco:'banco',loja:'roupa',farmacia:'farma',construcao:'casa',servico:'geral'};
 export function buildLoja(o:LojaOpts):THREE.Group{
-  const g=buildFachada({...o.f,w:o.w,base:o.base??o.f.base,seed:o.seed});
+  const theme=o.theme??(o.kind?THEME[o.kind]:'geral');
+  // the ground-floor shop windows become see-through, with the shop's room behind them
+  const open:Op[]=(o.f.open??[]).map(op=>!(op.fl??0)&&op.t==='glass'&&(op.y??.5)<.9&&(op.h??1.9)>1.4?{...op,t:'vitrine' as const,c:theme}
+    :op.t==='open'&&!op.c?{...op,c:theme}:op);
+  const g=buildFachada({...o.f,open,w:o.w,base:o.base??o.f.base,seed:o.seed});
   const s=o.shop,front=new THREE.Group();front.position.z=-(o.f.setback??0);g.add(front);
   for(const c of s.clad??[])addClad(front,c);
   for(const a of s.awnings??[])addAwning(front,a);
   for(const sg of s.signs??[])addSign(front,sg);
   for(const e of s.extras??[])addExtra(front,e,o);
+  details(front,o,open);
   return g;
+}
+
+// The small things every shop front in town has, placed deterministically from the seed:
+// a granite step at each door, the number plate, the card / PIX stickers and the
+// opening-hours plate on the glass, an AC unit, a security camera under the eaves, the
+// rainwater downpipe at one end; and by trade: a green litter bin and trolleys for the
+// supermarkets, the lit green-cross blade sign of a pharmacy, bollards in front of a bank.
+function details(g:THREE.Group,o:LojaOpts,open:Op[]):void{
+  const seed=o.seed??Math.round(o.w*7),r=(i:number):number=>{const v=Math.sin(seed*12.9898+i*78.233)*43758.5453;return v-Math.floor(v);};
+  const W=o.w,fl=o.f.floors??1,ground=open.filter(op=>!(op.fl??0));
+  const box=(c:string,w:number,h:number,d:number,x:number,y:number,z:number):THREE.Mesh=>{
+    const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),col(c));b.position.set(x,y+h/2,z);g.add(b);return b;};
+  const doors=ground.filter(op=>op.t==='open'||op.t==='door'||op.t==='vitrine'&&op.w<2.4);
+  for(const d of doors)box('#cfccc4',d.w+.2,.06,.35,d.x,-.04,.17);                    // the step
+  const d0=doors[0]??ground[0];
+  if(d0){
+    const nx=Math.min(W/2-.2,d0.x+d0.w/2+.3);
+    box('#2c3e66',.26,.16,.02,nx,2.05,.01);box('#f2f2f2',.16,.06,.025,nx,2.1,.01);      // number plate
+    box('#e9e6dc',.28,.36,.01,nx,1.4,.01);box('#3a3a3a',.2,.03,.012,nx,1.62,.01);       // opening hours
+  }
+  for(const[i,v]of ground.filter(op=>op.t==='vitrine').entries()){                     // stickers on the glass
+    const sx=v.x-v.w/2+.25+r(i)*.3;
+    box(i%2?'#32bcad':'#1d3f8a',.18,.12,.005,sx,1.1,-.12);box('#f2c418',.18,.12,.005,sx+.22,1.1,-.12);
+    if(r(i+5)>.4)box(r(i+9)>.5?'#e8302c':'#f2c418',.55,.4,.005,v.x+v.w/2-.45,1.5,-.12);
+  }
+  // AC unit: on the upper floor, or high on the shop front
+  if(r(11)>.35){const ax=(r(12)-.5)*(W-2),ay=fl>1?4.6:2.35;box('#ecebe6',.8,.5,.28,ax,ay,.14);
+    const f=new THREE.Mesh(new THREE.CircleGeometry(.17,12),col('#5a5d60'));f.position.set(ax+.15,ay+.25,.285);g.add(f);
+    box('#e0ddd6',.05,ay,.05,ax-.32,0,.03);}
+  box('#2b2b2b',.12,.12,.2,W/2-.3,2.75,.1);box('#d9d9d6',.1,.1,.08,W/2-.3,2.7,.24);    // camera
+  box('#8f9294',.1,fl*3+.4,.1,r(13)>.5?W/2-.08:-W/2+.08,-.2,.06);                     // downpipe
+  const has=(t:string):boolean=>(o.shop.extras??[]).some(e=>e.t===t);
+  if(o.kind==='supermercado'){
+    if(!has('bin'))addExtra(g,{t:'bin',x:W/2-1},o);
+    if(!has('carts'))addExtra(g,{t:'carts',x:-W/2+.6,n:3,c:'#b8bcbf'},o);
+  }
+  if(o.kind==='farmacia'&&!(o.shop.signs??[]).some(sg=>sg.side))
+    addSign(g,{lines:[''],bg:'#2f9a52',fg:'#ffffff',x:-W/2+.4,y:2.6,w:.8,h:.8,side:true,logo:'cross',logoC:'#ffffff',logoAt:'centre',lit:true});
+  if(o.kind==='banco'&&!has('bollards'))addExtra(g,{t:'bollards',x0:-W/2+1,x1:W/2-1,c:'#9a9c9e'},o);
+  if(o.kind==='loja'&&r(17)>.7&&!has('aframe'))addExtra(g,{t:'aframe',x:W/2-1.2,lines:['PROMOÇÃO','10x sem juros']},o);
 }
 
 function build():THREE.Group{

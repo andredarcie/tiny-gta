@@ -9,6 +9,7 @@ import { ALL_LOTS, SQUARES, type LotId } from '@/world/divinolandia/sites-table.
 import { STREETS } from '@/world/divinolandia/ruas/index.ts';
 import { divData as D } from '@/world/divinolandia/data.ts';
 import { buildLoja } from '../../src/assets/models/divinolandia/loja-comercio.ts';
+import { DETALHES } from '@/world/divinolandia/comercio/detalhes.ts';
 
 type P2 = [number, number];
 const placed = planLojas(LOJAS);
@@ -66,13 +67,17 @@ describe('the real businesses (comercio)', () => {
   });
   it('every business builds (Node: blank sign canvases) within its lot', () => {
     for (const p of placed) {
-      const g = buildLoja({ w: p.w, f: { ...p.spec.f, d: p.d - (p.spec.f.setback ?? 0) }, shop: p.spec.shop });
+      const g = buildLoja({ w: p.w, f: { ...p.spec.f, d: p.d - (p.spec.f.setback ?? 0) }, shop: p.spec.shop, kind: p.spec.kind, seed: 3 });
       g.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(g);
       expect(b.max.x - b.min.x).toBeLessThan(p.w + 4);
       expect(b.max.y).toBeLessThan(16);
       expect(b.max.z).toBeLessThan(6);                 // awnings, totems and bollards stay on the sidewalk
     }
+  });
+  it('every second-pass detail belongs to a surveyed business', () => {
+    const ids = new Set(LOJAS.map(l => l.id));
+    expect(Object.keys(DETALHES).filter(k => !ids.has(k))).toEqual([]);
   });
   it('the town has its supermarkets, banks and shops', () => {
     const k = (t: string): number => LOJAS.filter(l => l.kind === t).length;

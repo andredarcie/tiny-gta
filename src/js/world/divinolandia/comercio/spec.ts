@@ -40,7 +40,15 @@ export type Extra=
   |{t:'tower';x:number;w:number;h:number;c:string}
   |{t:'cooler';x:number;c:string;label?:string}
   |{t:'bollards';x0:number;x1:number;c?:string}
-  |{t:'rail';x0:number;x1:number;c:string;y?:number};
+  |{t:'rail';x0:number;x1:number;c:string;y?:number}
+  |{t:'motos';x:number;n:number}                         // motorcycles parked at the kerb
+  |{t:'balls';x:number;n:number}                         // footballs hung by the door
+  |{t:'racks';x:number;c?:string[]}                      // a clothes rail out on the pavement
+  |{t:'sacks';x:number;n:number;c?:string}               // sacks of feed / cement
+  |{t:'aframe';x:number;lines:string[];bg?:string;fg?:string}   // a sandwich board
+  |{t:'plants';x0:number;x1:number}                      // potted plants along the front
+  |{t:'drums';x:number;n:number;c?:string}
+  |{t:'bin';x:number;c?:string};
 export interface ShopOpts{signs?:Sign[];awnings?:Awning[];clad?:Clad[];extras?:Extra[]}
 
 export interface LojaSpec{

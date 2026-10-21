@@ -30,6 +30,10 @@ export const ribbed=(c:string):THREE.Material=>get('f'+c,()=>matte({color:c,map:
 export const stoneM=():THREE.Material=>get('stone',()=>matte({map:stoneTexture(),side:THREE.DoubleSide}));
 export const corrM=():THREE.Material=>get('corr',()=>matte({map:corrugatedTexture(),side:THREE.DoubleSide}));
 export const glassM=():THREE.Material=>get('glass',()=>matte({map:vidroTexture()}));
+// a shop window you can see into: faintly tinted, a little reflective sheen
+export const clearGlassM=():THREE.Material=>get('clearGlass',()=>new THREE.MeshLambertMaterial({color:0xbfd3dc,transparent:true,opacity:.22,depthWrite:false,side:THREE.DoubleSide}));
+// the lit ceiling panels of a shop (they glow a little at dusk)
+export const lampM=():THREE.Material=>get('lamp',()=>matte({color:'#f6f4ea',emissive:0x8a877c}));
 export const dirtM=():THREE.Material=>get('dirt',()=>new THREE.MeshLambertMaterial({map:sujeiraTexture(),transparent:true,depthWrite:false,
   polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
 const TILE_FOR=new Map<THREE.Material,number>();
@@ -119,7 +123,9 @@ export function dirt(k:Kit,x0:number,x1:number,y0:number,h:number,z:number):void
 }
 
 // ---------------- openings ----------------
-export type OpenKind='door'|'window'|'garage'|'gate'|'glass'|'arch'|'shop'|'open';
+export type OpenKind='door'|'window'|'garage'|'gate'|'glass'|'arch'|'shop'|'open'|'vitrine';
+// what a shop shows through its open door or its see-through window (the Op's `c`)
+export type Interior='super'|'roupa'|'farma'|'banco'|'tech'|'casa'|'geral';
 export type Op={t:OpenKind;x:number;w:number;h?:number;y?:number;fl?:number;c?:string;grille?:boolean;shutters?:string;frame?:string;awning?:string;st?:'sliding'|'basculante'|'fixed';leaves?:boolean};
 export function opDims(o:Op):{x0:number;x1:number;y0:number;y1:number}{
   const h=o.h??(o.t==='garage'||o.t==='gate'?2.4:o.t==='door'?2.15:o.t==='shop'?2.7:o.t==='glass'?1.9:o.t==='arch'?1.6:1.2);
@@ -190,17 +196,16 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
       ring(zi,plain(shade(c,.85)),.06);
       break;
     }
-    case'open':{
-      // a shop's open doorway: the dark interior, a floor, and shelves of goods along the back
-      const zb=z-REVEAL-2.6,dark=plain('#2b2724');
-      k.quadUV(dark,[x0,y0,zb],[x1,y0,zb],[x1,y1,zb],[x0,y1,zb],1,1);
-      k.quad(plain('#8d8a84'),[x0,y0+.01,zb],[x1,y0+.01,zb],[x1,y0+.01,z-REVEAL],[x0,y0+.01,z-REVEAL]);
-      for(const xx of[x0,x1])k.quad(dark,[xx,y0,zb],[xx,y0,z-REVEAL],[xx,y1,z-REVEAL],[xx,y1,zb]);
-      k.quad(dark,[x0,y1,zb],[x1,y1,zb],[x1,y1,z-REVEAL],[x0,y1,z-REVEAL]);
-      const goods=['#b8433a','#d7b04a','#4d7fb5','#e6e2d8','#5f8d4e','#c97a3a'];
-      for(let r=0;r<4;r++){const yy=y0+.35+r*.45;
-        k.box(plain('#6e6a64'),x0+.1,x1-.1,yy-.03,yy,zb+.02,zb+.4);
-        for(let i=0,xx=x0+.15;xx<x1-.25;i++,xx+=.32)k.box(plain(goods[(i+r*2)%goods.length]),xx,xx+.24,yy,yy+.26,zb+.05,zb+.3);}
+    case'open':case'vitrine':{
+      // a shop seen through its open door or its see-through window: the room behind, lit
+      shopInterior(k,x0,x1,y0,y1,z-REVEAL,(o.c as Interior)||'geral',o.t==='open');
+      if(o.t==='vitrine'){
+        k.quadUV(clearGlassM(),[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],1,1);
+        const fr=plain(o.frame||'#2f3133'),panes=Math.max(1,Math.round(w/1.8));
+        for(let p=1;p<panes;p++){const x=x0+p*w/panes;k.box(fr,x-.03,x+.03,y0,y1,zi-.01,zi+.04);}
+        k.box(fr,x0,x1,y0,y0+.08,zi-.01,zi+.04);k.box(fr,x0,x1,y1-.05,y1,zi-.01,zi+.04);
+        k.box(fr,x0,x0+.05,y0,y1,zi-.01,zi+.04);k.box(fr,x1-.05,x1,y0,y1,zi-.01,zi+.04);
+      }
       break;
     }
     case'arch':{
@@ -216,6 +221,54 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
     const am=plain(o.awning),ya=y1+.2;
     k.quad(am,[x0-.2,ya+.35,z],[x1+.2,ya+.35,z],[x1+.2,ya,z+.85],[x0-.2,ya,z+.85]);
     k.box(am,x0-.2,x1+.2,ya-.12,ya,z+.82,z+.86);
+  }
+}
+// The room behind a shop front (depth 3 m from the wall's inner face zf): walls, floor,
+// ceiling with lit panels, and the goods of its trade — supermarket gondolas, clothes on
+// rails, pharmacy shelves, bank ATMs, phones and TVs, furniture and paint, or mixed goods.
+const GOODS=['#b8433a','#d7b04a','#4d7fb5','#e6e2d8','#5f8d4e','#c97a3a','#7a4a8a','#e8e6df'];
+export function shopInterior(k:Kit,x0:number,x1:number,y0:number,y1:number,zf:number,theme:Interior,door=false):void{
+  const D=3,zb=zf-D,wall=plain(theme==='banco'?'#d9d7d0':theme==='farma'?'#f1f1ee':'#e6e1d6'),dark=plain('#3a3632');
+  const top=Math.max(y1,y0+2.7);
+  k.quadUV(wall,[x0-.6,y0,zb],[x1+.6,y0,zb],[x1+.6,top,zb],[x0-.6,top,zb],1,1);
+  k.quad(plain(theme==='super'||theme==='farma'?'#d8d6d0':'#a59f95'),[x0-.6,y0+.01,zb],[x1+.6,y0+.01,zb],[x1+.6,y0+.01,zf],[x0-.6,y0+.01,zf]);
+  for(const xx of[x0-.6,x1+.6])k.quad(door?dark:wall,[xx,y0,zb],[xx,y0,zf],[xx,top,zf],[xx,top,zb]);
+  k.quad(plain('#efede8'),[x0-.6,top,zb],[x1+.6,top,zb],[x1+.6,top,zf],[x0-.6,top,zf]);
+  for(let x=x0+.5;x<x1-.3;x+=1.6)k.box(lampM(),x,x+1.1,top-.04,top-.01,zb+.8,zb+1.1);
+  const rnd=(i:number):number=>{const v=Math.sin(x0*12.9898+i*78.233)*43758.5453;return v-Math.floor(v);};
+  const shelf=(xa:number,xb:number,z0:number,zd:number,rows:number,c:string,item:number):void=>{
+    k.box(plain(c),xa,xb,y0,y0+.08,z0,z0+zd);k.box(plain(c),xa,xb,y0+.08,y0+rows*.42+.2,z0+zd*.45,z0+zd*.55);
+    for(let r=0;r<rows;r++){const yy=y0+.15+r*.42;k.box(plain(c),xa,xb,yy-.03,yy,z0,z0+zd);
+      for(let i=0,xx=xa+.05;xx<xb-item;i++,xx+=item+.04){const h=.12+rnd(i+r*7)*.18;k.box(plain(GOODS[Math.floor(rnd(i*3+r)*GOODS.length)]),xx,xx+item,yy,yy+h,z0+.05,z0+zd-.05);}}
+  };
+  switch(theme){
+    case'super':
+      shelf(x0-.5,x1+.5,zb+.05,.45,4,'#cfd2d4',.14);                                  // wall shelves
+      for(const gz of[zb+1.3,zb+2.1])shelf(x0+.2,x1-.2,gz,.5,3,'#d9dbdc',.16);          // gondolas
+      k.box(plain('#c9302c'),x0+.1,x0+.7,y0,y0+.9,zf-.6,zf-.15);                       // checkout
+      break;
+    case'farma':
+      shelf(x0-.5,x1+.5,zb+.05,.3,5,'#f4f4f2',.08);
+      k.box(plain('#f4f4f2'),x0+.3,x1-.3,y0,y0+1,zb+1.6,zb+2.1);k.box(plain('#2f8a4e'),x0+.3,x1-.3,y0+1,y0+1.05,zb+1.6,zb+2.1);
+      break;
+    case'roupa':
+      for(const rz of[zb+.4,zb+1.6]){k.box(plain('#9a9c9e'),x0+.1,x1-.1,y0+1.5,y0+1.53,rz,rz+.03);
+        for(let i=0,xx=x0+.15;xx<x1-.2;i++,xx+=.13){const c=GOODS[Math.floor(rnd(i+rz)*GOODS.length)],h=.7+rnd(i)*.4;k.box(plain(c),xx,xx+.1,y0+1.5-h,y0+1.48,rz-.2,rz+.22);}}
+      k.box(plain('#d9c9a8'),x0+.4,x0+1.4,y0,y0+.9,zf-1.6,zf-1.1);                      // counter
+      break;
+    case'banco':
+      for(let x=x0+.3;x<x1-.6;x+=1.1){k.box(plain('#6f7478'),x,x+.75,y0,y0+1.65,zb,zb+.6);k.box(plain('#1d3550'),x+.12,x+.62,y0+1.05,y0+1.45,zb+.6,zb+.61);
+        k.box(plain('#2a2a2a'),x+.2,x+.55,y0+.8,y0+.9,zb+.6,zb+.75);}
+      break;
+    case'tech':
+      for(let r=0;r<3;r++)for(let x=x0;x<x1-.4;x+=.55)k.box(plain(r===2?'#1a1a1c':'#2a2b2e'),x,x+.45,y0+.6+r*.6,y0+.95+r*.6,zb+.02,zb+.1);
+      k.box(plain('#cfe0e8'),x0+.3,x1-.3,y0,y0+1,zb+1.4,zb+1.9);
+      break;
+    case'casa':
+      k.box(plain('#6b4a3a'),x0+.2,x0+2,y0,y0+.45,zb+.4,zb+1.3);k.box(plain('#6b4a3a'),x0+.2,x0+2,y0+.45,y0+.85,zb+.4,zb+.6);   // sofa
+      for(let x=x0+2.4;x<x1-.6;x+=.8)k.box(plain(rnd(x)>.5?'#f2f2ee':'#c9cbcc'),x,x+.65,y0,y0+1.7*(.5+rnd(x*3)*.5),zb+.1,zb+.75);   // appliances
+      break;
+    default:shelf(x0-.5,x1+.5,zb+.05,.4,4,'#8a8680',.22);
   }
 }
 export const shade=(c:string,f:number):string=>'#'+new THREE.Color(c).multiplyScalar(f).getHexString();

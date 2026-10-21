@@ -9,9 +9,10 @@
 // extras: loja-comercio.ts). Opening/sign x are measured from the middle of the front,
 // left negative AS SEEN FROM THE STREET. Pure data.
 import type {LojaSpec} from './spec.ts';
+import {mergeDetalhes} from './detalhes.ts';
 
 const W='#f2f1ec',GL='#3b3d40';
-export const LOJAS:LojaSpec[]=[
+const SURVEY:LojaSpec[]=[
   // =============================== SUPERMERCADOS ===============================
   {id:'sm-saojose',nome:'São José Supermercado',kind:'supermercado',at:[-21.661345,-46.738417],rua:'Romeu Zanetti',w:14,ref:'com2-saojose',
     f:{floors:2,wall:'#79b6a6',upper:'#79b6a6',roof:'flat',parapet:true,open:[{t:'open',x:-2.5,w:5,h:2.7},{t:'glass',x:4,w:4.6,y:.1,h:2.5},{t:'glass',x:0,w:12.6,fl:1,y:.25,h:2.2,frame:W}]},
@@ -355,3 +356,6 @@ export const LOJAS:LojaSpec[]=[
         {lines:['A cerveja mais gelada da cidade'],bg:'#f2d24a',fg:'#2a2a2a',x:5,y:1,w:2,h:1.2},{lines:['Cancian'],bg:'#f2d24a',fg:'#2a2a2a',x:14,y:1.6,w:1.6,h:1.2},
         {lines:['JUBILEU'],bg:'#ffffff',fg:'#2a4fa0',x:-14,y:9.4,w:3,h:.8}]}},
 ];
+
+// the survey with the second pass of details (detalhes.ts) merged in
+export const LOJAS:LojaSpec[]=mergeDetalhes(SURVEY);
