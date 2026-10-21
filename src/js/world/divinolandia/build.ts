@@ -47,6 +47,7 @@ import Mahindra,{ORIGIN as MAH_O,MAHINDRA_FOOT as MAH_FOOT} from '../../../asset
 import {buildLoja} from '../../../assets/models/divinolandia/loja-comercio.ts';
 import {PUBLICOS,PUBLICOS_OSM} from '../../../assets/models/divinolandia/publicos.ts';
 import {PRACAS} from '../../../assets/models/divinolandia/pracas-centro.ts';
+import {SITIO} from '../../../assets/models/divinolandia/sitio-maconaria.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
@@ -301,7 +302,7 @@ export function buildDivinolandia():void{
 
   // ---------- public buildings, grounds and squares rebuilt from Street View (publicos.ts,
   // pracas-centro.ts), each on the real slope of its lot ----------
-  for(const p of[...PUBLICOS,...PRACAS]){
+  for(const p of[...PUBLICOS,...PRACAS,...SITIO]){
     const[ox,oz]=w(p.origin),y0=H(ox,oz);
     const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
     at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];

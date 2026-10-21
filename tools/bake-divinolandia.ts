@@ -66,7 +66,7 @@ function demAt(lat:number,lon:number):number{
 const demXZ=(x:number,z:number):number=>demAt(toLat(z),toLon(x));
 
 // ---------------- grids ----------------
-const CELL=8, NX0=-1500, NZ0=-1150, NNX=376, NNZ=411;  // near: x -1500..1500, z -1150..2130
+const CELL=8, NX0=-1700, NZ0=-1150, NNX=414, NNZ=411;  // near: x -1700..1604, z -1150..2130 (west: the sítio by the masonic monument; east: the Mahindra dealer)
 const near=new Float64Array(NNX*NNZ);
 for(let j=0;j<NNZ;j++)for(let i=0;i<NNX;i++)near[j*NNX+i]=demXZ(NX0+i*CELL,NZ0+j*CELL);
 function blur(g:Float64Array,nx:number,nz:number):void{

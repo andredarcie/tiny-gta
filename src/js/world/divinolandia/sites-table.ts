@@ -62,6 +62,12 @@ export const DRAPED_LOTS={
   postoTaurus:   {x:55.5,z:-481.75,face:0,w:29,d:46.5,name:'Posto Taurus'},
   // the Monumento ao Ciclista and its half-moon square at the east entrance (monumento-ciclista.ts)
   monumentoCiclista:{x:1480.3,z:-171.5,face:0,w:24,d:16,name:'Monumento ao Ciclista'},
+  // the west entrance on the Rua São Paulo (sitio-maconaria.ts): the masonic monument, the
+  // palm drive of the sítio, the sede and the casinha up the track
+  maconaria:{x:-1322,z:-596,face:0,w:18,d:20,name:'Monumento maçônico'},
+  sitioEntrada:{x:-1358,z:-556.5,face:0,w:84,d:20,name:'Entrada do sítio'},
+  sitioSede:{x:-1501,z:-611,face:0,w:58,d:62,name:'Sede do sítio'},
+  sitioCasinha:{x:-1572,z:-560,face:0,w:40,d:30,name:'Casinha do sítio'},
 } satisfies Record<string,SiteSpec>;
 export type LotId=SiteId|keyof typeof DRAPED_LOTS;
 export const ALL_LOTS:Record<LotId,SiteSpec>={...SITE_TABLE,...DRAPED_LOTS};

@@ -9,11 +9,12 @@ import { LOJAS } from '@/world/divinolandia/comercio/lojas.ts';
 import { planLojas } from '@/world/divinolandia/comercio/plan.ts';
 import { PUBLICOS } from '../../src/assets/models/divinolandia/publicos.ts';
 import { PRACAS } from '../../src/assets/models/divinolandia/pracas-centro.ts';
+import { SITIO } from '../../src/assets/models/divinolandia/sitio-maconaria.ts';
 import type { GroundAt } from '../../src/assets/models/divinolandia/praca-chao.ts';
 
 type P2 = [number, number];
 const H = (x: number, z: number): number => divinoHeight(x + DIV_OX, z + DIV_OZ);
-const ALL = [...PUBLICOS, ...PRACAS];
+const ALL = [...PUBLICOS, ...PRACAS, ...SITIO];
 const rectC = (x: number, z: number, w: number, d: number, r: number): P2[] => {
   const c = Math.cos(r), s = Math.sin(r);
   return [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => [x + u * w / 2 * c - v * d / 2 * s, z + u * w / 2 * s + v * d / 2 * c] as P2);
@@ -77,9 +78,11 @@ describe('public buildings and squares (publicos.ts, pracas-centro.ts)', () => {
     const bad: string[] = [];
     const lots = (Object.keys(ALL_LOTS) as LotId[]).map(id => { const s = ALL_LOTS[id]; return { id, r: rectC(s.x, s.z, s.w, s.d, -s.face) }; });
     const shops = planLojas(LOJAS).map(q => ({ id: q.spec.id, r: [[-q.w / 2, 0], [q.w / 2, 0], [q.w / 2, q.d], [-q.w / 2, q.d]].map(([u, v]) => [q.x + q.ux * u - q.nx * v, q.z + q.uz * u - q.nz * v] as P2) }));
-    for (const p of PUBLICOS) for (const [x, z, w, d, r] of p.foot) {
+    for (const p of [...PUBLICOS, ...SITIO]) for (const [x, z, w, d, r] of p.foot) {
       const me = rectC(x, z, w, d, r);
-      for (const l of [...lots, ...shops]) if (overlap(me, l.r)) bad.push(`${p.id} × ${l.id}`);
+      // (a draped lot is the one its own model clears: sitio-sede ↔ sitioSede…)
+      const own = (id: string): boolean => id.toLowerCase().replace(/-/g, '') === p.id.replace(/-/g, '');
+      for (const l of [...lots, ...shops]) if (!own(l.id) && overlap(me, l.r)) bad.push(`${p.id} × ${l.id}`);
     }
     expect(bad).toEqual([]);
   });

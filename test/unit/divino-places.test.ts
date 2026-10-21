@@ -70,7 +70,9 @@ describe('the Rio do Peixe as water', () => {
       const r = riverAt(s); n++;
       if (deepWater(r.x, r.z)) deep++;
       expect(waterSurface(r.x, r.z)).not.toBeNull();
-      expect(deepWater(r.x - r.dz * 20, r.z + r.dx * 20)).toBe(false);
+      // 20 m to the side is bank — unless a tight meander brings the course back there
+      const bx = r.x - r.dz * 20, bz = r.z + r.dx * 20;
+      if (riverArcAt(bx, bz).d > 8) expect(deepWater(bx, bz)).toBe(false);
     }
     expect(deep / n).toBeGreaterThan(.7);
   });

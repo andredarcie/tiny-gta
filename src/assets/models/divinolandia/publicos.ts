@@ -39,7 +39,7 @@ function root(o:P2):{r:THREE.Group;g:THREE.Group}{const r=new THREE.Group(),g=ne
 // ground to the eave, a dark plinth, an optional painted stripe, and a roof (clay hip
 // following the quad, or a flat slab behind a parapet). Returns the floor height and the
 // eave, plus the face of each wall (seen from outside) for the openings and signs.
-function building(g:THREE.Group,at:GroundAt,P:P2[],o:{h:number;wall:string;plinth?:string;plinthH?:number;stripe?:{c:string;y:number;h:number}[];
+export function building(g:THREE.Group,at:GroundAt,P:P2[],o:{h:number;wall:string;plinth?:string;plinthH?:number;stripe?:{c:string;y:number;h:number}[];
   roof:'hip'|'flat'|'none';tile?:string;rise?:number;parapet?:string;fascia?:string;floor?:number}):{y0:number;eave:number;F:Face[]}{
   const ins=cen(P),lo=Math.min(...P.map(p=>at(...p))),hi=Math.max(...P.map(p=>at(...p)));
   const y0=o.floor??hi+.15,eave=y0+o.h;
@@ -61,12 +61,12 @@ function building(g:THREE.Group,at:GroundAt,P:P2[],o:{h:number;wall:string;plint
   return{y0,eave,F};
 }
 // a row of barred windows / doors along a face
-function windowsAlong(g:THREE.Group,f:Face,y:number,xs:number[],w:number,h:number,grille=true,frame='#f2f2ee'):void{
+export function windowsAlong(g:THREE.Group,f:Face,y:number,xs:number[],w:number,h:number,grille=true,frame='#f2f2ee'):void{
   for(const s of xs){opening(g,f,s,y,w,h,{fill:glassM(),frame,panes:2});
     if(grille)for(let k=1;k<6;k++)onFace(g,f,flat(frame),s-w/2+k*w/6,y,.025,h,.07,.02);}
 }
 // a picket fence on a low wall from a to b (posts, rails, close white bars)
-function fence(g:THREE.Group,at:GroundAt,a:P2,b:P2,o:{wall:string;wallH:number;bars:string;barH:number}):void{
+export function fence(g:THREE.Group,at:GroundAt,a:P2,b:P2,o:{wall:string;wallH:number;bars:string;barH:number}):void{
   const L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(L/2.5);
   for(let i=0;i<n;i++){
     const t0=i/n,t1=(i+1)/n,x0=a[0]+(b[0]-a[0])*t0,z0=a[1]+(b[1]-a[1])*t0,x1=a[0]+(b[0]-a[0])*t1,z1=a[1]+(b[1]-a[1])*t1;
