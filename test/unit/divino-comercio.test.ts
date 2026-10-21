@@ -7,6 +7,7 @@ import { LOJAS } from '@/world/divinolandia/comercio/lojas.ts';
 import { planLojas, lotPoints, clearance, toLocal, type Placed } from '@/world/divinolandia/comercio/plan.ts';
 import { ALL_LOTS, SQUARES, type LotId } from '@/world/divinolandia/sites-table.ts';
 import { STREETS } from '@/world/divinolandia/ruas/index.ts';
+import { alongPolyline, sideNormal, SIDEWALK as SIDE } from '@/world/divinolandia/ruas/build-rua.ts';
 import { divData as D } from '@/world/divinolandia/data.ts';
 import { buildLoja } from '../../src/assets/models/divinolandia/loja-comercio.ts';
 import { DETALHES } from '@/world/divinolandia/comercio/detalhes.ts';
@@ -50,7 +51,7 @@ describe('the real businesses (comercio)', () => {
     for (const p of placed) for (const [x, z] of lotPoints(p)) if (clearance(x, z) < -.05) bad.push(`${p.spec.id} @${x.toFixed(1)},${z.toFixed(1)}`);
     expect([...new Set(bad.map(b => b.split(' ')[0]))]).toEqual([]);
   });
-  it('lots never overlap each other, a game place, the Matriz squares or the surveyed street', () => {
+  it('lots never overlap each other, a game place, the Matriz squares or a surveyed street lot', () => {
     const bad: string[] = [];
     for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++)
       if (overlap(corners(placed[i]), corners(placed[j]))) bad.push(`${placed[i].spec.id} × ${placed[j].spec.id}`);
@@ -61,8 +62,17 @@ describe('the real businesses (comercio)', () => {
       const rect = [[sq.u0, sq.v0], [sq.u1, sq.v0], [sq.u1, sq.v1], [sq.u0, sq.v1]].map(([u, v]) => [sq.x + u * c - v * s, sq.z + u * s + v * c] as P2);
       if (overlap(corners(p), rect)) bad.push(`${p.spec.id} × square`);
     }
-    const jam = new Set(STREETS.map(s => s.rua));
-    for (const p of placed) if (jam.has(p.road)) bad.push(`${p.spec.id} on a surveyed street`);
+    // a surveyed street's lots (ruas/*.ts) and its businesses share the frontage, never a metre of it
+    for (const spec of STREETS) {
+      const pts: P2[] = [];
+      for (const r of D.roads) if (r.n === spec.rua) for (const q of r.pts) { const l = pts[pts.length - 1]; if (!l || Math.hypot(l[0] - q[0], l[1] - q[1]) > .5) pts.push([q[0], q[1]]); }
+      const hw = D.roads.find(r => r.n === spec.rua)!.hw;
+      for (const lot of spec.lots) {
+        const w = lot.s1 - lot.s0 - .1, f = alongPolyline(pts, (lot.s0 + lot.s1) / 2), [nx, nz] = sideNormal(f, lot.side), d = (lot.f.d ?? 12) + (lot.f.setback ?? 0), o = hw + SIDE;
+        const r: P2[] = [[-w / 2, 0], [w / 2, 0], [w / 2, d], [-w / 2, d]].map(([u, v]) => [f.x + f.ux * u + nx * (o + v), f.z + f.uz * u + nz * (o + v)] as P2);
+        for (const p of placed) if (overlap(corners(p), r)) bad.push(`${p.spec.id} × ${spec.rua} lot ${lot.side} ${lot.s0}`);
+      }
+    }
     expect(bad).toEqual([]);
   });
   it('every business builds (Node: blank sign canvases) within its lot', () => {

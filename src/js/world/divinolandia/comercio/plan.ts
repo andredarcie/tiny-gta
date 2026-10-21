@@ -7,8 +7,11 @@
 // Pure (no THREE): unit-tested, used by build.ts.
 import data from '../../../../data/divinolandia.json';
 import type {LojaSpec} from './spec.ts';
+import {STREETS} from '../ruas/index.ts';
 
 export const SIDEWALK=2.1;                 // kerb → façade (the town's sidewalk ribbons, rua.ts)
+export const SURVEYED_WALK=2.2;            // on a surveyed street (ruas/build-rua.ts SIDEWALK)
+export const SURVEYED=new Set(STREETS.map(s=>s.rua));
 export interface Placed{
   spec:LojaSpec;
   x:number;z:number;                       // middle of the front, on the façade line
@@ -76,7 +79,8 @@ export function planLojas(list:LojaSpec[]):Placed[]{
     const cr=tx*(pz-hit.pz)-tz*(px-hit.px),side=cr>=0?1:-1;
     // (ox,oz): from the street toward the place's side; the front then faces back at the street
     const lx=-tz,lz=tx,ox=side>0?lx:-lx,oz=side>0?lz:-lz;
-    const off=g.hw+SIDEWALK,ds=sp.ds??0;
+    // (a surveyed street draws its own 2.2 m raised sidewalks: ruas/build-rua.ts)
+    const off=g.hw+(SURVEYED.has(g.name)?SURVEYED_WALK:SIDEWALK),ds=sp.ds??0;
     const x=hit.px+ox*off+tx*ds,z=hit.pz+oz*off+tz*ds;
     const nx=-ox,nz=-oz;                             // the front faces the street
     // a viewer on the street looks toward the shop, along (ox,oz): their right is (-oz, ox)

@@ -120,6 +120,7 @@ A partir daqui as ruas passam a ser **100% fiéis**, uma de cada vez: cada lote 
 | Rua | Spec | Notas |
 |---|---|---|
 | **Rua José Augusto Machado** (367 m) | `src/js/world/divinolandia/ruas/jose-augusto-machado.ts` | 46 lotes nos dois lados entre a Manoel Pereira de Souza e a Joaquim Garcia. Asfalto no 1º quarteirão, **paralelepípedo** da Barão do Rio Branco até a Francisco Pereira de Souza, asfalto no último. A **casa rosa da esquina** (nº 228 / R. Francisco Pereira de Souza nº 58) tem modelo próprio (`src/assets/models/divinolandia/casa-rosa-esquina.ts`). Também estão lá a casa verde de grafiato com lambrequim, a casa azul, o sobrado de pedra com hera, a "Faculdade UNINA", a clínica "Letícia Brandi", o terreno da torre de celular, as resedás rosas e as palmeiras. |
+| **Rua XV de Novembro** (692 m) | `src/js/world/divinolandia/ruas/xv-de-novembro.ts` | 79 lotes nos dois lados, da ponta oeste até a Lourival de Medeiros, cada um a partir de uma foto do Street View apontada para ele (`xv-N-*`, `xv-S-*`). Paralelepípedo em toda a extensão. Convive com os 30 comércios levantados (`comercio/lojas.ts`), a Prefeitura e as praças, que desenham a própria calçada. |
 
 Paralelepípedo também confirmado nas ruas Barão do Rio Branco, Leonor Mendes de Barros e Francisco Pereira de Souza.
 

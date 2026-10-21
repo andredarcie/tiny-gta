@@ -316,7 +316,8 @@ export function buildDivinolandia():void{
   {
     const shops=new THREE.Group();
     for(const p of lojas){
-      const[x,z]=w([p.x,p.z]),y=H(x,z)+.15;
+      // (on a surveyed street the shop floor is the top of its raised sidewalk: KERB_H + .15)
+      const[x,z]=w([p.x,p.z]),y=H(x,z)+(SURVEYED.has(p.road)?.32:.15);
       let lo=y;for(const[lx,lz]of lojaCorners(p))lo=Math.min(lo,H(lx+DIV_OX,lz+DIV_OZ));
       // built at its surveyed frontage (signs and openings are laid out for it), then squeezed
       // to the frontage the planner could give it at a street corner

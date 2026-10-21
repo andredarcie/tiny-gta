@@ -3,7 +3,9 @@
 // Pure data (imported by tools/bake-divinolandia.ts in Node).
 import type {StreetSpec} from './spec.ts';
 import {SPEC as JOSE_AUGUSTO_MACHADO} from './jose-augusto-machado.ts';
+import {SPEC as XV_DE_NOVEMBRO} from './xv-de-novembro.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
+  XV_DE_NOVEMBRO,
 ];
