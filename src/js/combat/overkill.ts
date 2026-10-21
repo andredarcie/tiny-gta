@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import {roadside} from '@/world/divinolandia/nav.ts';
+import {divData} from '@/world/divinolandia/data.ts';
+import {groundHeight} from '@/core/constants.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
 import {scene} from '@/core/engine.ts';
@@ -32,7 +35,8 @@ new MiniGame({id:MiniGameId.OVERKILL,name:'Overkill',exclusive:false});
 // a ÚNICA fonte de renda que vale a pena (antes ~$9k/min eclipsava todo o resto).
 // ============================================================================
 
-export const TOTEM={x:20,z:9}; // calçada norte do quarteirão do spawn (bem visível)
+// on the pavement of the Praça da Matriz, right where the game starts (very visible)
+export const TOTEM=roadside(divData.landmarks.pracaMatriz.x+18,divData.landmarks.pracaMatriz.z+20,1.2);
 const RANGE=3;
 const MAX_MULT=REWARDS.overkill.maxMultiplier, CLIMB=REWARDS.overkill.climbPerSec, DECAY=REWARDS.overkill.decayPerSec;
 const K=REWARDS.overkill.rateFactor, MAX_RATE=REWARDS.overkill.maxPerSecond;
@@ -43,7 +47,7 @@ const ok={active:false,mult:1,peak:1,rate:0,acc:0,earned:0};
 
 // cria a caveira do modo no ponto de interação
 totem=makeOverkillTotem();
-totem.position.set(TOTEM.x,0,TOTEM.z);
+totem.position.set(TOTEM.x,groundHeight(TOTEM.x,TOTEM.z),TOTEM.z);
 scene.add(totem);
 
 // perto do totem, a pé, com o modo desligado -> mostra a ação (HUD/interact)

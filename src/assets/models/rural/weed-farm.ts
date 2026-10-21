@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
-import {scene} from '@/core/engine.ts'; // halo sprites are added individually (bakeProp skips sprites)
+import {Site} from '@/world/divinolandia/sites.ts';
 // Shared night-faded lamp materials (driven by js/world/daynight.ts): the ground-glow
 // pool + bulb tint + halo sprite that street lamps use. Reusing them lights the
 // grow yard at night for free — no real lights, no daynight edits.
@@ -29,10 +28,11 @@ const HALF_W=12, HALF_D=9;                // wall ring half-extents (a touch out
 const WALL_H=3, WALL_T=0.4;               // wall height / thickness
 export const GATE_HALF=1.9;               // half-width of the gate opening (north wall)
 
-// World placement: an open, deserted pocket of the south-east shore — clear of
-// the ploughed fields (x<=440), the ranch (550,-80), the mountain (x~509) and
-// the village (x~650). Flat ground; js/world/world.ts also keeps pines off it.
-export const WEED_CX=620, WEED_CZ=-90;
+// World placement: a hidden hollow across the Rio do Peixe, far north-west of the town
+// (sites-table.ts 'weedFarm'). The compound keeps its own axes (the Site only moves it
+// onto the levelled pad), so WEED_CX/CZ + the LOCAL offsets below are world positions.
+export const WEED_SITE=new Site('weedFarm',{cx:0,cz:0,front:0});
+export const WEED_CX=WEED_SITE.x, WEED_CZ=WEED_SITE.z;
 // Approach point just outside the gate (north). Kept for reference.
 export const WEED_GATE={x:WEED_CX, z:WEED_CZ+HALF_D+1.5};
 
@@ -44,6 +44,19 @@ export const WEED_SLOTS=[
 export const WEED_BOX={x:9.5,z:6.5};      // sale table / crate (LOCAL)
 export const WEED_TAP={x:-9.5,z:6.5};     // water standpipe (LOCAL)
 export const WEED_RACK={x:-2.5,z:-7.3};   // drying rack — hang the harvest to cure (LOCAL)
+// Exact spots the first-person farm actions aim at (LOCAL to the standpipe / sale table,
+// before their yaw): the faucet mouth water runs from, where the live bucket rests under
+// it, and the open crate on the sale table (its inner floor height and half-extents).
+export const TAP_YAW=.5, SALE_YAW=-Math.PI/2.4;
+export const TAP_SPOUT={x:.22,y:1.1,z:-.2};
+export const TAP_BUCKET_REST={x:.3,y:.4,z:.1};
+export const CRATE_LOCAL={x:-1.9,y:0,z:.4}, CRATE_SCALE=1; // on the ground beside the table's end: you look down into it
+// The table doubles as the TRIMMING bench: the dried plant is laid along its top, the trim
+// tray sits to its right, the shears rest by it, and you work it from the yard side.
+export const TABLE_TOP_Y=.98;
+export const TRIM_PLANT_LOCAL={x:.05,z:.08}, TRIM_TRAY_LOCAL={x:.62,z:.22}, TRIM_SHEARS_LOCAL={x:-.3,z:.32};
+export const TRIM_STAND_LOCAL={x:0,z:1.15};
+export const CRATE_INNER={floorY:.1*CRATE_SCALE,halfW:.62*CRATE_SCALE,halfD:.42*CRATE_SCALE};
 
 // ---- materials (shared, so bakeProp merges every farm mesh by material) ----
 const concreteM=matte({color:0xb9b3a6,roughness:1});      // wall body
@@ -321,11 +334,8 @@ function makeStandpipe(): THREE.Group {
   tip.position.set(.22,1.2,-.2);g.add(tip);
   const valve=new THREE.Mesh(new THREE.TorusGeometry(.13,.035,6,14),valveM);
   valve.rotation.x=Math.PI/2;valve.position.set(-.2,1.42,-.2);g.add(valve);
-  // a galvanized bucket under the spout
-  const bucket=new THREE.Mesh(new THREE.CylinderGeometry(.2,.16,.34,12),pipeM);
-  bucket.position.set(.3,.3,.1);bucket.castShadow=true;g.add(bucket);
-  const bwater=new THREE.Mesh(new THREE.CylinderGeometry(.18,.18,.02,12),waterM);
-  bwater.position.set(.3,.45,.1);g.add(bwater);
+  // (the bucket under the spout is LIVE — js/activities/weed-farm.ts places it at
+  // TAP_BUCKET_REST so the player can pick it up)
   // a coiled hose hanging on the riser
   const hose=new THREE.Mesh(new THREE.TorusGeometry(.22,.04,6,16),hoseM);
   hose.position.set(-.2,.9,-.34);hose.rotation.x=.4;g.add(hose);
@@ -356,12 +366,12 @@ function makeSaleTable(): THREE.Group {
   scaleBody.position.set(.3,1.78,-.4);g.add(scaleBody);
   const pan=new THREE.Mesh(new THREE.CylinderGeometry(.18,.14,.06,14),pipeM);
   pan.position.set(.3,1.55,-.4);g.add(pan);
-  // price board leaning at the back
+  // price board propped along the back edge
   const board=new THREE.Mesh(new THREE.PlaneGeometry(.9,.66),
     new THREE.MeshBasicMaterial({map:priceTexture(),side:THREE.DoubleSide}));
-  board.position.set(.3,1.4,.5);board.rotation.x=.12;g.add(board);
-  // open crate on the table for the buds
-  const crate=makeCrate(.8);crate.position.set(-.1,.98,.05);g.add(crate);
+  board.position.set(.3,1.42,-.56);board.rotation.x=-.12;g.add(board); // back edge, facing the yard: the front stays clear for trimming
+  // open crate on the ground beside the table: each harvested plant is laid in it by hand
+  const crate=makeCrate(CRATE_SCALE);crate.position.set(CRATE_LOCAL.x,CRATE_LOCAL.y,CRATE_LOCAL.z);g.add(crate);
   return g;
 }
 
@@ -519,7 +529,7 @@ function build(): THREE.Group {
     const pier=makeGatePier();pier.position.set(sx*GATE_HALF,0,HALF_D);g.add(pier);
   }
   const gate=makeRollingGate();gate.position.set(GATE_HALF+1.9,0,HALF_D-.45);g.add(gate);
-  const sign=makeSign();sign.position.set(-GATE_HALF,2.2,HALF_D+.55);sign.rotation.y=Math.PI;g.add(sign);
+  const sign=makeSign();sign.position.set(-GATE_HALF,2.2,HALF_D+.55);g.add(sign); // faces out (+z), readable from the approach
 
   // raised planter beds at every interactive slot
   for(const s of WEED_SLOTS){
@@ -531,8 +541,8 @@ function build(): THREE.Group {
   const gh=makeGreenhouse();gh.position.set(6.5,0,-5.6);gh.rotation.y=-Math.PI/2;g.add(gh);
 
   // water standpipe + sale table at the two front corners
-  const tap=makeStandpipe();tap.position.set(WEED_TAP.x,0,WEED_TAP.z);tap.rotation.y=.5;g.add(tap);
-  const sale=makeSaleTable();sale.position.set(WEED_BOX.x,0,WEED_BOX.z);sale.rotation.y=-Math.PI/2.4;g.add(sale);
+  const tap=makeStandpipe();tap.position.set(WEED_TAP.x,0,WEED_TAP.z);tap.rotation.y=TAP_YAW;g.add(tap);
+  const sale=makeSaleTable();sale.position.set(WEED_BOX.x,0,WEED_BOX.z);sale.rotation.y=SALE_YAW;g.add(sale);
 
   // clutter for a lived-in grow-op
   const sacks=makeSackStack();sacks.position.set(-9,0,-2);g.add(sacks);
@@ -560,26 +570,24 @@ export default {category:'Rural',label:'Weed farm',build,
 // Place the compound at WEED_CX/CZ, bake it, and register collision for the
 // perimeter WALLS (with the gate gap), the shack and the greenhouse. The yard,
 // beds, tap and sale table stay walkable. Called by world.js.
-export function addWeedFarm(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[]): void {
+export function addWeedFarm(): void {
   const g=build();
-  g.position.set(WEED_CX,-.02,WEED_CZ);
-  bakeProp(g);
-  // bloom halos on the flood-lamp bulbs (sprites can't bake — added to the scene,
+  g.position.set(0,-.02,0);
+  WEED_SITE.bake(g);
+  // bloom halos on the flood-lamp bulbs (sprites can't bake — they ride the site group,
   // invisible by day, faded in at night by the shared lampHaloMat)
   for(const f of FLOOD_POS){
     const lx=f.x+FLOOD_ARM*Math.cos(f.yaw), lz=f.z-FLOOD_ARM*Math.sin(f.yaw);
     const halo=new THREE.Sprite(lampHaloMat);
-    halo.position.set(WEED_CX+lx,FLOOD_H-.28,WEED_CZ+lz);halo.scale.set(2.6,2.6,1);
-    scene.add(halo);
+    halo.position.set(lx,FLOOD_H-.28,lz);halo.scale.set(2.6,2.6,1);
+    WEED_SITE.group.add(halo);
   }
-  const cx=WEED_CX,cz=WEED_CZ,T=WALL_T/2+.1;
-  solids.push(
-    {x0:cx-HALF_W-T,x1:cx-HALF_W+T,z0:cz-HALF_D,z1:cz+HALF_D,h:WALL_H}, // west
-    {x0:cx+HALF_W-T,x1:cx+HALF_W+T,z0:cz-HALF_D,z1:cz+HALF_D,h:WALL_H}, // east
-    {x0:cx-HALF_W,x1:cx+HALF_W,z0:cz-HALF_D-T,z1:cz-HALF_D+T,h:WALL_H}, // south
-    {x0:cx-HALF_W,x1:cx-GATE_HALF,z0:cz+HALF_D-T,z1:cz+HALF_D+T,h:WALL_H}, // north-west of gate
-    {x0:cx+GATE_HALF,x1:cx+HALF_W,z0:cz+HALF_D-T,z1:cz+HALF_D+T,h:WALL_H}, // north-east of gate
-    {x0:cx-7.5-2.5,x1:cx-7.5+2.5,z0:cz-8.3,z1:cz-4.1,h:2.9},  // shack
-    {x0:cx+6.5-2.0,x1:cx+6.5+2.0,z0:cz-8.9,z1:cz-2.3,h:1.9},  // greenhouse
-  );
+  const T=WALL_T/2+.1,box=(x0:number,x1:number,z0:number,z1:number,h:number):void=>WEED_SITE.box({x0,x1,z0,z1},h);
+  box(-HALF_W-T,-HALF_W+T,-HALF_D,HALF_D,WALL_H);         // west
+  box(HALF_W-T,HALF_W+T,-HALF_D,HALF_D,WALL_H);           // east
+  box(-HALF_W,HALF_W,-HALF_D-T,-HALF_D+T,WALL_H);         // south
+  box(-HALF_W,-GATE_HALF,HALF_D-T,HALF_D+T,WALL_H);       // north-west of gate
+  box(GATE_HALF,HALF_W,HALF_D-T,HALF_D+T,WALL_H);         // north-east of gate
+  box(-7.5-2.5,-7.5+2.5,-8.3,-4.1,2.9);                   // shack
+  box(6.5-2.0,6.5+2.0,-8.9,-2.3,1.9);                     // greenhouse
 }

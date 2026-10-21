@@ -12,6 +12,7 @@ import {makePistolModel} from '../../assets/models/weapons/pistol.ts';
 import {makeUziModel} from '../../assets/models/weapons/uzi.ts';
 import {makeShotgunModel} from '../../assets/models/weapons/shotgun.ts';
 import {makeAk47Model} from '../../assets/models/weapons/ak47.ts';
+import {bakeGeometry,bakedMat} from '../../assets/models/bake.ts';
 
 // ---- Empunhadura PADRÃO de arma (jogador, gangues e polícia) ----
 // Não existe mais um "gang gun" próprio: NPCs seguram os MESMOS modelos do
@@ -26,11 +27,19 @@ const HAND_WEAPONS:Record<string,{make:()=>THREE.Object3D;scale:number;pos:[numb
   shotgun:{make:makeShotgunModel,scale:.5,pos:[0,-.52,.12]},
   ak47:{make:makeAk47Model,scale:.5,pos:[0,-.52,.12]}
 };
+// NPC guns are baked into ONE mesh (bake.ts) — a gun model is 7-10 parts, i.e. 7-10 extra
+// draw calls per armed NPC otherwise. The baked geometry is shared per weapon kind.
+const bakedGuns=new Map<string,THREE.BufferGeometry|null>();
+function npcGun(kind:string,def:{make:()=>THREE.Object3D}):THREE.Object3D{
+  if(!bakedGuns.has(kind))bakedGuns.set(kind,bakeGeometry(def.make()));
+  const geo=bakedGuns.get(kind);
+  return geo?new THREE.Mesh(geo,bakedMat):def.make();
+}
 export function attachHandGun(ped:THREE.Object3D,kind='pistol'){
   const arm=ped.userData.limbs?.rightArm;
   if(!arm||arm.userData.gun)return;
   const def=HAND_WEAPONS[kind]||HAND_WEAPONS.pistol;
-  const gun=def.make();
+  const gun=npcGun(HAND_WEAPONS[kind]?kind:'pistol',def);
   gun.scale.setScalar(def.scale);
   gun.position.set(...def.pos);
   gun.traverse((o:THREE.Object3D)=>{o.castShadow=false;}); // NPC: sem sombra pra não pesar

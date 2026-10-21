@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // Abandoned military base: a square compound ringed by weathered concrete walls
 // with a coping band, a wide GATE you can drive in through on the front (-z), and
@@ -184,19 +184,23 @@ function build(): THREE.Group {
 
 export default {category:'Rural',label:'Abandoned fort',build};
 
-// Place the compound at (cx,cz) facing -z (gate toward the village/road) and bake
-// it. ry stays 0 so the wall/structure collision boxes below are axis-aligned.
-export function addAbandonedFort(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[],cx: number,cz: number): void {
-  const g=build();g.position.set(cx,-.02,cz);bakeProp(g);
-  const T=WALL_T/2;
-  solids.push(
-    {x0:cx-HALF-T,x1:cx-HALF+T,z0:cz-HALF,z1:cz+HALF,h:WALL_H},          // left wall
-    {x0:cx+HALF-T,x1:cx+HALF+T,z0:cz-HALF,z1:cz+HALF,h:WALL_H},          // right wall
-    {x0:cx-HALF,x1:cx-BREACH/2,z0:cz+HALF-T,z1:cz+HALF+T,h:WALL_H},      // back wall (left of breach)
-    {x0:cx+BREACH/2,x1:cx+HALF,z0:cz+HALF-T,z1:cz+HALF+T,h:WALL_H},      // back wall (right of breach)
-    {x0:cx-HALF,x1:cx-GATE/2,z0:cz-HALF-T,z1:cz-HALF+T,h:WALL_H},        // front wall (left of gate)
-    {x0:cx+GATE/2,x1:cx+HALF,z0:cz-HALF-T,z1:cz-HALF+T,h:WALL_H},        // front wall (right of gate)
-    {x0:cx+(HALF-7)-3,x1:cx+(HALF-7)+3,z0:cz-5.5,z1:cz+5.5,h:3},         // bunker
-    {x0:cx-(HALF-6)-1.7,x1:cx-(HALF-6)+1.7,z0:cz+(HALF-6)-1.7,z1:cz+(HALF-6)+1.7,h:5}, // watchtower base
-  );
+// The compound stands on its pad up in the serra south of the town (sites-table.ts
+// 'fort'), gate toward -z; the Site only moves it (no turn), so the courtyard points
+// below are plain offsets from its centre.
+export const FORT_SITE=new Site('fort',{cx:0,cz:0,front:Math.PI});
+export const FORT_BUTTON=FORT_SITE.P(0,0);   // floor plate in the courtyard (-> escape tunnel)
+export const FORT_EXIT=FORT_SITE.P(0,-6);    // where the tunnel gate drops you
+
+// Build it on the site and register the walls/structures for collision.
+export function addAbandonedFort(): void {
+  const g=build();g.position.set(0,-.02,0);FORT_SITE.bake(g);
+  const T=WALL_T/2,box=(x0:number,x1:number,z0:number,z1:number,h:number):void=>FORT_SITE.box({x0,x1,z0,z1},h);
+  box(-HALF-T,-HALF+T,-HALF,HALF,WALL_H);          // left wall
+  box(HALF-T,HALF+T,-HALF,HALF,WALL_H);            // right wall
+  box(-HALF,-BREACH/2,HALF-T,HALF+T,WALL_H);       // back wall (left of breach)
+  box(BREACH/2,HALF,HALF-T,HALF+T,WALL_H);         // back wall (right of breach)
+  box(-HALF,-GATE/2,-HALF-T,-HALF+T,WALL_H);       // front wall (left of gate)
+  box(GATE/2,HALF,-HALF-T,-HALF+T,WALL_H);         // front wall (right of gate)
+  box((HALF-7)-3,(HALF-7)+3,-5.5,5.5,3);           // bunker
+  box(-(HALF-6)-1.7,-(HALF-6)+1.7,(HALF-6)-1.7,(HALF-6)+1.7,5); // watchtower base
 }

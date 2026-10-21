@@ -1,6 +1,9 @@
 import * as THREE from 'three';
-import {clamp,rand,nodeX,SWIM_BOUND,groundHeight,
-  isLand,BOAT_SPAWN_X,BOAT_SPAWN_Z,RIVER_CX,RIVER_HW,BRIDGE_DECK_HW,bridgeDeckH} from '@/core/constants.ts';
+import {clamp,rand,groundHeight} from '@/core/constants.ts';
+import {deepWater,waterSurface,riverAt,BOAT_MOOR_S} from '@/world/divinolandia/water.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
+import {DIV_OX,DIV_OZ,PLAY} from '@/world/divinolandia/data.ts';
+import {FORT_EXIT} from '../../assets/models/rural/abandoned-fort.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
@@ -74,7 +77,7 @@ export function updateDrivenShadow(){
 // pose boiando↔crawl, fase/cadência da braçada e marcador da última braçada.
 export const player:Player={g:makePlayerPed(0x19e3ff),heading:0,bob:0,
   swimVX:0,swimVZ:0,swimPose:0,stroke:0,cadence:2.4,lastHalf:0};
-player.g.position.set(nodeX(4)+9,0,nodeX(4)+9);
+player.g.position.set(DIV_OX,groundHeight(DIV_OX,DIV_OZ),DIV_OZ+30); // the town build puts them in the Praça da Matriz
 noShadow(player.g); // jogador sempre sem sombra (a pé ou dirigindo)
 
 // The hero is the same BOX doll as every NPC (makePlayerPed). Hidden in first person;
@@ -127,7 +130,7 @@ export const cameraRig:CameraRig={
 };
 
 export const playerCar:Vehicle={g:makeCar(0xff2e88,false),heading:Math.PI/2,speed:0,name:'PINK COMET',police:false};
-playerCar.g.position.set(nodeX(4)+3.5,0,nodeX(4)+16);
+playerCar.g.position.set(DIV_OX+40,groundHeight(DIV_OX+40,DIV_OZ),DIV_OZ); // parked by the Praça by the town build
 playerCar.g.rotation.y=playerCar.heading;
 export const idleCars:Vehicle[]=[playerCar];
 
@@ -141,33 +144,41 @@ function spawnBike(color:number,name:string,x:number,y:number,z:number,heading:n
   idleCars.push(b);
   return b;
 }
-// uma ao lado do carro inicial; outra num cruzamento (sempre asfalto livre)
-spawnBike(0xd11f3a,'STREET ROCKET',nodeX(4)+3.5,0,nodeX(4)+10,Math.PI/2);
-spawnBike(0x18b0a6,'NEON BLADE',nodeX(5),0,nodeX(5),0);
+// parked bikes on the kerb (town-local spots, nav.roadside): one on the street east of
+// the Matriz, near the pink car; one downtown by the Rua Treze de Maio shops
+function spawnBikeAt(color:number,name:string,lx:number,lz:number):Vehicle{
+  const r=roadside(lx,lz,-1.2);
+  return spawnBike(color,name,r.x,groundHeight(r.x,r.z),r.z,r.h);
+}
+spawnBikeAt(0xd11f3a,'STREET ROCKET',110,-20);
+spawnBikeAt(0x18b0a6,'NEON BLADE',-60,-190);
 // a getaway bike waiting in the fort courtyard, by where the escape tunnel surfaces
-{const b=spawnBike(0x8a3b2a,'FORT RUNNER',600,0,84,Math.PI);b.g.position.y=groundHeight(600,84);}
+spawnBike(0x8a3b2a,'FORT RUNNER',FORT_EXIT.x+4,groundHeight(FORT_EXIT.x+4,FORT_EXIT.z),FORT_EXIT.z,Math.PI);
 
 export let cur:Vehicle|null=null;
 
-// Avião estacionado na praia oeste; a faixa de areia é a pista de decolagem
+// The crop duster waits on the shoulder of the Rodovia Lourival Lindorio de Faria, east
+// of the town, at the start of its longest straight (~580 m): the highway is the runway.
+const PLANE_SPOT={x:DIV_OX+862.5,z:DIV_OZ-370.8,h:-1.9};
 export function spawnPlane():Vehicle{
-  const pl:Vehicle={g:makePlane(),heading:Math.PI,speed:0,name:'CROP HOPPER',police:false,
+  const pl:Vehicle={g:makePlane(),heading:PLANE_SPOT.h,speed:0,name:'CROP HOPPER',police:false,
     plane:true,vy:0};
-  pl.g.position.set(-202,0,40);pl.g.rotation.y=pl.heading;
+  pl.g.position.set(PLANE_SPOT.x,groundHeight(PLANE_SPOT.x,PLANE_SPOT.z),PLANE_SPOT.z);pl.g.rotation.y=pl.heading;
   idleCars.push(pl);
   return pl;
 }
 spawnPlane();
 
-// Lancha ancorada no mar ao sul da praia: anda só sobre a água (encalha na areia).
-// É um veículo livre como a moto/avião; o flag `boat` define a física em updateBoat.
+// The speedboat moored on the Rio do Peixe just north of the centre: it only runs on the
+// water (runs aground on the banks). A free vehicle like the bike/plane; the `boat` flag
+// drives its physics in updateBoat.
 function spawnBoat(color:number,name:string,x:number,z:number,heading:number):Vehicle{
   const b:Vehicle={g:(makeBoat as any)(color),heading,speed:0,name,police:false,boat:true,bobT:Math.random()*6};
-  b.g.position.set(x,0,z);b.g.rotation.y=heading;
+  b.g.position.set(x,(waterSurface(x,z)??groundHeight(x,z))+.3,z);b.g.rotation.y=heading;
   idleCars.push(b);
   return b;
 }
-spawnBoat(0xff5a3c,'SEA BLASTER',BOAT_SPAWN_X,BOAT_SPAWN_Z,Math.PI);
+{const r=riverAt(BOAT_MOOR_S);spawnBoat(0xff5a3c,'RIVER BLASTER',r.x,r.z,Math.atan2(r.dx,r.dz));}
 
 // Tractor parked out at the rural farms (east of the city). A slow, chunky utility
 // vehicle (flag `tractor`): car-style physics but low top speed, open seat (rider
@@ -178,8 +189,8 @@ function spawnTractor(x:number,z:number,heading:number):Vehicle{
   idleCars.push(t);
   return t;
 }
-spawnTractor(398,40,Math.PI/2);
-spawnTractor(630,-12,0);  // a second one parked by the rural village (Pine Hollow), clear of the town sign
+// tractors: one by the sítio on the hospital road, one out among the coffee rows south-east
+for(const[lx,lz]of[[-170,800],[700,620]]){const r=roadside(lx,lz,2.5);spawnTractor(r.x,r.z,r.h);}
 
 // Null-safe: there is a transient window (e.g. explodePlayerCar / getWasted) where the
 // car is gone (cur=null) but state.mode is still 'car' for the rest of the frame. Falling
@@ -286,7 +297,6 @@ export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   const pp=player.g.position;
   const traffic:Vehicle[]=refs.traffic||[];
   const cops:Vehicle[]=refs.cops||[];
-  const rural:Vehicle[]=refs.ruralTraffic||[]; // country cars on the dirt road
   for(const c of idleCars){
     const d=pp.distanceTo(c.g.position);if(d<bd){bd=d;best=c;kind='idle';}
   }
@@ -295,9 +305,6 @@ export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   }
   for(const c of cops){
     const d=pp.distanceTo(c.g.position);if(d<bd){bd=d;best=c;kind='cop';}
-  }
-  for(const r of rural){
-    const d=pp.distanceTo(r.g.position);if(d<bd){bd=d;best=r;kind='rural';}
   }
   return best?{c:best,kind:kind!}:null;
 }
@@ -463,14 +470,6 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     cur={g:c.g,heading:Math.atan2(p.dx,p.dz),speed:0,name:c.name,police:false};
     refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
     addWanted(1,'STOLEN CAR!','vehicle_theft');refs.spawnTraffic?.();
-  }else if(kind==='rural'){
-    // a country car cruising the dirt road — its own pool (rural-traffic.ts). Pull it
-    // out of that pool, take it over like a traffic car (eject the driver, +1 star).
-    const rural:Vehicle[]=refs.ruralTraffic||[];
-    const ri=rural.indexOf(c);if(ri>=0)rural.splice(ri,1);
-    cur={g:c.g,heading:c.heading,speed:0,name:c.name,police:false};
-    refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
-    addWanted(1,'STOLEN CAR!','vehicle_theft');
   }else{
     cops.splice(cops.indexOf(c),1);
     cur={g:c.g,heading:c.heading,speed:0,name:'CRUISER 47',police:true};
@@ -560,7 +559,7 @@ function completeExit(){
   unseatPlayer();
   const right=new THREE.Vector3(Math.cos(cur!.heading),0,-Math.sin(cur!.heading));
   player.g.position.copy(cur!.g.position).addScaledVector(right,-2.0);
-  collideStatics(player.g.position,.5,SWIM_BOUND);
+  collideStatics(player.g.position,.5);
   player.g.position.y=groundHeight(player.g.position.x,player.g.position.z);
   player.g.visible=true;
   // veículo abandonado afundando some no mar; os outros viram veículo parado
@@ -589,12 +588,14 @@ function updateExiting(dt:number){
   }
 }
 
-function terrainY(x:number,z:number):number{return refs.partyArenaGroundHeight?.(x,z)??groundHeight(x,z);}
+function terrainY(x:number,z:number):number{return groundHeight(x,z);}
 
 export const inWater=(p:{x:number;z:number})=>{
-  if(state.interior||refs.isPartyArenaActive?.())return false; // interiores/arena isolada são chão seco
-  return !isLand(p.x,p.z);        // costa irregular da ilha (mesma fonte do visual)
+  if(state.interior)return false; // interiors are dry ground
+  return deepWater(p.x,p.z);      // the Rio do Peixe channel (world/divinolandia/water.ts)
 };
+// the water surface under a point (falls back to the ground on dry land)
+const surfY=(x:number,z:number):number=>waterSurface(x,z)??groundHeight(x,z);
 
 export function startCut(text:string,col:string,fn:(()=>void)|null){
   state.mode='cut';state.cutT=2.6;state.cutFn=fn;bigText(text,col);
@@ -625,7 +626,7 @@ export function getBusted(){
     economy.penalty(.85,'busted');
     refs.confiscateWeapon?.();
     if(refs.prisonAdmit)refs.prisonAdmit();
-    else{player.g.position.set(nodeX(2)+4,0,nodeX(2)+4);message('YOU WERE RELEASED. BEHAVE.','var(--cyan)');}
+    else{player.g.position.set(DIV_OX,groundHeight(DIV_OX,DIV_OZ+30),DIV_OZ+30);message('YOU WERE RELEASED. BEHAVE.','var(--cyan)');}
   });
 }
 
@@ -654,7 +655,6 @@ function wastedCut(){
 // como os NPCs; o letreiro WASTED só aparece depois do corpo no chão
 let dying:{t:number;puddle:boolean}|null=null;
 export function getWasted(){
-  if(refs.handlePartyArenaDeath?.())return;
   if(wastedActive||dying)return;
   wastedActive=true;
   // morrer nadando: endireita a postura do nado antes da animação de queda
@@ -706,7 +706,7 @@ function updateRoofFall(dt:number){
   rf.t+=dt;
   rf.vy-=30*dt;
   p.x+=rf.dx*dt;p.z+=rf.dz*dt;p.y+=rf.vy*dt;
-  collideStatics(p,.5,SWIM_BOUND); // escorrega pela fachada em vez de entrar nela
+  collideStatics(p,.5); // escorrega pela fachada em vez de entrar nela
   // RAGDOLL: tumble the whole body and let every limb flop loosely (membros moles).
   const g=player.g;
   g.rotation.x+=rf.wx*dt;g.rotation.y+=rf.wy*dt;g.rotation.z+=rf.wz*dt;
@@ -743,18 +743,18 @@ function updatePlane(dt:number){
   const prop=c.g.userData.prop;
   if(prop)prop.rotation.z+=(6+c.speed)*dt*4;
   // amerissagem: tocou a água = afunda, jogador sai nadando
-  if(inWater(p)&&p.y<=.05){
+  if(inWater(p)&&p.y<=surfY(p.x,p.z)+.05){
     c.sinkT=(c.sinkT||0)+dt;
     if(c.sinkT<dt*1.5){message('YOUR PLANE IS SINKING!','var(--pink)');thud(8);}
     c.speed*=Math.exp(-2.4*dt);
     p.x+=Math.sin(c.heading)*c.speed*dt;
     p.z+=Math.cos(c.heading)*c.speed*dt;
-    p.y=-Math.min(2.6,c.sinkT);
+    p.y=surfY(p.x,p.z)-Math.min(2.6,c.sinkT);
     c.g.rotation.x=Math.min(.22,c.sinkT*.1);
     if(c.sinkT>2.1){
       scene.remove(c.g);
       player.heading=c.heading;unseatPlayer();
-      player.g.position.set(p.x,0,p.z);
+      player.g.position.set(p.x,surfY(p.x,p.z),p.z);
       player.g.visible=true;
       cur=null;state.mode='foot';state.weaponHeld=!!state.hasGun;
       hudCar!.style.display='none';radioOff();
@@ -786,21 +786,24 @@ function updatePlane(dt:number){
   p.x+=Math.sin(c.heading)*c.speed*dt;
   p.z+=Math.cos(c.heading)*c.speed*dt;
   p.y+=c.vy*dt;
-  if(p.y>PCEIL){p.y=PCEIL;c.vy=Math.min(c.vy,0);}
-  // contato com o chão: pouso suave ou acidente (encosta da montanha conta)
+  // ceiling: PCEIL above the ground below (the town and its serras sit hundreds of metres up)
+  if(p.y>gh+PCEIL){p.y=gh+PCEIL;c.vy=Math.min(c.vy,0);}
+  // touching the ground: a soft landing, or a crash (dropping hard, or fast into a slope)
   const gh2=groundHeight(p.x,p.z);
   if(p.y<=gh2){
-    if(c.vy<-14||(gh2>1&&c.speed>20))return wreckPlane();
+    const fx=Math.sin(c.heading),fz=Math.cos(c.heading);
+    const grade=Math.abs(groundHeight(p.x+fx*3,p.z+fz*3)-gh2)/3;
+    if(c.vy<-14||(grade>.18&&c.speed>20))return wreckPlane();
     p.y=gh2;c.vy=0;
   }
-  // O limite do mundo (±520) vale em qualquer altura.
-  p.x=clamp(p.x,-520,520);p.z=clamp(p.z,-520,520);
+  // the edge of the map applies at any height
+  p.x=clamp(p.x,PLAY.x0,PLAY.x1);p.z=clamp(p.z,PLAY.z0,PLAY.z1);
   // Colisão com PRÉDIOS só vale rente aos telhados (decolagem/pouso/voo rasante).
   // Acima disso o céu é livre: o avião cruza a cidade/vila por cima de tudo —
   // inclusive da torre alta da igreja, da caixa d'água e do moinho — sem mais
   // explodir "do nada" só por sobrevoar a vila (a caixa de colisão da torre
   // sobe ~22u; antes qualquer prédio até y<50 derrubava o avião).
-  if(p.y<12&&collideStatics(p,2.1,520)){
+  if(p.y-gh2<12&&collideStatics(p,2.1)){
     if(c.speed>16)return wreckPlane();
     c.speed*=-.25;thud(Math.abs(c.speed)+4);
   }
@@ -822,21 +825,21 @@ export function updateCar(dt:number){
   // is treated as a wall — see the shoreline guard at the move step below.
   if(cur!.remote){
     cur!.sinkT=0;
-  }else if(inWater(cur!.g.position)||carUnderDeck(cur!.g.position)){
-    // No mar o carro perde tração, afunda aos poucos e o jogador escapa nadando
+  }else if(inWater(cur!.g.position)){
+    // In the river the car loses grip, slowly sinks and the player swims out
     const p=cur!.g.position;
     if(!cur!.sinkT){cur!.sinkT=1e-6;message('YOUR CAR IS SINKING!','var(--pink)');thud(8);}
     cur!.sinkT+=dt;
     cur!.speed*=Math.exp(-2.4*dt);
     p.x+=Math.sin(cur!.heading)*cur!.speed*dt;
     p.z+=Math.cos(cur!.heading)*cur!.speed*dt;
-    p.y=-Math.min(2.6,cur!.sinkT);
+    p.y=surfY(p.x,p.z)-Math.min(2.6,cur!.sinkT);
     cur!.g.rotation.x=Math.min(.22,cur!.sinkT*.1);
     spinWheels(cur!.g,cur!.speed,dt);
     if(cur!.sinkT>2.1){
       scene.remove(cur!.g);
       player.heading=cur!.heading;unseatPlayer();
-      player.g.position.set(p.x,0,p.z);
+      player.g.position.set(p.x,surfY(p.x,p.z),p.z);
       player.g.visible=true;
       cur=null;state.mode='foot';state.weaponHeld=!!state.hasGun;
       hudCar!.style.display='none';radioOff();
@@ -872,7 +875,7 @@ export function updateCar(dt:number){
     p.x=px0;p.z=pz0;
     cur!.speed=0;
   }
-  if(collideStatics(p,1.3,SWIM_BOUND)){
+  if(collideStatics(p,1.3)){
     const spd=Math.abs(cur!.speed);
     if(spd>4){
       // até batida leve já amassa feio; em alta velocidade destrói a frente
@@ -894,7 +897,7 @@ export function updateCar(dt:number){
       const spd=Math.abs(cur!.speed);
       if(spd>6){
         thud(spd);state.shake=.3;
-        const mid=new THREE.Vector3().addVectors(p,c.g.position).multiplyScalar(.5).setY(.6);
+        const mid=new THREE.Vector3().addVectors(p,c.g.position).multiplyScalar(.5);mid.y+=.6;
         dentCar(c.g,mid,push.clone().negate(),.2); // o carro batido amassa normal
         if(registerCrash(spd,mid,push))return;     // o nosso amassa feio / explode
       }
@@ -962,17 +965,9 @@ function updateWake(dt:number){
   }
 }
 
-// Lancha: o oposto do carro — voa sobre a água e ENCALHA na areia/terra.
-// Quica de leve parada, levanta a proa ao planar e inclina pra dentro da curva.
-const SEA_Y=-.32; // mesma altura do mar (assets/models/environment/sea.ts)
-// The bridge deck's footprint over the strait (the deck sits at street level, on the water).
-const underBridge=(x:number,z:number):boolean=>
-  Math.abs(x-RIVER_CX)<RIVER_HW&&Math.abs(z)<=BRIDGE_DECK_HW;
-// A CAR (not a boat) that has fallen BELOW the deck over the water channel: treat it as in the
-// water so it SINKS, exactly like the boat slips under the span — instead of letting
-// groundHeight (= deck height there) snap it instantly UP onto the bridge ("teleported up").
-const carUnderDeck=(p:THREE.Vector3):boolean=>
-  underBridge(p.x,p.z)&&p.y<bridgeDeckH(p.x,p.z)-1;
+// Speedboat: the car's opposite — it flies over the river and RUNS AGROUND on the banks.
+// It bobs gently when stopped, lifts its bow when planing and leans into turns. The
+// water it floats on slopes down the valley (water.ts), so the surface is read per spot.
 function updateBoat(dt:number){
   const c=cur!,p=c.g.position;
   const onWater=inWater(p);
@@ -996,23 +991,19 @@ function updateBoat(dt:number){
   const px=p.x,pz=p.z;
   p.x+=Math.sin(c.heading)*c.speed*dt;
   p.z+=Math.cos(c.heading)*c.speed*dt;
-  // The street-level bridge deck is a wall for boats (hull ~1.5 m wide): bump back off it.
-  if(Math.abs(p.x-RIVER_CX)<RIVER_HW+1&&Math.abs(p.z)<=BRIDGE_DECK_HW+1.5){
+  // the banks: a boat that was afloat can't run out of the river channel at speed — it
+  // bumps back off the bank (a crawl up onto the mud is still possible when slow)
+  if(onWater&&!inWater(p)&&Math.abs(c.speed)>3){
     p.x=px;p.z=pz;
-    if(Math.abs(c.speed)>4){thud(Math.abs(c.speed));state.shake=.25;}
-    c.speed*=-.3;
+    if(Math.abs(c.speed)>9){thud(Math.abs(c.speed)*.6);state.shake=.18;}
+    c.speed*=-.25;
   }
-  // parede invisível bem mar adentro (igual aos demais veículos)
-  p.x=clamp(p.x,-SWIM_BOUND,SWIM_BOUND);
-  p.z=clamp(p.z,-SWIM_BOUND,SWIM_BOUND);
-  // colide com estruturas sólidas na água (pilares/torres da ponte): a lancha passa
-  // pelo VÃO CENTRAL mas não atravessa a base da ponte. p.y fica na linha d'água, bem
-  // abaixo do tabuleiro/cabos (sem colisão), então o vão segue livre por baixo.
-  collideStatics(p,1.4,SWIM_BOUND);
-  // flutua na linha d'água com balança suave; planando, a proa levanta
+  collideStatics(p,1.4);
+  // float on the waterline with a gentle bob; planing, the bow lifts (aground: on the mud)
   c.bobT=(c.bobT||0)+dt;
   const plane=clamp(c.speed/MAX,0,1);
-  p.y=SEA_Y+.3+Math.sin(c.bobT*2.2)*.05*(1-plane*.7);
+  const sy=surfY(p.x,p.z);
+  p.y=(inWater(p)?sy+.3:Math.max(sy,groundHeight(p.x,p.z))+.15)+Math.sin(c.bobT*2.2)*.05*(1-plane*.7);
   c.g.rotation.y=c.heading;
   c.g.rotation.x=THREE.MathUtils.lerp(c.g.rotation.x,-plane*.13,Math.min(1,4*dt));
   const leanT=-st*clamp(c.speed/22,0,1)*.3;
@@ -1036,11 +1027,11 @@ function updateBoat(dt:number){
         const ox=p.x+fx*.7*dir+rx*s*.8;
         const oz=p.z+fz*.7*dir+rz*s*.8;
         const out=1.5+sp*.06;
-        spawnPuff(ox,SEA_Y+.02,oz,
+        spawnPuff(ox,sy+.02,oz,
           rx*s*out-fx*sp*.18*dir, rz*s*out-fz*sp*.18*dir, .45,2.2,.7);
       }
       // rastro largo atrás da popa (quase parado: a lancha é que se afasta)
-      spawnPuff(p.x-fx*2*dir+(Math.random()-.5)*.5,SEA_Y+.02,
+      spawnPuff(p.x-fx*2*dir+(Math.random()-.5)*.5,sy+.02,
         p.z-fz*2*dir+(Math.random()-.5)*.5,
         (Math.random()-.5)*.7,(Math.random()-.5)*.7, .8,3,.95);
     }
@@ -1063,7 +1054,7 @@ let swimRippleT=0;
 // jato d'água em volta do nadador. big = jato mais aberto e forte (entrada/braçada).
 function spawnSplash(x:number,z:number,scale:number,life:number,big:boolean){
   const ang=Math.random()*Math.PI*2,sp=big?1.4:.5;
-  spawnPuff(x+(Math.random()-.5)*.3,SEA_Y+.02,z+(Math.random()-.5)*.3,
+  spawnPuff(x+(Math.random()-.5)*.3,surfY(x,z)+.02,z+(Math.random()-.5)*.3,
     Math.cos(ang)*sp,Math.sin(ang)*sp,scale*.55,scale,life);
 }
 
@@ -1120,7 +1111,7 @@ function updateSwim(dt:number){
   const pose=player.swimPose;
   // ----- profundidade + ondinha da superfície -----
   const bob=Math.sin(state.time*1.5+p.x*.12+p.z*.12)*.05+Math.sin(sp*2)*pose*.04;
-  const depthTgt=SWIM_TREAD_Y+(SWIM_PRONE_Y-SWIM_TREAD_Y)*pose+bob;
+  const depthTgt=surfY(p.x,p.z)+SWIM_TREAD_Y+(SWIM_PRONE_Y-SWIM_TREAD_Y)*pose+bob;
   p.y+=(depthTgt-p.y)*Math.min(1,6*dt);
   // ----- postura do corpo (ordem YXZ: guinada → inclina à frente → rola) -----
   player.g.rotation.order='YXZ';
@@ -1128,8 +1119,8 @@ function updateSwim(dt:number){
   const roll=pose*Math.sin(sp)*.13; // rola de leve a cada braçada (respiração)
   player.g.rotation.set(pitch,player.heading,roll);
   animateSwim(player.g,sp,pose);
-  // ----- limites/colisão: parede invisível bem mar adentro -----
-  collideStatics(p,.5,SWIM_BOUND);
+  // ----- collision (the river banks are walkable; houses/bounds still apply) -----
+  collideStatics(p,.5);
   // ----- borrifos: braçada entrando na água + rastro de espuma na esteira -----
   const half=Math.floor(sp/Math.PI);
   if(half!==player.lastHalf){
@@ -1143,7 +1134,7 @@ function updateSwim(dt:number){
   swimRippleT-=dt;
   if(swimRippleT<=0){
     swimRippleT=vmag>1.2?.1:.27;
-    spawnPuff(p.x,SEA_Y+.02,p.z,-player.swimVX*.08,-player.swimVZ*.08,
+    spawnPuff(p.x,surfY(p.x,p.z)+.02,p.z,-player.swimVX*.08,-player.swimVZ*.08,
       .5,1+vmag*.12,1.4);
   }
   // ----- afogamento: sem fôlego, a vida cai (acorda no hospital) -----
@@ -1228,6 +1219,10 @@ function doomClipMomentum(wantX:number,wantZ:number,gotX:number,gotZ:number){
   doomMom.x=ux*along;doomMom.z=uz*along;
 }
 
+// A first-person hand clip is playing (the weed farm, or the story's phone/shovel):
+// movement and look input are held so the clip reads cleanly.
+const actionLock=():boolean=>!!(refs.fpActionLock?.()||refs.storyFpLock?.());
+
 export function updateFoot(dt:number){
   doomLevelTime+=dt*DOOM_TICRATE;
   if(wake.length)updateWake(dt); // a espuma deixada pela lancha some mesmo a pé
@@ -1240,6 +1235,7 @@ export function updateFoot(dt:number){
   if(entering)return updateEntering(dt);
   if(exiting)return updateExiting(dt);
   if(state.dlgActive)return;
+  if(actionLock()){doomStop();return;} // a hand clip is playing (weed-farm-fp.ts / story-fp.ts)
   // ----- água: o nado tem física, pose e efeitos próprios (updateSwim) -----
   if(inWater(player.g.position)){
     if(!state.swimming){enterWater();doomStop();} // transição terra→água: splash de entrada
@@ -1272,7 +1268,7 @@ export function updateFoot(dt:number){
     const steps=Math.max(1,Math.ceil(moveLen/.25));
     for(let i=0;i<steps;i++){
       player.g.position.x+=mv.x/steps;player.g.position.z+=mv.z/steps;
-      if(steps>1)collideStatics(player.g.position,.5,SWIM_BOUND);
+      if(steps>1)collideStatics(player.g.position,.5);
     }
   }
   const momTics=Math.hypot(doomMom.x,doomMom.z);       // units/tic
@@ -1302,7 +1298,7 @@ export function updateFoot(dt:number){
     p.y=r?r.y:terrainY(p.x,p.z);
   }
   Entities.animatePed?.(player.g,player.bob,walkAmount);
-  collideStatics(player.g.position,.5,SWIM_BOUND);
+  collideStatics(player.g.position,.5);
   // carros são sólidos a pé: dois círculos ao longo do eixo cobrem o carro
   // inteiro e empurram o jogador pra fora (também evita nascer dentro de um)
   const ppos=player.g.position;
@@ -1347,6 +1343,7 @@ const inVehicleView=():boolean=>(state.mode==='car'||state.mode==='cut')&&!!cur;
 // Mouse-look (pointer lock): yaw + pitch — the first-person pitch on foot, the chase
 // camera's orbit pitch in a vehicle.
 export function applyMouseLook(dx:number,dy:number){
+  if(actionLock())return; // a hand clip steers the view (weed-farm-fp.ts / story-fp.ts)
   const aimK=state.aiming?.6:1; // ADS lowers mouse sensitivity for precision
   cameraRig.yaw-=dx*cameraRig.sensitivity*aimK;
   const dp=(cameraRig.invertY?-1:1)*dy*cameraRig.sensitivity*aimK;
@@ -1363,7 +1360,7 @@ export function updateCamera(dt:number){
   if(state.cine)return; // em cut-scene a câmera é controlada por story.js
   const tgt=inVehicle?cur!.g.position:player.g.position;
   const heading=inVehicle?cur!.heading:player.heading;
-  if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked){
+  if(input.lookActive&&!state.dlgActive&&!state.paused&&!state.orientationBlocked&&!actionLock()){
     // Positive lookX means "turn right". In this engine yaw increases to the LEFT
     // (forward = (sin yaw, cos yaw); keyboard A is moveX=+1; mouse-right does yaw-=),
     // so turning right requires subtracting, same as the pointer-lock mouse path.
@@ -1399,7 +1396,7 @@ function updateCameraChase(dt:number,tgt:THREE.Vector3){
     want.x=clamp(want.x,B.x0,B.x1);want.y=Math.min(want.y,B.y1);want.z=clamp(want.z,B.z0,B.z1);
   }
   camera.position.lerp(want,1-Math.exp(-4.5*dt));
-  const tf=62+Math.abs(cur?.speed||0)/32*13;
+  const tf=portraitFov(62+Math.abs(cur?.speed||0)/32*13);
   camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
   camera.updateProjectionMatrix();
   if(state.shake>0){
@@ -1412,6 +1409,15 @@ function updateCameraChase(dt:number,tgt:THREE.Vector3){
 
 // First-person positioning (on foot): the eye sits at the head, and the view rotates with
 // yaw + fpPitch, snapped to the body so it can't lag behind or clip through the head.
+// The FOVs above are vertical and tuned for a landscape screen. On a PORTRAIT screen
+// (a 9:16 video capture, a tall window) a fixed vertical FOV squeezes the horizontal view
+// into a tunnel, so widen it to keep ~2/3 of the landscape horizontal FOV (capped at 100°).
+function portraitFov(v:number):number{
+  const a=camera.aspect;
+  if(a>=1)return v;
+  const h=2*Math.atan(Math.tan(v*Math.PI/360)*16/9)*.66;           // target horizontal FOV
+  return Math.min(100,2*Math.atan(Math.tan(h/2)/a)*180/Math.PI);
+}
 function updateCameraFP(dt:number,tgt:THREE.Vector3){
   cameraRig.fpPitch=clamp(cameraRig.fpPitch,-1.3,1.3);
   const yaw=cameraRig.yaw,pitch=cameraRig.fpPitch;
@@ -1427,7 +1433,7 @@ function updateCameraFP(dt:number,tgt:THREE.Vector3){
   // Snap the eye to the head: zero follow-lag (most responsive), and it can never
   // interpolate through a wall the way a trailing camera could.
   camera.position.copy(_fpEye);
-  const tf=state.aiming?52:70; // aiming zooms in a little
+  const tf=portraitFov(state.aiming?52:70); // aiming zooms in a little
   camera.fov+=(tf-camera.fov)*Math.min(1,5*dt);
   camera.updateProjectionMatrix();
   if(state.shake>0){

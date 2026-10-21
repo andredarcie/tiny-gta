@@ -19,7 +19,7 @@ export const FIRE_DAMAGE_TICK = 22;
 // ---- how hard PEOPLE are to kill (NPC hit points; weapon damage per hit) ----
 // A HEADSHOT always kills (decapitation, js/combat/gore.ts). Body shots only wear the
 // target down and tear limbs off; a maimed person bleeds out slowly.
-export const NPC_HP_CIVILIAN = 6;   // city pedestrians, country folk, party-arena fighters
+export const NPC_HP_CIVILIAN = 6;   // city pedestrians, country folk
 export const NPC_HP_TOUGH = 8;      // gang members, police officers
 /** Damage multiplier for a bullet that hits an arm or a leg (it tears the limb off instead). */
 export const LIMB_HIT_DAMAGE = 0.5;

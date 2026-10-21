@@ -8,3 +8,10 @@ playwright-report/
 .wrangler/
 .playwright-mcp/
 
+
+# local dubbing toolchain (tools/voice): logs and scratch output
+tools/voice/*.log
+tools/voice/tmp-dub.log
+tools/voice/lines.json
+tools/voice/demo/
+tools/voice/tmp/

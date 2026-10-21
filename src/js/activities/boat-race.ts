@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {clamp,rand,pick,WATER,SWIM_BOUND,RURAL_HALF,BOAT_SPAWN_X,BOAT_SPAWN_Z,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {clamp,pick,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {riverAt,riverArcAt,waterSurface,RIVER_LEN,BOAT_MOOR_S} from '@/world/divinolandia/water.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
@@ -43,26 +44,23 @@ interface HopHolder{mineHopV?: number; mineHopY?: number; [k: string]: any;}
 // alvo aqui — a trava garante o "um por vez" e o mapa sem outras atividades.
 const game=new MiniGame({id:MiniGameId.BOAT_RACE,name:'Boat Race'});
 
-// Corrida de LANCHAS no mar: mesmo esquema da corrida de rua (race.js), só que na
-// água. Um pórtico flutuante de largada fica numa enseada; chegue de lancha, pare
-// embaixo e a prova começa: a lancha teleporta pra linha, sirene + contagem 3-2-1,
-// e então um percurso de BOIAS (uma por vez) que você contorna NA ORDEM até a
-// chegada flutuante. Três rivais em lanchas percorrem de fato o trajeto em mar
-// aberto. As gangues somem durante a prova e voltam no fim. Música/rádio são
-// exclusivos da corrida; se todos os rivais chegarem antes, você perde. Cada
-// corrida concluída faz a próxima nascer noutro trecho do litoral.
-//
-// O percurso corre por um ANEL costeiro no mar (raio de Chebyshev COAST_R) que
-// contorna a cidade evitando a península rural a leste (terra). Por isso é um
-// traçado em "C": cada prova é um pedaço contínuo desse anel, com largada e
-// sentido sorteados — os segmentos entre boias nunca cruzam terra.
+// BOAT RACE down the Rio do Peixe: same scheme as the street race (race.ts), on the
+// water. A floating start gate sits on the river; arrive by boat, stop under it and the
+// race starts: the boat snaps to the line, siren + 3-2-1, then a course of BUOYS (one
+// at a time) to round IN ORDER down to the floating finish. The course follows the
+// river DOWNSTREAM (water.ts: the channel's surface always runs downhill), so every
+// race is a real descent of a stretch of the Rio do Peixe; the buoys slalom across the
+// 12 m wide channel and a few water mines sit in the middle of the legs. Three rival
+// boats run the same water, following the river's own curves. Gangs vanish during the
+// race and come back after. Music/radio belong to the race; if every rival finishes
+// first you lose. Each finished race starts the next one on another stretch.
 
 const RACE_BUILD=' ◆ SEA';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',RACE_BUILD);
 
 const CP_COUNT=7;       // boias do percurso (a última é a chegada)
-const CP_SPACING=88;    // espaçamento (arco) entre boias — span>1 lado p/ contornar quina
-const LEAD=46;          // da linha de largada até a 1ª boia
+const CP_SPACING=190;   // river arc between buoys (m)
+const LEAD=70;          // da linha de largada até a 1ª boia
 const CP_AHEAD=0;       // boias visíveis além da atual (0 = SÓ a próxima boia que o jogador tem que pegar)
 const CP_RADIUS=12;     // raio pra contar a passagem na boia (lancha é rápida/larga)
 const NPC_COUNT=3;      // adversários
@@ -74,72 +72,20 @@ const MINE_HIT=3.4;     // raio de colisão da mina (lancha é larga): encostou,
 const MINE_DODGE=12;    // desvio lateral que os rivais fazem pra contornar a mina
 const HOP_V=7.5;        // impulso vertical do "pulo" ao bater numa mina
 const HOP_G=22;         // gravidade que traz a lancha de volta à água depois do pulo
-// Raio (Chebyshev) da pista, no meio do mar. FIXO em 253: antes era
-// round((WATER+SWIM_BOUND)/2) com SWIM_BOUND=288; SWIM_BOUND cresceu pra alcançar a
-// ilha a oeste, mas o anel da prova deve ficar EXATAMENTE onde estava.
-const COAST_R=253;
-const COAST_ZGAP=RURAL_HALF+22; // folga da península a leste: água só além disso
-const LAT_AMP=20;       // amplitude do slalom: desloca a boia p/ dentro/fora da faixa de água
-const CORNER_MARGIN=52; // perto de uma quina a boia fica no anel (sem slalom) p/ curva limpa
-const SEA_Y=-.32;       // superfície do mar (igual sea.js / updateBoat)
-const BOAT_FLOAT=.3;    // altura de flutuação da lancha acima do mar (igual updateBoat)
+const LAT_AMP=2.6;       // slalom: how far a buoy sits off the river's centre line (channel half-width 6)
+const BOAT_FLOAT=.3;    // altura de flutuação da lancha acima da água (igual updateBoat)
 const ORANGE=0xff8a1e;
 const boatColors=[0x1fc4c4,0xffd24a,0xff2e88]; // rivais (a do jogador é coral)
+const surf=(x: number,z: number)=>waterSurface(x,z)??riverAt(riverArcAt(x,z).s).y; // water height at a point
+const SPAN=LEAD+(CP_COUNT-1)*CP_SPACING;
 
-// ---- litoral navegável: traçado em "C" no mar contornando a península ----
-// Âncoras do anel (X,Z) em sentido único, do toco SE, descendo pelo sul, oeste,
-// norte, até o toco NE. O vão a leste (península) NÃO entra na lista, então
-// nenhum trecho do percurso atravessa terra.
-const coast: [number, number][]=[
-  [ COAST_R,-COAST_ZGAP],
-  [ COAST_R,-COAST_R   ],
-  [-COAST_R,-COAST_R   ],
-  [-COAST_R, COAST_R   ],
-  [ COAST_R, COAST_R   ],
-  [ COAST_R, COAST_ZGAP],
-];
-const coastSeg: number[]=[];let coastLen=0;
-for(let i=0;i<coast.length-1;i++){
-  const d=Math.hypot(coast[i+1][0]-coast[i][0],coast[i+1][1]-coast[i][1]);
-  coastSeg.push(d);coastLen+=d;
-}
-// ponto do litoral a uma distância de arco s do início (s em [0,coastLen])
-function coastAt(s: number): {x: number; z: number}{
-  s=clamp(s,0,coastLen);
-  let acc=0;
-  for(let i=0;i<coastSeg.length;i++){
-    const d=coastSeg[i];
-    if(s<=acc+d||i===coastSeg.length-1){
-      const t=d>1e-6?(s-acc)/d:0;
-      const a=coast[i],b=coast[i+1];
-      return{x:a[0]+(b[0]-a[0])*t,z:a[1]+(b[1]-a[1])*t};
-    }
-    acc+=d;
-  }
-  return{x:coast[0][0],z:coast[0][1]};
+// the river's centre point at arc s, pushed `off` metres to the right of the flow
+function riverPt(s: number,off=0): {x: number; z: number}{
+  const r=riverAt(s);
+  return{x:r.x-r.dz*off,z:r.z+r.dx*off};
 }
 
-// posições (arco) das quinas do "C" (juntas entre os lados): perto delas o slalom
-// é desligado pra a curva sair limpa e os trechos não rasparem a praia.
-const coastCorners: number[]=[];
-{let acc=0;for(let i=0;i<coastSeg.length-1;i++){acc+=coastSeg[i];coastCorners.push(acc);}}
-const nearCorner=(s: number)=>coastCorners.some(c=>Math.abs(s-c)<CORNER_MARGIN);
-
-// normal unitária do litoral em s, apontando pra FORA (longe da origem/cidade) —
-// usada pra deslocar as boias pro lado (slalom) sem sair da faixa de água.
-function coastNormal(s: number): {x: number; z: number}{
-  const a=coastAt(s-3),b=coastAt(s+3);
-  let tx=b.x-a.x,tz=b.z-a.z;const tl=Math.hypot(tx,tz)||1;tx/=tl;tz/=tl;
-  let nx=tz,nz=-tx;                       // perpendicular à tangente
-  const p=coastAt(s);
-  if(nx*p.x+nz*p.z<0){nx=-nx;nz=-nz;}     // garante sentido pro mar aberto
-  return{x:nx,z:nz};
-}
-
-// lancha ancorada (ver spawnBoat em player.js): a 1ª largada nasce colada nela.
-// Mesmo ponto de água garantido (logo além da costa irregular) das constants.
-const BOAT_SPAWN={x:BOAT_SPAWN_X,z:BOAT_SPAWN_Z};
-// largada (enseada inicial ao sul, perto de onde a lancha nasce ancorada)
+// start (the first one right by the boat moored north of the centre, see player.ts)
 const start={x:0,z:0};
 const gate=makeBoatRaceGate({color:ORANGE}); // make* NÃO adiciona à cena
 scene.add(gate);
@@ -152,11 +98,10 @@ startMk.beacon.mount();
 scene.add(startMk.ring);
 
 let phase='idle';   // idle | countdown | racing
-let dir=1;          // sentido do percurso ao longo do litoral
-let startS=0;       // posição (arco) da largada no litoral
+let startS=0;       // river arc of the start line (the course runs downstream from it)
 let route: RoutePoint[]=[];       // [{x,z}] boias na ordem (a última é a chegada)
 let cpMarkers: CpMarker[]=[];   // marcadores 3D de cada boia
-let npcPath: BoatWaypoint[]=[];     // waypoints que os rivais seguem (boias + desvios das minas)
+let npcPath: BoatWaypoint[]=[];     // the rivals' waypoints: the river line, the buoys and the mine dodges
 let mineSpecs: MineSpec[]=[];   // posições das bombas aquáticas do percurso (sorteadas por prova)
 let mines: Mine[]=[];       // bombas 3D na cena durante a prova {g,x,z,bobT}
 const blasts: Blast[]=[];    // explosões ativas das minas detonadas {g,t}
@@ -198,103 +143,78 @@ refs.startBoatRaceInteract=()=>{
   startRace();return true;
 };
 
-// monta start/route/npcPath a partir de uma posição (arco) e sentido no litoral.
-// As boias seguem o anel mas com um SLALOM lateral (zigue-zague pra dentro/fora da
-// faixa de água), então as retas viram curvas. A 1ª e a última ficam no anel
-// (entrada/chegada limpas) e as quinas não recebem slalom (curva limpa, ver
-// nearCorner). Os trechos entre boias continuam todos sobre a água.
-function buildRoute(s0: number,d: number){
-  dir=d;startS=s0;
-  const p0=coastAt(startS);start.x=p0.x;start.z=p0.z;
-  const flip=Math.random()<.5?1:-1; // pra que lado o 1º zigue-zague abre
+// Builds start/route/npcPath for a stretch of river starting at arc s0, downstream.
+// The buoys slalom across the channel (the first and the finish sit mid-river); the
+// rivals follow the river line every ~12 m (so they take its bends instead of cutting
+// over the banks), the buoys in order (cp:true) and a sidestep before each mine.
+function buildRoute(s0: number){
+  startS=s0;
+  const p0=riverPt(startS);start.x=p0.x;start.z=p0.z;
+  const flip=Math.random()<.5?1:-1;
+  const arcs: number[]=[];
   route=[];
   for(let k=0;k<CP_COUNT;k++){
-    const s=startS+dir*(LEAD+k*CP_SPACING);
-    const base=coastAt(s);
-    let off=0;
-    if(k>0&&k<CP_COUNT-1&&!nearCorner(s)) // miolo, longe das quinas: desloca
-      off=flip*((k%2)?1:-1)*LAT_AMP*(.55+Math.random()*.45);
-    if(off){const n=coastNormal(s);route.push({x:base.x+n.x*off,z:base.z+n.z*off});}
-    else route.push({x:base.x,z:base.z});
+    const s=startS+LEAD+k*CP_SPACING;arcs.push(s);
+    const off=k>0&&k<CP_COUNT-1?flip*((k%2)?1:-1)*LAT_AMP*(.6+Math.random()*.4):0;
+    route.push(riverPt(s,off));
   }
-  buildMineSpecs();
-  // waypoints dos rivais: as boias (cp:true) com um DESVIO lateral (cp:false)
-  // inserido antes de cada boia cuja perna tem uma mina — assim os rivais também
-  // contornam a bomba em vez de varar por cima dela (todo mundo desvia).
+  buildMineSpecs(arcs);
   npcPath=[];
-  for(let k=0;k<route.length;k++){
-    const m=mineSpecs.find(s=>s.leg===k);
-    if(m)npcPath.push({x:m.dx,z:m.dz,cp:false}); // ponto de desvio ao lado da mina
-    npcPath.push({x:route[k].x,z:route[k].z,cp:true});
+  let k=0;
+  for(let s=startS+12;s<=arcs[arcs.length-1]+1e-6&&k<route.length;s+=12){
+    while(k<route.length&&arcs[k]<=s){
+      const m=mineSpecs.find(ms=>ms.leg===k);
+      if(m)npcPath.push({x:m.dx,z:m.dz,cp:false});
+      npcPath.push({x:route[k].x,z:route[k].z,cp:true});k++;
+    }
+    if(k<route.length){const p=riverPt(s);npcPath.push({x:p.x,z:p.z,cp:false});}
   }
+  while(k<route.length){npcPath.push({x:route[k].x,z:route[k].z,cp:true});k++;}
 }
 
-// Bombas aquáticas: poucas, no MEIO de pernas interiores e EM CIMA da linha reta
-// que as lanchas fazem entre duas boias — todo mundo é obrigado a desviar. Guarda
-// também o ponto de desvio lateral (pro mar aberto) que os rivais usam.
-function buildMineSpecs(){
+// Water mines: a few, in the middle of interior legs, across the line the boats take;
+// everyone has to dodge. Also keeps the sidestep point the rivals use (the other half
+// of the channel).
+function buildMineSpecs(arcs: number[]){
   mineSpecs=[];
   const legs: number[]=[];
-  for(let k=2;k<CP_COUNT-1;k++)legs.push(k); // pernas interiores (route[k-1]→route[k])
+  for(let k=2;k<CP_COUNT-1;k++)legs.push(k); // interior legs (route[k-1]→route[k])
   for(let i=legs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[legs[i],legs[j]]=[legs[j],legs[i]];}
   for(const k of legs.slice(0,Math.min(MINE_MAX,legs.length))){
-    const a=route[k-1],b=route[k];
-    const t=.42+Math.random()*.16;                 // ~meio da perna
-    const mx=a.x+(b.x-a.x)*t,mz=a.z+(b.z-a.z)*t;
-    let tx=b.x-a.x,tz=b.z-a.z;const tl=Math.hypot(tx,tz)||1;tx/=tl;tz/=tl;
-    let nx=tz,nz=-tx;if(nx*mx+nz*mz<0){nx=-nx;nz=-nz;} // perpendicular, pro mar aberto
-    mineSpecs.push({leg:k,x:mx,z:mz,dx:mx+nx*MINE_DODGE,dz:mz+nz*MINE_DODGE});
+    const s=arcs[k-1]+(arcs[k]-arcs[k-1])*(.42+Math.random()*.16);
+    const side=Math.random()<.5?1:-1;
+    const m=riverPt(s,side*1.8),d=riverPt(s,-side*3.6);
+    mineSpecs.push({leg:k,x:m.x,z:m.z,dx:d.x,dz:d.z});
   }
 }
 
-// arco do litoral mais próximo de um ponto do mundo (amostragem grossa)
-function nearestArc(x: number,z: number){
-  let bestS=0,bestD=Infinity;
-  for(let s=0;s<=coastLen;s+=6){
-    const p=coastAt(s),d=Math.hypot(p.x-x,p.z-z);
-    if(d<bestD){bestD=d;bestS=s;}
-  }
-  return bestS;
-}
+// keep the whole course on the river (the start no closer than LEAD to either end)
+const fitS=(s0: number)=>clamp(s0,40,RIVER_LEN-SPAN-40);
 
-// folga garantida pras 6 boias caberem sem estourar as pontas do "C" (logo
-// nenhum segmento cruza a península)
-function fitS(s0: number,d: number){
-  const span=LEAD+(CP_COUNT-1)*CP_SPACING;
-  return d>0?clamp(s0,24,coastLen-span-30):clamp(s0,span+30,coastLen-24);
-}
+// FIRST race: the start right by the moored boat, running downstream
+function prepareInitial(){buildRoute(fitS(BOAT_MOOR_S));}
 
-// PRIMEIRA corrida: largada coladinha na lancha ancorada (BOAT_SPAWN), com o
-// percurso correndo pro lado de mar aberto — assim o ícone de início nasce junto
-// da lancha e é fácil de achar.
-function prepareInitial(){
-  const s0=nearestArc(BOAT_SPAWN.x,BOAT_SPAWN.z);
-  const d=s0>coastLen/2?-1:1; // segue pro trecho mais longo do "C" (mais água)
-  buildRoute(fitS(s0,d),d);
-}
-
-// Sorteia largada (posição+sentido) num trecho contínuo do litoral, longe do
-// jogador, e monta as boias do percurso.
+// Picks a new stretch of river away from the player and lays out its buoys.
 function pickCourse(){
   const pp=playerPos();
-  let s0=0,d=1,tries=0;
+  let s0=0,tries=0;
   do{
-    d=Math.random()<.5?1:-1;
-    s0=fitS(rand(0,coastLen),d);
+    s0=fitS(Math.random()*RIVER_LEN);
     tries++;
-    const p0=coastAt(s0);
-    if(Math.hypot(p0.x-pp.x,p0.z-pp.z)>=110)break;
+    const p0=riverPt(s0);
+    if(Math.hypot(p0.x-pp.x,p0.z-pp.z)>=150)break;
   }while(tries<50);
-  buildRoute(s0,d);
+  buildRoute(s0);
 }
 
-// Pré-monta a corrida atual e VIRA o pórtico de frente pra 1ª boia (a lancha
-// nasce dentro do vão já apontada pra ela). `initial`: largada junto da lancha.
+// Prepares the current race and TURNS the gate toward the first buoy (the boat is born
+// inside it already aimed). `initial`: the start by the moored boat.
 function prepareRace(initial?: boolean){
   if(initial)prepareInitial();else pickCourse();
   const h=route.length?Math.atan2(route[0].x-start.x,route[0].z-start.z):0;
-  gate.position.set(start.x,SEA_Y,start.z);gate.rotation.y=h;
-  startMk.ring.position.set(start.x,SEA_Y+.05,start.z);
+  const y=surf(start.x,start.z);
+  gate.position.set(start.x,y,start.z);gate.rotation.y=h;
+  startMk.ring.position.set(start.x,y+.05,start.z);
   startMk.beacon.at(start.x,start.z);
 }
 
@@ -305,14 +225,14 @@ function buildCpMarkers(){
       // última boia: pórtico de chegada flutuante, virado pra quem chega
       const finish=makeBoatRaceGate({color:ORANGE,finish:true});
       const prev=route[i-1]||start;
-      finish.position.set(p.x,SEA_Y,p.z);
+      finish.position.set(p.x,surf(p.x,p.z),p.z);
       finish.rotation.y=Math.atan2(p.x-prev.x,p.z-prev.z);
       scene.add(finish);
       const beacon=new Beacon(ORANGE).at(p.x,p.z).mount(); // só o facho de luz da chegada
       cpMarkers.push({beacon,finish});
     }else{
       const buoy=makeBuoy(ORANGE);
-      buoy.position.set(p.x,SEA_Y,p.z);
+      buoy.position.set(p.x,surf(p.x,p.z),p.z);
       const beacon=new Beacon(ORANGE).at(p.x,p.z).mount();
       scene.add(buoy);
       cpMarkers.push({buoy,beacon});
@@ -333,7 +253,7 @@ function clearCpMarkers(){
 function buildMines(){
   for(const s of mineSpecs){
     const g=(makeSeaMine as ()=>THREE.Group)();
-    g.position.set(s.x,SEA_Y,s.z);
+    g.position.set(s.x,surf(s.x,s.z),s.z);
     g.rotation.y=Math.random()*Math.PI*2;
     scene.add(g);
     mines.push({g,x:s.x,z:s.z,bobT:Math.random()*6});
@@ -365,7 +285,7 @@ function detonateMine(m: Mine){
 }
 function spawnMineBlast(x: number,z: number){
   const g=makeExplosionModel();
-  g.position.set(x,SEA_Y+1,z);
+  g.position.set(x,surf(x,z)+1,z);
   scene.add(g);
   blasts.push({g,t:0});
   for(let i=0;i<8;i++) // borrifo/espuma do estouro
@@ -405,8 +325,9 @@ function spawnRacers(h0: number){
   for(let i=0;i<NPC_COUNT;i++){
     const g=(makeBoat as (color: number)=>THREE.Group)(boatColors[i%boatColors.length]); // makeBoat já adiciona à cena
     seatCaptain(g,pick(shirtColors));
-    const lane=(i-1)*4.5;
-    g.position.set(start.x+rx*lane+bx*(6+i*3),SEA_Y+BOAT_FLOAT,start.z+rz*lane+bz*(6+i*3));
+    const lane=(i-1)*3;  // three abreast across the 12 m channel
+    const gx=start.x+rx*lane+bx*(6+i*3),gz=start.z+rz*lane+bz*(6+i*3);
+    g.position.set(gx,surf(gx,gz)+BOAT_FLOAT,gz);
     g.rotation.y=h0;
     // mais lentos pra dar chance ao jogador; largam escalonados
     racers.push({g,cp:0,wpi:0,speed:16+i*1.8,pace:RIVAL_PACES[i%RIVAL_PACES.length],finished:false,bobT:Math.random()*6});
@@ -446,7 +367,7 @@ function startRace(){
   gate.visible=false;                                // tira o pórtico depois de largar
   // teleporta a lancha do jogador pra linha, virada pra 1ª boia
   const h0=Math.atan2(route[0].x-start.x,route[0].z-start.z);
-  cur!.g.position.set(start.x,SEA_Y+BOAT_FLOAT,start.z);
+  cur!.g.position.set(start.x,surf(start.x,start.z)+BOAT_FLOAT,start.z);
   cur!.heading=h0;cur!.g.rotation.set(0,h0,0);cur!.speed=0;cur!.bobT=cur!.bobT||0;
   cameraRig.yaw=h0;
   freezePos=cur!.g.position.clone();freezeHeading=h0;
@@ -543,7 +464,7 @@ function updateCpMarkers(dt: number){
     if(m.finish){
       m.finish.visible=show;
       if(show){
-        m.finish.position.y=SEA_Y+Math.sin(state.time*1.6+i)*.08; // balança na água
+        m.finish.position.y=surf(m.finish.position.x,m.finish.position.z)+Math.sin(state.time*1.6+i)*.08; // bobs on the water
         if(m.finish.userData.flag)m.finish.userData.flag.rotation.y=Math.sin(state.time*6)*.5;
       }
       continue;
@@ -551,7 +472,7 @@ function updateCpMarkers(dt: number){
     if(m.buoy){
       m.buoy.visible=show;
       if(show){
-        m.buoy.position.y=SEA_Y+Math.sin(state.time*1.8+i*1.3)*.12;
+        m.buoy.position.y=surf(m.buoy.position.x,m.buoy.position.z)+Math.sin(state.time*1.8+i*1.3)*.12;
         m.buoy.rotation.y+=.6*dt;
       }
     }
@@ -564,7 +485,7 @@ const rwake: RivalWake[]=[],rwakePool: THREE.Mesh<THREE.PlaneGeometry, THREE.Mes
 function spawnRivalPuff(x: number,z: number,s0: number,s1: number,life: number){
   const g=rwakePool.pop()||makeWakePuff();
   if(!g.parent)scene.add(g);
-  g.position.set(x,SEA_Y+.02,z);
+  g.position.set(x,surf(x,z)+.02,z);
   g.rotation.y=Math.random()*Math.PI;
   g.scale.setScalar(s0);
   g.material.opacity=0;g.visible=true;
@@ -625,7 +546,7 @@ function updateRacers(dt: number){
     }
     // flutuação + proa levantada planando + inclinação pra dentro da curva + pulo de mina
     r.bobT=(r.bobT||0)+dt;
-    r.g.position.y=SEA_Y+BOAT_FLOAT+Math.sin(r.bobT*2.2)*.05+hopOffset(r,dt);
+    r.g.position.y=surf(r.g.position.x,r.g.position.z)+BOAT_FLOAT+Math.sin(r.bobT*2.2)*.05+hopOffset(r,dt);
     r.g.rotation.x=THREE.MathUtils.lerp(r.g.rotation.x,-.1,Math.min(1,3*dt));
     r.g.rotation.z=THREE.MathUtils.lerp(r.g.rotation.z,-diff*.4,Math.min(1,4*dt));
     // rastro de espuma jogado atrás da popa
@@ -655,7 +576,7 @@ function updateRacers(dt: number){
 function updateMines(dt: number){
   for(const m of mines){
     m.bobT+=dt;
-    m.g.position.y=SEA_Y+Math.sin(m.bobT*1.6)*.1; // bóia balançando
+    m.g.position.y=surf(m.x,m.z)+Math.sin(m.bobT*1.6)*.1; // bobbing
     m.g.rotation.y+=.4*dt;
   }
   if(!cur)return;

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   clamp, wrapA, diminishPrize, rubberSpeed, smoothPace,
-  isLand, groundHeight, separateRacers, MOUNT_X,
+  groundHeight, separateRacers,
 } from '@/core/constants.ts';
 import type { Racer, PrizeStreak } from '@/core/types.ts';
 
@@ -50,14 +50,9 @@ describe('diminishPrize (anti-farm)', () => {
 });
 
 describe('world geometry', () => {
-  it('the city centre is land, deep ocean is not', () => {
-    expect(isLand(0, 0)).toBe(true);
-    expect(isLand(1000, 1000)).toBe(false);
-  });
-
-  it('groundHeight is flat in the city and rises on the mountain summit', () => {
-    expect(groundHeight(0, 0)).toBe(0);
-    expect(groundHeight(MOUNT_X, 0)).toBeGreaterThan(10);
+  it('the off-map rooms (west of the town) have a flat floor at y=0', () => {
+    expect(groundHeight(-800, 0)).toBe(0);
+    expect(groundHeight(-900, -380)).toBe(0);
   });
 });
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import {N,nodeX,irand,pick,groundHeight,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {pick,groundHeight,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {routeWalk,randomRoadPoint,nearestNode,nodes,pavedRoad} from '@/world/divinolandia/nav.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs,carColors} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
@@ -30,27 +31,26 @@ interface CpMarker{ring?: THREE.Mesh; beacon?: Beacon; finish?: THREE.Object3D;}
 // alvo aqui — a trava só garante o "um por vez" e o mapa sem outras atividades.
 const game=new MiniGame({id:MiniGameId.RACE,name:'Street Race'});
 
-// Minigame de corrida estilo open-world 3D: um pórtico de largada xadrez fica numa
-// esquina da cidade. Chegue de carro, pare embaixo dele e a corrida começa:
-// o carro teleporta pra linha, sirene + contagem 3-2-1, e então um percurso de
-// checkpoints (um por vez) que você cruza NA ORDEM até a chegada. Três rivais
-// dirigem PELAS RUAS (waypoints em L sobre as linhas de rua) e passam de fato
-// por cada ponto, sem cortar caminho. As gangues somem durante a prova e voltam
-// no fim. Música/rádio são exclusivos da corrida; se todos os rivais chegarem
-// antes, você perde. Cada corrida concluída faz a próxima nascer noutro lugar.
+// Open-world street race: a chequered start gate stands at a junction of
+// Divinolândia. Drive under it, stop, and the race starts: the car snaps to the line,
+// siren + 3-2-1, then a course of checkpoints (one at a time) to cross IN ORDER to
+// the finish. The course is a real route through the town's streets (nav.routeWalk),
+// so the three rivals drive the same streets — they follow its polyline turn by turn,
+// passing every point, never cutting through the houses. Gangs vanish during the race
+// and come back after. Music/radio belong to the race; if every rival finishes first
+// you lose. Each finished race makes the next one start somewhere else.
 
 const RACE_BUILD=' ◆ RACE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',RACE_BUILD);
 
 const CP_COUNT=6;      // checkpoints do percurso (corrida curta; o último é a chegada)
-const CP_SPACING=35;   // distância mínima entre checkpoints (mais perto um do outro)
-const CP_RADIUS=8;     // raio pra contar a passagem no checkpoint
+const ROUTE_LEN=1300;  // course length along the streets (m)
+const CP_RADIUS=9;     // raio pra contar a passagem no checkpoint
 const CP_AHEAD=0;      // checkpoints à frente visíveis além do atual (0 = só o atual)
 const NPC_COUNT=3;     // adversários
 const NPC_REACH=3.5;   // rivais precisam passar PERTO do ponto pra avançar (nada de burlar)
 const RIVAL_PACES=[0.82,0.90,0.96]; // per-rival pace, all <1 so a CLEAN run wins; the catch-up surge keeps trailing rivals dangerous if you slack (a sloppy run can still drop to 2nd/3rd).
 const SEP=3.8;         // distância mínima entre dois rivais (carro ~1.7 largo): separa quem encosta
-const TURN_MIN=-0.1;   // produto escalar mínimo entre trechos: proíbe curva de ré/180
 const GANG_MARGIN=8;   // folga extra além do raio do território
 const ORANGE=0xff8a1e;
 
@@ -61,11 +61,13 @@ function inGangTerritory(x: number,z: number){
   return false;
 }
 
-// largada numa esquina da cidade (interseção = sempre em cima da rua). Muda de
-// lugar a cada corrida concluída, então sempre nasce uma nova prova noutro ponto.
-const start={x:nodeX(2),z:nodeX(5)};
+// The start is a junction of the town (always on the street). It moves after every
+// finished race, so a new one always appears somewhere else. The first one is on the
+// streets east of the Matriz.
+const start={x:0,z:0};
+{const sp=randomRoadPoint({f:pavedRoad,near:{x:5300,z:5000},min:0,max:220});const n=nodes[nearestNode(sp.x,sp.z,pavedRoad)];start.x=n.x;start.z=n.z;}
 const gate=makeRaceGate(ORANGE); // makeCar/makeRaceGate NÃO adicionam à cena
-gate.position.set(start.x,0,start.z);
+gate.position.set(start.x,groundHeight(start.x,start.z),start.z);
 scene.add(gate);
 
 // Pré-monta a corrida da largada atual: sorteia o percurso, o caminho de rua dos
@@ -74,34 +76,40 @@ scene.add(gate);
 function prepareRace(){
   route=genRoute();
   npcPath=buildRoadPath();
-  const h=route.length?Math.atan2(route[0].x-start.x,route[0].z-start.z):0;
-  gate.rotation.y=h;
+  gate.rotation.y=courseHeading();
+}
+
+// heading of the first stretch of the course (the gate and the grid face it)
+function courseHeading(){
+  for(const p of coursePts){const dx=p[0]-start.x,dz=p[1]-start.z;if(dx*dx+dz*dz>16)return Math.atan2(dx,dz);}
+  return route.length?Math.atan2(route[0].x-start.x,route[0].z-start.z):0;
 }
 
 function relocateStart(){
   const pp=playerPos();
-  let i,j,x,z,tries=0;
+  let x=start.x,z=start.z,tries=0;
   do{
-    i=irand(1,N-1);j=irand(1,N-1);x=nodeX(i);z=nodeX(j);tries++;
-  }while(tries<60&&(Math.hypot(x-pp.x,z-pp.z)<70||(x===start.x&&z===start.z)
-    ||inGangTerritory(x,z))); // largada fora de território de gangue
+    const sp=randomRoadPoint({f:pavedRoad,near:{x:pp.x,z:pp.z},min:120,max:700});
+    const n=nodes[nearestNode(sp.x,sp.z,pavedRoad)];x=n.x;z=n.z;tries++;
+  }while(tries<60&&((x===start.x&&z===start.z)||inGangTerritory(x,z))); // start outside gang turf
   start.x=x;start.z=z;
-  gate.position.set(x,0,z);
-  startMk.ring.position.set(x,.4,z);
+  const y=groundHeight(x,z);
+  gate.position.set(x,y,z);
+  startMk.ring.position.set(x,y+.4,z);
   startMk.beacon.at(x,z);
   prepareRace(); // novo percurso e nova orientação do pórtico
 }
 
 // marcador fixo da largada (anel + facho)
 const startMk={ring:makeMarkerRing(ORANGE),beacon:new Beacon(ORANGE)};
-startMk.ring.rotation.x=Math.PI/2;startMk.ring.position.set(start.x,.4,start.z);
+startMk.ring.rotation.x=Math.PI/2;startMk.ring.position.set(start.x,groundHeight(start.x,start.z)+.4,start.z);
 startMk.beacon.at(start.x,start.z).mount();
 scene.add(startMk.ring);
 
 let phase='idle';   // idle | countdown | racing
 let route: RoutePoint[]=[];       // [{x,z}] pontos do percurso na ordem
 let cpMarkers: CpMarker[]=[];   // marcadores 3D de cada checkpoint
-let npcPath: RoadWaypoint[]=[];     // waypoints de RUA (interseções) que os rivais seguem
+let npcPath: RoadWaypoint[]=[];     // the course polyline the rivals follow (cp = a checkpoint)
 let playerCp=0;     // próximo checkpoint do jogador
 let raceT=0;        // cronômetro da corrida
 let cdT=0;          // contagem regressiva
@@ -147,48 +155,49 @@ refs.startRaceInteract=()=>{
   startRace();return true;
 };
 
-// Percurso: esquinas (interseções) espaçadas, na ordem. Cada nova perna só pode
-// virar pra frente/esquerda/direita em relação à anterior (nunca dar ré/180) —
-// o produto escalar entre direções consecutivas tem que ficar acima de TURN_MIN.
-function tryRoute(){
-  const all: [number, number][]=[];
-  for(let i=1;i<N;i++)for(let j=1;j<N;j++)all.push([nodeX(i),nodeX(j)]);
-  for(let k=all.length-1;k>0;k--){const m=irand(0,k);[all[k],all[m]]=[all[m],all[k]];}
-  const pts: RoutePoint[]=[];let px=start.x,pz=start.z,dirx: number|null=null,dirz: number|null=null;
-  for(const[x,z]of all){
-    if(pts.length>=CP_COUNT)break;
-    const dx=x-px,dz=z-pz,dd=Math.hypot(dx,dz);
-    if(dd<CP_SPACING)continue;          // checkpoints próximos uns dos outros
-    const ndx=dx/dd,ndz=dz/dd;
-    if(dirx!==null&&dirx*ndx+dirz!*ndz<TURN_MIN)continue; // sem curva ao contrário
-    // o ÚLTIMO ponto (chegada) não pode cair em território de gangue
-    if(pts.length===CP_COUNT-1&&inGangTerritory(x,z))continue;
-    pts.push({x,z});px=x;pz=z;dirx=ndx;dirz=ndz;
-  }
-  return pts;
-}
+// The course: a walk through the paved streets from the start junction (never doubling
+// back, nav.routeWalk), cut into CP_COUNT legs of equal length; the checkpoints sit at
+// the cuts and the last one is the finish (never inside a gang's turf). The rivals
+// follow the same polyline, with the checkpoints inserted as flagged waypoints.
+let coursePts: [number,number][]=[];
 function genRoute(){
-  let best: RoutePoint[]=[];
-  for(let attempt=0;attempt<16;attempt++){
-    const r=tryRoute();
-    if(r.length>best.length)best=r;
-    if(best.length>=CP_COUNT)break;
+  let best: [number,number][]=[];
+  for(let attempt=0;attempt<12;attempt++){
+    const pts=routeWalk(start.x,start.z,ROUTE_LEN,pavedRoad);
+    const end=pts[pts.length-1];
+    if(polyLen(pts)>polyLen(best)&&!(end&&inGangTerritory(end[0],end[1])))best=pts;
+    if(polyLen(best)>=ROUTE_LEN*.9)break;
   }
-  return best;
+  coursePts=best;
+  const total=polyLen(best),out: RoutePoint[]=[];
+  for(let i=1;i<=CP_COUNT;i++){const p=alongPoly(best,total*i/CP_COUNT);out.push({x:p[0],z:p[1]});}
+  return out;
+}
+function polyLen(p: [number,number][]){let l=0;for(let i=1;i<p.length;i++)l+=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);return l;}
+function alongPoly(p: [number,number][],s: number): [number,number]{
+  for(let i=1;i<p.length;i++){
+    const l=Math.hypot(p[i][0]-p[i-1][0],p[i][1]-p[i-1][1]);
+    if(s<=l){const t=l?s/l:0;return[p[i-1][0]+(p[i][0]-p[i-1][0])*t,p[i-1][1]+(p[i][1]-p[i-1][1])*t];}
+    s-=l;
+  }
+  return p[p.length-1]||[start.x,start.z];
 }
 
-// Caminho de RUA pros rivais: as interseções (checkpoints e cantos) ligadas por
-// trechos em L que correm SEMPRE sobre as linhas de rua (x=nodeX ou z=nodeX),
-// então os carros inimigos viram nas esquinas em vez de varar os prédios.
+// the rivals' path: every vertex of the course, with the checkpoints inserted in order
 function buildRoadPath(){
-  const wps: RoadWaypoint[]=[];let cx=start.x,cz=start.z;
-  for(const cp of route){
-    if(cp.z!==cz){wps.push({x:cx,z:cp.z});cz=cp.z;}      // trecho ao longo de z
-    if(cp.x!==cx){wps.push({x:cp.x,z:cz});cx=cp.x;}      // trecho ao longo de x
-    const last=wps[wps.length-1];
-    if(!last||last.x!==cp.x||last.z!==cp.z)wps.push({x:cp.x,z:cp.z});
-    wps[wps.length-1].cp=true;                            // este waypoint é um checkpoint
+  const wps: RoadWaypoint[]=[];
+  const total=polyLen(coursePts),cpAt=route.map((_,i)=>total*(i+1)/CP_COUNT);
+  let acc=0,k=0;
+  for(let i=1;i<coursePts.length;i++){
+    const a=coursePts[i-1],b=coursePts[i],l=Math.hypot(b[0]-a[0],b[1]-a[1]);
+    while(k<cpAt.length&&cpAt[k]<=acc+l+1e-6){
+      const t=l?(cpAt[k]-acc)/l:0;
+      wps.push({x:a[0]+(b[0]-a[0])*t,z:a[1]+(b[1]-a[1])*t,cp:true});k++;
+    }
+    if(k<cpAt.length)wps.push({x:b[0],z:b[1]});
+    acc+=l;
   }
+  while(k<route.length){wps.push({x:route[k].x,z:route[k].z,cp:true});k++;}
   return wps;
 }
 
@@ -199,14 +208,14 @@ function buildCpMarkers(){
       // ponto final: linha de chegada com público e bandeira, virada pra quem chega
       const finish=makeRaceFinish();
       const prev=route[i-1]||start;
-      finish.position.set(p.x,0,p.z);
+      finish.position.set(p.x,groundHeight(p.x,p.z),p.z);
       finish.rotation.y=Math.atan2(p.x-prev.x,p.z-prev.z);
       scene.add(finish);
       const beacon=new Beacon(ORANGE).at(p.x,p.z).mount(); // facho de luz pra achar de longe
       cpMarkers.push({beacon,finish});
     }else{
       const ring=makeMarkerRing(ORANGE);
-      ring.rotation.x=Math.PI/2;ring.position.set(p.x,.4,p.z);
+      ring.rotation.x=Math.PI/2;ring.position.set(p.x,groundHeight(p.x,p.z)+.4,p.z);
       (ring.material as THREE.Material).transparent=true;
       const beacon=new Beacon(ORANGE).at(p.x,p.z).mount();
       scene.add(ring);
@@ -231,7 +240,8 @@ function spawnRacers(h0: number){
     const g=makeCar(carColors[(i*3+2)%carColors.length],false);
     seatDriver(g,pick(shirtColors)); // motorista rival ao volante (carro não fica vazio)
     const lane=(i-1)*3.2;
-    g.position.set(start.x+rx*lane+bx*(4+i*2.2),0,start.z+rz*lane+bz*(4+i*2.2));
+    const gx=start.x+rx*lane+bx*(4+i*2.2),gz=start.z+rz*lane+bz*(4+i*2.2);
+    g.position.set(gx,groundHeight(gx,gz),gz);
     g.rotation.y=h0;
     // mais lentos que antes pra dar chance ao jogador; largam escalonados
     racers.push({g,cp:0,wpi:0,speed:11+i*1.4,pace:RIVAL_PACES[i%RIVAL_PACES.length],finished:false});
@@ -268,9 +278,9 @@ function startRace(){
   playerCp=0;raceT=0;cdT=REWARDS.race.countdownSec;lastCdShown=-1;paceRef=0;
   startMk.ring.visible=startMk.beacon.visible=false; // some a largada durante a prova
   gate.visible=false;                                // tira o pórtico depois de largar
-  // teleporta o carro do jogador pra linha, virado pro primeiro checkpoint
-  const h0=Math.atan2(route[0].x-start.x,route[0].z-start.z);
-  cur!.g.position.set(start.x,0,start.z);
+  // snap the player's car to the line, facing down the course
+  const h0=courseHeading();
+  cur!.g.position.set(start.x,groundHeight(start.x,start.z),start.z);
   cur!.heading=h0;cur!.g.rotation.set(0,h0,0);cur!.speed=0;
   cameraRig.yaw=h0; // câmera já atrás do carro, olhando pro percurso
   freezePos=cur!.g.position.clone();freezeHeading=h0;

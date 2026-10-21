@@ -5,8 +5,9 @@ import {player,playerPos,applyPlayerClothing,previewPlayerClothing} from '@/acto
 import {blip} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {Interior} from '@/world/interior.ts';
-import {CLOTHES_DOOR,CLOTHES_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
-  CLOTHES_STATION,clothesFx,clothesInterior} from '../../assets/models/city/clothing-store.ts';
+import {CLOTHES_DOOR,CLOTHES_SPAWN_OUT,CLOTHES_SITE,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
+  CLOTHES_STATION,clothesFx,clothesInterior,addClothingStore} from '../../assets/models/city/clothing-store.ts';
+import {solids} from '@/world/solids.ts';
 
 // Clothing store "THREADS": an enterable interior (extends the base Interior, which owns
 // the door/teleport/world-bounds/camera/emergency-exit) with a custom-cars-style outfit
@@ -89,11 +90,14 @@ class ClothingStoreInterior extends Interior{
     if(clothesFx.exitArrow)clothesFx.exitArrow.position.y=1.7+Math.sin(state.time*3)*.18;
   }
 }
+addClothingStore(solids); // the storefront on its Rua Treze de Maio lot + the off-map room
+
 export const clothingStore=new ClothingStoreInterior({
   group:clothesInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:CLOTHES_DOOR,spawnOut:CLOTHES_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:clothesFx,
-  exterior:{x:-22,z:110,r:22},
+  exterior:{...CLOTHES_SITE.P(-22,110),r:22},
+  spawnOutHeading:CLOTHES_SITE.head(-Math.PI/2), // stepping out faces the street
   mapIcon:{id:'clothing-store',label:'THREADS',icon:'shirt',color:'#ff6fae'},
 });
 

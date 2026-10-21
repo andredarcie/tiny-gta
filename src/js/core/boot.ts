@@ -5,11 +5,13 @@
 
 // UI fonts, bundled with the game (no font CDN — the game must run fully offline).
 // Only the latin subsets/weights the CSS actually uses.
-import '@fontsource/bowlby-one-sc/latin-400.css';
-import '@fontsource/ibm-plex-mono/latin-400.css';
-import '@fontsource/ibm-plex-mono/latin-600.css';
-import '@fontsource/ibm-plex-mono/latin-700.css';
-import '@fontsource/press-start-2p/latin-400.css';
+// The interior-paulista look: Alfa Slab One = the hand-painted shop lettering (letreiro);
+// Barlow Condensed = the road and street signs (placas); Yellowtail = painted script.
+import '@fontsource/alfa-slab-one/latin-400.css';
+import '@fontsource/barlow-condensed/latin-500.css';
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
+import '@fontsource/barlow-condensed/latin-800.css';
 import '@fontsource/yellowtail/latin-400.css';
 
 // PLAY pressed before the game module finished loading: remember it; input.ts starts the

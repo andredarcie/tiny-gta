@@ -5,7 +5,7 @@ import {playerPos} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {groundHeight} from '@/core/constants.ts';
-import {ARENA_STAGE,FIELD_D,arenaGroundY} from '../../assets/models/rural/stadium.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
 import {byId} from '@/combat/weapon-catalog.ts';
 import {pickupArsenalWeapon} from '@/combat/weapons.ts';
 import {MiniGame} from '@/activities/minigame.ts';
@@ -21,32 +21,14 @@ const RESPAWN_CD=45;       // seconds before a collected pickup reappears
 const SCALE=1.3;           // floating model scale (uniform, for visibility)
 const ANIM2=72*72;         // beyond this distance: skip spin/bob AND collection
 
-// One spot per weapon, tucked on the coastline ring (beach sand) and out in the
-// rural peninsula — open terrain (no buildings to clip into). Lighter weapons sit
-// closer to the city; the heavy hitters are far out east. Avoids the spots used
-// by the stunt ramps, car crusher, bomb shop and the rocket-rampage pickup.
-const SPOTS:{id:string;x:number;z:number;party?:'red'|'blue';arena?:boolean}[]=[
-  {id:'bat',       x:-45,  z: 200},  // south beach
-  {id:'pistol',    x: 20,  z: 201},  // south beach
-  {id:'ak47',      x: 15,  z:-201},  // north beach
-  {id:'m16',       x: 135, z:-199},  // north beach (east)
-  {id:'uzi',       x:-201, z:-130},  // west beach
-  {id:'shotgun',   x:-201, z: 150},  // west beach
-  {id:'detonator', x: 200, z: 105},  // rural, near the city mouth
-  {id:'grenade',   x: 215, z: -95},  // rural south
-  {id:'molotov',   x: 255, z:  90},  // rural north
-  {id:'flame',     x: 300, z:-100},  // rural deep east
-  {id:'sniper',    x: 330, z:  65},  // rural far east (long-range, fitting)
-  {id:'rocket',    x: 360, z: -60},  // rural far east
-  // PARTY PERKS — a free gun always waiting at each party's HQ, visible and
-  // collectable ONLY by that party's members (state.party; see js/places/party-hq.ts).
-  {id:'uzi',       x: 114.5, z:-105.5, party:'red'},  // RED PARTY plaza (block centre 110,-110)
-  {id:'uzi',       x:-105.5, z: 114.5, party:'blue'}, // BLUE PARTY plaza (block centre -110,110)
-  // PARTY ARENA — battle weapons on the stadium pitch (only members ever get
-  // inside the sealed stadium; see js/activities/party-arena.ts).
-  {id:'ak47',      x: ARENA_STAGE.x, z: ARENA_STAGE.z-FIELD_D*.22, arena:true},   // isolated arena pitch, south half
-  {id:'shotgun',   x: ARENA_STAGE.x, z: ARENA_STAGE.z+FIELD_D*.22, arena:true},   // isolated arena pitch, north half
-];
+// One spot per weapon, a few metres off a street or dirt road (nav.roadside, town-local
+// coordinates): the light ones in and around the town, the heavy hitters out in the
+// countryside and up the serra.
+const SPOTS:{id:string;x:number;z:number}[]=([
+  ['bat',-180,40],['pistol',150,140],['ak47',380,-300],['m16',-420,-120],
+  ['uzi',600,250],['shotgun',-40,-330],['detonator',900,80],['grenade',-640,350],
+  ['molotov',300,620],['flame',-900,-560],['sniper',716,1900],['rocket',1150,900],
+] as [string,number,number][]).map(([id,lx,lz])=>{const r=roadside(lx,lz,4);return{id,x:r.x,z:r.z};});
 
 // A floating hidden-weapon pickup in the world (spin/bob + collection bookkeeping).
 interface Pickup{
@@ -58,8 +40,6 @@ interface Pickup{
   g: THREE.Object3D;
   active: boolean;
   respawnAt: number;
-  party?: 'red'|'blue'; // members-only perk: hidden unless state.party matches
-  arena?: boolean;      // visible only while a Party Arena round is active
 }
 
 const pickups: Pickup[]=[];
@@ -68,11 +48,10 @@ for(const s of SPOTS){
   if(!w||!w.makeModel)continue;
   const g=w.makeModel({pickup:true});
   g.scale.setScalar(SCALE);
-  const baseY=(s.arena?arenaGroundY(s.x,s.z):groundHeight(s.x,s.z))+1.0;
+  const baseY=groundHeight(s.x,s.z)+1.0;
   g.position.set(s.x,baseY,s.z);
-  if(s.arena)g.visible=false;
   scene.add(g);
-  pickups.push({id:s.id,name:w.name,x:s.x,z:s.z,baseY,g,active:true,respawnAt:0,party:s.party,arena:s.arena});
+  pickups.push({id:s.id,name:w.name,x:s.x,z:s.z,baseY,g,active:true,respawnAt:0});
 }
 
 // debug snapshot
@@ -87,16 +66,6 @@ export function updateWeaponPickups(dt: number){
   const r2=PICK_R*PICK_R;
   for(let k=0;k<pickups.length;k++){
     const p=pickups[k];
-    // Party HQ perk: only that party's members ever see or collect it.
-    if(p.party&&state.party!==p.party){
-      if(p.g.visible)p.g.visible=false;
-      continue;
-    }
-    // Arena weapons live in the isolated field and should not render in normal play.
-    if(p.arena&&!refs.isPartyArenaActive?.()){
-      if(p.g.visible)p.g.visible=false;
-      continue;
-    }
     if(!p.active){
       // collected: wait out the cooldown, then put it back in the world
       if(state.time>=p.respawnAt){

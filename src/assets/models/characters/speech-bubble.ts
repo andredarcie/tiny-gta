@@ -21,7 +21,7 @@ function wrap(ctx: CanvasRenderingContext2D,text: string,maxW: number): string[]
 export function makeSpeechBubble(text: string,{worldWidth=3,font=30,pad=26,maxTextW=448}: {worldWidth?: number; font?: number; pad?: number; maxTextW?: number}={}): THREE.Sprite{
   const c=document.createElement('canvas');
   const x=c.getContext('2d')!;
-  const fontStr=`600 ${font}px "IBM Plex Mono", ui-monospace, monospace`;
+  const fontStr=`600 ${font}px "Barlow Condensed", ui-monospace, monospace`;
   x.font=fontStr;
   const lines=wrap(x,text,maxTextW);
   const lineH=Math.round(font*1.32);

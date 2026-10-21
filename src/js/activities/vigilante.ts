@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {N,nodeX,rand,irand,pick,clamp,ROAD,groundHeight,SWIM_BOUND,HALF} from '@/core/constants.ts';
+import {pick,clamp,groundHeight,wrapA} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
@@ -10,8 +10,9 @@ import {makeMarkerRing} from '../../assets/models/missions/marker-ring.ts';
 import {Beacon} from '@/core/beacon.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip,thud} from '@/audio/audio.ts';
-import {collideStatics} from '@/core/physics.ts';
-import {PRISON_I,PRISON_J} from '../../assets/models/city/prison.ts';
+import {PRISON_SPAWN_OUT} from '../../assets/models/city/prison.ts';
+import {LaneRunner,randomRoadPoint,edges,laneOff,nearestRoad,pointAt,fleeChooser,type RoadPos} from '@/world/divinolandia/nav.ts';
+import {carRoad} from '@/world/traffic.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 
@@ -33,20 +34,25 @@ const BUST_BONUS=REWARDS.vigilante.bustBonusSec;     // seconds added per captur
 const HIT_RANGE=4.6;     // distance from cruiser to suspect to register a ram
 const HIT_SPEED=4;       // minimum cruiser speed for a ram to count
 const HIT_COOLDOWN=REWARDS.vigilante.ramCooldownSec;   // minimum interval between rams
-const JUKE_RANGE=6;      // player nearby: the suspect re-picks a destination to juke
 
-// viatura estacionada na interseção ao lado do presídio (centro de cruzamento =
-// sempre asfalto livre). Reposicionada aqui no respawn também.
-const spawn={x:nodeX(PRISON_I)+4,z:nodeX(PRISON_J),heading:0};
+// the cruiser waits in the street lane in front of the jail (by the Polícia Militar);
+// it comes back here after being wrecked too
+const spawn=(()=>{
+  const r=nearestRoad(PRISON_SPAWN_OUT.x,PRISON_SPAWN_OUT.z,200,carRoad);
+  if(!r)return{x:PRISON_SPAWN_OUT.x,z:PRISON_SPAWN_OUT.z,heading:0};
+  const p=pointAt(r.e,r.s,1);
+  return{x:r.x-p.dz*laneOff(r.e),z:r.z+p.dx*laneOff(r.e),heading:Math.atan2(p.dx,p.dz)};
+})();
 
-const cruiser: any={g:makeCar(0xe8e8ee,true),heading:0,speed:0,
+const cruiser: any={g:makeCar(0xe8e8ee,true),heading:spawn.heading,speed:0,
   name:'POLICE CRUISER',police:true,vigilante:true};
-cruiser.g.position.set(spawn.x,0,spawn.z);
-cruiser.g.rotation.y=0;
+cruiser.g.position.set(spawn.x,groundHeight(spawn.x,spawn.z),spawn.z);
+cruiser.g.rotation.y=spawn.heading;
 idleCars.push(cruiser);
 
-// fugitivo: carro + estado de IA (destino, vida, marcador no chão)
-interface Criminal{g:THREE.Object3D;hp:number;destX:number;destZ:number;heading:number;speed:number;lastHit:number;ring?:THREE.Mesh|null;beacon?:Beacon|null;}
+// the suspect: a car running along the streets (a LaneRunner that always turns away
+// from the cruiser), its health and the ground marker following it
+interface Criminal{g:THREE.Object3D;hp:number;run:LaneRunner;heading:number;speed:number;lastHit:number;slowT:number;ring?:THREE.Mesh|null;beacon?:Beacon|null;}
 
 let phase='off';   // off | duty
 let level=1;       // patrulha atual: dificuldade do fugitivo
@@ -81,18 +87,7 @@ refs.vigilanteStart=()=>phase==='off'?{x:cruiser.g.position.x,z:cruiser.g.positi
 refs.isVigilanteCar=(c: any)=>c===cruiser;
 refs.getVigilanteState=()=>({phase,level,busts,timeLeft,active:phase!=='off'});
 
-// destino bem longe do jogador: interseção no lado OPOSTO do mapa (o fugitivo
-// corre pra lá). Evita as bordas do mapa pra não se enroscar na praia/mar.
-function pickDest(px: number,pz: number): [number,number]{
-  let bx=spawn.x,bz=spawn.z,bd=-1;
-  for(let t=0;t<14;t++){
-    const i=irand(1,N-1),j=irand(1,N-1);
-    const x=nodeX(i),z=nodeX(j);
-    const d=Math.hypot(x-px,z-pz);
-    if(d>bd){bd=d;bx=x;bz=z;}
-  }
-  return[bx,bz];
-}
+const _rp:RoadPos={x:0,z:0,dx:0,dz:0};
 
 function setCrimMarker(){
   const ring=makeMarkerRing(RED);
@@ -109,22 +104,22 @@ function clearCrimMarker(){
 
 function spawnCriminal(){
   const pp=playerPos();
-  // posição inicial: numa interseção a 60–120m do jogador (em cima da rua)
-  let x=spawn.x,z=spawn.z,tries=0;
-  do{
-    x=nodeX(irand(1,N-1));z=nodeX(irand(1,N-1));tries++;
-  }while((Math.hypot(x-pp.x,z-pp.z)<60||Math.hypot(x-pp.x,z-pp.z)>120)&&tries<40);
-  const g=makeCar(0x23252e,false); // sedã escuro do bandido
-  seatDriver(g,pick(shirtColors));  // motorista visível ao volante
-  g.position.set(x,groundHeight(x,z),z);
-  const[dx,dz]=pickDest(pp.x,pp.z);
-  const heading=Math.atan2(dx-x,dz-z);
+  // starts on a street 70–160 m from the player, driving away from them
+  const sp=randomRoadPoint({f:carRoad,near:{x:pp.x,z:pp.z},min:70,max:160});
+  const away=pointAt(sp.e,sp.s,1);
+  const dir:1|-1=(away.x-pp.x)*away.dx+(away.z-pp.z)*away.dz>=0?1:-1;
+  const run=new LaneRunner(sp.e,dir,dir>0?sp.s:edges[sp.e].len-sp.s,
+    {off:laneOff,f:carRoad,round:6,choose:fleeChooser(()=>cruiser.g.position,carRoad)});
+  const p=run.at(0,_rp);
+  const g=makeCar(0x23252e,false); // the getaway's dark sedan
+  seatDriver(g,pick(shirtColors));  // a visible driver at the wheel
+  g.rotation.order='YXZ';
+  g.position.set(p.x,groundHeight(p.x,p.z),p.z);
+  const heading=Math.atan2(p.dx,p.dz);
   g.rotation.y=heading;
   // Suspect speed stays well under the cruiser top speed (32) so the cruiser can
-  // always close the gap. The suspect does not slow down in turns (the cruiser
-  // does), so keeping it slower here keeps the chase catchable at every level.
-  criminal={g,hp:2,destX:dx,destZ:dz,heading,
-    speed:Math.min(22,15+level*0.8),lastHit:-99};
+  // always close the gap; it brakes into the sharp bends like any driver.
+  criminal={g,hp:2,run,heading,speed:Math.min(22,15+level*0.8),lastHit:-99,slowT:0};
   setCrimMarker();
 }
 
@@ -156,7 +151,7 @@ function resetCruiser(){
   cruiser.speed=0;cruiser.sinkT=0;cruiser.heading=spawn.heading;
   cruiser.g.userData.bulletHits=0;
   resetCarDamage(cruiser.g); // also clear crashCount/crashCd so the fresh cruiser doesn't carry stale crash damage
-  cruiser.g.position.set(spawn.x,0,spawn.z);
+  cruiser.g.position.set(spawn.x,groundHeight(spawn.x,spawn.z),spawn.z);
   cruiser.g.rotation.set(0,spawn.heading,0);
   for(const d of cruiser.g.userData.doors||[])d.rotation.y=0;
 }
@@ -220,12 +215,12 @@ function registerHit(){
   _dir.subVectors(xp,cp).setY(0);
   const len=Math.max(_dir.length(),.001);
   _dir.multiplyScalar(1/len);
-  const mid=_v0.addVectors(cp,xp).multiplyScalar(.5).setY(.7);
+  const mid=_v0.addVectors(cp,xp).multiplyScalar(.5);mid.y+=.7;
   c.hp--;
   thud(8);
   state.shake=.3;
-  // empurrão: afasta o bandido na direção da pancada
-  xp.x+=_dir.x*1.1;xp.z+=_dir.z*1.1;
+  // the hit knocks the getaway off its stride for a moment
+  c.slowT=1.2;
   cruiser.speed*=.55;
   if(c.hp<=0){
     dentCar(c.g,mid,_dir,.2);
@@ -237,34 +232,25 @@ function registerHit(){
   }
 }
 
-// IA do fugitivo: dirige para o destino distante, escorrega nos prédios com
-// collideStatics e re-escolhe o destino ao chegar perto OU quando o jogador
-// se aproxima (finta). Espelha a viatura da polícia, mas FUGINDO.
+// The suspect's AI: floors it along the streets, turning at every junction onto the
+// road that leads away from the cruiser (nav.fleeChooser), braking into sharp bends.
 function updateCriminal(dt: number){
-  const c=criminal!,p=c.g.position,pp=playerPos();
-  const distPlayer=Math.hypot(pp.x-p.x,pp.z-p.z);
-  let distDest=Math.hypot(c.destX-p.x,c.destZ-p.z);
-  // re-escolhe destino: chegou perto, jogador colado (finta) ou perto da borda
-  const nearEdge=Math.abs(p.x)>HALF+ROAD||Math.abs(p.z)>HALF+ROAD;
-  if(distDest<12||distPlayer<JUKE_RANGE||nearEdge){
-    const[dx,dz]=pickDest(pp.x,pp.z);
-    c.destX=dx;c.destZ=dz;
-    distDest=Math.hypot(dx-p.x,dz-p.z);
-  }
-  // vira na direção do destino (curva suave, igual aos carros de polícia/rivais)
-  const desired=Math.atan2(c.destX-p.x,c.destZ-p.z);
-  let diff=THREE.MathUtils.euclideanModulo(desired-c.heading+Math.PI,Math.PI*2)-Math.PI;
-  c.heading+=clamp(diff,-1,1)*2.6*dt;
-  // anda pra frente; collideStatics escorrega nos prédios e prende ao mundo
-  p.x+=Math.sin(c.heading)*c.speed*dt;
-  p.z+=Math.cos(c.heading)*c.speed*dt;
-  collideStatics(p,1.3,SWIM_BOUND);
-  p.y=groundHeight(p.x,p.z);
-  c.g.rotation.y=c.heading;
-  spinWheels(c.g,c.speed,dt,clamp(diff,-1,1));
-  // marcador pulsando seguindo o bandido (anel no chão + facho de luz)
+  const c=criminal!,p=c.g.position;
+  if(c.slowT>0)c.slowT-=dt;
+  const bend=c.run.bend(16);
+  const v=c.speed*(bend>.12?.55:bend>.04?.8:1)*(c.slowT>0?.5:1);
+  c.run.advance(v*dt);
+  const np=c.run.at(0,_rp);
+  p.set(np.x,groundHeight(np.x,np.z),np.z);
+  const desired=Math.atan2(np.dx,np.dz),diff=wrapA(desired-c.heading);
+  c.heading+=diff*Math.min(1,10*dt);
+  const fx=Math.sin(c.heading),fz=Math.cos(c.heading);
+  const slope=groundHeight(p.x+fx*1.3,p.z+fz*1.3)-groundHeight(p.x-fx*1.3,p.z-fz*1.3);
+  c.g.rotation.set(-Math.atan2(slope,2.6),c.heading,0);
+  spinWheels(c.g,v,dt,clamp(diff*2,-1,1));
+  // the pulsing marker follows the suspect (ground ring + light beam)
   if(c.ring){
-    c.ring.position.set(p.x,.4,p.z);
+    c.ring.position.set(p.x,p.y+.4,p.z);
     c.beacon!.at(p.x,p.z);
     c.ring.rotation.z+=2*dt;
     const sc=1+Math.sin(state.time*4)*.12;c.ring.scale.set(sc,sc,1);

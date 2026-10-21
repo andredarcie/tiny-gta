@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import {clamp,RURAL_X0} from '@/core/constants.ts';
+import {clamp} from '@/core/constants.ts';
 import {scene,renderer,hemi,dlight,sunDir,clouds,camera,setBloomStrength,setNightBloom} from '@/core/engine.ts';
-import {buildingMats,lampGlowMat,lampHaloMat,lampBulbMat} from '@/world/world.ts';
+import {lampGlowMat,lampHaloMat,lampBulbMat} from '../../assets/models/props/street-lamp.ts';
 import {state,refs} from '@/core/state.ts';
 import {beamMat} from '@/core/entities.ts';
 import {makeSkyDome} from '../../assets/models/daynight/sky-dome.ts';
@@ -40,31 +40,35 @@ export const getDay=()=>dayCount;
 // 0 a cada reload e a regra "1x por dia" dos mini-games seria burlável recarregando.
 export const setDay=(n:number)=>{ if(Number.isFinite(n)) dayCount=Math.max(dayCount,Math.floor(n)); };
 
-// Keyframes do ciclo. sky = 5 paradas do gradiente (zênite -> horizonte).
-// sun = cor da luz direcional (vira luar à noite), win = brilho das janelas dos prédios.
+// Keyframes of the cycle, measured on the town's own photos (Street View, nov/2024): a
+// clear interior-paulista sky that pales to a hazy blue-grey at the horizon, the same haze
+// as the fog (distant serras turn blue-grey), a strong white sun against a weak sky fill
+// (real light: crisp shadows and solid form), and soft, low-saturation dawn and dusk.
+// sky = 5 gradient stops (zenith -> horizon); sun = the directional light's colour (the
+// moonlight at night); win = how bright the lit windows are.
 const KF=[
- {t:.00,sky:['#141e38','#1b2848','#26365c','#32466e','#405a7e'],fog:'#243652',
-  sun:'#c6d8ff',sunI:.9,hs:'#5a70a2',hg:'#3a4260',hI:1.0,win:2.0,star:1,exp:1.14,cloud:'#5a688a'},
- {t:.17,sky:['#141e38','#1b2848','#26365c','#32466e','#405a7e'],fog:'#243652',
-  sun:'#c6d8ff',sunI:.9,hs:'#5a70a2',hg:'#3a4260',hI:1.0,win:2.0,star:1,exp:1.14,cloud:'#5a688a'},
- {t:.215,sky:['#0b1430','#1c2048','#3c2a56','#7a3e4e','#c06a4a'],fog:'#503a44',
-  sun:'#ff9a5e',sunI:.6,hs:'#4e4a74',hg:'#34283a',hI:.78,win:1.7,star:.6,exp:1.0,cloud:'#8a5e66'},
- {t:.26,sky:['#1a3a6c','#3a5c92','#9a6e8a','#ff9a56','#ffd28e'],fog:'#c08a62',
-  sun:'#ffae5e',sunI:1.3,hs:'#8a84a4',hg:'#54403e',hI:.86,win:.8,star:.05,exp:1.08,cloud:'#ffb892'},
- {t:.34,sky:['#2a6ec6','#4f9ade','#9ccfeb','#ffe2b8','#fff0d4'],fog:'#c6dcea',
-  sun:'#ffe0ae',sunI:2.0,hs:'#aed1f4',hg:'#8a8078',hI:.98,win:.35,star:0,exp:1.2,cloud:'#fff6ea'},
- {t:.50,sky:['#2e7fd9','#5aa7e8','#a8d8f0','#d2eaf8','#eaf5fc'],fog:'#cfe2ee',
-  sun:'#fff2da',sunI:2.4,hs:'#bfdfff',hg:'#8a8078',hI:1.05,win:.3,star:0,exp:1.25,cloud:'#ffffff'},
- {t:.66,sky:['#2e7fd9','#5aa7e8','#a8d8f0','#ffe7c4','#fff4dd'],fog:'#cfe2ee',
-  sun:'#fff1d6',sunI:2.2,hs:'#bfdfff',hg:'#8a8078',hI:1.05,win:.3,star:0,exp:1.25,cloud:'#fff2e0'},
- {t:.735,sky:['#28509e','#5a5a96','#b06a78','#ff9450','#ffc878'],fog:'#d49a6a',
-  sun:'#ffa050',sunI:1.6,hs:'#9a8aa0',hg:'#6a4c44',hI:1.05,win:.6,star:0,exp:1.18,cloud:'#ffc09a'},
- {t:.77,sky:['#1c2a5e','#46336e','#9c4460','#ff6e3a','#ffb060'],fog:'#b06a4a',
-  sun:'#ff6a32',sunI:1.0,hs:'#6e5c86',hg:'#4a3444',hI:.88,win:1.1,star:.12,exp:1.1,cloud:'#ff8e6a'},
- {t:.81,sky:['#121a3e','#1c244e','#342c5e','#6a3856','#9a524e'],fog:'#3e3050',
-  sun:'#9aa8e0',sunI:.75,hs:'#52608c',hg:'#343a56',hI:.92,win:1.8,star:.65,exp:1.08,cloud:'#504a6a'},
- {t:.87,sky:['#141e38','#1b2848','#26365c','#32466e','#405a7e'],fog:'#243652',
-  sun:'#c6d8ff',sunI:.9,hs:'#5a70a2',hg:'#3a4260',hI:1.0,win:2.0,star:1,exp:1.14,cloud:'#5a688a'}
+ {t:.00,sky:['#070b16','#0b1120','#111a2e','#18233a','#202d46'],fog:'#18202e',
+  sun:'#a8b8dc',sunI:.6,hs:'#3e4c6c',hg:'#22242c',hI:.85,win:2.0,star:1,exp:1.5,cloud:'#262d3c'},
+ {t:.17,sky:['#070b16','#0b1120','#111a2e','#18233a','#202d46'],fog:'#18202e',
+  sun:'#a8b8dc',sunI:.6,hs:'#3e4c6c',hg:'#22242c',hI:.85,win:2.0,star:1,exp:1.5,cloud:'#262d3c'},
+ {t:.215,sky:['#0c1428','#18233e','#2e3654','#5a5466','#8a7470'],fog:'#3a4050',
+  sun:'#c8a8a0',sunI:.6,hs:'#4a5070',hg:'#2c2a30',hI:.8,win:1.7,star:.6,exp:1.2,cloud:'#6a5a62'},
+ {t:.26,sky:['#2e4e80','#4e6e9e','#8c9cb6','#d8b49a','#ead2b8'],fog:'#a8acb4',
+  sun:'#ffc898',sunI:1.6,hs:'#8c9cb8',hg:'#4a4038',hI:.75,win:.8,star:.05,exp:1.15,cloud:'#f2c8a8'},
+ {t:.34,sky:['#3a6eb2','#5a8cc8','#8db0d8','#bfd0e0','#d8e0e6'],fog:'#bccad6',
+  sun:'#ffeacc',sunI:2.8,hs:'#a6c0dc',hg:'#6b6152',hI:.8,win:.35,star:0,exp:1.1,cloud:'#f4f4f2'},
+ {t:.50,sky:['#3f74b8','#5b8fcf','#8fb4dc','#bcd0e2','#d7e0e7'],fog:'#b9c7d3',
+  sun:'#fff4e4',sunI:3.2,hs:'#a9c4e0',hg:'#6b6152',hI:.8,win:.3,star:0,exp:1.05,cloud:'#ffffff'},
+ {t:.66,sky:['#3f74b8','#5b8fcf','#93b4d8','#c4d2de','#dcdcd8'],fog:'#bec6cc',
+  sun:'#fff0da',sunI:3.0,hs:'#a9c4e0',hg:'#6b6152',hI:.8,win:.3,star:0,exp:1.05,cloud:'#fbf8f2'},
+ {t:.735,sky:['#3a5f98','#5c7bab','#9fa8bc','#e8bc90','#f4d6ac'],fog:'#c8b8a6',
+  sun:'#ffbf80',sunI:2.2,hs:'#9aa6bc',hg:'#5a4a3c',hI:.75,win:.6,star:0,exp:1.15,cloud:'#f4d2b4'},
+ {t:.77,sky:['#283c6a','#4c5682','#9a7a88','#e8946a','#f2b884'],fog:'#a08c84',
+  sun:'#ff8a50',sunI:1.2,hs:'#6a6a8a',hg:'#3a3030',hI:.75,win:1.1,star:.12,exp:1.25,cloud:'#e0987c'},
+ {t:.81,sky:['#0e1630','#18213e','#2c2c4a','#56404e','#7a5450'],fog:'#2e2c3a',
+  sun:'#9aaad8',sunI:.6,hs:'#3e4868',hg:'#24242c',hI:.8,win:1.8,star:.65,exp:1.4,cloud:'#3a3a4e'},
+ {t:.87,sky:['#070b16','#0b1120','#111a2e','#18233a','#202d46'],fog:'#18202e',
+  sun:'#a8b8dc',sunI:.6,hs:'#3e4c6c',hg:'#22242c',hI:.85,win:2.0,star:1,exp:1.5,cloud:'#262d3c'}
 ];
 // Pré-converte cores para THREE.Color (sem alocação por frame)
 const P=KF.map(k=>({t:k.t,sky:k.sky.map(c=>new THREE.Color(c)),fog:new THREE.Color(k.fog),
@@ -136,19 +140,15 @@ skyLayer.scale.setScalar(SKY_SCALE);
 for(const c of clouds)c.userData.op0=(c.material as THREE.SpriteMaterial).opacity;
 
 const SUNSET_TINT=new THREE.Color(0xff5a28);
-// Rural fog tint: a FOREST-GREEN haze (keyed to the ground/foliage) so the dense
-// countryside fog reads as green woodland mist instead of a white/grey wall. Applied
-// only in the rural zone (scaled by ruralF), so the city fog stays the sky colour.
-const RURAL_HAZE=new THREE.Color(0x4a6b28);
 // Bulbo do poste: apagado (cinza) de dia, quente e brilhante à noite
 const BULB_DAY=new THREE.Color(0x9a948e),BULB_NIGHT=new THREE.Color(0xffd9a0);
 
-// Realism grade. The time-of-day keyframes are deliberately candy-bright; this eases the
-// whole SAMPLED palette toward a more grounded, photographic tone every frame — saturation
-// pulled in (toward luminance) and exposure dialled back a touch. One lever for the look of
-// the entire game; applied in updateDayNight after sampleKeyframes(), before sky/fog/lights.
-const REAL_DESAT=0.26;   // 0 = keep the vivid keyframes, 1 = greyscale (higher = more sober/filmic)
-const REAL_EXP=0.85;     // exposure multiplier (lower = less blown highlights, moodier)
+// Global grade: the keyframes above are already measured from photos, so this only takes
+// a last touch of saturation off the sampled palette (cameras and eyes see the sky and the
+// haze a little greyer than the measured swatches) and sets the overall exposure. One lever
+// for the whole game; applied in updateDayNight after sampleKeyframes().
+const REAL_DESAT=0.08;   // 0 = keep the keyframes as they are, 1 = greyscale
+const REAL_EXP=1.0;      // exposure multiplier
 function desat(c:THREE.Color,k:number):void{
   const l=c.r*0.299+c.g*0.587+c.b*0.114;
   c.r+=(l-c.r)*k;c.g+=(l-c.g)*k;c.b+=(l-c.b)*k;
@@ -185,36 +185,12 @@ export function updateDayNight(dt:number){
   if(skyAccum>=.08){skyAccum=0;drawSky();} // redesenho/upload do céu throttlado (~12fps)
 
   scene.fog!.color.copy(cur.fog);
-  // Fog por zona: na cidade o alcance é amplo (vê a cidade inteira); ao entrar na
-  // zona rural ele fica bem mais denso (ver distâncias abaixo), escondendo a cidade
-  // distante na névoa — e, da cidade, a zona rural distante. Transição suave no
-  // corredor de pasto. Mirante: do alto da montanha o horizonte reabre.
-  const ppos=refs.playerPos?.();
-  const ruralF=clamp(((ppos?ppos.x:0)-RURAL_X0)/120,0,1);
-  // De dia com sol, a névoa rural densa deve parecer uma BRUMA luminosa (não um
-  // cinza de tempo fechado): clareia a cor da névoa em direção ao haze, na medida
-  // de quão rural se está E de quão forte está o sol (sunI ~2.4 ao meio-dia, ~.5 à
-  // noite) — então amanhecer/entardecer/noite mantêm a própria névoa. Não mexe no
-  // sol nem nas distâncias; só na cor.
-  const dayF=clamp((cur.sunI-1.2)/1.0,0,1);
-  (scene.fog as THREE.Fog).color.lerp(RURAL_HAZE,ruralF*(.42+dayF*.45));
-  // Fog por zona. Na zona rural ele fica BEM mais denso (perto e longe puxados pra
-  // dentro): props (pinheiros, postes, igreja e o forte, todos assados) somem no
-  // culling a ~160m, então a névoa precisa fechar ANTES disso pra esconder o
-  // "pop-in" do carregamento. far rural ~155 (< culling) + near antecipado deixam
-  // o objeto totalmente no haze quando é cortado. Cap em 430 e o termo de altitude
-  // mantêm o mirante: do alto da montanha o horizonte reabre.
-  // Perf: névoa da cidade puxada de 300→205 (a cidade é o pior caso de FPS — como ela
-  // tem só 352m de lado, HALF=176, puxar a névoa pra ~205 corta metade dos chunks
-  // quando não se está no centro exato, sem "engolir" a cidade toda). Rural fica ~150
-  // (inalterado) pra não prejudicar os checkpoints do off-road. Mirante reabre via altitude.
-  // Rural fog pulled in VERY HARD (far ~50 vs city ~200, near ~24): the dense
-  // rural forest leans on this — nature chunks hard-cull to fog.far (nature/batch.ts
-  // updateNatureCulling), so the wood only ever draws the ~50m the player can actually
-  // see through the haze; nothing far pops in. Altitude term + 430 cap still reopen the
-  // horizon from the mountaintop mirante.
-  (scene.fog as THREE.Fog).near=100-ruralF*76;
-  const fogFar=Math.min(200-ruralF*150+(ppos?Math.max(0,ppos.y)*15:0),430);
+  // Fog: out in Divinolândia a long, light haze so the green serras around the town read
+  // on the horizon (the town is drawn in a few big batches, the far serra is one coarse
+  // mesh). Inside the off-map rooms a short one (they are small and enclosed).
+  const inside=!!state.interior;
+  (scene.fog as THREE.Fog).near=inside?100:140;
+  const fogFar=inside?200:2600;
   (scene.fog as THREE.Fog).far=fogFar;
   // REGRA MESTRA (só desenha o que o jogador VÊ): o plano FAR da câmera acompanha a
   // névoa. Tudo além de `fogFar` já é 100% opaco de neblina — invisível —, então deixar
@@ -240,7 +216,6 @@ export function updateDayNight(dt:number){
    setBloomStrength((.3+nightF*1.1)*ramp,.92-nightF*.32);}
   hemi.color.copy(cur.hs);hemi.groundColor.copy(cur.hg);hemi.intensity=cur.hI;
   dlight.color.copy(cur.sun);dlight.intensity=cur.sunI;
-  for(const m of buildingMats)m.emissiveIntensity=cur.win;
   for(const c of clouds){
     (c.material as THREE.SpriteMaterial).color.copy(cur.cloud);
     (c.material as THREE.SpriteMaterial).opacity=c.userData.op0*(.55+.45*clamp(cur.sunI/2.2,0,1));
@@ -252,16 +227,16 @@ export function updateDayNight(dt:number){
   const horiz=clamp(1-Math.abs(sy)/.3,0,1); // proximidade do horizonte
 
   sunSpr.position.set(sx*720,sy*500+18,-430);
-  const s=300+horiz*170; // sol maior perto do horizonte
+  const s=420+horiz*80;   // the glare (the disc is ~7 % of it); a little wider near the horizon
   sunSpr.scale.set(s,s,1);
-  sunMat.color.copy(cur.sun).lerp(SUNSET_TINT,horiz*.55);
+  sunMat.color.copy(cur.sun).lerp(SUNSET_TINT,horiz*.35);
   sunMat.opacity=clamp((sy+.07)/.11,0,1);
 
   moonSpr.position.set(-sx*720,-sy*470+24,-430);
   moonMat.opacity=clamp((-sy+.07)/.13,0,1)*.95;
 
   glowSpr.position.set(sx*700,42,-426);
-  glowMat.opacity=Math.pow(horiz,1.5)*.8;
+  glowMat.opacity=Math.pow(horiz,1.5)*.45;      // a soft band of warm light at the horizon, not a blaze
 
   // Direção da luz: sol de dia, lua à noite (troca no escuro, intensidade baixa)
   if(sy>=0)sunDir.set(sx*.85,Math.max(sy,.16),-.5).normalize();
@@ -280,8 +255,9 @@ export function updateDayNight(dt:number){
   const c=refs.getCur?.();
   if(nightF>0&&state.mode==='car'&&c&&!c.plane){
     _fwd.set(0,0,1).applyQuaternion(c.g.quaternion);
-    headSpot.position.set(c.g.position.x+_fwd.x*2.2,1.1,c.g.position.z+_fwd.z*2.2);
-    headSpot.target.position.set(c.g.position.x+_fwd.x*16,.4,c.g.position.z+_fwd.z*16);
+    const cy=c.g.position.y; // headlights ride with the car (the town is hundreds of metres up)
+    headSpot.position.set(c.g.position.x+_fwd.x*2.2,cy+1.1,c.g.position.z+_fwd.z*2.2);
+    headSpot.target.position.set(c.g.position.x+_fwd.x*16,cy+.4,c.g.position.z+_fwd.z*16);
     headSpot.intensity=nightF*140;
   }else headSpot.intensity=0;
 }

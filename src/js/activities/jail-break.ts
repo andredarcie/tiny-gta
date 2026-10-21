@@ -6,7 +6,8 @@ import {message} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {Interior} from '@/world/interior.ts';
-import {solids} from '@/world/world.ts';
+import {solids} from '@/world/solids.ts';
+import {addAbandonedFort} from '../../assets/models/rural/abandoned-fort.ts';
 import {prison} from '@/places/prison.ts';
 import {TUNNEL_HOLE} from '../../assets/models/city/prison.ts';
 import {tunnelGroup,TUNNEL_CENTER,TUNNEL_START,TUNNEL_GATE,TUNNEL_BOUNDS,
@@ -23,6 +24,7 @@ import {buildFlashlight} from '../../assets/models/props/flashlight.ts';
 // ============================================================================
 
 for(const s of TUNNEL_SOLIDS)solids.push(s);  // tunnel walls -> player collision
+addAbandonedFort(); // the ruined fort up in the serra, where the tunnel surfaces
 
 const tunnel=new Interior({
   group:tunnelGroup,bounds:TUNNEL_BOUNDS,center:TUNNEL_CENTER,
@@ -111,5 +113,5 @@ function arrive(fn: ()=>void,msg: string,colorOrBlip: string|number[],maybeBlip?
 function teleportWorld(x: number,z: number,h: number): void{
   player.g.position.set(x,groundHeight(x,z),z);
   player.heading=h;player.g.rotation.y=h;cameraRig.yaw=h;
-  camera.position.set(x-Math.sin(h)*6,3,z-Math.cos(h)*6);
+  camera.position.set(x-Math.sin(h)*6,groundHeight(x,z)+3,z-Math.cos(h)*6);
 }

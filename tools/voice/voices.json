@@ -1,0 +1,33 @@
+{
+  "_comment": "The cast. Each voice is DESIGNED once from its description (VoiceStudio + VoxCPM2) into tools/voice/refs/<id>.wav, then every line of that speaker is cloned from it, so the voice stays the same across the whole story. Change a description + delete its ref wav to recast.",
+  "boss": {
+    "name": "O CHEFÃO",
+    "design": "A Brazilian man in his late fifties, a crime boss. Deep, low, gravelly and husky voice, slow and calm, confident and menacing, speaking Brazilian Portuguese with a São Paulo accent.",
+    "ref_text": "Escuta aqui, meu amigo. Nessa cidade, quem manda sou eu. E quem não entende isso, não dura muito tempo."
+  },
+  "you": {
+    "name": "VOCÊ",
+    "design": "A Brazilian man around thirty years old, a street-smart hustler. Clear medium-pitched voice, casual and a bit sarcastic, relaxed pace, speaking Brazilian Portuguese with a Rio de Janeiro accent.",
+    "ref_text": "Olha, eu não sei quem você é, mas eu tô precisando de dinheiro. Então fala logo o que você quer."
+  },
+  "priest": {
+    "name": "PADRE ANSELMO",
+    "design": "An old Brazilian priest in his seventies. Soft, warm, slightly shaky voice, slow and solemn like a sermon, speaking Brazilian Portuguese with a countryside accent from Minas Gerais.",
+    "ref_text": "Meu filho, a fé move montanhas. Ajoelhe-se, reze, e o Senhor vai te mostrar o caminho."
+  },
+  "crowd": {
+    "name": "O POVO",
+    "design": "A Brazilian woman in her forties from a small village, loud, emotional and overjoyed, almost shouting with gratitude, speaking Brazilian Portuguese.",
+    "ref_text": "Graças a Deus! Ele salvou a gente! Obrigada, meu Deus, obrigada!"
+  },
+  "woman": {
+    "name": "MULHER",
+    "design": "A Brazilian woman around twenty-five years old. Bright, warm, natural voice, friendly and lively, speaking Brazilian Portuguese with a São Paulo accent.",
+    "ref_text": "Oi! Tudo bem com você? Faz tempo que eu não te vejo por aqui na cidade."
+  },
+  "child": {
+    "name": "CRIANÇA",
+    "design": "A Brazilian boy about eight years old. High-pitched, innocent, energetic child's voice, speaking Brazilian Portuguese.",
+    "ref_text": "Moço, moço! Você viu minha bola? Ela caiu lá do outro lado da rua!"
+  }
+}

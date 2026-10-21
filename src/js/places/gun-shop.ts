@@ -7,9 +7,10 @@ import {blip} from '@/audio/audio.ts';
 import {camera} from '@/core/engine.ts';
 import {Interior} from '@/world/interior.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
+import {solids} from '@/world/solids.ts';
 import {buyWeapon,ownsWeapon,weaponAmmoInfo,refillAmmo,beginTrainingWeapon,
   clearTrainingWeapon,getTrainingWeaponId,isTrainingWeaponActive} from '@/combat/weapons.ts';
-import {GUNSHOP_DOOR,GUNSHOP_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
+import {GUNSHOP_DOOR,GUNSHOP_SPAWN_OUT,GUNSHOP_SITE,addGunShop,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
   SHOP_CENTER,RANGE_CENTER,SHOP_BOUNDS,RANGE_BOUNDS,RANGE_ENTRY,RANGE_RETURN,
   RANGE_SPAWN,RANGE_EXIT,GUN_SHOP_ITEMS,GUN_RANGE_ITEMS,GUN_RANGE_TARGETS,
   gunShopFx,gunShopInterior,gunRangeInterior} from '../../assets/models/city/gun-shop.ts';
@@ -106,11 +107,14 @@ class GunShopInterior extends Interior{
   }
 }
 
+addGunShop(solids); // the shop on its Rua Barão do Rio Branco lot + the off-map rooms
+
 export const gunShop=new GunShopInterior({
   group:gunShopInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:GUNSHOP_DOOR,spawnOut:GUNSHOP_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:gunShopFx,
-  exterior:{x:-110,z:66,r:24}, // fachada: gangue não chega perto
+  exterior:{...GUNSHOP_SITE.P(-110,66),r:24}, // fachada: gangue não chega perto
+  spawnOutHeading:GUNSHOP_SITE.head(-Math.PI/2), // stepping out faces the street
   mapIcon:{id:'gun-shop',label:'AMMO DEPOT',icon:'gun',color:'#f5c518'},
 });
 

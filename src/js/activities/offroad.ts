@@ -16,6 +16,7 @@ import {raceMusicOn,raceMusicOff} from '@/audio/race-music.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 
 // checkpoint (x,z) na ordem do circuito
 interface RoutePoint{x: number; z: number;}
@@ -34,11 +35,10 @@ interface CpMarker{ring: THREE.Mesh; beacon: Beacon;}
 // colar. Música/rádio exclusivos da prova; se todos os rivais chegarem antes,
 // você perde. Sair do carro / WASTED / BUSTED abandona.
 //
-// O circuito fica na PRADARIA logo a LESTE da ponte (x∈[300,338], |z|≤99): a faixa
-// de pasto aberta entre o rio/ponte (a oeste, x≤294) e as roças de Drycreek (a
-// leste, x≥342). LONGE da água do estreito, das fazendas/silo, do rancho (x≈550) e
-// da montanha (x≈509). Árvores/cercas não têm colisão; nenhum prédio no caminho.
-// Gangues só existem na cidade, então a prova nunca cai em território.
+// The circuit is a wide loop over the open pasture south of Divinolândia, on the hills
+// below the road to the serra (town-local centre (0,1300)): ~220 × 150 m, rolling
+// ~25 m up and down, no houses or fences in the way (trees and coffee rows don't
+// collide). Gangs only live in town, so the race never crosses a turf.
 // ============================================================================
 
 const OFF_BUILD=' ◆ OFFROAD';
@@ -53,26 +53,15 @@ const RIVAL_PACES=[0.82,0.90,0.96]; // per-rival pace, all <1 so a CLEAN run win
 const SEP=3.8;         // distância mínima entre dois rivais: separa quem encosta
 const offColors=[0x2e6f3a,0xc9a227,0x8a3b2b]; // verde-mato, mostarda e barro (carro do jogador é o seu)
 
-// Pórtico de largada (= chegada: o percurso é um loop que volta pra cá). O carro
-// passa por baixo. Fica na estrada de terra (z≈0) logo a leste da ponte, fácil de
-// alcançar atravessando o estreito de carro.
-const start={x:308,z:0};
-// Circuito em loop pela pradaria a leste da ponte. Um OVAL LARGO e fluido (não mais
-// um corredor estreito em ziguezague): as duas retas usam toda a largura segura do
-// pasto — reta OESTE em x≈300, reta LESTE em x≈336 — e as curvas norte/sul abrem bem
-// nos topos (z=±99). Mais espaço pra correr lado a lado e ultrapassar. O ÚLTIMO ponto
-// volta pra perto do pórtico (cruzá-lo é a chegada). Tudo a oeste das roças de
-// Drycreek (x≥342) e a leste da água do estreito (x≤294); árvores/cercas não colidem.
-const CPS: RoutePoint[]=[
-  {x:301,z: 58}, // sobe a reta OESTE (rumo ao norte)
-  {x:309,z: 95}, // entra na curva norte, abrindo pro topo
-  {x:326,z: 99}, // ápice NORTE — bem aberto no alto do pasto
-  {x:336,z: 62}, // sai da curva pra reta LESTE
-  {x:336,z:-66}, // desce a reta LESTE (rumo ao sul)
-  {x:324,z:-99}, // ápice SUL — bem aberto embaixo
-  {x:304,z:-90}, // sai da curva sul de volta pro lado oeste
-  {x:300,z: -8}, // sobe a reta oeste até a chegada (pórtico)
-];
+// Start gate (= finish: the course loops back here) on the west side of the oval;
+// you drive under it. The checkpoints go round a wide, fluid oval — room to race side
+// by side and overtake on the climbs — and the LAST one is back by the gate.
+const C={x:DIV_OX,z:DIV_OZ+1300},RX=110,RZ=76;
+const start={x:C.x-RX,z:C.z};
+const CPS: RoutePoint[]=[.17,.33,.5,.67,.83,1,1.17,1.33,1.5,1.67,1.83,1.97].map(k=>{
+  const a=Math.PI+k*Math.PI;           // anticlockwise from the west point
+  return{x:C.x+Math.cos(a)*RX,z:C.z-Math.sin(a)*RZ};
+});
 
 const gate=makeOffroadGate(ORANGE); // make* NÃO adiciona à cena
 gate.position.set(start.x,groundHeight(start.x,start.z),start.z);

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {bakeProp} from '../props/prop-merge.ts';
+import {groundHeight} from '@/core/constants.ts';
 
 // Wooden post-and-rail fence — the staple that turns open pasture into farmland.
 // build() returns a single straight SECTION (one post + two rails) on the origin
@@ -47,11 +48,12 @@ export function addFenceRun(x0: number,z0: number,x1: number,z1: number): void {
   for(let i=0;i<n;i++){
     const t=i/n;
     const g=build();
-    g.position.set(x0+dx*t,-.02,z0+dz*t);g.rotation.y=ry;bakeProp(g);
+    const x=x0+dx*t,z=z0+dz*t;
+    g.position.set(x,groundHeight(x,z)-.02,z);g.rotation.y=ry;bakeProp(g);
   }
   // closing post at the far end so the run doesn't end on a gap
   const cap=new THREE.Group();
   const post=new THREE.Mesh(new THREE.BoxGeometry(POST,H,POST),postM);
   post.position.set(0,H/2,0);post.castShadow=true;cap.add(post);
-  cap.position.set(x1,-.02,z1);bakeProp(cap);
+  cap.position.set(x1,groundHeight(x1,z1)-.02,z1);bakeProp(cap);
 }

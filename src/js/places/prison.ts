@@ -6,8 +6,9 @@ import {animatePed} from '@/core/entities.ts';
 import {blip} from '@/audio/audio.ts';
 import {say} from '@/ui/speech.ts';
 import {Interior} from '@/world/interior.ts';
-import {PRISON_DOOR,PRISON_SPAWN_OUT,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
-  PRISON_RELEASE,prisonFx,prisonInterior} from '../../assets/models/city/prison.ts';
+import {PRISON_DOOR,PRISON_SPAWN_OUT,PRISON_SITE,INT_CENTER,INT_DOOR,INT_SPAWN,INT_BOUNDS,
+  PRISON_RELEASE,prisonFx,prisonInterior,addPrison} from '../../assets/models/city/prison.ts';
+import {solids} from '@/world/solids.ts';
 import {nameInteriorNpc} from '@/actors/npc.ts';
 
 // Presidio / County Jail. The player is taken here after BUSTED, just like
@@ -51,11 +52,14 @@ class PrisonInterior extends Interior{
   }
 }
 
+addPrison(solids); // the jail on its lot by the Polícia Militar + the off-map cell block
+
 export const prison=new PrisonInterior({
   group:prisonInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:PRISON_DOOR,spawnOut:PRISON_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:prisonFx,enterMsg:'COUNTY JAIL',enterColor:'var(--cyan)',
-  exterior:{x:-66,z:-66,r:26},
+  exterior:{...PRISON_SITE.P(-66,-66),r:26},
+  spawnOutHeading:PRISON_SITE.head(-Math.PI/2), // released onto the street
   mapIcon:{id:'prison',label:'COUNTY JAIL',icon:'prison',color:'#19e3ff'},
 });
 

@@ -75,7 +75,7 @@ function makeMarkTex(mirror: boolean,w: number,h: number): THREE.CanvasTexture{
   }
   // "AMBULANCE" vermelho
   x.fillStyle='#d81f1f';x.textBaseline='middle';
-  x.font=`900 ${Math.round(h*.46)}px 'IBM Plex Mono', monospace`;
+  x.font=`900 ${Math.round(h*.46)}px 'Barlow Condensed', monospace`;
   x.textAlign=mirror?'center':'left';
   x.fillText('AMBULANCE',mirror?w/2:h*.96,cy+2);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import {EffectComposer,RenderPass,EffectPass,BloomEffect,ToneMappingEffect,ToneMappingMode,SMAAEffect,SMAAPreset} from 'postprocessing';
-import {makeSea} from '../../assets/models/environment/sea.ts';
 import {makeClouds} from '../../assets/models/environment/clouds.ts';
 
 export const canvas=document.getElementById('game') as HTMLCanvasElement;
@@ -45,7 +44,7 @@ export function setShadowsEnabled(on:boolean){
   renderer.shadowMap.enabled=!!on;
   renderer.shadowMap.needsUpdate=true;
 }
-// Brightness maps to the ACES tone-mapping exposure (default 1.25; see below).
+// Brightness maps to the tone-mapping exposure (default 1.25; see below).
 export function setBrightness(exposure:number){
   renderer.toneMappingExposure=Math.max(.1,Number(exposure)||1.25);
 }
@@ -59,11 +58,13 @@ renderer.shadowMap.type=isMobileLike()?THREE.PCFShadowMap:THREE.PCFSoftShadowMap
 // needsUpdate 1 frame sim / 1 não (~30fps de sombra), cortando ~metade do
 // shadow pass — que é um 2º render da cena inteira por frame.
 renderer.shadowMap.autoUpdate=false;
-renderer.toneMapping=THREE.ACESFilmicToneMapping;
+// AgX: the photographic tone curve (desaturates highlights the way film and phone cameras
+// do, instead of ACES's punchy, saturated look) — part of the photoreal art direction.
+renderer.toneMapping=THREE.AgXToneMapping;
 renderer.toneMappingExposure=1.25;
 
 export const scene=new THREE.Scene();
-scene.fog=new THREE.Fog(0xcfe2ee,120,430);
+scene.fog=new THREE.Fog(0xb9c7d3,120,430);
 export const camera=new THREE.PerspectiveCamera(62,initialSize.w/initialSize.h,.1,2000);
 camera.position.set(0,60,120);
 // The camera is part of the scene graph so objects parented to it render — used by
@@ -85,9 +86,9 @@ window.visualViewport?.addEventListener?.('resize',resizeRenderer);
 
 // Céu, sol, lua e estrelas vivem em daynight.js (ciclo de dia e noite)
 
-export const hemi=new THREE.HemisphereLight(0xbfdfff,0x8a8078,1.05);scene.add(hemi);
+export const hemi=new THREE.HemisphereLight(0xa9c4e0,0x6b6152,.8);scene.add(hemi);
 export const sunDir=new THREE.Vector3(-.45,.9,-.55).normalize();
-export const dlight=new THREE.DirectionalLight(0xfff1d6,2.2);
+export const dlight=new THREE.DirectionalLight(0xfff3e2,3.2);
 dlight.castShadow=true;
 // Shadow map resolution: 2048 on desktop (crisp contact shadows under cars, people and
 // props), 1024 on phones. The shadow pass is throttled (see main.ts), so the extra
@@ -101,15 +102,9 @@ dlight.shadow.camera.far=420;dlight.shadow.bias=-.0004;dlight.shadow.normalBias=
 dlight.shadow.radius=3; // PCFSoft kernel spread
 scene.add(dlight);scene.add(dlight.target);
 
-// O mar é um disco GIGANTE (raio 1400) centrado na origem — ele se estende por
-// baixo da região dos ambientes internos (que vivem ~600m fora do mapa).
-// Fica exportado porque js/world/interior.ts esconde as camadas externas enquanto
-// qualquer interior está ativo.
-export const sea=makeSea();scene.add(sea);
-
 export const clouds:THREE.Sprite[]=[];
 {
-  clouds.push(...makeClouds(10));
+  clouds.push(...makeClouds(18));
   for(const sp of clouds)scene.add(sp);
 }
 
@@ -118,13 +113,12 @@ export const clouds:THREE.Sprite[]=[];
 //   Bloom — only HDR-bright pixels glow (neon, lit windows, lamps, headlights, muzzle
 //           flashes, the sun's glint); tuned per time of day by daynight.ts.
 //   SMAA  — edge anti-aliasing.
-//   ACES  — the same filmic tone mapping as before (exposure from
+//   AgX   — the same photographic tone mapping as the direct render (exposure from
 //           renderer.toneMappingExposure, so daynight + the Brightness setting still work).
-// No ambient occlusion and no film overlays: its noise pattern and corner darkening read
-// as dirt on the flat-colour world.
+// No film overlays (grain, scanlines, vignette).
 // The pipeline only runs AT NIGHT (daynight.ts -> setNightBloom), when the neon glow is the
 // point. By day — or with Bloom off in the settings — the game renders straight to the
-// screen (the renderer's own ACES + MSAA), skipping the HDR buffer and every full-screen pass.
+// screen (the renderer's own AgX + MSAA), skipping the HDR buffer and every full-screen pass.
 const mobilePipe=isMobileLike();
 export const composer=new EffectComposer(renderer,{
   frameBufferType:THREE.HalfFloatType,
@@ -138,7 +132,7 @@ export const bloom=new BloomEffect({
   intensity:.55,
   radius:.72,
 });
-const toneMap=new ToneMappingEffect({mode:ToneMappingMode.ACES_FILMIC});
+const toneMap=new ToneMappingEffect({mode:ToneMappingMode.AGX});
 const effects=[bloom,new SMAAEffect({preset:mobilePipe?SMAAPreset.MEDIUM:SMAAPreset.HIGH}),toneMap];
 export const effectPass=new EffectPass(camera,...effects);
 composer.addPass(effectPass);

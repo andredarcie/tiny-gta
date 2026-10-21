@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {scene} from '@/core/engine.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // Oficina de customização "MOD GARAGE" (estilo pintura / tuning do open-world).
 // Diferente dos outros prédios especiais, NÃO tem interior off-map: é um galpão
@@ -8,12 +8,14 @@ import {scene} from '@/core/engine.ts';
 // abertura até a plataforma (WORKSHOP_PAD). Perto dela, parado, abre o menu de
 // custom (js/places/mod-shop.ts). Os mods são aplicados no próprio carro do jogador.
 
-export const WORKSHOP_I=5,WORKSHOP_J=2;            // quarteirão reservado (centro-sul)
-const CX=44*WORKSHOP_I-154,CZ=44*WORKSHOP_J-154;   // centro do quarteirão (66,-66)
-export const WORKSHOP_CENTER={x:CX,z:CZ};
-// abertura na face -z (de frente pra rua de baixo); o carro entra e para aqui,
-// um pouco pra dentro, com o nariz (+z) apontando pro fundo
-export const WORKSHOP_PAD={x:CX,z:CZ+3};           // (66,-63)
+// Authored around (66,-66) with the open front on its -z face; the Site puts it on its
+// Divinolândia lot (sites-table.ts) with the opening to the street.
+const CX=66,CZ=-66;
+export const WORKSHOP_SITE=new Site('workshop',{cx:CX,cz:CZ,front:Math.PI});
+export const WORKSHOP_CENTER=WORKSHOP_SITE.P(CX,CZ);
+// abertura de frente pra rua; o carro entra e para aqui, um pouco pra dentro,
+// com o nariz apontando pro fundo (coords de mundo)
+export const WORKSHOP_PAD=WORKSHOP_SITE.P(CX,CZ+3);
 
 export const workshopFx:{sign:THREE.Mesh|null,ring:THREE.Mesh|null}={sign:null,ring:null};
 
@@ -50,7 +52,8 @@ function makeTireStack(n:number):THREE.Group{
   return g;
 }
 
-export function addWorkshop(solids:{x0:number,x1:number,z0:number,z1:number,h:number}[]):void{
+export function addWorkshop():void{
+  const scene=WORKSHOP_SITE.group; // model coordinates; the Site places it on the town lot
   // ----- piso de concreto + plataforma marcada -----
   const slab=new THREE.Mesh(new THREE.PlaneGeometry(19,19),floorM);
   slab.rotation.x=-Math.PI/2;slab.position.set(CX,.02,CZ);slab.receiveShadow=true;
@@ -58,12 +61,12 @@ export function addWorkshop(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   // anel da plataforma onde o carro para (corona estilo open-world)
   const ring=new THREE.Mesh(new THREE.TorusGeometry(2.5,.14,8,28),
     new THREE.MeshBasicMaterial({color:0x19e3ff,transparent:true,opacity:.9}));
-  ring.rotation.x=-Math.PI/2;ring.position.set(WORKSHOP_PAD.x,.06,WORKSHOP_PAD.z);
+  ring.rotation.x=-Math.PI/2;ring.position.set(CX,.06,CZ+3);
   scene.add(ring);workshopFx.ring=ring;
   // faixa amarela pintada no chão sob o anel
   const mark=new THREE.Mesh(new THREE.RingGeometry(2.62,2.95,28),
     new THREE.MeshBasicMaterial({color:0xffcf2e,transparent:true,opacity:.55}));
-  mark.rotation.x=-Math.PI/2;mark.position.set(WORKSHOP_PAD.x,.04,WORKSHOP_PAD.z);
+  mark.rotation.x=-Math.PI/2;mark.position.set(CX,.04,CZ+3);
   scene.add(mark);
 
   // ----- galpão: 3 paredes + teto, FRENTE (-z) aberta -----
@@ -122,10 +125,8 @@ export function addWorkshop(solids:{x0:number,x1:number,z0:number,z1:number,h:nu
   light.position.set(CX,4.4,CZ);scene.add(light);
 
   // ----- sólidos: 3 paredes (frente aberta deixa o carro entrar) -----
-  solids.push(
-    {x0:CX-9.4,x1:CX+9.4,z0:CZ+8.6,z1:CZ+9.4,h:5},  // fundo (+z)
-    {x0:CX-9.4,x1:CX-8.6,z0:CZ-9,z1:CZ+9,h:5},      // parede esquerda
-    {x0:CX+8.6,x1:CX+9.4,z0:CZ-9,z1:CZ+9,h:5},      // parede direita
-    {x0:CX+6.0,x1:CX+6.8,z0:CZ-1.8,z1:CZ+1.8,h:3},  // postes do elevador
-  );
+  WORKSHOP_SITE.box({x0:CX-9.4,x1:CX+9.4,z0:CZ+8.6,z1:CZ+9.4},5);  // fundo (+z)
+  WORKSHOP_SITE.box({x0:CX-9.4,x1:CX-8.6,z0:CZ-9,z1:CZ+9},5);      // parede esquerda
+  WORKSHOP_SITE.box({x0:CX+8.6,x1:CX+9.4,z0:CZ-9,z1:CZ+9},5);      // parede direita
+  WORKSHOP_SITE.box({x0:CX+6.0,x1:CX+6.8,z0:CZ-1.8,z1:CZ+1.8},3);  // postes do elevador
 }

@@ -1,74 +1,74 @@
-# Art Direction — "Vice em Miniatura"
+# Art Direction — "Divinolândia de Verdade" (photoreal)
 
-> Approved 2026-07-03. Every visual change — new models, palettes, lighting,
-> UI, effects — must fit this direction. The color vocabulary is codified in
-> **`js/core/palette.ts`**; take colors from there instead of inventing hex
-> literals per file.
+> Changed 2026-10-21 at the owner's request ("tire esse visual cartoon… direção de arte foto
+> realista fiel à realidade"), replacing "Vice em Miniatura" (2026-07-03). Every visual
+> change — models, palettes, lighting, effects — must fit this direction. The colour
+> vocabulary lives in **`src/js/core/palette.ts`**; take colours from there.
 
 ## The thesis
 
-Tiny Theft Auto is a **living diorama** of a coastal city: sun-faded stucco by
-day, Vice-City neon by night, shown CLEAN: flat colours, no film grain, scanlines,
-vignette or ambient-occlusion smudges. The miniature look is the aesthetic, not a
-technical limitation — the name says *Tiny*. Saturated color is reserved for
-things that carry gameplay meaning.
+The game should look like the real Divinolândia/SP on a camera: the colours, light and
+materials of the town's own photos. Recent photos are the reference, not taste — Google
+Street View (nov/2024) frames and the Google Maps satellite, kept locally under
+`docs/divinolandia/referencias-streetview/` and `referencias-satelite/` (fetched by
+`tools/capture-streetview.ts` and `docs/divinolandia/scripts/fetch-satelite.py`).
 
-## The six pillars
+## The pillars
 
-1. **Miniature, owned.** The world is a maquette: clean primitive geometry,
-   chunky proportions, flat matte color per face (`matte.ts` Lambert). Detail
-   comes from **silhouette and color, never from photo textures**. The
-   "no binary image/model assets" rule in CLAUDE.md is also an *art* rule.
-2. **Faded Miami by day, Vice at night.** Environment base is always muted
-   (sun-faded `FACADES`, neutral `GROUND`). The day/night keyframe system
-   (`js/world/daynight.ts`) carries the visual drama; at night the game turns
-   Vice: lit windows, neon signs, warm lamps, headlights.
-3. **Saturation = meaning.** Vivid color only on what matters: the hero car,
-   mission markers, FX, storefront awnings. Rule of thumb 60-30-10 — muted
-   base (60), medium-saturation fleet/wardrobe (30), rare neon accents (10).
-4. **One palette from HUD to asphalt.** The UI's neon family (`--pink #ff2e88`,
-   `--cyan`, `--gold`, `--cream` in `css/style.css`) is the same `NEON` family
-   used in the world. `js/core/palette.ts` is the single source; the informal
-   arrays (`facadePalette`, `carColors`, `shirtColors`, the doll skin/hair/pants pools) now
-   live there.
-5. **Characters are figurines.** Box dolls built in code
-   (`assets/models/characters/pedestrian.ts`) with flat vertex colours and simple
-   procedural animation — no skin/cloth textures, no downloaded models or clips. NPC shirts deliberately share the
-   vehicle paint family so people and traffic read as one world.
-6. **Clean image.** No dirt anywhere: no film grain, scanlines or vignette overlays and
-   no ambient occlusion — their noise and corner darkening read as grime. The only
-   grade is the global one in `daynight.ts` (`REAL_DESAT`/`REAL_EXP`); cut-scenes keep
-   their letterbox bars.
+1. **Measured colour.** A palette entry is the material's albedo as the photos show it:
+   limewashed white and cream walls, aged dark clay tiles, sun-bleached grey asphalt, pale
+   rosy terra-roxa dirt, olive pasture, dark broadleaf canopies. New colours are sampled
+   from the reference photos (median of a patch), never invented. Saturation appears only
+   where the real thing is saturated (a sign, a car's paint, a flowering ipê or resedá).
+2. **Real light.** `src/js/world/daynight.ts`: a strong white sun against a weak sky fill
+   (crisp shadows, solid form), a clear sky that pales to a hazy blue-grey horizon, the same
+   haze as the fog so distant serras go blue-grey, soft low-saturation dawn and dusk, a
+   moonlit blue night. AgX tone mapping (`engine.ts`) — the photographic curve.
+3. **Material detail.** Surfaces carry their material's texture: ground (grass tufts, bare
+   patches, pebbles), asphalt (aggregate, repairs, cracks), dirt (dust, stones), plaster,
+   aged roof tiles with lichen, setts, sidewalk slabs, leaf clusters. They are painted in
+   code (`src/assets/models/divinolandia/texturas.ts`) — the game still ships no image or
+   model files. Near-white "multiply" maps keep the palette in charge of the colour.
+4. **Organic shapes where nature is organic.** Tree crowns, hedges and coffee rows are
+   lumpy leaf masses with smooth shading and the leaf texture (`copa.ts`), never faceted
+   low-poly balls (`flatShading` is for genuinely flat things only).
+5. **Clean, honest image.** No film grain, scanlines, vignette or stylised grading; bloom
+   only for real light sources at night. The global grade (`REAL_DESAT`/`REAL_EXP`) stays
+   a light touch over keyframes that are already measured.
 
 ## Working rules
 
 **Do**
-- Take every color from `js/core/palette.ts` (or add it there, in the right family).
-- Detail buildings/props by silhouette: awnings, parapets, antennas, signs.
-- Give night-time commerce emissive neon signage in the `NEON` family.
-- Test new colors under the three skies — noon, sunset, night (`?tod=0.5 / 0.75 / 0`).
-- Keep the filmic grade global and singular; don't add per-feature grades.
+- Sample colours from the reference photos; add them to `palette.ts` with the measured value
+  in a comment when useful.
+- Check every change under the three skies — noon, sunset, night (`?tod=0.5 / 0.75 / 0`):
+  `SHOTS_LABEL=<name> npx playwright test test/visual-shots.spec.ts` (headed).
+- Give a surface its material texture (procedural, in code) instead of a flat fill.
 
 **Don't**
-- No photo textures, image textures or loaded model files on any surface — vegetation and
-  rocks included (they are generated in code too, `assets/models/nature/kit.ts`). It breaks
-  the maquette and the zero-binary-assets pillar.
-- **Flat colours only.** Every surface is a solid colour — no painted noise, grain, stains,
-  cracks, grout, wood grain, mowing stripes, gradients or metallic flake. A canvas texture is
-  allowed only for GRAPHICS that carry information or light: text on signs/boards, road and
-  pitch markings, race checkers and hazard stripes, windows on facades (flat panes), screens
-  and pictures, and light/sky sprites (sun, moon, glow, sky gradient, clouds, beams).
-- No saturated cartoon pastels in the environment (pool-cyan, lime green) —
-  those are leftovers from the old look; pull them toward the muted base when touched.
-- No saturated color without gameplay meaning.
-- No per-feature style forks: interiors, rural zone and city share one base.
-- No creeping realism (glossy PBR on statics, photo detail) without an explicit
-  direction change agreed with the owner.
+- No candy colours: saturated greens, orange dirt, pool cyan, pastel sky gradients.
+- No faceted low-poly vegetation, no big flat sun discs or cartoon sprites.
+- No image/model files loaded at runtime (the zero-binary-assets rule of CLAUDE.md stands).
+- No per-feature grades or style forks.
 
-## Reference
+## Known gaps (next steps)
 
-- Palette: `js/core/palette.ts` (world) + `css/style.css` `:root` vars (UI).
-- Lighting/mood: `js/world/daynight.ts` keyframes — the most sophisticated color
-  system in the game; treat it as the protagonist.
-- Full visual guide (swatches, ramps, rationale): the "Vice em Miniatura"
-  artifact from the 2026-07-03 art-direction review.
+Characters are still the box dolls and vehicles the simple models — their shapes, not the
+colours, are what still reads as stylised.
+
+## HUD, menus and type — "interior de SP" (2026-10-21)
+
+The interface speaks the signage of a small paulista town, not neon:
+- **Blue enamel street plate** (`--azul`, white inner border, rounded): the status stack
+  (clock, money, health), the location label over the radar (it shows street names), the
+  pause title, the "DIVINOLÂNDIA" plate on the title screen; the radar rim is the same blue.
+- **Green road sign** (`--verde`): the speedometer, the "SP" plate.
+- **Hand-painted shop lettering**: Alfa Slab One in limewash white with a terra-roxa drop
+  shadow for messages, big texts, buttons and "GTA" on the title; buttons are lottery-shop
+  yellow (`--amarelo`) or cal white plates.
+- **Road-sign lettering**: Barlow Condensed for every reading and label (tabular figures).
+  Yellowtail stays for painted script (the car's name).
+- No glows: hard painted shadows only. Colours live in `src/css/style.css` `:root` (the old
+  names `--pink/--cyan/--gold/--cream` now hold terra / plate blue / yellow / cal).
+- Title screen: "GTA Divinolândia SP" over an inline-SVG view of the town under the serra
+  (index.html — still no image files).

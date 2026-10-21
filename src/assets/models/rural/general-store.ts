@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {bakeProp} from '../props/prop-merge.ts';
 import {scene} from '@/core/engine.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 import {makePed} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from '../city/door-arrow.ts';
 import {lampGlowMat,lampHaloMat,lampBulbMat} from '../props/street-lamp.ts'; // night porch light
@@ -23,11 +23,13 @@ import {REWARDS} from '@/core/minigame-rewards.ts'; // seed/plant-food PRICES (c
 // exterior in the village, builds the off-map interior and pushes collision.
 // ============================================================================
 
-// ---- world placement: Pine Hollow main street, front facing the square (south) ----
+// ---- placement: authored at (620,22) turned by π (door toward -z); the Site puts it on
+// its Divinolândia lot at the south end of Rua Barão do Rio Branco (sites-table.ts) ----
 export const GENSTORE_CX=620, GENSTORE_CZ=22, GENSTORE_RY=Math.PI;
-// street door (south face) and the spawn back out on the street
-export const GENSTORE_DOOR={x:GENSTORE_CX, z:GENSTORE_CZ-2.8};   // (620, 19.2)
-export const GENSTORE_SPAWN_OUT={x:GENSTORE_CX, z:GENSTORE_CZ-6}; // (620, 16) — clear of the porch
+export const GENSTORE_SITE=new Site('genStore',{cx:GENSTORE_CX,cz:GENSTORE_CZ,front:Math.PI});
+// street door and the spawn back out on the street (world coordinates)
+export const GENSTORE_DOOR=GENSTORE_SITE.P(GENSTORE_CX,GENSTORE_CZ-2.8);
+export const GENSTORE_SPAWN_OUT=GENSTORE_SITE.P(GENSTORE_CX,GENSTORE_CZ-6); // clear of the porch
 
 // ---- off-map interior: its own clear pocket (other interiors live at x~-800,
 // z = -430..330; this one sits further south at z=-560 so its wall solids never
@@ -46,9 +48,9 @@ export const FERT_DISPLAY={x:-800-8+1.2, z:-560+6-1.3};
 
 export const genStoreFx: {
   keeper:{g:THREE.Group;t:number}|null,exitArrow:THREE.Object3D|null,facade:THREE.Group|null,facadeArrow:THREE.Object3D|null,
-  footprint:{x0:number;x1:number;z0:number;z1:number}|null,seedCrates:THREE.Group[]
+  footprint:{x0:number;x1:number;z0:number;z1:number}|null,seedCrates:THREE.Group[],site:Site
 }={keeper:null,exitArrow:null,facade:null,facadeArrow:null,
-  footprint:null,seedCrates:[]};
+  footprint:null,seedCrates:[],site:GENSTORE_SITE};
 export const generalStoreInterior=new THREE.Group();
 generalStoreInterior.visible=false;
 
@@ -579,26 +581,26 @@ function buildInterior(): void{
 }
 
 export function addGeneralStore(solids: {x0:number;x1:number;z0:number;z1:number;h:number}[]): void{
-  // ----- exterior: the baked storefront, dropped on the village main street -----
+  // ----- exterior: the baked storefront on its town lot (model coordinates, see the Site) -----
   const ext=build();
   ext.position.set(GENSTORE_CX,-.02,GENSTORE_CZ);ext.rotation.y=GENSTORE_RY;
-  bakeProp(ext);
+  GENSTORE_SITE.bake(ext);
   // porch-lamp bloom halo (sprites can't bake) — over the door, faded in at night
   const halo=new THREE.Sprite(lampHaloMat);
   halo.position.set(GENSTORE_CX,2.5,GENSTORE_CZ-3.0);halo.scale.set(2.0,2.0,1);
-  scene.add(halo);
+  GENSTORE_SITE.group.add(halo);
   // body collision (the porch overhang stays walkable)
   const footprint={x0:GENSTORE_CX-3.2,x1:GENSTORE_CX+3.2,z0:GENSTORE_CZ-2.8,z1:GENSTORE_CZ+2.8};
-  solids.push({...footprint,h:4.4});
+  GENSTORE_SITE.box(footprint,4.4);
 
   // a bouncing arrow over the street door so the entrance reads as enterable.
   // Lives in a tiny "facade" group the Interior base hides if the camera ever
   // ends up inside the building footprint (e.g. snapping back on exit).
   const facade=new THREE.Group();
   genStoreFx.facadeArrow=makeDoorArrow();
-  genStoreFx.facadeArrow.position.set(GENSTORE_DOOR.x,1.7,GENSTORE_DOOR.z-.4);
+  genStoreFx.facadeArrow.position.set(GENSTORE_CX,1.7,GENSTORE_CZ-3.2);
   facade.add(genStoreFx.facadeArrow);
-  scene.add(facade);
+  GENSTORE_SITE.group.add(facade);
   genStoreFx.facade=facade;
   genStoreFx.footprint=footprint;
 

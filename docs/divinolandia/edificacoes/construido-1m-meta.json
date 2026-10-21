@@ -1,0 +1,16 @@
+{
+ "x0": -1500,
+ "z0": -1150,
+ "nx": 3000,
+ "nz": 3280,
+ "cell": 1,
+ "bits": {
+  "1": "ML building footprint (Microsoft)",
+  "2": "building on the Google Maps road map",
+  "4": "zone traced on the Google Maps satellite photo"
+ },
+ "sources": [
+  "Microsoft Global ML Building Footprints (ODbL)",
+  "Google Maps road map + satellite z18/z19 (reference)"
+ ]
+}

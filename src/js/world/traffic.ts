@@ -1,21 +1,26 @@
 import * as THREE from 'three';
-import {N,CELL,nodeX,pick,rand,irand,wrapA,clamp} from '@/core/constants.ts';
+import {pick,irand,wrapA,clamp,groundHeight} from '@/core/constants.ts';
 import {state,carNames,carColors} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
-import {collideStatics,addWanted} from '@/core/physics.ts';
+import {addWanted} from '@/core/physics.ts';
 import {thud} from '@/audio/audio.ts';
 import {playerPos,cur,player,getWasted} from '@/actors/player.ts';
+import {LaneRunner,randomRoadPoint,edges,laneOff,type RoadPos,type NavEdge} from '@/world/divinolandia/nav.ts';
 
-// A grid node coordinate pair [i,j].
-type Node=[number,number];
-// A road-lane sample (position + travel direction in the XZ plane).
-interface LanePoint{x:number;z:number;dx:number;dz:number;}
-// A city-traffic car wrapper.
+// ============================================================================
+// Town traffic — cars driving Divinolândia's real streets (world/divinolandia/nav.ts).
+// Each car rides a LaneRunner: its lane polyline is strung edge after edge, turning at
+// random at every junction, keeping to the right-hand lane with rounded corners. The
+// town has ~60 km of streets, far more than a handful of cars could fill, so the pool
+// is recycled around the player: a car that ends up far away respawns on a street in a
+// ring around them, out of sight, and drives back into the action.
+// ============================================================================
+
+// A town-traffic car wrapper (shares the Vehicle shape the player steals: g/heading/name).
 interface TrafficCar{
   g:THREE.Object3D;
-  A:Node;B:Node;C:Node|null;P:Node|null;
-  t:number;
+  run:LaneRunner;
   speed:number;
   brakeT:number;
   name:string;
@@ -26,144 +31,110 @@ interface TrafficCar{
 }
 
 export const traffic:TrafficCar[]=[];
-const CAR_CULL2=140*140; // perf: LOD 170→140 (carro de trânsito ~25 draws; some antes, já no haze)
-// Vector3 de rascunho reaproveitados na colisão carro-vs-carro do jogador.
+const POOL=8;                     // cars alive at once (each ~25 draws: the main cost)
+const CAR_CULL2=140*140;          // drawn within this radius
+const RECYCLE_R=420;              // farther than this from the player → respawn nearer
+const SPAWN_MIN=170,SPAWN_MAX=380;// respawn ring around the player
 const _push=new THREE.Vector3();
 const _mid=new THREE.Vector3();
+const _p:RoadPos={x:0,z:0,dx:0,dz:0};
 
-export function neighborNodes(i:number,j:number):Node[]{
-  const r:Node[]=[];
-  if(i>0)r.push([i-1,j]);if(i<N)r.push([i+1,j]);
-  if(j>0)r.push([i,j-1]);if(j<N)r.push([i,j+1]);
-  return r;
-}
-
-// Próximo nó do percurso: qualquer vizinho menos o de onde veio (beco = retorno)
-function pickNext(from:Node,prev:Node):Node{
-  const opts=neighborNodes(from[0],from[1]).filter(n=>!(n[0]===prev[0]&&n[1]===prev[1]));
-  return opts.length?pick(opts):prev;
-}
+// streets cars drive: paved, or the long dirt roads between the farms (not the short
+// service stubs into yards)
+export const carRoad=(e:NavEdge):boolean=>e.paved?e.kind!=='service'||e.len>30:e.len>60;
+// cruising speed by street class (m/s)
+const cruise=(e:NavEdge):number=>e.kind==='primary'||e.kind==='secondary'?12:e.paved?9:7;
 
 // Body variety: mostly the regular sedan, plus the two Brazilian classics — a white
 // VW Kombi van and a boxy Fiat Uno (random colour). All three ride the SAME car rig,
 // so they drive, brake, dent, get stolen and seat a driver exactly the same way.
 function pickTrafficBody():{g:THREE.Object3D;name:string}{
   const r=Math.random();
-  if(r<.12)return{g:makeKombi(),name:'BREAD LOAF VAN'};
-  if(r<.26){const ci=irand(0,carColors.length-1);return{g:makeFiatUno(carColors[ci]),name:'SQUARE FIRE'};}
+  if(r<.16)return{g:makeKombi(),name:'BREAD LOAF VAN'};
+  if(r<.4){const ci=irand(0,carColors.length-1);return{g:makeFiatUno(carColors[ci]),name:'SQUARE FIRE'};}
   const ci=irand(0,carColors.length-1);
   return{g:makeCar(carColors[ci],false),name:carNames[ci]};
 }
 
+function runnerNear(minD:number,maxD:number):LaneRunner{
+  const pp=playerPos();
+  const sp=randomRoadPoint({f:carRoad,near:{x:pp.x,z:pp.z},min:minD,max:maxD});
+  const dir:1|-1=Math.random()<.5?1:-1;
+  return new LaneRunner(sp.e,dir,dir>0?sp.s:edges[sp.e].len-sp.s,{off:laneOff,f:carRoad,round:7});
+}
+
 export function spawnTraffic(){
-  const A:Node=[irand(0,N),irand(0,N)],B=pick(neighborNodes(A[0],A[1]));
   const body=pickTrafficBody();
-  const t:TrafficCar={g:body.g,A,B,C:pickNext(B,A),P:null,t:Math.random(),
-    speed:8.5,brakeT:0,name:body.name,heading:0};
+  const run=runnerNear(60,SPAWN_MAX);
+  const p=run.at(0,_p);
+  const t:TrafficCar={g:body.g,run,speed:6,brakeT:0,name:body.name,heading:Math.atan2(p.dx,p.dz)};
+  t.g.rotation.order='YXZ'; // yaw, then pitch with the slope, then roll
+  t.g.position.set(p.x,groundHeight(p.x,p.z),p.z);
   t.driver=seatDriver(t.g,pick(shirtColors));
   traffic.push(t);
 }
 
-const TURN=7; // metros antes/depois do nó em que a esquina vira curva
-const TURN_S=TURN/CELL;
-
-// Objetos de rascunho reaproveitados pra evitar alocações por frame.
-// _lp: saída padrão de lanePoint (faixa direta); _e/_x: as DUAS chamadas
-// internas de cornerPos (precisam ser distintas, ver aliasing); _cp: saída
-// de cornerPos. Reuso é seguro porque nenhum chamador mantém dois resultados
-// vivos ao mesmo tempo (ver updateTraffic e player.js completeEnter).
-const _lp:LanePoint={x:0,z:0,dx:0,dz:0};
-const _e:LanePoint={x:0,z:0,dx:0,dz:0};
-const _x:LanePoint={x:0,z:0,dx:0,dz:0};
-const _cp:LanePoint={x:0,z:0,dx:0,dz:0};
-
-function lanePoint(A:Node,B:Node,t:number,out:LanePoint=_lp):LanePoint{
-  const ax=nodeX(A[0]),az=nodeX(A[1]),bx=nodeX(B[0]),bz=nodeX(B[1]);
-  const dx=(bx-ax)/CELL,dz=(bz-az)/CELL;
-  out.x=ax+(bx-ax)*t-dz*3.5;out.z=az+(bz-az)*t+dx*3.5;out.dx=dx;out.dz=dz;
-  return out;
+// The car's lane position (stealing it: player.ts reads the heading it was driving at).
+export function trafficPos(t:{run?:LaneRunner}):RoadPos{
+  return t.run?t.run.at(0,_p):_p;
 }
 
-// Curva suave na esquina: Bezier quadrática do fim da faixa atual (E) ao
-// começo da próxima (X), com controle no cruzamento das duas faixas
-function cornerPos(A:Node,B:Node,C:Node,u:number):LanePoint{
-  const E=lanePoint(A,B,1-TURN_S,_e),X=lanePoint(B,C,TURN_S,_x);
-  let mx,mz;
-  if(Math.abs(E.dx)>.5&&Math.abs(X.dz)>.5){mx=X.x;mz=E.z;}
-  else if(Math.abs(E.dz)>.5&&Math.abs(X.dx)>.5){mx=E.x;mz=X.z;}
-  else{mx=(E.x+X.x)/2;mz=(E.z+X.z)/2;} // reto ou retorno: sem cruzamento único
-  const v=1-u;
-  const x=v*v*E.x+2*v*u*mx+u*u*X.x;
-  const z=v*v*E.z+2*v*u*mz+u*u*X.z;
-  let tx=v*(mx-E.x)+u*(X.x-mx),tz=v*(mz-E.z)+u*(X.z-mz);
-  const len=Math.hypot(tx,tz)||1;
-  _cp.x=x;_cp.z=z;_cp.dx=tx/len;_cp.dz=tz/len;
-  return _cp;
-}
-
-export function trafficPos(t:TrafficCar):LanePoint{
-  if(t.C&&t.t>1-TURN_S)return cornerPos(t.A,t.B,t.C,(t.t-(1-TURN_S))/(2*TURN_S));
-  if(t.P&&t.t<TURN_S)return cornerPos(t.P,t.A,t.B,.5+t.t/(2*TURN_S));
-  return lanePoint(t.A,t.B,t.t);
-}
-
-for(let k=0;k<5;k++)spawnTraffic(); // perf: 14→5 (cada carro ~25-36 draws — o maior sink; ruas mantêm movimento com os cops de patrulha + carros parados)
+for(let k=0;k<POOL;k++)spawnTraffic();
 
 export function updateTraffic(dt:number){
   const pp=playerPos();
   for(const t of traffic){
-    const pos=trafficPos(t);
+    // far from the player: drop it back onto a street in the ring around them
+    const fdx=t.g.position.x-pp.x,fdz=t.g.position.z-pp.z;
+    if(fdx*fdx+fdz*fdz>RECYCLE_R*RECYCLE_R){
+      t.run=runnerNear(SPAWN_MIN,SPAWN_MAX);t.speed=6;t.brakeT=0;t.stuckT=0;
+      const s=t.run.at(0,_p);t.heading=Math.atan2(s.dx,s.dz);
+      t.g.position.set(s.x,groundHeight(s.x,s.z),s.z);
+    }
+    const pos=t.run.at(0,_p);
+    const px=pos.x,pz=pos.z,dx=pos.dx,dz=pos.dz;
     if(t.hitT&&t.hitT>0)t.hitT-=dt; // cooldown between car-vs-pedestrian hits
-    // Freia pelo jogador/carro do jogador logo à frente (ponto 5m adiante).
-    const ax=pos.x+pos.dx*5,az=pos.z+pos.dz*5;
+    // Brake for the player / the player's car a few metres ahead.
+    const ax=px+dx*5,az=pz+dz*5;
     let blocked=Math.hypot(ax-pp.x,az-pp.z)<3.8;
-    // Freia por outro carro SÓ quando ele está à frente e na MINHA faixa (cone
-    // estreito via produto escalar/lateral, sem sqrt). A checagem omnidirecional
-    // antiga (raio em volta de um ponto à frente) travava cruzamentos 4-way em
-    // deadlock permanente — cada carro via o transversal e ninguém andava.
+    // Brake for another car only when it is AHEAD and in MY lane (narrow cone). An
+    // omnidirectional check deadlocked 4-way junctions forever.
     if(!blocked)for(const o of traffic){
       if(o===t)continue;
-      const rx=o.g.position.x-pos.x,rz=o.g.position.z-pos.z;
-      const fwd=rx*pos.dx+rz*pos.dz;            // distância à frente (direção de marcha)
-      if(fwd<=.5||fwd>6.5)continue;             // atrás/sobreposto ou longe: ignora
-      if(Math.abs(rx*pos.dz-rz*pos.dx)<2){blocked=true;break;} // afastamento lateral
+      const rx=o.g.position.x-px,rz=o.g.position.z-pz;
+      const fwd=rx*dx+rz*dz;
+      if(fwd<=.5||fwd>7)continue;
+      if(Math.abs(rx*dz-rz*dx)<2){blocked=true;break;}
     }
     if(t.brakeT>0){t.brakeT-=dt;blocked=true;}
-    // Anti-travamento: parado tempo demais (deadlock de cruzamento) → ignora o
-    // bloqueio por ~0.5s pra desfazer o nó e seguir. Em fila normal o stuckT
-    // zera sozinho (o da frente anda e o cone libera), então só age em impasses.
+    // Anti-deadlock: stopped too long → ignore the block for ~0.5 s to untangle.
     if(blocked){
       t.stuckT=(t.stuckT||0)+dt;
-      if(t.stuckT>2.5)t.stuckT=0;               // fim da janela: reavalia do zero
-      else if(t.stuckT>2)blocked=false;         // janela de ~0.5s atravessando
+      if(t.stuckT>2.5)t.stuckT=0;
+      else if(t.stuckT>2)blocked=false;
     }else t.stuckT=0;
-    // reduz a marcha na esquina pra curva sair suave
-    const inCorner=(t.C&&t.t>1-TURN_S)||(t.P&&t.t<TURN_S);
-    const target=blocked?0:inCorner?5.5:8.5;
-    t.speed+=(target-t.speed)*4*dt;
-    t.t+=t.speed*dt/CELL;
-    if(t.t>=1){
-      t.P=t.A;t.A=t.B;
-      t.B=t.C||pickNext(t.A,t.P);
-      t.C=pickNext(t.B,t.A);
-      t.t-=1;
-    }
-    const np=trafficPos(t);
-    t.g.position.set(np.x,0,np.z);
+    // slow down into bends (corners and the winding hill roads)
+    const bend=t.run.bend(14);
+    const E=edges[t.run.e];
+    const target=blocked?0:Math.min(cruise(E),bend>.12?5:bend>.04?7.5:99);
+    t.speed+=(target-t.speed)*(target<t.speed?5:2.5)*dt;
+    t.run.advance(Math.max(0,t.speed)*dt);
+    const np=t.run.at(0,_p);
+    const gy=groundHeight(np.x,np.z);
+    t.g.position.set(np.x,gy,np.z);
     const want=Math.atan2(np.dx,np.dz);
     const dh=wrapA(want-t.heading);
     t.heading+=dh*Math.min(1,10*dt);
-    t.g.rotation.y=t.heading;
-    // LOD: carro longe não é desenhado nem anima rodas/motorista; a posição
-    // segue atualizando (acima) pra o trânsito fluir quando reaparece.
+    // pitch with the slope under the wheelbase
+    const fx=Math.sin(t.heading),fz=Math.cos(t.heading);
+    const slope=groundHeight(np.x+fx*1.3,np.z+fz*1.3)-groundHeight(np.x-fx*1.3,np.z-fz*1.3);
+    t.g.rotation.set(-Math.atan2(slope,2.6),t.heading,0);
+    // LOD: a far car is neither drawn nor animated; it keeps driving (above).
     const cdx=np.x-pp.x,cdz=np.z-pp.z,cd2=cdx*cdx+cdz*cdz;
     if(cd2>=CAR_CULL2){t.g.visible=false;continue;}
     t.g.visible=true;
-    // Perf (visual-neutro): o motorista some quando o carro
-    // está a >48m — não dá pra ver alguém dentro do carro através do para-brisa a essa
-    // distância, então é 1 draw + o skinning economizados por carro médio/distante.
     if(t.driver)t.driver.visible=cd2<48*48;
-    spinWheels(t.g,t.speed,dt,clamp(dh*2,-1,1)); // steer anima volante e braços
+    spinWheels(t.g,t.speed,dt,clamp(dh*2,-1,1));
     const activeCur=cur;
     if(state.mode==='car'&&activeCur){
       const d=t.g.position.distanceTo(activeCur.g.position);
@@ -172,17 +143,15 @@ export function updateTraffic(dt:number){
         activeCur.g.position.addScaledVector(push,-(2.9-d)*.6);
         if(Math.abs(activeCur.speed)>8){
           addWanted(.25,null as unknown as string,'pursuit');thud(Math.abs(activeCur.speed));state.shake=.3;
-          // amassa os dois carros no ponto de contato
-          const mid=_mid.addVectors(t.g.position,activeCur.g.position)
-            .multiplyScalar(.5).setY(.7);
+          const mid=_mid.addVectors(t.g.position,activeCur.g.position).multiplyScalar(.5);
+          mid.y+=.7;
           dentCar(activeCur.g,mid,push.clone().negate(),.2);
           dentCar(t.g,mid,push,.2);
         }
         activeCur.speed*=.6;t.brakeT=2;
       }
     }else if(state.mode==='foot'&&t.speed>4&&!(t.hitT&&t.hitT>0)){
-      // Hit a pedestrian: speed-scaled damage (not an instant kill), a brief cooldown so
-      // one bump doesn't drain health every frame, only WASTED once health hits 0.
+      // Hit a pedestrian: speed-scaled damage, a brief cooldown, WASTED only at 0 health.
       if(t.g.position.distanceTo(player.g.position)<1.5){
         t.hitT=.8;
         state.health-=(irand(10,18)+Math.round(Math.abs(t.speed)*1.5))*PLAYER_DAMAGE_TAKEN;

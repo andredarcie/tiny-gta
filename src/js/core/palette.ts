@@ -1,13 +1,15 @@
 // Central color palette — the single source of truth for the game's color
-// vocabulary. Art direction: "Vice em Miniatura" (see docs/ART_DIRECTION.md) — a
-// miniature/diorama city: sun-faded matte world by day, Vice-style neon at
-// night, with saturation reserved for things that carry gameplay meaning.
+// vocabulary. Art direction: PHOTOREAL, faithful to the real Divinolândia (see
+// docs/ART_DIRECTION.md). The world's colours are MEASURED from recent photos of the town
+// (Google Street View nov/2024 frames and the Google Maps satellite, kept in
+// docs/divinolandia/referencias-*): aged materials, sun-bleached and dusty, low saturation.
 //
 // Rules:
 // - New/edited models take colors from here instead of inventing hex literals.
-// - The environment stays on the muted families (FACADES/GROUND/NATURE).
-// - Saturated color (NEON, AWNINGS) is an accent: markers, signs, the hero car,
-//   small storefront surfaces — never whole buildings or terrain.
+// - A colour here is the material's ALBEDO (how it looks in plain daylight), not a
+//   stylised swatch: when in doubt, sample the reference photos.
+// - Saturated colour only where the real thing is saturated (a painted sign, a car's paint,
+//   a flowering tree) — never as a style.
 // - Test any new color under the three skies (noon / sunset / night keyframes
 //   in js/world/daynight.ts) before settling on it.
 
@@ -50,7 +52,7 @@ export const GROUND={
   asphalt:'#45454b',
   sidewalk:'#bcb6a8',
   grass:'#33500f',     // deep forest green — as dark as the forest foliage; also mountain grass (assets/models/terrain/mountain.ts)
-  parkGrass:'#5fae62',
+  parkGrass:'#6a8445',      // a watered lawn in the sun (Street View: #899e49 lit, #5a7347 verge)
   dirt:'#8a7a52',
   ruralRoad:'#b08a5e', // dirt roads + mountain trail
   soil:'#8a6a3e',      // ploughed fields
@@ -68,4 +70,36 @@ export const NATURE={
   coconut:0x5a3f24,
   petals:[0xd8c24a,0xc05a7a,0xe8e0d0,0x8a6ac0,0xd9743a] as number[],
   sea:0x2e9ec4,
+};
+
+// --- DIVINOLÂNDIA — the real interior-paulista town (src/js/world/divinolandia/). ---
+// Same muted, sun-faded logic, tuned to a Serra da Mantiqueira coffee town: pastel
+// limewash façades, clay-tile roofs, terra-roxa dirt roads, coffee-green slopes.
+export const DIVINO={
+  // façades measured on Street View: limewashed white and off-white dominate, then cream,
+  // pale yellow, light grey and a few faded colours (pink, blue, green) — all dusty
+  facades:['#e9e5dc','#e2ddd2','#ddd3bf','#e6dcc4','#d9cfb3','#cfcac0','#d8c4b4','#c6ccd0','#c9d0c2','#e0d4ba','#d4cbbd','#c9b39c'],
+  roofTiles:['#7c4c3b','#86523f','#704536','#8d5c48'],   // telha cerâmica, aged and darkened
+  slab:'#8a8680',            // laje / platibanda top
+  frame:'#34302d',           // doors, window voids
+  shutter:'#a9acaf',         // steel roll-up shop doors
+  asphalt:'#6c6b68',         // sun-bleached asphalt (Street View: #85878c in the sun)
+  sidewalk:'#a39a8c',
+  dirtRoad:'#a48f84',        // dry terra roxa: pale rosy beige when trodden (#a99a92)
+  pasture:'#52673a', pastureDry:'#727250', forest:'#2c3d27', soil:'#8a5e4a', rock:'#7d786e',
+  coffee:0x324a2a, coffeeLight:0x3f5a33,
+  tree:[0x3a5130,0x2f4428,0x46603a,0x354a2c] as number[], trunk:0x4a3d32,
+  river:0x4f5b4c,            // Rio do Peixe: muddy green-brown
+  // Prefeitura Municipal (Rua XV de Novembro), from Street View: royal-blue limewash with
+  // white frieze and porch interiors, a thin red stripe under the eaves, clay pavers and
+  // red tubular railings on the forecourt
+  civicBlue:0x86a0d8, civicWhite:0xf1efe8, civicStripe:0xb3392f, civicRoof:0x9b5a44,
+  pavers:0xa98a78, paversDark:0x8c6f60, railing:0xb83a30, stepTread:0xc9c4b8,
+  // Hospital Regional (the 1945 Sanatório Adhemar de Barros), from Street View + photos:
+  // sun-faded ochre-yellow render, cream slab bands and parapet caps, clay hipped roofs
+  // with white hip flashing, grey steel window grids, the dark brick boiler chimney;
+  // the modern annex in pale beige with a brown fascia under light-grey metal roofs
+  hospWall:'#dcbd74', hospTrim:'#eee8d8', hospBase:'#b8ad95', hospRoof:'#bf6f57', hospHip:'#ebe8e1',
+  hospFrame:'#80878a', hospChimney:'#41372f', hospSlab:'#9a958c',
+  annexWall:'#dccaa0', annexFascia:'#7b5537', annexRoof:'#f4f6f7', annexWing:'#a9aeb0',
 };

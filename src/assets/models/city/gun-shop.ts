@@ -5,6 +5,7 @@ import {rand} from '@/core/constants.ts';
 import {makePed} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from './door-arrow.ts';
 import {ARSENAL} from '@/combat/weapon-catalog.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // Loja de armas "AMMO DEPOT": prédio num quarteirão reservado pelo world.js
 // (mesmo molde da academia/boate/hospital/presídio) e um interior separado a
@@ -15,12 +16,14 @@ import {ARSENAL} from '@/combat/weapon-catalog.ts';
 // preços vêm do catálogo (js/combat/weapon-catalog.ts), então a vitrine se monta
 // sozinha conforme o arsenal cresce.
 
-export const GUNSHOP_I=1,GUNSHOP_J=5; // quarteirão reservado (oeste/centro-sul)
-const CX=44*GUNSHOP_I-154, CZ=44*GUNSHOP_J-154; // centro do prédio = (-110,66)
+// Exterior authored around (-110,66) with the door on its west (-x) face; the Site puts
+// it on its Divinolândia lot (sites-table.ts) with the door to the street.
+const CX=-110, CZ=66;
+export const GUNSHOP_SITE=new Site('gunShop',{cx:CX,cz:CZ,front:-Math.PI/2});
 
-// porta externa (fachada oeste) e spawn de saída pra rua
-export const GUNSHOP_DOOR={x:CX-8.6,z:CZ};
-export const GUNSHOP_SPAWN_OUT={x:CX-10.6,z:CZ};
+// porta externa (fachada oeste) e spawn de saída pra rua — coords de mundo
+export const GUNSHOP_DOOR=GUNSHOP_SITE.P(CX-8.6,CZ);
+export const GUNSHOP_SPAWN_OUT=GUNSHOP_SITE.P(CX-10.6,CZ);
 // interior: centro da loja, porta de saída e spawn de entrada
 export const SHOP_CENTER={x:-800,z:-380};
 export const RANGE_CENTER={x:-700,z:-430};
@@ -43,7 +46,7 @@ export const GUN_SHOP_ITEMS:any[]=[]; // {id,name,price,x,z}
 export const GUN_RANGE_ITEMS:any[]=[]; // {id,name,x,z,pivot}
 export const GUN_RANGE_TARGETS:any[]=[]; // {x,z,r,g,hit(),hitT}
 
-export const gunShopFx:any={keeper:null,exitArrow:null,facade:null,facadeArrow:null,
+export const gunShopFx:any={site:GUNSHOP_SITE,keeper:null,exitArrow:null,facade:null,facadeArrow:null,
   footprint:null,displays:[],labels:[],rangeDoor:null,rangeExitArrow:null,
   rangeEntryArrow:null,rangePickups:[],rangeTargets:[]};
 export const gunShopInterior=new THREE.Group();
@@ -353,12 +356,13 @@ function addShootingRange(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
 
 export function addGunShop(solids:{x0:number,x1:number,z0:number,z1:number,h:number}[]):void{
   // ----- exterior: loja com faixa amarela, marquise e letreiro AMMO DEPOT ----
+  const ext=GUNSHOP_SITE.group; // model coordinates; the Site places it on the town lot
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),wallM);
-  bld.position.set(CX,3.5,CZ);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
+  bld.position.set(CX,3.5,CZ);bld.castShadow=true;bld.receiveShadow=true;ext.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,16.2),darkM);
-  roof.position.set(CX,7.1,CZ);scene.add(roof);
+  roof.position.set(CX,7.1,CZ);ext.add(roof);
   const band=new THREE.Mesh(new THREE.BoxGeometry(16.3,.5,16.3),accentM);
-  band.position.set(CX,5.4,CZ);scene.add(band);
+  band.position.set(CX,5.4,CZ);ext.add(band);
 
   const facade=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.6),darkM);
@@ -379,10 +383,10 @@ export function addGunShop(solids:{x0:number,x1:number,z0:number,z1:number,h:num
   sign.position.set(CX-8.12,6,CZ);sign.rotation.y=-Math.PI/2;facade.add(sign);
   gunShopFx.facadeArrow=makeDoorArrow();
   gunShopFx.facadeArrow.position.set(CX-9.3,1.7,CZ);facade.add(gunShopFx.facadeArrow);
-  scene.add(facade);
+  ext.add(facade);
   gunShopFx.facade=facade;
   gunShopFx.footprint={x0:CX-8.2,x1:CX+8.2,z0:CZ-8.2,z1:CZ+8.2};
-  solids.push({x0:CX-8.2,x1:CX+8.2,z0:CZ-8.2,z1:CZ+8.2,h:7.2});
+  GUNSHOP_SITE.box({x0:CX-8.2,x1:CX+8.2,z0:CZ-8.2,z1:CZ+8.2},7.2);
 
   // ----- interior: sala 30x22 a ~600m do mapa, num grupo liga/desliga -----
   addWallBox(-800,5.92,-380,30.4,.22,22.4,darkM);

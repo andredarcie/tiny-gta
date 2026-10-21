@@ -4,17 +4,28 @@ import {scene} from '@/core/engine.ts';
 import {rand} from '@/core/constants.ts';
 import {makePed} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from './door-arrow.ts';
+import {DIV_OX,DIV_OZ,divinoHeight} from '@/world/divinolandia/data.ts';
+import {SITE_TABLE} from '@/world/divinolandia/sites-table.ts';
+import {HOSP_LOT,HOSP_DOOR_Z} from '../divinolandia/hospital-regional.ts';
 
-// Hospital "SANTA CASA", no mesmo molde da boate/academia: prédio num quarteirão
-// reservado pelo world.js, interior separado a ~600m do mapa num Group
-// visible=false. É pra onde o jogador é levado quando morre (js/actors/player.ts), e
-// tem um kit de cura no centro pra quando ele entrar ferido. Ver js/places/hospital.ts.
+// Hospital "SANTA CASA": the room you wake up in after WASTED (js/actors/player.ts), with
+// a healing kit in the middle for whoever walks in hurt. Its interior is a separate set
+// ~600 m off the map in a Group with visible=false. Out in Divinolândia the building is
+// the real Hospital Regional up on the hill (assets/models/divinolandia/hospital-regional.ts,
+// placed by js/world/divinolandia/build.ts): its glass entrance is this room's street door.
+// See js/places/hospital.ts.
 
-export const HOSP_I=6,HOSP_J=6; // quarteirão reservado (sudeste da cidade)
-
-// porta externa (fachada oeste, de frente pra rua) e spawn de saída
-export const HOSP_DOOR={x:101.4,z:110};
-export const HOSP_SPAWN_OUT={x:99.4,z:110};
+// the regional hospital on its real footprint: the model origin (the sanatorium's tower
+// centre line) is its lot centre minus HOSP_LOT, turned by the lot's facing
+const HS=SITE_TABLE.hospital;
+export const HOSP_YAW=HS.face;
+const HX=HS.x+DIV_OX-(HOSP_LOT.x*Math.cos(HOSP_YAW)+HOSP_LOT.z*Math.sin(HOSP_YAW));
+const HZ=HS.z+DIV_OZ-(-HOSP_LOT.x*Math.sin(HOSP_YAW)+HOSP_LOT.z*Math.cos(HOSP_YAW));
+const fwd=(d:number)=>({x:HX+Math.sin(HOSP_YAW)*d,z:HZ+Math.cos(HOSP_YAW)*d});
+// street door (the glass entrance under the porch canopy) and the spot you step out to,
+// past the porch columns and steps
+export const HOSP_DOOR=fwd(HOSP_DOOR_Z+.7);
+export const HOSP_SPAWN_OUT=fwd(HOSP_DOOR_Z+6);
 // interior: centro da sala, porta de saída e spawn (leito) de entrada/acordar.
 // z=180 (não -380): mantém a sala BEM dentro do domo do céu (esfera raio 900
 // na origem). Em z=-380 a parede oeste ficava em raio ~897 e o céu (azul,
@@ -268,45 +279,15 @@ export const hospInterior=new THREE.Group();
 hospInterior.visible=false;
 
 export function addHospital(solids:{x0:number,x1:number,z0:number,z1:number,h:number}[]):void{
-  const cx=110,cz=110; // centro do prédio no quarteirão (6,6)
-
-  // ----- exterior: bloco branco com faixa teal, marquise e cruz verde -----
-  const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,16),whiteM);
-  bld.position.set(cx,3.5,cz);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
-  const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,16.2),darkM);
-  roof.position.set(cx,7.1,cz);scene.add(roof);
-  const band=new THREE.Mesh(new THREE.BoxGeometry(16.3,.5,16.3),tealM);
-  band.position.set(cx,5.4,cz);scene.add(band);
-
-  // Objetos da PORTA num grupo 'facade' que js/world/interior.ts esconde quando a
-  // câmera entra na pegada do prédio (senão flutuam ao sair). O corpo (caixa)
-  // some sozinho por culling. Ver hospFx.facade/footprint/facadeArrow.
+  // ----- exterior: the Hospital Regional itself (built by divinolandia/build.ts); here
+  // only the bouncing arrow over its entrance, in a group that follows the façade -----
   const facade=new THREE.Group();
-  // porta dupla na fachada oeste (x menor)
-  const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.6),
-    matte({color:0x2a3338,roughness:.7}));
-  door.position.set(cx-8.02,1.6,cz);facade.add(door);
-  // marquise sobre a entrada com colunas
-  const canopy=new THREE.Mesh(new THREE.BoxGeometry(2.6,.18,4.4),tealM);
-  canopy.position.set(cx-9.3,3.3,cz);canopy.castShadow=true;facade.add(canopy);
-  for(const dz of[-1.9,1.9]){
-    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,3.2,6),whiteM);
-    pole.position.set(cx-10.4,1.6,cz+dz);facade.add(pole);
-  }
-  // cruz verde grande de fachada acima da porta
-  const logo=makeCross(3.2,greenM);
-  logo.position.set(cx-8.12,4.5,cz);logo.rotation.y=-Math.PI/2;facade.add(logo);
-  // letreiro virado pra rua
-  hospFx.sign=new THREE.Mesh(new THREE.PlaneGeometry(9,2.3),
-    new THREE.MeshBasicMaterial({map:signTexture(),transparent:true}));
-  hospFx.sign.position.set(cx-8.13,6,cz);hospFx.sign.rotation.y=-Math.PI/2;facade.add(hospFx.sign);
-  // seta quicando na entrada (mesh próprio, no grupo; animada por js/world/interior.ts)
+  facade.position.set(HX,divinoHeight(HX,HZ),HZ);facade.rotation.y=HOSP_YAW;
   hospFx.facadeArrow=makeDoorArrow();
-  hospFx.facadeArrow.position.set(cx-9.3,1.7,cz);facade.add(hospFx.facadeArrow);
+  hospFx.facadeArrow.position.set(0,2.3,HOSP_DOOR_Z+1.3);facade.add(hospFx.facadeArrow); // over the porch floor
   scene.add(facade);
   hospFx.facade=facade;
-  hospFx.footprint={x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2};
-  solids.push({x0:cx-8.2,x1:cx+8.2,z0:cz-8.2,z1:cz+8.2,h:7.2});
+  hospFx.footprint=null; // the arrow stays out under the canopy: nothing to hide
 
   // ======================================================================
   // INTERIOR — sala 26x16 a ~600m do mapa, num grupo liga/desliga.

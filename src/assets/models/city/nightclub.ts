@@ -5,6 +5,7 @@ import {rand,pick} from '@/core/constants.ts';
 import {addPalm} from '../props/palm.ts';
 import {makePed,shirtColors} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from './door-arrow.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // Boate "THE FLAMINGO", estilo mundo aberto: prédio na orla oeste (quarteirão
 // CLUB_I/CLUB_J, reservado pelo world.js) com letreiro neon e entrada coberta.
@@ -12,11 +13,13 @@ import {makeDoorArrow} from './door-arrow.ts';
 // Group com visible=false — só é renderizado enquanto o jogador está lá
 // (js/places/club.ts liga/desliga no teleporte da porta).
 
-export const CLUB_I=0,CLUB_J=3; // quarteirão reservado (borda oeste, meio do mapa)
+// The exterior is authored around (-154,-22) with the door on its west (-x) face; the
+// Site puts it on its Divinolândia lot (sites-table.ts) with the door to the street.
+export const CLUB_SITE=new Site('club',{cx:-154,cz:-22,front:-Math.PI/2});
 
-// porta externa (fachada oeste, de frente pro mar) e spawn de saída
-export const CLUB_DOOR={x:-162.6,z:-22};
-export const CLUB_SPAWN_OUT={x:-164.4,z:-22};
+// porta externa (fachada oeste, de frente pra rua) e spawn de saída — em coords de mundo
+export const CLUB_DOOR=CLUB_SITE.P(-162.6,-22);
+export const CLUB_SPAWN_OUT=CLUB_SITE.P(-164.4,-22);
 // interior: centro da sala, porta de saída e spawn de entrada
 export const INT_CENTER={x:-800,z:-22};
 export const INT_DOOR={x:-812.2,z:-22};
@@ -40,23 +43,24 @@ function signTexture():THREE.CanvasTexture{
   return t;
 }
 
-export const clubFx:{tiles:THREE.Mesh[],tileMats:THREE.MeshBasicMaterial[],ball:THREE.Mesh|null,dancers:{g:any,t:number,sp:number,face:number}[],exitArrow:THREE.Mesh|null,facade:THREE.Group|null,facadeArrow:THREE.Mesh|null,footprint:{x0:number,x1:number,z0:number,z1:number}|null}={tiles:[],tileMats:[],ball:null,dancers:[],exitArrow:null,
-  facade:null,facadeArrow:null,footprint:null};
+export const clubFx:{tiles:THREE.Mesh[],tileMats:THREE.MeshBasicMaterial[],ball:THREE.Mesh|null,dancers:{g:any,t:number,sp:number,face:number}[],exitArrow:THREE.Mesh|null,facade:THREE.Group|null,facadeArrow:THREE.Mesh|null,footprint:{x0:number,x1:number,z0:number,z1:number}|null,site:Site}={tiles:[],tileMats:[],ball:null,dancers:[],exitArrow:null,
+  facade:null,facadeArrow:null,footprint:null,site:CLUB_SITE};
 export const clubInterior=new THREE.Group();
 clubInterior.visible=false;
 
 export function addNightclub(solids:{x0:number,x1:number,z0:number,z1:number,h:number}[]):void{
   // ----- exterior: caixa rosa com faixas neon, marquise e letreiro -----
+  const ext=CLUB_SITE.group; // model coordinates; the Site places it on the town lot
   const wallM=matte({color:0xf2c4d8,roughness:.95});
   const bld=new THREE.Mesh(new THREE.BoxGeometry(16,7,18),wallM);
-  bld.position.set(-154,3.5,-22);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
+  bld.position.set(-154,3.5,-22);bld.castShadow=true;bld.receiveShadow=true;ext.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(16.2,.25,18.2),darkM);
-  roof.position.set(-154,7.1,-22);scene.add(roof);
+  roof.position.set(-154,7.1,-22);ext.add(roof);
   // anéis neon em volta do prédio (caixas um tico maiores que a parede)
   const ringTop=new THREE.Mesh(new THREE.BoxGeometry(16.4,.16,18.4),neonCyanM);
-  ringTop.position.set(-154,6.85,-22);scene.add(ringTop);
+  ringTop.position.set(-154,6.85,-22);ext.add(ringTop);
   const ringMid=new THREE.Mesh(new THREE.BoxGeometry(16.3,.12,18.3),neonPinkM);
-  ringMid.position.set(-154,4.4,-22);scene.add(ringMid);
+  ringMid.position.set(-154,4.4,-22);ext.add(ringMid);
   // Objetos da PORTA num grupo 'facade' que js/world/interior.ts esconde quando a
   // câmera entra na pegada do prédio (senão flutuam ao sair). O corpo (caixa)
   // some sozinho por culling. Ver clubFx.facade/footprint/facadeArrow.
@@ -84,12 +88,12 @@ export function addNightclub(solids:{x0:number,x1:number,z0:number,z1:number,h:n
   // seta quicando na entrada (mesh próprio, no grupo; animada por js/world/interior.ts)
   clubFx.facadeArrow=makeDoorArrow();
   clubFx.facadeArrow.position.set(-163.4,1.7,-22);facade.add(clubFx.facadeArrow);
-  scene.add(facade);
+  ext.add(facade);
   clubFx.facade=facade;
   clubFx.footprint={x0:-162.2,x1:-145.8,z0:-31.2,z1:-12.8};
-  // palmeiras na calçada (entram na fusão de props do world.js)
-  addPalm(-164.2,-13.2);addPalm(-164.2,-30.8);
-  solids.push({x0:-162.2,x1:-145.8,z0:-31.2,z1:-12.8,h:7.2});
+  // palmeiras na calçada (entram na fusão da natureza)
+  for(const[px,pz]of[[-164.2,-13.2],[-164.2,-30.8]]){const p=CLUB_SITE.P(px,pz);addPalm(p.x,p.z);}
+  CLUB_SITE.box({x0:-162.2,x1:-145.8,z0:-31.2,z1:-12.8},7.2);
 
   // ----- interior: sala 26x16 a ~600m do mapa, num grupo liga/desliga -----
   // casca BackSide: de dentro é parede/teto/chão; de fora é invisível, então

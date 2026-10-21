@@ -5,7 +5,9 @@ import {scene} from '@/core/engine.ts';
 import {playerPos,cur,idleCars} from '@/actors/player.ts';
 import {message,bigText,hideBig} from '@/ui/hud.ts';
 import {blip} from '@/audio/audio.ts';
-import {N,nodeX,clamp,groundHeight} from '@/core/constants.ts';
+import {clamp,groundHeight} from '@/core/constants.ts';
+import {SITE_TABLE} from '@/world/divinolandia/sites-table.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {makeBombGarage} from '../../assets/models/props/bomb-garage.ts';
 import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
@@ -25,7 +27,8 @@ new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Demo Garage',exclusive:false});
 
 // galpão clandestino na ORLA OESTE (fora da rua), longe dos outros mini games.
 // Antes ficava no meio do cruzamento (88,-88).
-const PAD={x:-198,z:60};
+const SITE=SITE_TABLE.bombShop; // a back-street garage in the west neighbourhoods
+const PAD={x:SITE.x+DIV_OX,z:SITE.z+DIV_OZ};
 const PRICE=REWARDS.bombShop.armPrice;                     // preço pra armar o carro
 const PAD_RANGE=5;                   // raio pra armar (com o carro parado)
 const ARM_SPEED=3;                   // velocidade máx do carro pra poder armar
@@ -82,9 +85,8 @@ function clearArmed(){
 // ----- garagem no mundo (criada no carregamento, scene.add no topo) -----
 const garage=makeBombGarage();
 garage.position.set(PAD.x,groundHeight(PAD.x,PAD.z),PAD.z);
-// boca do galpão (-z no modelo) virada pra cidade (+x, lado de onde o carro
-// chega na orla oeste): -z girado por -90° aponta pra +x.
-garage.rotation.y=-Math.PI/2;
+// the shed's mouth (model -z) toward the street the car comes in by
+garage.rotation.y=SITE.face-Math.PI;
 scene.add(garage);
 
 // arma a bomba no carro atual: valida (dinheiro, veículo válido, já armado),

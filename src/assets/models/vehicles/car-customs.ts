@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {disableVehicleLod} from './vehicle-lod.ts';
 
 // Peças e materiais de CUSTOMIZAÇÃO aplicados ao carro do jogador pela oficina
 // (js/places/mod-shop.ts). Tudo aqui é PURO: recebe o Group do carro (buildCar de
@@ -52,6 +53,7 @@ function paintMeshes(carG: THREE.Object3D): THREE.Mesh[]{
   return out;
 }
 export function applyPaint(carG: THREE.Object3D,color: number): void{
+  disableVehicleLod(carG); // customised: always show the real parts (no stale baked copy)
   const m=paintMat(color);
   for(const mesh of paintMeshes(carG))mesh.material=m;
   carG.userData.color=color;mods(carG).paint=color;
@@ -62,6 +64,7 @@ export function applyPaint(carG: THREE.Object3D,color: number): void{
 
 // ---------- rodas / rims ----------
 export function setRims(carG: THREE.Object3D,hubColor: number): void{
+  disableVehicleLod(carG); // customised: always show the real parts (no stale baked copy)
   const hm=hubMat(hubColor);
   for(const wg of carG.userData.wheels||[]){
     const w=wg.children[0];if(!w)continue;
@@ -92,6 +95,7 @@ function buildSpoiler(type: string,paint: THREE.Material): THREE.Group{
   return g;
 }
 export function setSpoiler(carG: THREE.Object3D,type: string): void{
+  disableVehicleLod(carG); // customised: always show the real parts (no stale baked copy)
   const old=carG.userData.spoilerMesh;
   if(old){carG.remove(old);}
   carG.userData.spoilerMesh=null;
@@ -120,6 +124,7 @@ function buildHood(type: string): THREE.Group{
   return g;
 }
 export function setHood(carG: THREE.Object3D,type: string): void{
+  disableVehicleLod(carG); // customised: always show the real parts (no stale baked copy)
   const old=carG.userData.hoodMesh;
   if(old)carG.remove(old);
   carG.userData.hoodMesh=null;
@@ -131,6 +136,7 @@ export function setHood(carG: THREE.Object3D,type: string): void{
 
 // ---------- neon (underglow) ----------
 export function setNeon(carG: THREE.Object3D,color: number|null): void{
+  disableVehicleLod(carG); // customised: always show the real parts (no stale baked copy)
   const old=carG.userData.neonMesh;
   if(old)carG.remove(old);
   carG.userData.neonMesh=null;

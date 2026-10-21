@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {placeNature} from '../nature/batch.ts';
-import {rand} from '@/core/constants.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 import type {ModelDescriptor} from '@/core/types.ts';
 
 const palmLeafMat=matte({color:0x3aa856,roughness:1});
@@ -23,8 +23,8 @@ function build(): THREE.Group {
 const model: ModelDescriptor = {category:'Props',label:'Palm tree',build};
 export default model;
 
-// Beach/park palms: a code-built curved coconut palm (nature/kit.ts), baked at beach
-// level (y=0) into the merged nature chunks — a proper coastal palm line.
+// Street palms: a code-built curved coconut palm (nature/kit.ts), planted on the ground
+// and baked into the merged nature chunks.
 export function addPalm(x: number, z: number): void {
-  placeNature('palm',x,0,z,rand(5.5,8));
+  placeNature('palm',x,groundHeight(x,z),z,rand(5.5,8));
 }

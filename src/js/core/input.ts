@@ -2,7 +2,7 @@ import {state,keys,input,refs} from '@/core/state.ts';
 import {initAudio,AC} from '@/audio/audio.ts';
 import {radioSwitch} from '@/ui/radio.ts';
 import {enterCar,exitCar,cur,player,cameraRig,applyMouseLook} from '@/actors/player.ts';
-import {storyInteract,advanceCine} from '@/story/story.ts';
+import {advanceCine} from '@/story/cutscene.ts';
 import {gymTrain} from '@/places/gym.ts';
 import {gymGameActive,gymGamePress,closeGymGame} from '@/places/gym-game.ts';
 import {clubDance} from '@/places/club.ts';
@@ -11,7 +11,7 @@ import {modShopActive,closeModShop} from '@/places/mod-shop.ts';
 import {houseBuy,houseEat,houseGaragePark} from '@/places/property.ts';
 import {houseTvInteract,closeHouseTv} from '@/places/house-tv.ts';
 import {startOverkill} from '@/combat/overkill.ts';
-import {setMissionHUD} from '@/story/missions.ts';
+import {setMissionHUD} from '@/activities/courier.ts';
 import {message,drawFullMap,toggleMapNpcs} from '@/ui/hud.ts';
 import {canPickWeapon,pickupWeapon,shootWeapon,switchWeapon,selectWeaponSlot} from '@/combat/weapons.ts';
 import {openWheel,closeWheel,wheelScroll,wheelPointerDelta} from '@/combat/weapon-wheel.ts';
@@ -138,6 +138,7 @@ export function performInteract(): void {
   if(state.dlgActive)return; // cut-scene: legendas correm sozinhas
   if(isBlocked())return;
   if(state.mode==='foot'){
+    if(refs.storyFpLock?.())return; // a story hand clip is playing (hook for the story)
     if(canPickWeapon()){pickupWeapon();return;}
     if(houseEat())return;  // comer da geladeira dentro de casa (cura)
     if(houseBuy())return;  // comprar a casa de campo (perto da placa FOR SALE)
@@ -149,7 +150,7 @@ export function performInteract(): void {
     // num mini game não dá pra começar outro (um por vez): overkill e zonas travados
     if(!MiniGame.busy&&startOverkill())return; // liga o modo overkill (perto do totem)
     if(refs.rickInteract?.())return; // missão secreta do Rick no acampamento rural
-    if(storyInteract())return;
+    if(refs.storyInteract?.())return; // the story's own action, when it defines one
     if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a&&a.run){a.run();return;}} // minigames de zona (chão)
     enterCar();
   }else if(state.mode==='car'){
@@ -206,6 +207,7 @@ function beginRun(): void {
     if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
   }
   startLocalSave();
+  (refs.divinoWelcome as (()=>void)|undefined)?.();
 }
 
 // Used by touch-controls: tapping PLAY starts the game.
@@ -266,7 +268,7 @@ export function setupInput(): void {
     // Cut-scene: o diálogo só passa por interação. Avança com Space/Enter/E/F
     // e nenhum outro atalho funciona enquanto a cena roda.
     if(state.cine){
-      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();advanceCine();}
+      if(['Space','Enter','KeyE','KeyF'].includes(e.code)){e.preventDefault();if(!e.repeat)advanceCine();} // held keys don't skip lines
       return;
     }
     if(gymGameActive()){ // mini-game do supino: Espaço/Enter/E/F = repetição, Esc desiste

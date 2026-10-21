@@ -4,14 +4,17 @@ import {scene} from '@/core/engine.ts';
 import {rand} from '@/core/constants.ts';
 import {makePed} from '../characters/pedestrian.ts';
 import {makeDoorArrow} from './door-arrow.ts';
+import {Site} from '@/world/divinolandia/sites.ts';
 
 // County jail / presidio: exterior on a reserved city block and a separate
 // interior group, same pattern as hospital, nightclub, and gym.
 
-export const PRISON_I=2,PRISON_J=2; // block near the old busted release spot
+// Exterior authored around (-66,-66) with the door on its west (-x) face; the Site puts
+// it on its Divinolândia lot by the Polícia Militar (sites-table.ts), door to the street.
+export const PRISON_SITE=new Site('prison',{cx:-66,cz:-66,front:-Math.PI/2});
 
-export const PRISON_DOOR={x:-74.6,z:-66};
-export const PRISON_SPAWN_OUT={x:-76.4,z:-66};
+export const PRISON_DOOR=PRISON_SITE.P(-74.6,-66);
+export const PRISON_SPAWN_OUT=PRISON_SITE.P(-76.4,-66);
 
 export const INT_CENTER={x:-800,z:330};
 export const INT_DOOR={x:-814.2,z:330};
@@ -30,8 +33,8 @@ const stripeM=new THREE.MeshBasicMaterial({color:0x3e7bff});
 const amberM=new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.85});
 const cellWallM=matte({color:0x1f252b,roughness:.98});
 
-export const prisonFx:{guards:{g:any,t:number,sp:number,face:number,kind:string}[],inmates:{g:any,t:number,sp:number,face:number}[],exitArrow:THREE.Mesh|null,facade:THREE.Group|null,facadeArrow:THREE.Mesh|null,footprint:{x0:number,x1:number,z0:number,z1:number}|null,warning:THREE.Mesh|null}={guards:[],inmates:[],exitArrow:null,facade:null,
-  facadeArrow:null,footprint:null,warning:null};
+export const prisonFx:{guards:{g:any,t:number,sp:number,face:number,kind:string}[],inmates:{g:any,t:number,sp:number,face:number}[],exitArrow:THREE.Mesh|null,facade:THREE.Group|null,facadeArrow:THREE.Mesh|null,footprint:{x0:number,x1:number,z0:number,z1:number}|null,warning:THREE.Mesh|null,site:Site}={guards:[],inmates:[],exitArrow:null,facade:null,
+  facadeArrow:null,footprint:null,warning:null,site:PRISON_SITE};
 export const prisonInterior=new THREE.Group();
 prisonInterior.visible=false;
 
@@ -137,16 +140,17 @@ export function addPrison(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
   const cx=-66,cz=-66;
 
   // Exterior: squat concrete building with barred windows and a small tower.
+  const ext=PRISON_SITE.group; // model coordinates; the Site places it on the town lot
   const bld=new THREE.Mesh(new THREE.BoxGeometry(18,7.2,18),concreteM);
-  bld.position.set(cx,3.6,cz);bld.castShadow=true;bld.receiveShadow=true;scene.add(bld);
+  bld.position.set(cx,3.6,cz);bld.castShadow=true;bld.receiveShadow=true;ext.add(bld);
   const roof=new THREE.Mesh(new THREE.BoxGeometry(18.4,.3,18.4),darkM);
-  roof.position.set(cx,7.35,cz);scene.add(roof);
+  roof.position.set(cx,7.35,cz);ext.add(roof);
   const band=new THREE.Mesh(new THREE.BoxGeometry(18.5,.38,18.5),stripeM);
-  band.position.set(cx,5.6,cz);scene.add(band);
+  band.position.set(cx,5.6,cz);ext.add(band);
   const tower=new THREE.Mesh(new THREE.BoxGeometry(3.2,6,3.2),concreteM);
-  tower.position.set(cx+5.8,10.2,cz-5.8);tower.castShadow=true;scene.add(tower);
+  tower.position.set(cx+5.8,10.2,cz-5.8);tower.castShadow=true;ext.add(tower);
   const towerRoof=new THREE.Mesh(new THREE.BoxGeometry(3.8,.25,3.8),darkM);
-  towerRoof.position.set(cx+5.8,13.3,cz-5.8);scene.add(towerRoof);
+  towerRoof.position.set(cx+5.8,13.3,cz-5.8);ext.add(towerRoof);
 
   const facade=new THREE.Group();
   const door=new THREE.Mesh(new THREE.BoxGeometry(.18,3.2,2.8),darkM);
@@ -159,14 +163,14 @@ export function addPrison(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
   sign.position.set(cx-9.13,6.05,cz);sign.rotation.y=-Math.PI/2;facade.add(sign);
   prisonFx.facadeArrow=makeDoorArrow();
   prisonFx.facadeArrow.position.set(cx-10.2,1.7,cz);facade.add(prisonFx.facadeArrow);
-  scene.add(facade);
+  ext.add(facade);
   prisonFx.facade=facade;
   prisonFx.footprint={x0:cx-9.2,x1:cx+9.2,z0:cz-9.2,z1:cz+9.2};
 
   for(const z of[cz-5.7,cz+5.7]){
-    addBars(scene,cx-9.16,3.4,z,1.6,1.3,true,'z');
+    addBars(ext,cx-9.16,3.4,z,1.6,1.3,true,'z');
   }
-  solids.push({x0:cx-9.2,x1:cx+9.2,z0:cz-9.2,z1:cz+9.2,h:13.4});
+  PRISON_SITE.box({x0:cx-9.2,x1:cx+9.2,z0:cz-9.2,z1:cz+9.2},13.4);
 
   // Interior: processing room with a holding cell row.
   // One long room: processing (west) + cell-block wing (east). Center shifts to -788,

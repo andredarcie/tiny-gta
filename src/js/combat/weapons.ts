@@ -4,10 +4,10 @@ import {state,input,refs} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN,EXPLOSION_DAMAGE,FIRE_DAMAGE_TICK,LIMB_HIT_DAMAGE,MELEE_DAMAGE} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
-import {N,ROAD,BLOCK,SIDE,rand,nodeX,groundHeight,SWIM_BOUND} from '@/core/constants.ts';
+import {rand,groundHeight} from '@/core/constants.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
-import {isPark} from '@/world/world.ts';
-import {partyBlockAt} from '@/places/party-data.ts';
+import {divData,DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
+import {roadside} from '@/world/divinolandia/nav.ts';
 import {blip,thud,gunshot,pistolShot} from '@/audio/audio.ts';
 import {message} from '@/ui/hud.ts';
 import {addWanted,collideStatics} from '@/core/physics.ts';
@@ -72,23 +72,20 @@ const weaponPickups: THREE.Object3D[]=[];
 function makeWeaponPickup(x: number,z: number){
   const g=makePistolModel({pickup:true});
   g.scale.set(1.05,1.05,1.05);
-  g.position.set(x,.82,z);
-  g.userData.baseY=.82;
+  const y=groundHeight(x,z)+.82;
+  g.position.set(x,y,z);
+  g.userData.baseY=y;
   scene.add(g);
   weaponPickups.push(g);
 }
 
-for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-  // party plazas have their own members-only pickup (weapon-pickups.ts) — no free park pistol there
-  if(!isPark(i,j)||partyBlockAt(i,j))continue;
-  const x0=nodeX(i)+ROAD/2+SIDE,z0=nodeX(j)+ROAD/2+SIDE;
-  const tucked=Math.random()<.5?-1:1;
-  makeWeaponPickup(
-    x0+BLOCK*.5+tucked*rand(7,12),
-    z0+BLOCK*.5+rand(-11,11)
-  );
+// a pistol tucked away in each of the town's named squares (off-centre, by the trees)
+for(const p of divData.plazas){
+  if(!p.n)continue;
+  let cx=0,cz=0;for(const q of p.pts){cx+=q[0];cz+=q[1];}cx/=p.pts.length;cz/=p.pts.length;
+  const a=rand(0,Math.PI*2),r=rand(3,6);
+  makeWeaponPickup(DIV_OX+cx+Math.cos(a)*r,DIV_OZ+cz+Math.sin(a)*r);
 }
-if(!weaponPickups.length)makeWeaponPickup(nodeX(4)+12,nodeX(4)+12);
 
 // ----- INVENTÁRIO -----
 // `owned` é o que o jogador tem (sempre ao menos o punho); `curWeapon` é a
@@ -180,7 +177,8 @@ const rampage={active:false,end:0,kills:0};
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.
 const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Frenzy'});
 const missiles: MissileFx[]=[];
-const ROCKET_X=320,ROCKET_Z=0; // fim da estrada de terra, no pé da montanha
+// the rocket launcher lies by the Estádio Municipal, on the east edge of town
+const {x:ROCKET_X,z:ROCKET_Z}=roadside(divData.landmarks.estadio[0]-40,divData.landmarks.estadio[1]+30,3);
 const rocketPickup=makeRocketLauncherModel({pickup:true});
 rocketPickup.scale.set(1.4,1.4,1.4);
 rocketPickup.position.set(ROCKET_X,groundHeight(ROCKET_X,ROCKET_Z)+.95,ROCKET_Z);
@@ -243,10 +241,15 @@ let meleeAnim: MeleeAnim|null=null,punchSide=1;
 const meleeTrails: MeleeTrailFx[]=[];
 document.getElementById('buildver')?.insertAdjacentText('beforeend',' ◆ ARSENAL');
 
+// The hands are busy with something else (the weed farm's bucket/plant, or the story's
+// receiver/shovel): the weapon is put away and can't be fired.
+const handsBusy=():boolean=>!!(refs.farmHandsActive?.()||refs.storyHandsActive?.());
+
 // Mira/crosshair só pra armas de pontaria (fogo, pesadas, arremesso); punho e
 // detonador atacam sem retículo. O rampage da lança-foguetes também conta como armado.
 export function isWeaponHeld(){
   if(state.mode!=='foot'||state.swimming)return false; // nadando não se empunha arma
+  if(handsBusy())return false;             // hands busy (weed farm bucket/plant, story receiver/shovel)
   return rampage.active||(curWeapon.aimed&&state.weaponHeld);
 }
 
@@ -829,7 +832,6 @@ function resolveMeleeImpact(a: MeleeAnim){
     // a lethal bat swing caves the head clean off, or tears a limb away
     if(wasAlive&&npc.dead){if(Math.random()<.6)refs.severHead?.(npc,dir);else refs.maimRandom?.(npc,dir);}
   }
-  else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
   else if(hit.kind==='car'){dentCar(hit.target.g,pos,dir,a.kind==='bat' ? .18 : .1);addWanted(.4,'MELEE ATTACK','melee');}
@@ -918,13 +920,9 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
   // are ALL Npc instances in the global registry now, so one loop hits them all
   // (no more per-type loops that could double-hit or leave a type bullet-proof).
   for(const n of npcs){
-    if(n.dead||isFriendlyWeaponTarget(n))continue;
+    if(n.dead)continue;
     const d=rayHitXZ(origin,dir,n.g.position,1.05,range);
     if(d!==null&&d<best.d)best={kind:'npc',d,target:n};
-  }
-  for(const t of refs.storyTargets?.()||[]){ // alvo de missão de assassinato
-    const d=rayHitXZ(origin,dir,t.g.position,1.05,range);
-    if(d!==null&&d<best.d)best={kind:'story',d,target:t};
   }
   for(const arr of[traffic,idleCars,cops]){
     for(const c of arr){
@@ -944,7 +942,7 @@ function findWeaponHit(origin: THREE.Vector3,dir: THREE.Vector3,range=48): Weapo
 }
 
 function makeExplosion(pos: THREE.Vector3){
-  const g=makeExplosionModel();g.position.copy(pos);g.position.y=1.2;scene.add(g);
+  const g=makeExplosionModel();g.position.copy(pos);g.position.y=groundHeight(pos.x,pos.z)+1.2;scene.add(g);
   explosions.push({g,t:0});
   thud(18);blip([80,52],.12,'sawtooth',.28);
 }
@@ -955,7 +953,7 @@ function makeExplosion(pos: THREE.Vector3){
 // explosions (RC Toyz) whose tiny car is always within the blast radius of its
 // own kills, which otherwise dents and brakes it every hit.
 function blastDamage(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
-  const bp=pos.clone().setY(.6);
+  const bp=pos.clone().setY(groundHeight(pos.x,pos.z)+.6);
   const pp=playerPos();
   if(!opts?.noSelf&&pp.distanceTo(pos)<5){
     // on foot: a heavy hit that falls off with distance (not an instant death)
@@ -1045,7 +1043,7 @@ function addImpact(pos: THREE.Vector3,hit: WeaponHit|{kind: string}|null){
   const missed=hit?.kind==='miss';
   const impactRadius=missed ? .16 : .28;
   const ring=makeImpactRing(impactRadius,missed?0xfff2b0:0xffd24a);
-  ring.position.set(pos.x,.08,pos.z);
+  ring.position.set(pos.x,groundHeight(pos.x,pos.z)+.08,pos.z);
   scene.add(ring);impacts.push({ring,t:0});
 }
 
@@ -1093,7 +1091,6 @@ function handleBulletHit(hit: WeaponHit,pos: THREE.Vector3,dir: THREE.Vector3,da
       else if(Math.random()<.35)refs.maimRandom?.(npc,dir);
     }
   }
-  else if(hit.kind==='story')hit.target.kill();
   else if(hit.kind==='car')damageCar(hit.target,hit.arr,pos,dir,damage);
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
@@ -1133,7 +1130,6 @@ function missileBlast(pos: THREE.Vector3,hit: WeaponHit|null){
     blastDamage(pos);
     if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
   }
-  if(hit&&hit.kind==='story')hit.target.kill();
   state.shake=Math.max(state.shake,.4);
 }
 
@@ -1267,10 +1263,7 @@ const api: WeaponApi={
     // on their own: ped kills, vehicle shots, explosions…).
     if(!refs.inGunShopRange?.()&&!isRuralAt(pp.x,pp.z)){
       addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
-      // no radio dispatch from the isolated Party Arena: addWanted already no-ops
-      // there (physics.ts), and a dispatch would send a cruiser toward the
-      // off-map stage coordinates once the round ends
-      if(!refs.isPartyArenaActive?.())refs.policeOnShot?.(pp.x,pp.z);
+      refs.policeOnShot?.(pp.x,pp.z);
     }},
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
   melee(range: number,knock: number,lethal: boolean){meleeAttack(range,knock,lethal);},
@@ -1285,6 +1278,7 @@ const api: WeaponApi={
 
 export function shootWeapon(){
   if(state.mode!=='foot'||state.swimming)return; // sem disparo dentro d'água
+  if(handsBusy())return;             // hands full (weed farm / story): no shooting/punching
   if(rampage.active)return fireMissile();
   curWeapon.tryFire(api);
 }
@@ -1316,9 +1310,7 @@ const ASSIST_VRANGE=3.5; // metres of vertical slack: NPCs far above/below (e.g.
 // Scratch for the aim-assist scan, reused every frame so the per-frame scan allocates
 // nothing (matches the engine's no-per-frame-allocation pass).
 const _assist: {best: number|null;bestErr: number}={best:null,bestErr:0};
-function isFriendlyWeaponTarget(target: any): boolean{return !!refs.isFriendlyWeaponTarget?.(target);}
 function considerAssistTarget(target: any,px: number,pz: number,py: number,yaw: number){
-  if(isFriendlyWeaponTarget(target))return;
   considerAssist(target.g,px,pz,py,yaw);
 }
 function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: number){
@@ -1343,7 +1335,6 @@ function considerAssist(g: THREE.Object3D,px: number,pz: number,py: number,yaw: 
 function aimAssistError(px: number,pz: number,py: number,yaw: number): number|null{
   _assist.best=null;_assist.bestErr=ASSIST_CONE;
   for(const n of npcs)if(!n.dead)considerAssistTarget(n,px,pz,py,yaw); // peds+gang+officers+rural
-  for(const t of refs.storyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   for(const t of refs.armyTargets?.()||[])considerAssist(t.g,px,pz,py,yaw);
   return _assist.best;
 }
@@ -1395,14 +1386,20 @@ export function updateWeapons(dt: number){
   // hand (you visibly carry a bat/knife); rampage uses its own rocket model (heldRocket).
   // When a holstered firearm is hidden no body pose runs, so animatePed (called every frame
   // in updateFoot) keeps the arms in the normal walk cycle.
-  heldHolder.visible=showHeld&&(curWeapon.aimed?aimingNow:true);
+  // weed farm: while the farm hands hold a bucket/plant or play a clip, the weapon is put away
+  const farmHands=!!handsBusy();
+  if(farmHands&&state.aiming)state.aiming=false;
+  heldHolder.visible=!farmHands&&!state.cine&&showHeld&&(curWeapon.aimed?aimingNow:true); // put away in cut-scenes
   const meleeAnimating=!swimming&&updateMeleeAnimation(dt);
-  if(!swimming&&!meleeAnimating){
+  // no weapon pose on the body during a cut-scene or while the hands hold something else
+  // (the story poses the arms itself: the phone receiver at the ear, the cigarette...)
+  if(!swimming&&!meleeAnimating&&!state.cine&&!farmHands){
     if(rampaging||(showHeld&&curWeapon.aimed&&aimingNow))posePlayerWithGun();
     else if(showHeld&&!curWeapon.aimed)carryPose();
   }
   // first person: override the holder with its Counter-Strike-style viewmodel pose.
-  applyViewModel();
+  if(farmHands){fpHands.visible=false;heldRocket.visible=false;}
+  else applyViewModel();
   gunKick=Math.max(0,gunKick-dt*.55);
   updateMeleeTrails(dt);
 
@@ -1448,7 +1445,7 @@ export function updateWeapons(dt: number){
     m.g.position.addScaledVector(m.dir,step);
     m.dist+=step;
     _missileProbe.copy(m.g.position);
-    if(collideStatics(_missileProbe,.3,SWIM_BOUND)||m.dist>=m.range||
+    if(collideStatics(_missileProbe,.3)||m.dist>=m.range||
       m.g.position.y<=groundHeight(m.g.position.x,m.g.position.z)){ // encosta da montanha
       missileBlast(m.g.position.clone(),null);
       disposeGeometries(m.g);scene.remove(m.g);missiles.splice(i,1);continue;

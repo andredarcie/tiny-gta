@@ -1,9 +1,5 @@
-import {N,ROAD,BLOCK,GROUND,nodeX,WATER,SWIM_BOUND,
-  RURAL_X0,RURAL_GAP,RURAL_TIP,MOUNT_X,MOUNT_R,TOWN_CX,ruralRoadPath,
-  cityCoastR,isLand,ISLAND_CX,ISLAND_CZ,ISLAND_MAXR,islandCoastR} from '@/core/constants.ts';
+import {tr} from '@/core/i18n.ts';
 import {state,input,refs} from '@/core/state.ts';
-import {isPark} from '@/world/world.ts';
-import {partyBlockAt,PARTIES} from '@/places/party-data.ts';
 import {getTod} from '@/world/daynight.ts';
 import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
 import {MiniGame} from '@/activities/minigame.ts';
@@ -25,6 +21,7 @@ interface HudBlip {
   icon?: string; color?: string; col?: string;
   label?: string; letter?: string; kind?: string;
   current?: boolean; reveal?: boolean; faded?: boolean;
+  big?: boolean; // the story objective: drawn larger with a pulsing halo
   [k: string]: any;
 }
 // 2D point the world->radar transform returns.
@@ -66,17 +63,17 @@ export function tickFps(): void {
   if(now-fpsLast<500)return;
   const fps=Math.round(fpsFrames*1000/(now-fpsLast));
   hudFps.textContent=fps+' FPS';
-  hudFps.style.color=fps>=50?'#41ce62':fps>=30?'#ffd24a':'#ff2e88';
+  hudFps.style.color=fps>=50?'#7cb85a':fps>=30?'#f0be3a':'#e0705a';
   fpsFrames=0;fpsLast=now;
 }
 
 export function message(t: string,col?: string): void {
-  hudMsg.textContent=t;hudMsg.style.color=col||'var(--cream)';
+  hudMsg.textContent=tr(t);hudMsg.style.color=col||'var(--cream)';
   hudMsg.style.opacity='1';msgT=2.6;
 }
 refs.message=message; // exposto p/ módulos que não podem importar hud sem ciclo (ex.: minigame.js)
 export function bigText(t: string,col: string): void {
-  hudBig.textContent=t;hudBig.style.color=col;
+  hudBig.textContent=tr(t);hudBig.style.color=col;
   hudBig.style.textShadow=`4px 4px 0 #000,0 0 40px ${col}`;
   hudBig.classList.add('show');
 }
@@ -140,8 +137,8 @@ function computeInteractAction(): InteractAction {
   if(state.mode==='foot'){
     const rk=refs.rickNear?.(); // acampamento secreto do Rick (sem blip no mapa)
     if(rk)return{label:'TALK',prompt:'TALK TO '+rk,enabled:true};
-    const sn=refs.storyNear?.();
-    if(sn)return{label:'TALK',prompt:'TALK TO '+sn,enabled:true};
+    const st=refs.storyAction?.(); // story: answer the pay phone / take the shovel / bury a body
+    if(st)return st;
     // ações de zona (car-crusher/export/bomba): bloqueadas durante outra sessão
     if(!MiniGame.busy)for(const f of refs.zoneActions||[]){const a=f();if(a)return a;}
   }
@@ -188,85 +185,9 @@ function computeInteractAction(): InteractAction {
 // the center, square blips clamped to the rim
 const mmCanvas=$('minimap') as HTMLCanvasElement;
 export const mm=mmCanvas.getContext('2d')!;
-// Atlas da cidade: cobre a ILHA inteira (inclusive as pontas/diagonais), não o
-// antigo quadrado. Dimensiona pelo alcance real da costa (cityCoastR).
-let _cityAxis=218;
-for(let i=0;i<240;i++){const th=i/240*Math.PI*2,r=cityCoastR(th);
-  _cityAxis=Math.max(_cityAxis,Math.abs(r*Math.cos(th)),Math.abs(r*Math.sin(th)));}
-const MMW=Math.ceil(_cityAxis+10)*2;  // antes: GROUND+BEACH*2 (era um quadrado)
-const MM_C=85,MM_R=80,MM_RANGE=105;  // center px, radius px, radar reach in meters
-const MM_POI_REVEAL=90;              // POIs fixos só aparecem dentro de N metros (declutter)
-const SEA_COL='#2e8a96';             // mesma cor do mar de fundo do radar/mapa
-const mmStatic=document.createElement('canvas');mmStatic.width=512;mmStatic.height=512;
-{
-  const x=mmStatic.getContext('2d')!,s=512/MMW,M=(v: number)=>(v+MMW/2)*s;
-  x.fillStyle=SEA_COL;x.fillRect(0,0,512,512);               // mar
-  x.fillStyle='#d8c08a';                                      // areia: costa irregular (isLand)
-  for(let py=0;py<512;py+=2)for(let px=0;px<512;px+=2)
-    if(isLand(px/s-MMW/2,py/s-MMW/2))x.fillRect(px,py,2,2);
-  x.fillStyle='#e8dcc4';                                      // ruas claras (miolo da cidade)
-  x.fillRect(M(-GROUND/2),M(-GROUND/2),GROUND*s,GROUND*s);
-  for(let i=0;i<N;i++)for(let j=0;j<N;j++){
-    const party=partyBlockAt(i,j);
-    x.fillStyle=party?PARTIES[party].mapCss                    // praça de partido
-      :isPark(i,j)?'#5d7c3e':'#8a6f4d';                        // parque / quarteirão
-    x.fillRect(M(nodeX(i)+ROAD/2),M(nodeX(j)+ROAD/2),BLOCK*s,BLOCK*s);
-  }
-}
-
-// Atlas da península: cobre as pontas onduladas (RR_HALF>RURAL_HALF) e o bico
-// afunilado (RURAL_TIP). Pasto recortado pela MESMA costa irregular (isLand).
-const RR_HALF=150,RR_X0=RURAL_X0,RR_X1=RURAL_TIP;
-const RRW=RR_X1-RR_X0,RRD=RR_HALF*2;
-const mmRural=document.createElement('canvas');
-mmRural.width=Math.round(RRW*.8);mmRural.height=Math.round(RRD*.8);
-{
-  const Wp=mmRural.width,Hp=mmRural.height;
-  const x=mmRural.getContext('2d')!,sx=Wp/RRW,sz=Hp/RRD;
-  const U=(v: number)=>(v-RR_X0)*sx,W=(v: number)=>(v+RR_HALF)*sz;
-  x.fillStyle=SEA_COL;x.fillRect(0,0,Wp,Hp);                    // mar
-  x.fillStyle='#6a9a50';                                        // pasto (recorte isLand)
-  for(let py=0;py<Hp;py+=2)for(let px=0;px<Wp;px+=2)
-    if(isLand(RR_X0+px/sx,-RR_HALF+py/sz))x.fillRect(px,py,2,2);
-  x.fillStyle='#8a6a3e';                                        // roças
-  for(const[a,b,d,e]of[[202,250,14,62],[200,244,-64,-22],[262,310,30,86],[258,300,-90,-42]]
-    .map(f=>[f[0]+RURAL_GAP,f[1]+RURAL_GAP,f[2],f[3]]))
-    x.fillRect(U(a),W(d),(b-a)*sx,(e-d)*sz);
-  // montanha em níveis de elevação (sob a estrada que a contorna)
-  for(const[r,col]of[[MOUNT_R,'#8d8f99'],[MOUNT_R*.62,'#a9adb8'],[MOUNT_R*.28,'#c9ccd4']] as [number, string][]){
-    x.fillStyle=col;x.beginPath();
-    x.ellipse(U(MOUNT_X),W(0),r*sx,r*sz,0,0,Math.PI*2);x.fill();
-  }
-  // estrada de terra: cidade → contorno da montanha → vila (mesmo traçado do chão)
-  x.strokeStyle='#b08a5e';x.lineCap='round';x.lineJoin='round';x.lineWidth=7*(sx+sz)/2;
-  const rp=ruralRoadPath();
-  x.beginPath();rp.forEach(([px,pz]: number[],i: number)=>i?x.lineTo(U(px),W(pz)):x.moveTo(U(px),W(pz)));x.stroke();
-  x.beginPath();x.moveTo(U(TOWN_CX),W(-46));x.lineTo(U(TOWN_CX),W(34));x.stroke();
-  // edifícios da vila "Pine Hollow" (quadradinhos)
-  x.fillStyle='#9a6f4d';
-  for(const[bx,bz,bw]of[[TOWN_CX,38,7],[TOWN_CX-30,22,6],[TOWN_CX+34,22,5],[TOWN_CX+52,22,5],
-    [TOWN_CX-14,-24,5],[TOWN_CX+22,-24,5],[TOWN_CX-36,-28,4],[TOWN_CX+50,-34,5]])
-    x.fillRect(U(bx-bw/2),W(bz-bw/2),bw*sx,bw*sz);
-}
-
-// O mapa NUNCA muda depois de gerado, a escala do radar é constante e o radar é
-// north-up (sem rotação). Então pré-renderizamos os atlas UMA vez já na densidade
-// exata do radar (px/m = MM_SCALE): no loop o blit fica 1:1, sem o filtro de
-// reescala que rodava todo frame. Os atlas originais (512px etc.) continuam pro
-// mapa completo (tecla M), que usa outra escala e quer a resolução maior.
-const MM_SCALE=MM_R/MM_RANGE;
-function prescaleRadar(src: HTMLCanvasElement,worldW: number,worldH: number): HTMLCanvasElement {
-  const c=document.createElement('canvas');
-  c.width=Math.max(1,Math.round(worldW*MM_SCALE));
-  c.height=Math.max(1,Math.round(worldH*MM_SCALE));
-  const x=c.getContext('2d')!;
-  x.imageSmoothingQuality='high';
-  x.drawImage(src,0,0,c.width,c.height);
-  return c;
-}
-const mmStaticR=prescaleRadar(mmStatic,MMW,MMW);
-const mmRuralR=prescaleRadar(mmRural,RRW,RRD);
-
+const MM_C=85,MM_R=80,MM_RANGE=160;  // center px, radius px, radar reach in meters (the town is big)
+const MM_POI_REVEAL=150;             // POIs fixos só aparecem dentro de N metros (declutter)
+const LAND_COL='#4d6a30';            // countryside green behind the town atlas
 // world offset → radar screen offset (north-up), clamped to the rim
 function mmBlip(wx: number,wz: number,pp: {x: number; z: number},scale: number): Pt {
   let px=(wx-pp.x)*scale,py=(wz-pp.z)*scale;
@@ -380,6 +301,21 @@ function mmCircleIcon(ctx: CanvasRenderingContext2D,px: number,py: number,b: Hud
       ctx.moveTo(0,-6);ctx.lineTo(5.2,0);ctx.lineTo(0,6);ctx.lineTo(-5.2,0);
       ctx.closePath();ctx.fill();
       break;
+    case'phone': // story: the pay phone (a telephone receiver)
+      ctx.lineWidth=3.2;
+      ctx.beginPath();ctx.moveTo(-3.6,3.9);ctx.quadraticCurveTo(0,-.6,3.6,3.9);ctx.stroke();  // handle
+      ctx.fillRect(-6.2,1.6,4.2,3.4);ctx.fillRect(2,1.6,4.2,3.4);                            // ear + mouth cups
+      ctx.lineWidth=1.3;
+      for(const r of[3.2,5.4]){ctx.beginPath();ctx.arc(0,-1.4,r,-2.3,-.84);ctx.stroke();}     // ringing waves
+      break;
+    case'shovel': // story: the burial job
+      ctx.save();ctx.rotate(-.7);
+      ctx.fillRect(-.8,-6.4,1.6,8.4);                                                        // shaft
+      ctx.fillRect(-2.6,-7.2,5.2,1.4);                                                       // D-grip
+      ctx.beginPath();ctx.moveTo(-3.2,1.6);ctx.lineTo(3.2,1.6);ctx.lineTo(2.6,5.6);
+      ctx.quadraticCurveTo(0,7.6,-2.6,5.6);ctx.closePath();ctx.fill();                        // blade
+      ctx.restore();
+      break;
     case'letter': // marcador de missão com a inicial do NPC
       ctx.font='bold 9px monospace';ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText(b.letter||'?',0,.6);
@@ -436,6 +372,21 @@ function mmCircleIcon(ctx: CanvasRenderingContext2D,px: number,py: number,b: Hud
   }
   ctx.restore();
 }
+// Pulsing halo behind the story objective's icon (radar + map): two expanding rings in
+// the objective's colour, so it stands out as the one thing that matters most.
+function storyHalo(ctx: CanvasRenderingContext2D,px: number,py: number,color: string,scale: number): void {
+  const t=performance.now()/1000;
+  ctx.save();
+  ctx.strokeStyle=color;
+  for(let i=0;i<2;i++){
+    const k=(t*.8+i*.5)%1;
+    ctx.globalAlpha=(1-k)*.85;ctx.lineWidth=2.4*scale;
+    ctx.beginPath();ctx.arc(px,py,(11+k*11)*scale,0,Math.PI*2);ctx.stroke();
+  }
+  ctx.globalAlpha=.35;ctx.fillStyle=color;
+  ctx.beginPath();ctx.arc(px,py,13.5*scale,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
 function drawHudWeaponIcon(wh: WeaponHud): void {
   if(!weaponIconCtx)return;
   const key=wh.id||wh.name;
@@ -449,26 +400,11 @@ function drawHudWeaponIcon(wh: WeaponHud): void {
   c.restore();
 }
 
-// Desenha SÓ a janela visível de um atlas estático, no espaço-mundo já transformado
-// do radar: recorta a fonte na região que cabe no alcance (vis) e PULA de vez o
-// atlas que está totalmente fora (ex.: o mapa da cidade quando se está no campo, e
-// vice-versa). Antes redesenhávamos os 512px inteiros (+ rural) todo redraw contando
-// só com o clip do círculo — reamostragem cara. Resultado pixel a pixel idêntico:
-// o que fica de fora do recorte já era área clipada/mar.
-function mmBlitVisible(img: HTMLCanvasElement,minX: number,minZ: number,maxX: number,maxZ: number,pp: {x: number; z: number},vis: number): void {
-  const x0=Math.max(minX,pp.x-vis),x1=Math.min(maxX,pp.x+vis);
-  const z0=Math.max(minZ,pp.z-vis),z1=Math.min(maxZ,pp.z+vis);
-  if(x1<=x0||z1<=z0)return;                                  // fora do alcance
-  const sw=img.width/(maxX-minX),sh=img.height/(maxZ-minZ);  // px-fonte por metro
-  mm.drawImage(img,(x0-minX)*sw,(z0-minZ)*sh,(x1-x0)*sw,(z1-z0)*sh, // recorte na fonte
-    x0,z0,x1-x0,z1-z0);                                       // destino (coords de mundo)
-}
-
 const mapWrap=$('mapwrap');
 export function drawMinimap(): void {
   // Em interiores e na arena isolada o minimapa nao faz sentido: esconde o painel inteiro.
   // Ver tambem a seta 3D de missao em story.js.
-  const hideMap=state.interior||!!refs.isPartyArenaActive?.();
+  const hideMap=state.interior;
   if(mapWrap)mapWrap.style.display=hideMap?'none':'';
   if(hideMap)return;
   const pp=refs.playerPos?.();if(!pp)return;
@@ -488,7 +424,7 @@ export function drawMinimap(): void {
   mm.clearRect(0,0,170,170);
   mm.save();
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R,0,Math.PI*2);mm.clip();
-  mm.fillStyle='#2e8a96';mm.fillRect(0,0,170,170);           // mar ao fundo
+  mm.fillStyle=LAND_COL;mm.fillRect(0,0,170,170);            // countryside behind the atlas
 
   mm.save();
   mm.translate(MM_C,MM_C);mm.scale(scale,scale);
@@ -497,8 +433,8 @@ export function drawMinimap(): void {
   // a reamostragem do redraw. VIS = meia-aresta do quadrado que cobre o círculo
   // do radar (raio MM_R/scale = MM_RANGE), com folga pra arredondamento.
   const VIS=MM_RANGE+4;
-  mmBlitVisible(mmStaticR,-MMW/2,-MMW/2,MMW/2,MMW/2,pp,VIS);
-  mmBlitVisible(mmRuralR,RR_X0,-RR_HALF,RR_X1,RR_HALF,pp,VIS);
+  // the town's atlas (streets, river, plazas, houses — drawn once by world/divinolandia/build.ts)
+  (refs.divinoMinimap as ((c:CanvasRenderingContext2D,p:{x:number;z:number},v:number)=>void)|undefined)?.(mm,pp,VIS);
   // territórios das gangues (círculos coloridos que encolhem conforme você mata)
   const gangsArr=refs.gangs;
   if(!raceOn&&!mgActive&&gangsArr)for(const g of gangsArr){
@@ -536,11 +472,6 @@ export function drawMinimap(): void {
   const cops=refs.cops||[];
   for(const c of cops){
     const[px,py]=mmBlip(c.g.position.x,c.g.position.z,pp,scale);
-    mmCircleIcon(mm,px,py,{x:0,z:0,icon:'cop',color:'#3e7bff'},.78);
-  }
-  // lanchas da polícia na perseguição marítima: mesmo distintivo das viaturas
-  for(const b of refs.policeBoats||[]){
-    const[px,py]=mmBlip(b.g.position.x,b.g.position.z,pp,scale);
     mmCircleIcon(mm,px,py,{x:0,z:0,icon:'cop',color:'#3e7bff'},.78);
   }
   // Sessão de mini game (não-corrida) em curso: o radar mostra SÓ os alvos dela.
@@ -597,12 +528,6 @@ export function drawMinimap(): void {
       const[px,py]=mmBlip(b.x,b.z,pp,scale);
       mmCircleIcon(mm,px,py,{x:0,z:0,icon:'cross',color:b.col||'#5eff8a'},b.current?1:.82);
     }
-    // Missão da história: blip no NPC atual (letra) ou no item (losango) quando ativa;
-    // o piscar de retorno já vem resolvido de storyBlips()
-    for(const b of refs.storyBlips?.()||[]){
-      const[px,py]=mmBlip(b.x,b.z,pp,scale);
-      mmCircleIcon(mm,px,py,{x:0,z:0,icon:b.letter?'letter':'diamond',letter:b.letter,color:b.col});
-    }
     // minigames registrados (firefighter, rampage, hidden packages, etc.)
     for(const fn of refs.miniBlips||[])for(const b of fn()){
       if(inGangTerritory(b.x,b.z))continue; // mini-game nunca em território de gangue
@@ -634,6 +559,15 @@ export function drawMinimap(): void {
     }
   }
 
+  // The story objective: drawn LAST (on top) and BIG, with a pulsing halo, so it reads
+  // as more important than anything else on the radar. Hidden during a race or a
+  // mini-game session (the radar then shows only that session).
+  if(!mgActive&&!raceOn)for(const b of refs.storyBlips?.()||[]){
+    const[px,py]=mmBlip(b.x,b.z,pp,scale);
+    storyHalo(mm,px,py,b.color||'#ffd24a',1);
+    mmCircleIcon(mm,px,py,b,1.32);
+  }
+
   // seta do jogador no centro, girando com a direção (mapa fixo no norte)
   mm.save();
   mm.translate(MM_C,MM_C);mm.rotate(-th);
@@ -644,10 +578,10 @@ export function drawMinimap(): void {
   mm.restore();
   mm.restore();
 
-  // aro do radar
-  mm.strokeStyle='rgba(5,3,8,.96)';mm.lineWidth=6;
+  // radar rim: the blue of the enamel street plates, inside the white frame (CSS #mapwrap)
+  mm.strokeStyle='rgba(20,16,12,.96)';mm.lineWidth=6;
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R-2,0,Math.PI*2);mm.stroke();
-  mm.strokeStyle='#efa1d8';mm.lineWidth=3;
+  mm.strokeStyle='#1f4f99';mm.lineWidth=3;
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R-4,0,Math.PI*2);mm.stroke();
   mm.strokeStyle='rgba(255,255,255,.42)';mm.lineWidth=1;
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R-5.8,0,Math.PI*2);mm.stroke();
@@ -668,21 +602,8 @@ export function drawMinimap(): void {
 // congelado enquanto o mapa está aberto (ver state.mapOpen / main.js).
 const fmCanvas=$('fullmap-canvas') as HTMLCanvasElement | null;
 const fm=fmCanvas&&fmCanvas.getContext('2d');
-// O mapa grande inclui uma faixa de MAR ao redor da cidade: a corrida de lanchas
-// roda num anel no mar (raio ~ (WATER+SWIM_BOUND)/2), então o mapa precisa
-// alcançar além da linha d'água pra mostrar as boias/largada da prova.
-const FM_SEA=Math.round((WATER+SWIM_BOUND)/2)+24;
-// O mapa estende a borda OESTE pra caber a ilha paradisíaca (em mar aberto a oeste).
-const FM_MINX=Math.min(-FM_SEA,ISLAND_CX-ISLAND_MAXR-16),FM_MAXX=RURAL_TIP+12,
-  FM_MINZ=-FM_SEA,FM_MAXZ=FM_SEA;
-const FM_WW=FM_MAXX-FM_MINX,FM_WH=FM_MAXZ-FM_MINZ;
-// Resolução interna seguindo a proporção real do mundo (sem barras); o CSS
-// reescala isso pra caber em qualquer tela mantendo a proporção.
-if(fmCanvas){fmCanvas.width=1280;fmCanvas.height=Math.round(1280*FM_WH/FM_WW);}
-function fmFit(): {s: number; ox: number; oy: number} {
-  const s=Math.min(fmCanvas!.width/FM_WW,fmCanvas!.height/FM_WH);
-  return{s,ox:(fmCanvas!.width-FM_WW*s)/2,oy:(fmCanvas!.height-FM_WH*s)/2};
-}
+// Internal resolution following the town's proportions (the CSS scales it to the screen).
+if(fmCanvas){fmCanvas.width=1280;fmCanvas.height=1400;}
 // "Show NPCs" overlay: live dots for every outdoor NPC plus a trail to where each
 // is currently headed. Toggled by the button in the full-map header (input.ts);
 // while on, main.js keeps the world simulating so the dots move in real time.
@@ -694,42 +615,23 @@ const NPC_DOT: Record<string,string>={
   ped:'#ffffff',gang:'#b06bff',officer:'#3e7bff',soldier:'#8fae5a',rural:'#7ad06b',
   driver:'#f5c518',dancer:'#ff5fae',gymgoer:'#ff8a1e',guard:'#3e7bff',inmate:'#d9a06b',
   clerk:'#f4c542',medic:'#19e3ff',patient:'#ff6f6f',fare:'#5eff8a',buyer:'#9dff2e',
-  criminal:'#ff3b56',story:'#ffd24a',sicko:'#9dff2e',
+  criminal:'#ff3b56',camper:'#ff3b56',zombie:'#9dff2e',priest:'#f4f1e8',villager:'#7ad06b',sicko:'#9dff2e',
 };
 export function drawFullMap(): void {
   if(!fm)return;
-  const{s,ox,oy}=fmFit();
-  const P=(wx: number,wz: number): Pt=>[ox+(wx-FM_MINX)*s,oy+(wz-FM_MINZ)*s];
+  // the whole of Divinolândia: the town build draws its atlas and hands back the
+  // world→canvas mapping, then every territory, icon, label and NPC goes on top
+  const dvMap=refs.divinoFullMap as ((c:CanvasRenderingContext2D,w:number,h:number)=>(wx:number,wz:number)=>Pt)|undefined;
+  if(!dvMap)return;
+  fm.setTransform(1,0,0,1,0,0);
+  fm.clearRect(0,0,fmCanvas!.width,fmCanvas!.height);
+  const P=dvMap(fm,fmCanvas!.width,fmCanvas!.height);
+  const s=(P(1000,0)[0]-P(0,0)[0])/1000;               // canvas px per world metre
   const rOn=(refs.getRaceState?.()?.phase||'idle')!=='idle';
   const bOn=(refs.getBoatRaceState?.()?.phase||'idle')!=='idle';
   // sessão de mini game (não-corrida) em curso: o mapa grande mostra SÓ os alvos
   // dela — sem POIs, gangues nem outros mini games (mapa "limpo").
   const mgActive=!!state.activeMiniGame&&!rOn&&!bOn;
-  fm.setTransform(1,0,0,1,0,0);
-  fm.clearRect(0,0,fmCanvas!.width,fmCanvas!.height);
-  fm.fillStyle='#2e8a96';fm.fillRect(0,0,fmCanvas!.width,fmCanvas!.height); // mar ao fundo
-  fm.drawImage(mmStatic,...P(-MMW/2,-MMW/2),MMW*s,MMW*s);
-  fm.drawImage(mmRural,...P(RR_X0,-RR_HALF),RRW*s,RRD*s);
-  // Ilha paradisíaca a oeste (em mar aberto): silhueta de areia + miolo verde,
-  // farol no centro e o nome — o destino que se alcança de barco.
-  {
-    const seg=64;
-    fm.beginPath();
-    for(let i=0;i<=seg;i++){const th=i/seg*Math.PI*2,r=islandCoastR(th);
-      const[x,y]=P(ISLAND_CX+Math.cos(th)*r,ISLAND_CZ+Math.sin(th)*r);i?fm.lineTo(x,y):fm.moveTo(x,y);}
-    fm.closePath();fm.fillStyle='#e7d29a';fm.fill();
-    fm.lineWidth=2;fm.strokeStyle='rgba(60,190,200,.9)';fm.stroke();
-    fm.beginPath();
-    for(let i=0;i<=seg;i++){const th=i/seg*Math.PI*2,r=Math.max(6,islandCoastR(th)-14);
-      const[x,y]=P(ISLAND_CX+Math.cos(th)*r,ISLAND_CZ+Math.sin(th)*r);i?fm.lineTo(x,y):fm.moveTo(x,y);}
-    fm.closePath();fm.fillStyle='#5aa657';fm.fill();
-    const[lx,ly]=P(ISLAND_CX,ISLAND_CZ);
-    fm.fillStyle='#d23b32';fm.beginPath();fm.arc(lx,ly,3,0,Math.PI*2);fm.fill();
-    fm.strokeStyle='#fff';fm.lineWidth=1;fm.stroke();
-    fm.font='700 12px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
-    fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('PARADISE ISLE',lx,ly+8);
-    fm.fillStyle='#ffe9c9';fm.fillText('PARADISE ISLE',lx,ly+8);
-  }
   // territórios das gangues
   const gangsArr=refs.gangs;
   if(!mgActive&&gangsArr)for(const g of gangsArr){
@@ -776,8 +678,8 @@ export function drawFullMap(): void {
       for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPECT');
       for(const b of refs.paramedicBlips?.()||[])
         push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PATIENT');
-      // história
-      for(const b of refs.storyBlips?.()||[])push(b,b.letter?'letter':'diamond',b.col,'MISSION');
+      // story objective (drawn big, see below)
+      for(const b of refs.storyBlips?.()||[])marks.push({...b});
       // minigames registrados: o mapa completo mostra TODOS (longe ou perto), menos
       // os que caem em território de gangue (regra fundamental)
       for(const fn of refs.miniBlips||[])for(const b of fn())
@@ -796,12 +698,12 @@ export function drawFullMap(): void {
   // contorno escuro forte, coords inteiras pra não borrar). Desenhados AGORA, já
   // com os marks montados, pra desviar dos ícones: se um nome cai em cima de um
   // ícone de minigame/atividade, sobe acima dele até descolar — nunca dois textos
-  // empilhados. A ilha já tem rótulo próprio (silhueta), então fica de fora.
+  // empilhados.
   const iconPts=marks.filter(m=>!m.faded).map(m=>{const[ix,iy]=P(m.x,m.z);return{x:ix,y:iy};});
   fm.textAlign='center';fm.textBaseline='middle';
   for(const r of mapRegionLabels){
     const txt=r.name.toUpperCase();
-    fm.font=`800 ${r.kind==='city'?12:14}px "IBM Plex Mono",monospace`;
+    fm.font=`800 ${r.kind==='city'?12:14}px "Barlow Condensed",monospace`;
     const hw=fm.measureText(txt).width/2+10;       // meia-largura do texto + folga
     const[bx,by]=P(r.cx,r.cz);
     let lx=Math.round(bx),ly=Math.round(by);
@@ -823,11 +725,13 @@ export function drawFullMap(): void {
       fm.beginPath();fm.arc(px,py,5,0,Math.PI*2);fm.fill();fm.stroke();
       continue;
     }
-    mmCircleIcon(fm,px,py,m,1.25);
+    if(m.big)storyHalo(fm,px,py,m.color||'#ffd24a',1.6);
+    mmCircleIcon(fm,px,py,m,m.big?1.9:1.25);
     if(m.label){
-      fm.font='700 10px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
-      fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText(m.label,px,py+15);
-      fm.fillStyle='#ffe9c9';fm.fillText(m.label,px,py+15);
+      fm.font='700 10px "Barlow Condensed",monospace';fm.textAlign='center';fm.textBaseline='top';
+      const ly=py+(m.big?21:15);
+      fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText(m.label,px,ly);
+      fm.fillStyle=m.big?(m.color||'#ffd24a'):'#ffe9c9';fm.fillText(m.label,px,ly);
     }
   }
   // ---- live NPC overlay ("Show NPCs"): trail to the current destination, then a
@@ -850,7 +754,11 @@ export function drawFullMap(): void {
     }
   }
 
-  // jogador (seta + "YOU"), mesma convenção do radar: norte pra cima, seta gira
+  drawFmPlayer(P);
+}
+// Player marker (arrow + "YOU"), same convention as the radar: north up, the arrow turns.
+function drawFmPlayer(P:(wx:number,wz:number)=>Pt):void{
+  if(!fm)return;
   const pp=refs.playerPos?.();
   if(pp){
     const[px,py]=P(pp.x,pp.z);
@@ -860,7 +768,7 @@ export function drawFullMap(): void {
     fm.fillStyle='#fff';fm.strokeStyle='#000';fm.lineWidth=2;
     fm.beginPath();fm.moveTo(0,-11);fm.lineTo(-8,9);fm.lineTo(0,4.5);fm.lineTo(8,9);
     fm.closePath();fm.fill();fm.stroke();fm.restore();
-    fm.font='700 11px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
+    fm.font='700 11px "Barlow Condensed",monospace';fm.textAlign='center';fm.textBaseline='top';
     fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('YOU',px,py+13);
     fm.fillStyle='#9bf0ff';fm.fillText('YOU',px,py+13);
   }
@@ -906,10 +814,12 @@ export function updateHUD(dt: number): void {
   // segundos (geografia, não um alerta permanente).
   if(hudLocation){
     const pp=!state.interior?refs.playerPos?.():null;
-    const reg=pp?regionAt(pp.x,pp.z):null;
+    // the real street / plaza / landmark name where the player stands
+    const dvPlace=refs.divinoPlace as ((x:number,z:number)=>string)|undefined;
+    const reg=pp?(dvPlace?dvPlace(pp.x,pp.z):regionAt(pp.x,pp.z)):null;
     if(reg!==_region){
       _region=reg;
-      if(reg){hudLocation.textContent=reg;hudLocation.classList.add('show');_regionT=5;}
+      if(reg){hudLocation.textContent=tr(reg);hudLocation.classList.add('show');_regionT=5;}
       else{hudLocation.classList.remove('show');_regionT=0;}
     }
     if(_regionT>0){_regionT-=dt;if(_regionT<=0)hudLocation.classList.remove('show');}
@@ -919,7 +829,7 @@ export function updateHUD(dt: number): void {
   const wh=refs.getWeaponHud?.() as WeaponHud | undefined;
   if(wh){
     drawHudWeaponIcon(wh);
-    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=wh.name;hudWeaponName.style.display='block';_wname=wh.name;}
+    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=tr(wh.name);hudWeaponName.style.display='block';_wname=wh.name;}
     if(wh.infinite){hudWeaponAmmo.style.display='none';}
     else{
       hudWeaponAmmo.style.display='block';
@@ -948,7 +858,7 @@ export function updateHUD(dt: number): void {
   const action=getInteractAction();
   const showPrompt=action.enabled&&!input.touchActive;
   if(showPrompt){
-    const html=`<b>E</b> - ${action.prompt}`;
+    const html=`<b>E</b> - ${tr(action.prompt??"")}`;
     if(html!==_prompt){hudPrompt.innerHTML=html;_prompt=html;}
   }
   if(showPrompt!==_promptShown){hudPrompt.style.display=showPrompt?'block':'none';_promptShown=showPrompt as boolean;}

@@ -7,9 +7,11 @@ import {SHIRT_COLORS,SKIN_TONES,HAIR_COLORS,PANTS_COLORS} from '@/core/palette.t
 // pelvis, torso, head (+ hair, eyes), upper arm, forearm, hand, thigh, calf and shoe.
 // Built purely in code — no downloaded models, no animation clips.
 //
-// Each box is rigidly bound to ONE bone of a tiny 11-bone skeleton and all boxes are
-// merged into a single SkinnedMesh, so a character is still one draw call. The rig API
-// is userData.limbs (bones with .rotation), userData.mouth and userData.fadeMats; the
+// Each box is rigidly bound to ONE bone of a tiny 11-bone skeleton and all boxes —
+// including the mouth and the female long hair — are merged into a single SkinnedMesh,
+// so a character is exactly ONE draw call. The rig API is userData.limbs (bones with
+// .rotation), userData.mouth (a separate talking mouth, shown only while a cut-scene actor
+// speaks) and userData.fadeMats; the
 // simple procedural animations (animatePed walk cycle, poseAiming, the driving/riding
 // poses, the bench press, the dance, the swim stroke) just rotate those bones.
 
@@ -23,6 +25,7 @@ const shoeColors=[0x111117,0x33251e,0xe8e3d2,0x1f2733];
 export const shirtColors=SHIRT_COLORS;
 
 const EYE_COLOR=0x15101e;
+const MOUTH_COLOR=0x3a2622;
 
 // Doll dimensions (metres). Head centre 1.66 / crown ~1.80, like the old doll, so
 // hats, accessories, seat offsets and the gore layer still line up.
@@ -78,6 +81,7 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
   add(box(HEAD+.02,.2,.05, 0,HEAD_Y+.03,-.125, hairColor),HEADB);          // hair back
   for(const sx of[-1,1])
     add(box(.045,.045,.02, sx*.06,HEAD_Y+.02,HEAD/2+.005, EYE_COLOR),HEADB); // eyes
+  add(box(.1,.022,.012, 0,HEAD_Y-.07,HEAD/2+.006, MOUTH_COLOR),HEADB,'mouth'); // mouth (baked in)
   // limbs
   for(const sx of[-1,1]){
     const UA=sx<0?UAL:UAR,LA=sx<0?LAL:LAR,UL=sx<0?ULL:ULR,LL=sx<0?LLL:LLR;
@@ -114,12 +118,16 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
   const g=new THREE.Group();
   g.add(mesh);
 
-  // mouth: its own little box (story.ts scales it while an NPC talks)
-  const mouthMat=new THREE.MeshBasicMaterial({color:0x3a2622});
+  // Talking mouth: a separate box over the baked one, hidden by default — story.ts shows
+  // and scales it only while a cut-scene actor speaks (so the crowd costs no extra draw).
+  const mouthMat=new THREE.MeshBasicMaterial({color:MOUTH_COLOR});
   const mouth=new THREE.Mesh(mouthG,mouthMat);
-  mouth.position.set(0,HEAD_Y-.07,HEAD/2+.006);
+  mouth.position.set(0,HEAD_Y-.07,HEAD/2+.008);
+  mouth.visible=false;
   g.add(mouth);
   g.userData.mouth=mouth;
+  g.userData.bodyMesh=mesh;
+  g.userData.recolorOps=recolorOps;
 
   // rig API: limbs are BONES under the same names (the gore layer collapses `head`).
   g.userData.limbs={
@@ -131,19 +139,30 @@ export function buildToonPlayer({color=0x19e3ff,pantsColor,skin}: {color?: numbe
   g.userData.fadeMats=[mat,mouthMat];
 
   // Runtime re-clothing (clothing store): rewrite the colour of the tagged garment boxes.
-  const colAttr=geo.getAttribute('color') as THREE.BufferAttribute;
-  const _rc=new THREE.Color();
+  // (The mouth box is tagged too, so the female look can repaint it with lipstick.)
   g.userData.clothing={shirt:color,pants,shoe,skin};
   g.userData.hairColor=hairColor;
   g.userData.setClothing=(cols: {shirt?: number;pants?: number;shoe?: number})=>{
     const c=Object.assign(g.userData.clothing,cols) as Record<string,number>;
-    for(const op of recolorOps){
-      _rc.set(c[op.role]);
-      for(let i=op.start;i<op.start+op.count;i++)colAttr.setXYZ(i,_rc.r,_rc.g,_rc.b);
-    }
-    colAttr.needsUpdate=true;
+    for(const role of ['shirt','pants','shoe'])recolorRole(g,role,c[role]);
   };
   return g;
+}
+
+// Rewrite the colour of every body box tagged `role` (the geometry is read from the mesh
+// each time: addFemaleLook swaps it for one with the long hair merged in).
+const _rc=new THREE.Color();
+function recolorRole(g: THREE.Object3D,role: string,color: number): void{
+  const mesh=g.userData.bodyMesh as THREE.SkinnedMesh|undefined;
+  const ops=g.userData.recolorOps as {start:number;count:number;role:string}[]|undefined;
+  if(!mesh||!ops||color==null)return;
+  const colAttr=mesh.geometry.getAttribute('color') as THREE.BufferAttribute;
+  _rc.set(color);
+  for(const op of ops){
+    if(op.role!==role)continue;
+    for(let i=op.start;i<op.start+op.count;i++)colAttr.setXYZ(i,_rc.r,_rc.g,_rc.b);
+  }
+  colAttr.needsUpdate=true;
 }
 
 // Padrão de modelo: build() puro; descriptor pro model-viewer (descoberta automática).
@@ -160,24 +179,32 @@ export function makePlayerPed(color: number): THREE.Group{
 }
 
 // Female look — MANDATORY for every female NPC: long box hair down the back, side
-// locks, red lipstick. One extra (non-skinned) mesh on the doll; idempotent.
+// locks, red lipstick. The hair boxes are merged INTO the body's skinned mesh on the head
+// bone (still one draw call; a decapitation collapses them with the head); idempotent.
 const LIPSTICK=0xe23a64;
 export function addFemaleLook(g: THREE.Object3D): void{
   g.userData.npcFemale=true;
   if(g.userData.femaleLook)return;
   g.userData.femaleLook=true;
   const hairColor=(g.userData.hairColor as number)??0x2a1911;
-  const parts: THREE.BufferGeometry[]=[
-    box(HEAD+.05,.34,.08, 0,HEAD_Y-.1,-.14, hairColor),        // long hair down the back
-  ];
-  for(const sx of[-1,1])parts.push(box(.05,.3,.12, sx*(HEAD/2+.02),HEAD_Y-.06,-.01, hairColor)); // side locks
-  const mat=new THREE.MeshStandardMaterial({roughness:.9,vertexColors:true,flatShading:true});
-  const mesh=new THREE.Mesh(mergeGeometries(parts,false),mat);
-  mesh.castShadow=true;
-  g.add(mesh);
-  // a separate mesh, so a decapitation hides it by hand (js/combat/gore.ts severHead)
-  g.userData.femaleHairMesh=mesh;
-  (g.userData.fadeMats as THREE.Material[]|undefined)?.push(mat);
+  const body=g.userData.bodyMesh as THREE.SkinnedMesh|undefined;
+  if(body){
+    const parts: THREE.BufferGeometry[]=[
+      box(HEAD+.05,.34,.08, 0,HEAD_Y-.1,-.14, hairColor),        // long hair down the back
+    ];
+    for(const sx of[-1,1])parts.push(box(.05,.3,.12, sx*(HEAD/2+.02),HEAD_Y-.06,-.01, hairColor)); // side locks
+    for(const p of parts){                                        // rigid on the head bone (index 2)
+      const nn=p.attributes.position.count;
+      const si=new Uint16Array(nn*4),sw=new Float32Array(nn*4);
+      for(let i=0;i<nn;i++){si[i*4]=2;sw[i*4]=1;}
+      p.setAttribute('skinIndex',new THREE.Uint16BufferAttribute(si,4));
+      p.setAttribute('skinWeight',new THREE.Float32BufferAttribute(sw,4));
+    }
+    const old=body.geometry;
+    body.geometry=mergeGeometries([old,...parts],false); // appended: recolour ranges stay valid
+    old.dispose();
+  }
+  recolorRole(g,'mouth',LIPSTICK);
   const mouth=g.userData.mouth as THREE.Mesh|undefined;
   if(mouth){
     (mouth.material as THREE.MeshBasicMaterial).color.set(LIPSTICK);

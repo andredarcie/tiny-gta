@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {addVehicleLod} from './vehicle-lod.ts';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
 import {beamMat} from './car.ts'; // mesma luz de farol do carro (daynight liga à noite)
@@ -122,7 +123,7 @@ function buildMotorcycle({color=0xd11f3a}: {color?: number}={}): THREE.Group{
 
   // facho do farol no chão à frente (só visível à noite, controlado por daynight)
   const beam=new THREE.Mesh(beamGeo,beamMat);
-  beam.rotation.x=-Math.PI/2;beam.position.set(0,.12,3.4);beam.renderOrder=2;g.add(beam);
+  beam.rotation.x=-Math.PI/2;beam.position.set(0,.12,3.4);beam.renderOrder=2;beam.userData.lodKeep=true;g.add(beam);
 
   g.userData.wheels=[fw,rw];
   g.userData.front=[fork];
@@ -136,4 +137,4 @@ export default {category:'Vehicles',label:'Motorcycle',build:buildMotorcycle,
             {label:'Motorcycle — gold',opts:{color:0xe0a52a}}]};
 
 // Compat: gameplay usa makeMotorcycle(color) e espera a moto já na cena.
-export function makeMotorcycle(color: number): THREE.Group{const g=buildMotorcycle({color});scene.add(g);return g;}
+export function makeMotorcycle(color: number): THREE.Group{const g=buildMotorcycle({color});addVehicleLod(g,'bike:'+color);scene.add(g);return g;}
