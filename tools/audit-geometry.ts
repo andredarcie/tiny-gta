@@ -100,6 +100,9 @@ const jobs:[string,()=>Promise<THREE.Object3D>][]=[
   ['ciclista-aco',async()=>(await M('ciclista-aco.ts')).default.build({pedal:.3})],
   ['trator-mahindra',async()=>(await M('trator-mahindra.ts')).default.build({canopy:true})],
   ...['pulverizador','pulverizadorAzul','distribuidor','carreta','carregador'].map(k=>['implemento-'+k,async()=>(await M('implemento-agricola.ts')).default.build({kind:k})] as [string,()=>Promise<THREE.Object3D>]),
+  ...['saude3','oftalmo','congregacao','espirita','saosebastiao','pm','delegacia','vicentenasser','estadio','cemiterio','dombosco','rosario','jorgegalhano','pedroribeiro']
+    .map(id=>['pub-'+id,async()=>{const{PUBLICOS}=await M('publicos.ts'),{PRACAS}=await M('pracas-centro.ts');
+      const p=[...PUBLICOS,...PRACAS].find((q:any)=>q.id===id);return p.build(ground(p.origin));}] as [string,()=>Promise<THREE.Object3D>]),
   ['lojas',async()=>{
     const{LOJAS}=await import('../src/js/world/divinolandia/comercio/lojas.ts');
     const{planLojas}=await import('../src/js/world/divinolandia/comercio/plan.ts');

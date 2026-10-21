@@ -320,7 +320,7 @@ export function onFace(g:THREE.Group,f:Face,m:THREE.Material,s:number,y:number,w
 }
 // an opening drawn on a face: the dark (or glass) recess, a frame round it, mullions
 export function opening(g:THREE.Group,f:Face,s:number,y:number,w:number,h:number,o:{fill:THREE.Material;frame?:string;panes?:number}):void{
-  onFace(g,f,o.fill,s,y,w,h,.015);
+  onFace(g,f,o.fill,s,y,w,h,.022);                   // (in front of a painted stripe or plinth band)
   const fr=flat(o.frame??'#3b3d3f'),t=.06;
   onFace(g,f,fr,s,y+h-t,w+t*2,t,0,.08);onFace(g,f,fr,s,y,w+t*2,t,0,.08);
   onFace(g,f,fr,s-w/2-t/2,y,t,h,0,.08);onFace(g,f,fr,s+w/2+t/2,y,t,h,0,.08);

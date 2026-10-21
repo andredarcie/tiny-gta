@@ -45,6 +45,8 @@ import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../.
 import EntornoCiclista,{ORIGIN as ENT_O,ENTORNO_FOOT as ENT_FOOT} from '../../../assets/models/divinolandia/entorno-ciclista.ts';
 import Mahindra,{ORIGIN as MAH_O,MAHINDRA_FOOT as MAH_FOOT} from '../../../assets/models/divinolandia/concessionaria-mahindra.ts';
 import {buildLoja} from '../../../assets/models/divinolandia/loja-comercio.ts';
+import {PUBLICOS,PUBLICOS_OSM} from '../../../assets/models/divinolandia/publicos.ts';
+import {PRACAS} from '../../../assets/models/divinolandia/pracas-centro.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
@@ -151,6 +153,7 @@ export function buildDivinolandia():void{
     const k=p.k as Surface|'hospital'|'torre';
     if(k==='hospital'||k==='torre')continue;
     if(p.n&&MATRIZ_SQUARES.has(p.n))continue;             // laid out 1:1 below (praca-alcindo/ladislau)
+    if(p.n&&SURVEYED_GROUNDS.has(p.n))continue;           // squares and grounds rebuilt from Street View (publicos.ts, pracas-centro.ts)
     if(p.n!=='Escola Municipal Euclides da Cunha')ground.add(makeSurface(k,pts,H,nearGrid));
     let cx=0,cz=0;for(const q of pts){cx+=q[0];cz+=q[1];}cx/=pts.length;cz/=pts.length;
     if(k==='praca'||k==='verde'){
@@ -241,6 +244,7 @@ export function buildDivinolandia():void{
   }
   for(const b of D.buildings){
     if(b.kind==='townhall')continue;                      // built above
+    if(PUBLICOS_OSM.has(b.name??'')&&(b.name||Math.hypot(b.cx-590,b.cz-322)<10))continue;   // rebuilt from Street View (publicos.ts)
     const [bx,bz]=w([b.cx,b.cz]),th=-b.rot;
     const fl=b.kind==='church'||b.kind==='place_of_worship'?1:2;
     const f=slopeFloor(bx,bz,Math.max(8,b.w),Math.max(8,b.d),b.rot);
@@ -295,6 +299,16 @@ export function buildDivinolandia():void{
     }
   }
 
+  // ---------- public buildings, grounds and squares rebuilt from Street View (publicos.ts,
+  // pracas-centro.ts), each on the real slope of its lot ----------
+  for(const p of[...PUBLICOS,...PRACAS]){
+    const[ox,oz]=w(p.origin),y0=H(ox,oz);
+    const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
+    at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
+    const m=p.build(at);m.position.set(ox,y0,oz);placeStatic(m);
+    for(const[x,z,bw,bd,rot,ht]of p.foot){const[wx,wz]=w([x,z]);addObb(wx,wz,bw,bd,rot,H(wx,wz)+ht);}
+  }
+
   // ---------- the real businesses (supermarkets, banks, shops), from Street View ----------
   // (comercio/lojas.ts + plan.ts): each a Fachada dressed as the shop it is, on the
   // sidewalk line of its street; the generated houses under them are left out below
@@ -318,6 +332,7 @@ export function buildDivinolandia():void{
   for(let i=0;i<D.houses.length;i++){
     const[hx0,hz0,hw,hd,rot,fl,c,roof,shop]=D.houses[i];
     if(houseOnSite(hx0,hz0,hw,hd,rot))continue;           // the lot of a game place (sites-table.ts)
+    if(PUB_SOLIDS.some(([sx,sz,sw,sd,sr])=>Math.hypot(sx-hx0,sz-hz0)<60&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),rectCorners(sx,sz,sw+1,sd+1,sr))))continue;   // a rebuilt public building
     if(lojas.some(p=>Math.hypot(p.x-hx0,p.z-hz0)<40&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),lojaCorners(p,.3))))continue;   // a real business stands there
     if(rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),EUCLIDES_LOT))continue;   // the school's campus and its entrance
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
@@ -609,6 +624,10 @@ function placeName(x:number,z:number):string{
   return name;
 }
 
+// the collision boxes of the rebuilt public buildings (town-local): no generated house there
+const PUB_SOLIDS=PUBLICOS.flatMap(p=>p.foot);
+const SURVEYED_GROUNDS=new Set(['Praça Dom Bosco','Praça Nossa Senhora do Rosário','Praça Jorge Galhano','Praça Pedro Ribeiro de Paiva',
+  'Escola Estadual Deputado Vicente Nasser','Estádio Municipal Armando Grespan','Cemitério Municipal']);
 // the two squares of the Matriz, laid out 1:1 (praca-alcindo.ts / praca-ladislau.ts)
 const MATRIZ_SQUARES=new Set(['Praça Doutor Alcindo Cardoso de Paiva','Praça Professor Ladislau Rodrigues Pinto']);
 function inMatrizSquare(lx:number,lz:number):boolean{
