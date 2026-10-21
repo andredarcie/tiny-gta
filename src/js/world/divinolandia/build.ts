@@ -37,13 +37,17 @@ import PracaLadislau,{LADISLAU,MATRIZ_AT} from '../../../assets/models/divinolan
 import {CORETO_R} from '../../../assets/models/rural/coreto.ts';
 import type {GroundAt} from '../../../assets/models/divinolandia/praca-chao.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
+import PostoTriangulo,{ORIGIN as TRI_O,POSTO_FOOT as TRI_FOOT} from '../../../assets/models/divinolandia/posto-triangulo.ts';
+import PostoPassoni,{ORIGIN as PAS_O,POSTO_FOOT as PAS_FOOT} from '../../../assets/models/divinolandia/posto-passoni.ts';
+import PostoLurain,{ORIGIN as LUR_O,POSTO_FOOT as LUR_FOOT} from '../../../assets/models/divinolandia/posto-lurain.ts';
+import PostoTaurus,{ORIGIN as TAU_O,POSTO_FOOT as TAU_FOOT} from '../../../assets/models/divinolandia/posto-taurus.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
 import {waterLines} from './water.ts';
-import {SITE_TABLE,onSiteLot,siteLotPolygon,type SiteId} from './sites-table.ts';
+import {SITE_TABLE,ALL_LOTS,onSiteLot,siteLotPolygon,type LotId} from './sites-table.ts';
 
 type P2=[number,number];
 const H=divinoHeight;
@@ -249,6 +253,16 @@ export function buildDivinolandia():void{
   }
   // the sanatorium's glass entrance is the street door of the game's hospital (models/city/hospital.ts)
 
+  // ---------- the four fuel stations, 1:1 from Street View (posto-*.ts): each is built in
+  // town-local metres and stands on the real slope of its lot (sites-table.ts DRAPED_LOTS) ----------
+  for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT]] as const){
+    const[ox,oz]=w(origin),y0=H(ox,oz);
+    const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
+    at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
+    const m=model.build({groundAt:at});m.position.set(ox,y0,oz);placeStatic(m);
+    for(const[x,z,bw,bd,rot,ht]of foot){const[wx,wz]=w([x,z]);addObb(wx,wz,bw,bd,rot,H(wx,wz)+ht);}
+  }
+
   // ---------- Morro da Torre: the tower + the mirante deck facing the town ----------
   {
     const [tx,tz]=w(L.torre),th=yawTo(tx,tz,DIV_OX,DIV_OZ),y=H(tx,tz);
@@ -307,7 +321,7 @@ export function buildDivinolandia():void{
     }),
     houses:[...D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),...surveyedLots,
       ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot}))],
-    protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(SITE_TABLE) as SiteId[]).map(id=>siteLotPolygon(id,3))]
+    protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(ALL_LOTS) as LotId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),
     surveyedStreets:[...SURVEYED],
   }).map(route=>route.map(site=>({...site,y:H(site.x,site.z)})));
@@ -411,8 +425,8 @@ const EUCLIDES_LOT:P2[]=(()=>{
 function houseOnSite(x:number,z:number,hw:number,hd:number,rot:number):boolean{
   if(onSiteLot(x,z))return true;
   const house=rectCorners(x,z,hw,hd,rot);
-  return(Object.keys(SITE_TABLE) as SiteId[]).some(id=>{
-    const s=SITE_TABLE[id];
+  return(Object.keys(ALL_LOTS) as LotId[]).some(id=>{
+    const s=ALL_LOTS[id];
     return Math.hypot(s.x-x,s.z-z)<(Math.hypot(s.w,s.d)+Math.hypot(hw,hd))/2+2&&rectsOverlap(house,siteLotPolygon(id,2));
   });
 }

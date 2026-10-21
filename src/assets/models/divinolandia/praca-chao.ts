@@ -35,6 +35,9 @@ export const settM=matte({map:settTexture(),...off(3)});
 const TILE=new Map<THREE.Material,[number,number]>([[lawnM,[GRAMA_TILE_M,GRAMA_TILE_M]],[pathM,[SEXT_W,SEXT_H]],[pathEdgeM,[SEXT_W,SEXT_H]],
   [walkM,[SEXT_W,SEXT_H]],[walkEdgeM,[SEXT_W,SEXT_H]],[zigzagM,[ZIGZAG_TILE_M,ZIGZAG_TILE_M]],[stoneM,[1,1]],[soilM,[1,1]],[stepsM,[1,1]],[settM,[SETT_TILE_M,SETT_TILE_M]],[stripeM,[SEXT_W,SEXT_H]]]);
 
+// texture tile (metres) of a material defined elsewhere (the gas-station kit's concrete)
+export function tileSize(m:THREE.Material,tw:number,th=tw):THREE.Material{TILE.set(m,[tw,th]);return m;}
+
 // Drape a polygon (with optional holes) on the ground. maxEdge subdivides the triangles so
 // the surface follows the slope; `rot` turns the texture (radians) for paths at an angle.
 export function drape(pts:P2[],at:GroundAt,lift:number,m:THREE.Material,holes:P2[][]=[],maxEdge=2,rot=0):THREE.Mesh{

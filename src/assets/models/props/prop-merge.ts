@@ -81,7 +81,27 @@ function matSig(m:THREE.Material,cast:boolean,receive:boolean,order:number):stri
     (a.emissive?a.emissive.getHexString():'-')+'|'+(a.emissiveIntensity??1)+'|'+
     (m.depthWrite?1:0)+'|'+(a.fog?1:0)+'|'+(a.toneMapped?1:0)+'|'+(a.alphaTest??0)+'|'+
     (a.map?a.map.uuid:'-')+'|'+(a.emissiveMap?a.emissiveMap.uuid:'-')+'|'+
+    (m.polygonOffset?m.polygonOffsetFactor+','+m.polygonOffsetUnits:'-')+'|'+
     (cast?1:0)+'|'+(receive?1:0)+'|'+order;
+}
+
+// One material group of a multi-material mesh (a box with a sign on one face) as its own
+// non-indexed geometry: merged geometries keep no groups, so a material ARRAY can't be
+// merged as is — each face goes to the bucket of its own material.
+function groupSlices(m:THREE.Mesh):{geo:THREE.BufferGeometry;mat:THREE.Material}[]{
+  const mats=m.material as THREE.Material[],src=m.geometry.index?m.geometry.toNonIndexed():m.geometry;
+  const groups=src.groups.length?src.groups:[{start:0,count:src.getAttribute('position').count,materialIndex:0}];
+  const out:{geo:THREE.BufferGeometry;mat:THREE.Material}[]=[];
+  for(const gr of groups){
+    const mat=mats[gr.materialIndex??0];if(!mat)continue;
+    const geo=new THREE.BufferGeometry();
+    for(const k in src.attributes){
+      const at=src.attributes[k] as THREE.BufferAttribute;
+      geo.setAttribute(k,new THREE.BufferAttribute(at.array.slice(gr.start*at.itemSize,(gr.start+gr.count)*at.itemSize),at.itemSize,at.normalized));
+    }
+    out.push({geo,mat});
+  }
+  return out;
 }
 
 // Funde IN-PLACE os meshes ESTÁTICOS (matrixAutoUpdate=false) da sub-árvore de `group`
@@ -109,11 +129,13 @@ export function mergeStatic(group:THREE.Object3D,preserve:Set<THREE.Object3D>=ne
   if(statics.length<2)return; // nada a ganhar
   const buckets=new Map<string,{geos:THREE.BufferGeometry[];mat:THREE.Material;cast:boolean;receive:boolean;order:number}>();
   for(const m of statics){
-    const mat=m.material as THREE.Material;
-    const sig=matSig(mat,!!m.castShadow,!!m.receiveShadow,m.renderOrder);
-    let b=buckets.get(sig);
-    if(!b){b={geos:[],mat,cast:!!m.castShadow,receive:!!m.receiveShadow,order:m.renderOrder};buckets.set(sig,b);}
-    b.geos.push(m.geometry.clone().applyMatrix4(m.matrixWorld));
+    const parts=Array.isArray(m.material)?groupSlices(m):[{geo:m.geometry.clone(),mat:m.material}];
+    for(const{geo,mat}of parts){
+      const sig=matSig(mat,!!m.castShadow,!!m.receiveShadow,m.renderOrder);
+      let b=buckets.get(sig);
+      if(!b){b={geos:[],mat,cast:!!m.castShadow,receive:!!m.receiveShadow,order:m.renderOrder};buckets.set(sig,b);}
+      b.geos.push(geo.applyMatrix4(m.matrixWorld));
+    }
   }
   group.clear(); // solta todos os filhos; readiciona os preservados + os fundidos
   for(const k of keep)group.add(k); // mesma matriz local; group na identidade -> world inalterado
