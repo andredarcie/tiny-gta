@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {leafMat,leafMass} from './copa.ts';
 import {Kit,P,STONE,CORR,plain,holedWall,holeOf,fillOpening,wallX,wallZ,dirt,railing,roof,shade,
   meterBox,houseNumber,waterTank,dish,acUnit,solarHeater,FH,type Op,type RoofKind} from './kit-fachada.ts';
 
@@ -34,15 +35,15 @@ export type FachadaOpts={
   seed?:number;
 };
 export const FLOOR_H=FH;
-const leafM=new THREE.MeshLambertMaterial({color:0x3e6b2f,flatShading:true});
+const leafM=leafMat(0x3e5a32);
 const glassRail=new THREE.MeshLambertMaterial({color:'#8fc0b2',transparent:true,opacity:.45,side:THREE.DoubleSide,depthWrite:false});
 
 // the front wall (muro) at the sidewalk: plaster/stone/panels/corrugated/hedge/railing + gates
 function frontWall(k:Kit,o:FachadaOpts,base:number):void{
   const f=o.front||{h:2.2},w=o.w,fh=f.h,st=f.style||'plain',fc=f.c||o.wall,gates=f.gates||[];
   if(st==='hedge'){
-    for(let x=-w/2+.6;x<w/2;x+=1.1){const b=new THREE.Mesh(new THREE.IcosahedronGeometry(.9,1),leafM);
-      b.position.set(x,fh*.55,-.5);b.scale.set(1,fh/1.6,.75);b.castShadow=true;k.add(b);}
+    for(let x=-w/2+.6;x<w/2;x+=1.1){const b=new THREE.Mesh(leafMass(1,.24,2),leafM);
+      b.position.set(x,fh*.55,-.5);b.scale.set(.9,.9*fh/1.6,.68);b.castShadow=true;k.add(b);}
     return;
   }
   if(st==='corrugated'){
@@ -116,7 +117,7 @@ export function buildFachada(o:FachadaOpts):THREE.Group{
       const x=c.getContext('2d')!;x.fillStyle=s.bg;x.fillRect(0,0,c.width,c.height);
       x.strokeStyle=s.fg;x.lineWidth=4;x.strokeRect(6,6,c.width-12,c.height-12);
       x.fillStyle=s.fg;x.textAlign='center';x.textBaseline='middle';
-      x.font=`700 ${Math.round(c.height*.42)}px "IBM Plex Mono",monospace`;x.fillText(s.text,c.width/2,c.height/2,c.width-24);
+      x.font=`700 ${Math.round(c.height*.42)}px "Barlow Condensed",monospace`;x.fillText(s.text,c.width/2,c.height/2,c.width-24);
       const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
       const edge=plain('#d0d0d0');
       const p=new THREE.Mesh(new THREE.BoxGeometry(s.w,s.h,.06),[edge,edge,edge,edge,new THREE.MeshLambertMaterial({map:t}),edge]);

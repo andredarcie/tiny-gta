@@ -101,7 +101,7 @@ docs/divinolandia/relevo/dem-u16.bin.gz  ┴─ tools/bake-divinolandia.ts ─�
 
 - **Escala 1:1**, metros locais centrados na Igreja Matriz (x = leste, z = sul). No mundo do jogo a cidade fica deslocada em (+5000, +5000), longe do mapa clássico.
 - **Relevo**: SRTM. Grade jogável de 8 m (3 × 3,3 km), com as serras ao redor numa grade de 48 m (~12 km). Física e visual usam **os mesmos triângulos**.
-- O bake **nivela o leito das ruas** (sem carro andando torto na encosta), **cava o Rio do Peixe** num canal sempre descendo e **aplaina os terrenos** da Matriz, do hospital e da torre.
+- O bake **nivela o leito das ruas** (sem carro andando torto na encosta), **cava o Rio do Peixe** num canal estreito sempre descendo (margens no nível da água; onde uma rua cruza, o leito dela fica acima da água, como um bueiro) e **aplaina os terrenos** da Matriz, do hospital e da torre. A largura da água desenhada sai do próprio relevo (`water.ts` acha a margem de cada lado), e ruas/praças são recortadas pelos triângulos do terreno para ficarem coladas nele.
 - **Ruas**: todas as 273 vias do OSM: asfalto, **terra roxa** nas estradas de terra, calçada nas ruas do centro e postes.
 - **Casas**: o OSM quase não tem prédios mapeados em Divinolândia, então o bake **enfileira casas ao longo das ruas reais** (3.832), só dentro da área urbana do OSM. Ficam de fora ruas, praças, lotes vagos ("L.V"), rios e marcos. São casas térreas e sobrados de cal colorida, telhado de telha ou platibanda, e no centro o térreo vira comércio (porta de aço + toldo).
 - **Vegetação**: mata ciliar ao longo de todos os córregos, manchas de mata e **cafezais em curva de nível** nas encostas.
@@ -133,6 +133,7 @@ A v1 é **jogável** pelo botão *Divinolândia* na tela inicial (ou `?map=divin
 
 ## 8. Fontes e licenças
 
+- **Onde há casa de verdade** (`edificacoes/`): o bake só põe casa gerada onde algum mapa mostra construção — as pegadas de edificações detectadas por ML da **Microsoft Global ML Building Footprints** (licença **ODbL**, <https://github.com/microsoft/GlobalMLBuildingFootprints>; quadkey 210133323, versão 2026-02-03, recortado em `edificacoes/ms-footprints.json`), os prédios desenhados no **mapa do Google Maps**, ou as zonas traçadas à mão sobre o **satélite do Google Maps** onde há casas que nenhum mapa tem ainda (`edificacoes/zonas-construidas.json`, hoje o conjunto habitacional a oeste). Os tiles do Google (mapa z18 + satélite z19) são só referência, fora do git (`scripts/fetch-satelite.py`); `scripts/construido.py` junta tudo em `edificacoes/construido-1m.bin.gz`.
 - **OpenStreetMap**: © colaboradores do OpenStreetMap, licença **ODbL** (<https://www.openstreetmap.org/copyright>). Extraído via Overpass API em 2026-10-15 (`osm/urbano.json`, `osm/limite-municipio.json`, `osm/place.json`; consultas em `scripts/*.overpassql`).
 - **Relevo**: SRTM (NASA/USGS, domínio público) via **AWS Terrain Tiles** (formato *terrarium*, Mapzen/Tilezen), zoom 15.
 - **IBGE**: API de dados (<https://servicodados.ibge.gov.br>) e Biblioteca IBGE (histórico do município).

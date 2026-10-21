@@ -39,7 +39,7 @@ function signTexture(): THREE.CanvasTexture{
   const c=document.createElement('canvas');c.width=256;c.height=48;
   const x=c.getContext('2d')!;
   x.fillStyle='#14091f';x.fillRect(0,0,256,48);
-  x.font='900 34px "IBM Plex Mono",monospace';x.textAlign='center';x.textBaseline='middle';
+  x.font='900 34px "Barlow Condensed",monospace';x.textAlign='center';x.textBaseline='middle';
   x.fillStyle='#ffd24a';x.fillText('PHONE',128,26);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;

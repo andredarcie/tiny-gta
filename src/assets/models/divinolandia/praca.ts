@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {GROUND} from '@/core/palette.ts';
-import {drapePolygon} from './terreno.ts';
+import {drapePolygon,type DrapeGrid} from './terreno.ts';
 
 // Ground surfaces laid on the real terrain from OSM polygons: the paved town plazas
 // (praças: Portuguese-stone paving + garden beds), grass greens, the football pitches
@@ -15,9 +15,10 @@ const wallM=matte({color:0xf0ece2}),tombM=matte({color:0xe6e2d8}),capM=matte({co
 type HAt=(x:number,z:number)=>number;
 export type Surface='praca'|'verde'|'campo'|'estadio'|'cemiterio'|'escola';
 
-export function makeSurface(kind:Surface,pts:[number,number][],hAt:HAt):THREE.Mesh{
+// (lift: just under the street ribbons, so a street always shows over a plaza edge it crosses)
+export function makeSurface(kind:Surface,pts:[number,number][],hAt:HAt,grid?:DrapeGrid):THREE.Mesh{
   const mat=kind==='praca'?pavingMat:kind==='verde'?gardenMat:kind==='campo'||kind==='estadio'?pitchMat:yardMat;
-  const m=new THREE.Mesh(drapePolygon(pts,hAt,.16,4),mat);
+  const m=new THREE.Mesh(drapePolygon(pts,hAt,.13,4,grid),mat);
   m.receiveShadow=true;m.matrixAutoUpdate=false;
   return m;
 }
@@ -25,8 +26,9 @@ export function makeSurface(kind:Surface,pts:[number,number][],hAt:HAt):THREE.Me
 export function makeGardenBed(r:number):THREE.Mesh{
   const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,.3,14),gardenMat);m.position.y=.15;return m;
 }
-// Whitewashed wall along a closed polygon outline (cemetery), standing on the terrain.
-export function makeWall(pts:[number,number][],hAt:HAt,h=2.2):THREE.Group{
+// Whitewashed wall along a closed polygon outline (cemetery), standing on the terrain, in
+// pieces of up to 6 m; `open(x,z)` leaves a gap where a piece would stand across a street.
+export function makeWall(pts:[number,number][],hAt:HAt,h=2.2,open?:(x:number,z:number)=>boolean):THREE.Group{
   const g=new THREE.Group();
   for(let i=0;i<pts.length;i++){
     const[ax,az]=pts[i],[bx,bz]=pts[(i+1)%pts.length],L=Math.hypot(bx-ax,bz-az);
@@ -34,6 +36,7 @@ export function makeWall(pts:[number,number][],hAt:HAt,h=2.2):THREE.Group{
     const n=Math.ceil(L/6);
     for(let k=0;k<n;k++){
       const x0=ax+(bx-ax)*k/n,z0=az+(bz-az)*k/n,x1=ax+(bx-ax)*(k+1)/n,z1=az+(bz-az)*(k+1)/n;
+      if(open&&(open(x0,z0)||open(x1,z1)||open((x0+x1)/2,(z0+z1)/2)))continue;
       const y=Math.min(hAt(x0,z0),hAt(x1,z1)),top=Math.max(hAt(x0,z0),hAt(x1,z1))+h;
       const seg=new THREE.Mesh(new THREE.BoxGeometry(L/n+.25,top-y+.6,.3),wallM);
       seg.position.set((x0+x1)/2,(y-.6+top)/2,(z0+z1)/2);seg.rotation.y=-Math.atan2(z1-z0,x1-x0);

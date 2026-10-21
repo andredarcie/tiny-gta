@@ -20,7 +20,7 @@ import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt
 import {addObb,setPlayBounds} from './collide.ts';
 import {makeTerrainMesh,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
 import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
-import {addCasa,finalizeCasas,casaTop} from '../../../assets/models/divinolandia/casa.ts';
+import {addCasa,finalizeCasas,casaTop,EAVE,type CasaSpec} from '../../../assets/models/divinolandia/casa.ts';
 import {makeTrees,makeCoffee} from '../../../assets/models/divinolandia/vegetacao.ts';
 import {makeSurface,makeWall,makeTomb,makeGoal,type Surface} from '../../../assets/models/divinolandia/praca.ts';
 import {makePostes,makePoleWires} from '../../../assets/models/divinolandia/poste.ts';
@@ -35,12 +35,14 @@ import Igreja,{IGREJA_FOOT} from '../../../assets/models/divinolandia/igreja-mat
 import PracaAlcindo,{ALCINDO} from '../../../assets/models/divinolandia/praca-alcindo.ts';
 import PracaLadislau,{LADISLAU,MATRIZ_AT} from '../../../assets/models/divinolandia/praca-ladislau.ts';
 import {CORETO_R} from '../../../assets/models/rural/coreto.ts';
+import type {GroundAt} from '../../../assets/models/divinolandia/praca-chao.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
+import {waterLines} from './water.ts';
 import {SITE_TABLE,onSiteLot,siteLotPolygon,type SiteId} from './sites-table.ts';
 
 type P2=[number,number];
@@ -85,6 +87,7 @@ export function buildDivinolandia():void{
 
   // ---------- streets, sidewalks, water ----------
   const SURVEYED=new Set(STREETS.map(s=>s.rua));
+  const surveyedLots:{x:number;z:number;width:number;depth:number;rotation:number}[]=[];
   const lines:StreetLine[]=D.roads.map(r=>{
     const pts=r.pts.map(p=>w(p));
     const mid=pts[Math.floor(pts.length/2)];
@@ -94,7 +97,20 @@ export function buildDivinolandia():void{
     const sett=r.sf==='sett'||!!r.p&&Math.hypot(mid[0]-DIV_OX-45,mid[1]-DIV_OZ-5)<130;
     return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
-  scene.add(makeStreets(lines,H));
+  scene.add(makeStreets(lines,H,nearGrid));
+  // is (x,z) within `margin` of a street's drawn width (roadway + sidewalk)?
+  const SC=24,streetHash=new Map<string,{ax:number;az:number;bx:number;bz:number;r:number}[]>();
+  for(const l of lines)for(let i=1;i<l.pts.length;i++){
+    const[ax,az]=l.pts[i-1],[bx,bz]=l.pts[i],seg={ax,az,bx,bz,r:l.hw+(l.sidewalk?2.1:0)},m=seg.r+3;
+    for(let a=Math.floor((Math.min(ax,bx)-m)/SC);a<=Math.floor((Math.max(ax,bx)+m)/SC);a++)
+      for(let b=Math.floor((Math.min(az,bz)-m)/SC);b<=Math.floor((Math.max(az,bz)+m)/SC);b++){
+        const key=a+'_'+b;let arr=streetHash.get(key);if(!arr){arr=[];streetHash.set(key,arr);}arr.push(seg);
+      }
+  }
+  const nearStreet=(x:number,z:number,margin:number):boolean=>(streetHash.get(Math.floor(x/SC)+'_'+Math.floor(z/SC))||[]).some(g=>{
+    const dx=g.bx-g.ax,dz=g.bz-g.az,l2=dx*dx+dz*dz||1;let t=((x-g.ax)*dx+(z-g.az)*dz)/l2;t=t<0?0:t>1?1:t;
+    return Math.hypot(x-g.ax-t*dx,z-g.az-t*dz)<g.r+Math.min(margin,3);
+  });
 
   // ---------- surveyed streets (lot by lot from Street View) ----------
   // the bake chained each one into a single polyline (ruas/spec.ts chainPieces), cut into
@@ -106,6 +122,7 @@ export function buildDivinolandia():void{
     const street=new THREE.Group();                          // all lots merged together (few draw calls)
     const r=buildSurveyedStreet(spec,pts,D.roads.find(r=>r.n===spec.rua)!.hw,H,o=>{street.add(o);});
     scene.add(r.wires);                                      // lines aren't merged with the meshes
+    surveyedLots.push(...r.footprints);
     placeStatic(street);
   }
   // ---------- the cell towers of the centre (seen over the roofs from the street) ----------
@@ -113,7 +130,7 @@ export function buildDivinolandia():void{
     const[x,z]=w(p);const t=Torre.build({h:38,painted:false,mirante:false});t.position.set(x,H(x,z),z);placeStatic(t);
     addObb(x,z,3.6,3.6,0,H(x,z)+40);
   }
-  scene.add(makeWater(D.waters.map(x=>({hw:x.hw,pts:x.pts.map(p=>[p[0]+DIV_OX,p[1]+DIV_OZ,p[2]] as [number,number,number])}))));
+  scene.add(makeWater(waterLines));
 
   // ---------- plazas, greens, pitches, cemetery, schools ----------
   const ground=new THREE.Group();
@@ -124,22 +141,26 @@ export function buildDivinolandia():void{
     const k=p.k as Surface|'hospital'|'torre';
     if(k==='hospital'||k==='torre')continue;
     if(p.n&&MATRIZ_SQUARES.has(p.n))continue;             // laid out 1:1 below (praca-alcindo/ladislau)
-    if(p.n!=='Escola Municipal Euclides da Cunha')ground.add(makeSurface(k,pts,H));
+    if(p.n!=='Escola Municipal Euclides da Cunha')ground.add(makeSurface(k,pts,H,nearGrid));
     let cx=0,cz=0;for(const q of pts){cx+=q[0];cz+=q[1];}cx/=pts.length;cz/=pts.length;
     if(k==='praca'||k==='verde'){
       // a ring of shade trees + benches around the middle of each plaza
+      // (an OSM plaza is no circle: keep only the spots well inside it and off the streets)
       let r=1e9;for(const q of pts)r=Math.min(r,Math.hypot(q[0]-cx,q[1]-cz));
       const n=Math.max(4,Math.min(10,Math.floor(r/4)));
-      for(let i=0;i<n;i++){const a=i/n*Math.PI*2,rr=r*.62;const x=cx+Math.cos(a)*rr,z=cz+Math.sin(a)*rr;trees.push({x,y:H(x,z),z,s:.75,r:a});}
+      for(let i=0;i<n;i++){const a=i/n*Math.PI*2,rr=r*.62;const x=cx+Math.cos(a)*rr,z=cz+Math.sin(a)*rr;
+        if(pointIn([x,z],pts,2.5)&&!nearStreet(x,z,1.5)&&!inOsmBuilding(x,z,2.5))trees.push({x,y:H(x,z),z,s:.75,r:a});}
       if(k==='praca'&&r>8)for(let i=0;i<4;i++){
         const a=i*Math.PI/2+.4,x=cx+Math.cos(a)*r*.38,z=cz+Math.sin(a)*r*.38;
+        if(!pointIn([x,z],pts,1.5)||nearStreet(x,z,1.2)||inOsmBuilding(x,z,1))continue;
         const b=Bench.build();b.position.set(x,H(x,z)+.15,z);b.rotation.y=-a+Math.PI/2;deco.add(b);
       }
     }else if(k==='cemiterio'){
-      deco.add(makeWall(pts,H));
+      // (the streets and the driveways through it stay open: a gate in the wall, no graves)
+      deco.add(makeWall(pts,H,2.2,(x,z)=>nearStreet(x,z,.3)));
       for(let a=-60;a<=60;a+=3.2)for(let b=-60;b<=60;b+=4.6){
         const x=cx+a,z=cz+b;
-        if(!pointIn([x,z],pts,3))continue;
+        if(!pointIn([x,z],pts,3)||nearStreet(x,z,1.3))continue;
         const t=makeTomb();t.position.set(x,H(x,z),z);deco.add(t);
       }
     }else if(k==='campo'||k==='estadio'){
@@ -160,8 +181,9 @@ export function buildDivinolandia():void{
         obbFromModel(schoolX,schoolZ,schoolYaw,0,EUCLIDES_SITE.centerZ,EUCLIDES_SITE.width,EUCLIDES_SITE.depth,baseHeight+10);
       }else{
         const o=longAxis(pts),bw=Math.min(40,o.len*.55),th=Math.atan2(-Math.sin(o.a),Math.cos(o.a));
-        const b=Predio.build({w:bw,d:11,floors:2,color:0xdfe6cf});b.position.set(cx,H(cx,cz),cz);b.rotation.y=th;deco.add(b);
-        obbFromModel(cx,cz,th,0,0,bw,11,H(cx,cz)+8);
+        const f=slopeFloor(cx,cz,bw,11,-th);
+        const b=Predio.build({w:bw,d:11,floors:2,color:0xdfe6cf,base:f.base});b.position.set(cx,f.y,cz);b.rotation.y=th;deco.add(b);
+        obbFromModel(cx,cz,th,0,0,bw,11,f.y+8);
       }
     }
   }
@@ -177,7 +199,9 @@ export function buildDivinolandia():void{
   const [px,pz]=w([L.pracaMatriz.x,L.pracaMatriz.z]);
   const square=(sq:{x:number;z:number;rot:number})=>{
     const ox=sq.x+DIV_OX,oz=sq.z+DIV_OZ,c=Math.cos(sq.rot),s=Math.sin(sq.rot),y0=H(ox,oz);
-    const at=(u:number,v:number):number=>H(ox+u*c-v*s,oz+u*s+v*c)-y0;
+    const at:GroundAt=(u:number,v:number):number=>H(ox+u*c-v*s,oz+u*s+v*c)-y0;
+    // the terrain grid's lines in the square's frame, so its surfaces lie exactly on the ground
+    at.grid=[(u,v)=>(ox+u*c-v*s-nearGrid.x0)/nearGrid.cell,(u,v)=>(oz+u*s+v*c-nearGrid.z0)/nearGrid.cell];
     const world=(u:number,v:number):[number,number]=>[ox+u*c-v*s,oz+u*s+v*c];
     return{ox,oz,y0,th:-sq.rot,at,world};
   };
@@ -209,9 +233,10 @@ export function buildDivinolandia():void{
     if(b.kind==='townhall')continue;                      // built above
     const [bx,bz]=w([b.cx,b.cz]),th=-b.rot;
     const fl=b.kind==='church'||b.kind==='place_of_worship'?1:2;
-    const pr=Predio.build({w:Math.max(8,b.w),d:Math.max(8,b.d),floors:fl,color:0xe7e1d3});
-    pr.position.set(bx,H(bx,bz),bz);pr.rotation.y=th;placeStatic(pr);
-    obbFromModel(bx,bz,th,0,0,Math.max(8,b.w),Math.max(8,b.d),H(bx,bz)+fl*3.4+1);
+    const f=slopeFloor(bx,bz,Math.max(8,b.w),Math.max(8,b.d),b.rot);
+    const pr=Predio.build({w:Math.max(8,b.w),d:Math.max(8,b.d),floors:fl,color:0xe7e1d3,base:f.base});
+    pr.position.set(bx,f.y,bz);pr.rotation.y=th;placeStatic(pr);
+    obbFromModel(bx,bz,th,0,0,Math.max(8,b.w),Math.max(8,b.d),f.y+fl*3.4+1);
   }
 
   // ---------- Hospital Regional: the old sanatorium + its modern annex, on their real
@@ -248,18 +273,27 @@ export function buildDivinolandia():void{
   }
 
   // ---------- houses ----------
+  const casas:CasaSpec[]=[];
   for(let i=0;i<D.houses.length;i++){
     const[hx0,hz0,hw,hd,rot,fl,c,roof,shop]=D.houses[i];
-    if(hx0>105&&hx0<116&&hz0>207&&hz0<224)continue;
     if(houseOnSite(hx0,hz0,hw,hd,rot))continue;           // the lot of a game place (sites-table.ts)
+    if(rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),EUCLIDES_LOT))continue;   // the school's campus and its entrance
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
-    const corner=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
-    const hs=[corner(-1,-1),corner(1,-1),corner(1,1),corner(-1,1)];
+    const at=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
+    const hs=[at(-1,-1),at(1,-1),at(1,1),at(-1,1)];
+    // the lowest ground anywhere along the walls (between the corners the terrain's own
+    // triangles can dip lower than all four)
+    let low=Math.min(...hs);
+    for(let k=0;k<=8;k++){const t=k/4-1;low=Math.min(low,at(t,-1),at(t,1),at(-1,t),at(1,t));}
     const front=H(x-sn*hd/2,z+cs*hd/2);
-    const floor=Math.max(front,Math.max(...hs)-2.4)+.15,base=Math.min(...hs)-.6;
-    const spec={x,z,w:hw,d:hd,rot,floor,base,floors:fl,color:c,flat:!!roof,shop,seed:i+1};
+    const floor=Math.max(front,Math.max(...hs)-2.4)+.15,base=low-.6;
+    if(floor-front>1.45)continue;                         // a place's levelled pad left it on a bank too steep for a doorstep
+    casas.push({x,z,w:hw,d:hd,rot,floor,base,floors:fl,color:c,flat:!!roof,shop,seed:i+1,step:floor-front});
+  }
+  sideEaves(casas);
+  for(const spec of casas){
     addCasa(spec);
-    addObb(x,z,hw,hd,rot,floor+casaTop(spec));
+    addObb(spec.x,spec.z,spec.w,spec.d,spec.rot,spec.floor+casaTop(spec));
   }
   for(const g of finalizeCasas()){scene.add(g);cullGroups.push({g,r:1100});}
 
@@ -271,7 +305,8 @@ export function buildDivinolandia():void{
       return{name:road.n,pts:line.pts,halfWidth:line.hw,paved:line.paved,sidewalk:line.sidewalk,
         enabled:line.sidewalk||arterial&&townAt(mid[0],mid[1])>0};
     }),
-    houses:D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
+    houses:[...D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),...surveyedLots,
+      ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot}))],
     protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(SITE_TABLE) as SiteId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),
     surveyedStreets:[...SURVEYED],
@@ -325,13 +360,77 @@ export function updateDivinolandia(px:number,pz:number):void{
 }
 
 // ---------- helpers ----------
-// a generated house touching a game place's lot (its centre or any corner on it)
+// Side eaves of the terraced houses: a neighbour standing within two eaves of a side wall
+// (and facing it along the house's depth) gets half the gap each, so the roofs meet
+// instead of one eave running into the other house's wall.
+function sideEaves(list:CasaSpec[]):void{
+  const C=24,grid=new Map<string,number[]>();
+  list.forEach((h,k)=>{const key=Math.floor(h.x/C)+'_'+Math.floor(h.z/C);let a=grid.get(key);if(!a){a=[];grid.set(key,a);}a.push(k);});
+  list.forEach((h,k)=>{
+    const c=Math.cos(h.rot),s=Math.sin(h.rot),e:[number,number]=[EAVE,EAVE];
+    const i0=Math.floor(h.x/C),j0=Math.floor(h.z/C);
+    for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const o of grid.get((i0+a)+'_'+(j0+b))||[]){
+      if(o===k)continue;
+      const n=list[o];
+      // the neighbour's corners in this house's frame (u along the façade, v along its depth)
+      let u0=Infinity,u1=-Infinity,v0=Infinity,v1=-Infinity;
+      for(const[x,z]of rectCorners(n.x,n.z,n.w,n.d,n.rot)){
+        const dx=x-h.x,dz=z-h.z,u=dx*c+dz*s,v=-dx*s+dz*c;
+        u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,v);v1=Math.max(v1,v);
+      }
+      if(v1<-h.d/2-EAVE||v0>h.d/2+EAVE)continue;              // not beside it
+      if(u0>=h.w/2-.05&&u0-h.w/2<2*EAVE)e[1]=Math.min(e[1],Math.max(0,(u0-h.w/2)/2-.02));
+      if(u1<=-h.w/2+.05&&-h.w/2-u1<2*EAVE)e[0]=Math.min(e[0],Math.max(0,(-h.w/2-u1)/2-.02));
+    }
+    h.eave=e;
+  });
+}
+// inside (or within m of) one of the mapped buildings drawn as a Predio box (world x,z)
+function inOsmBuilding(x:number,z:number,m:number):boolean{
+  return D.buildings.some(b=>{
+    if(b.kind==='townhall')return false;
+    const dx=x-b.cx-DIV_OX,dz=z-b.cz-DIV_OZ,c=Math.cos(b.rot),s=Math.sin(b.rot);
+    return Math.abs(dx*c+dz*s)<Math.max(8,b.w)/2+m&&Math.abs(-dx*s+dz*c)<Math.max(8,b.d)/2+m;
+  });
+}
+// Floor of a plain box building (Predio) on a slope: the mean ground, but buried at most
+// 1.2 m on the high side; its plinth (`base` below the floor) reaches the lowest ground.
+function slopeFloor(x:number,z:number,w:number,d:number,rot:number):{y:number;base:number}{
+  const c=Math.cos(rot),s=Math.sin(rot),hs:number[]=[];
+  for(let a=-1;a<=1;a+=.5)for(let b=-1;b<=1;b+=.5)hs.push(H(x+a*w/2*c-b*d/2*s,z+a*w/2*s+b*d/2*c));
+  const mean=hs.reduce((p,q)=>p+q,0)/hs.length,y=Math.max(mean,Math.max(...hs)-1.2);
+  return{y,base:Math.max(1.5,y-Math.min(...hs)+.4)};
+}
+// the Euclides da Cunha campus (escola-euclides.ts frame: x across, z toward the street),
+// grown 1.5 m, town-local
+const EUCLIDES_LOT:P2[]=(()=>{
+  const E=EUCLIDES_SITE,c=Math.cos(E.yaw),s=Math.sin(E.yaw),hw=E.width/2+1.5,z0=E.centerZ-E.depth/2-1.5,z1=E.centerZ+E.depth/2+1.5;
+  return[[-hw,z0],[hw,z0],[hw,z1],[-hw,z1]].map(([x,z])=>[E.x+x*c+z*s,E.z-x*s+z*c] as P2);
+})();
+// a generated house touching a game place's lot (the two rectangles overlap)
 function houseOnSite(x:number,z:number,hw:number,hd:number,rot:number):boolean{
   if(onSiteLot(x,z))return true;
-  const cs=Math.cos(rot),sn=Math.sin(rot);
-  for(const[u,v]of[[-1,-1],[1,-1],[1,1],[-1,1]])
-    if(onSiteLot(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs,0))return true;
-  return false;
+  const house=rectCorners(x,z,hw,hd,rot);
+  return(Object.keys(SITE_TABLE) as SiteId[]).some(id=>{
+    const s=SITE_TABLE[id];
+    return Math.hypot(s.x-x,s.z-z)<(Math.hypot(s.w,s.d)+Math.hypot(hw,hd))/2+2&&rectsOverlap(house,siteLotPolygon(id,2));
+  });
+}
+// corners of a w×d rectangle centred at (x,z) whose local +x runs along (cos rot, sin rot)
+function rectCorners(x:number,z:number,w:number,d:number,rot:number):P2[]{
+  const c=Math.cos(rot),s=Math.sin(rot);
+  return[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[x+u*w/2*c-v*d/2*s,z+u*w/2*s+v*d/2*c] as P2);
+}
+// separating-axis test of two convex quads
+function rectsOverlap(a:P2[],b:P2[]):boolean{
+  for(const poly of[a,b])for(let i=0;i<poly.length;i++){
+    const p=poly[i],q=poly[(i+1)%poly.length],nx=q[1]-p[1],nz=p[0]-q[0];
+    let a0=Infinity,a1=-Infinity,b0=Infinity,b1=-Infinity;
+    for(const v of a){const d=v[0]*nx+v[1]*nz;a0=Math.min(a0,d);a1=Math.max(a1,d);}
+    for(const v of b){const d=v[0]*nx+v[1]*nz;b0=Math.min(b0,d);b1=Math.max(b1,d);}
+    if(a1<=b0||b1<=a0)return false;
+  }
+  return true;
 }
 function pointIn(p:P2,poly:P2[],inset:number):boolean{
   let ins=false;
@@ -413,7 +512,7 @@ function drawFullMap(ctx:CanvasRenderingContext2D,cw:number,ch:number):(x:number
   ctx.fillStyle='#4d6a30';ctx.fillRect(0,0,cw,ch);
   ctx.drawImage(atlas,ox,oy,atlas.width*s,atlas.height*s);
   const P=(x:number,z:number):[number,number]=>[ox+(x-nearGrid.x0)*AS*s,oy+(z-nearGrid.z0)*AS*s];
-  ctx.font='700 12px "IBM Plex Mono",monospace';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.font='700 12px "Barlow Condensed",monospace';ctx.textAlign='center';ctx.textBaseline='middle';
   const L=D.landmarks;
   for(const[name,p]of[['IGREJA MATRIZ',[L.matriz.cx,L.matriz.cz]],['HOSPITAL REGIONAL',L.hospital],['MIRANTE · MORRO DA TORRE',L.torre],
     ['ESTÁDIO',L.estadio],['CEMITÉRIO',L.cemiterio],['RIO DO PEIXE',riverLabelAt()]] as [string,number[]][]){

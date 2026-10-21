@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import {SQUARES} from '@/world/divinolandia/sites-table.ts';
 import {matte} from '../matte.ts';
-import {lawnM,walkEdgeM,stoneM,stepsM,soilM,drape,sidewalkRing,strip,kerb,put,type GroundAt,type P2} from './praca-chao.ts';
+import {leafMat,leafMass} from './copa.ts';
+import {lawnM,walkEdgeM,stoneM,stepsM,soilM,drape,sidewalkRing,strip,kerb,put,STREET_TOP,type GroundAt,type P2} from './praca-chao.ts';
 import Banco from './banco-praca.ts';
 import Arvore from './arvore-praca.ts';
 import ArvoreRua from './arvore-rua.ts';
@@ -24,8 +25,8 @@ const W0=2.4;
 // the street in front of the church: from this block's east kerb to the Praça Dr. Alcindo's
 // west kerb (u 31.5 → 45.6 in this frame)
 const FRONT_ST=14.1;
-const hedgeM=matte({color:0x3a6630,flatShading:true}),hydM=matte({color:0x7f93d6,flatShading:true});
-const marigoldM=matte({color:0xe59a2c,flatShading:true}),fenceM=matte({color:0xf1efe9}),saintM=matte({color:0xf4f2ec});
+const hedgeM=leafMat(0x37542e),hydM=leafMat(0x8090c4);
+const marigoldM=leafMat(0xd0922e),fenceM=matte({color:0xf1efe9}),saintM=matte({color:0xf4f2ec});
 const poleM=matte({color:0x8d9296}),lampM=matte({color:0xf2efe2,emissive:0x5a4c2c});
 
 function box(g:THREE.Object3D,m:THREE.Material,w:number,h:number,d:number,x:number,y:number,z:number):THREE.Mesh{
@@ -63,7 +64,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
   const inner=sidewalkRing(g,at,u0,u1,v0,v1,W0);
   g.add(drape(inner,at,.08,lawnM));
   // the street in front of the church, out to the Praça Dr. Alcindo: grey hexagonal pavers
-  g.add(drape([[u1,v0-8],[u1+FRONT_ST,v0-8],[u1+FRONT_ST,v1+8],[u1,v1+8]],at,.16,walkEdgeM));
+  g.add(drape([[u1,v0-8],[u1+FRONT_ST,v0-8],[u1+FRONT_ST,v1+8],[u1,v1+8]],at,STREET_TOP,walkEdgeM));
   // ---- the terrace round the church, the forecourt, the west walk, the north steps ----
   g.add(drape([[T.u0-3.5,T.v0],[iu1,T.v0],[iu1,T.v1],[T.u0-3.5,T.v1]],at,.12,stoneM));
 
@@ -80,14 +81,14 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
   for(const v of[-8,1,10]){
     put(g,Arvore.build({kind:'cipreste',h:8+(v%3),seed:Math.abs(v)}),at,-26,v);
     for(let i=0;i<10;i++){const a=i/10*Math.PI*2,u=-26+Math.cos(a)*1.2,vv=v+Math.sin(a)*1.2;
-      const f=new THREE.Mesh(new THREE.IcosahedronGeometry(.28,0),marigoldM);f.position.set(u,at(u,vv)+.25,vv);g.add(f);}
+      const f=new THREE.Mesh(leafMass(1+i%3,.3,2),marigoldM);f.scale.setScalar(.3);f.position.set(u,at(u,vv)+.25,vv);g.add(f);}
   }
   // ---- south: hedge and hydrangeas along the aisle, then the grove ----
   {
     const y=(u:number):number=>at(u,T.v1+1.2);
     for(let u=T.u0+1;u<T.u1-6;u+=2.2){
-      const h=new THREE.Mesh(new THREE.BoxGeometry(2.1,.7,.8),hedgeM);h.position.set(u,y(u)+.4,T.v1+2.2);h.castShadow=true;g.add(h);
-      const b=new THREE.Mesh(new THREE.IcosahedronGeometry(.45,0),hydM);b.position.set(u+.5,y(u)+.45,T.v1+1.1);g.add(b);
+      const h=new THREE.Mesh(leafMass(3,.12,2,4),hedgeM);h.scale.set(1.2,.42,.48);h.position.set(u,y(u)+.38,T.v1+2.2);h.castShadow=true;g.add(h);
+      const b=new THREE.Mesh(leafMass(2,.32,2),hydM);b.scale.setScalar(.48);b.position.set(u+.5,y(u)+.45,T.v1+1.1);g.add(b);
     }
     g.add(drape([[T.u0,T.v1+.3],[T.u1-5,T.v1+.3],[T.u1-5,T.v1+1.6],[T.u0,T.v1+1.6]],at,.1,soilM));
   }
@@ -102,7 +103,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
     [iu0+1.2,24,Math.PI/2],[-9,-30,.5],[12,-30,-.5],[iu1-1.2,24,-Math.PI/2],[iu1-1.2,-26,-Math.PI/2]] as [number,number,number][])
     put(g,Banco.build(),at,u,v,ry,.1);
   for(const[u,v,ry]of[[iu0+.5,-14,0],[iu0+.5,18,0],[0,iv1+.3,-Math.PI/2],[18,iv1+.3,-Math.PI/2],[-14,iv0+.3,Math.PI/2],[14,iv0+.3,Math.PI/2],[iu1-.3,-18,Math.PI],[iu1-.3,24,Math.PI]] as [number,number,number][])
-    put(g,streetLamp(),at,u,v,ry,.12);
+    put(g,streetLamp(),at,u,v,ry,u<iu0||u>iu1||v<iv0||v>iv1?STREET_TOP:.12);   // on the sidewalk ring or the lawn
   return g;
 }
 export default {category:'Divinolândia',label:'Praça Prof. Ladislau (adro da Matriz)',build};

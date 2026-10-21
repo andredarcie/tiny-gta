@@ -17,7 +17,7 @@ function bannerTexture(): THREE.CanvasTexture{
     x.fillRect(i*s,0,s,s);x.fillRect(i*s,48,s,s);
   }
   x.fillStyle='#ff8a1e';
-  x.font='700 28px "IBM Plex Mono", monospace';
+  x.font='700 28px "Barlow Condensed", monospace';
   x.textAlign='center';x.textBaseline='middle';
   x.fillText('OFF-ROAD',128,33);
   const t=new THREE.CanvasTexture(c);

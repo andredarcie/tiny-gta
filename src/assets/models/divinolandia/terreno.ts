@@ -1,17 +1,21 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {DIVINO} from '@/core/palette.ts';
+import {soloTexture,GROUND_TILE_M} from './texturas.ts';
 
 // Divinolândia terrain — the real relief (SRTM) of the town and the serras around it,
 // drawn from a baked height grid. The triangles are EXACTLY the ones the physics
 // interpolates (src/js/world/divinolandia/data.ts triH: corners a,b,c,d, diagonal b–c),
-// so cars and feet sit on what is drawn. Colour is painted per vertex: green pasture,
-// darker wood in the folds, dry grass and bare terra-roxa on the steep cuts, and a
-// trodden earth tone inside the town.
+// so cars and feet sit on what is drawn. Colour is painted per vertex (olive pasture,
+// darker wood in the folds, dry grass and bare terra-roxa on the steep cuts, a trodden
+// earth tone inside the town) and the near terrain carries a tiling ground texture (grass
+// tufts, bare patches, pebbles) in world metres, so it reads as ground up close.
 export type HeightGrid={x0:number;z0:number;cell:number;nx:number;nz:number;h:Float32Array};
 const C=(hex:string|number):THREE.Color=>new THREE.Color(hex);
 const PAST=C(DIVINO.pasture),DRY=C(DIVINO.pastureDry),WOOD=C(DIVINO.forest),SOIL=C(DIVINO.soil),ROCK=C(DIVINO.rock);
-export const terrainMat=matte({vertexColors:true});
+// (the detail texture averages ~0.85: the near terrain's vertex colours are lifted to match)
+const DETAIL_GAIN=1/.85;
+export const terrainMat=matte({vertexColors:true,map:soloTexture()});
 export const farTerrainMat=matte({vertexColors:true});
 
 // Smooth-ish value noise (cheap trig) for the land-cover patches.
@@ -19,14 +23,15 @@ const vn=(x:number,z:number):number=>Math.sin(x*.0061+1.3)*Math.cos(z*.0053-.7)+
 
 export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>number;skip?:{x0:number;x1:number;z0:number;z1:number};drop?:number;mat?:THREE.Material}={}):THREE.Mesh{
   const {nx,nz,cell,h}=g,n=nx*nz;
-  const pos=new Float32Array(n*3),col=new Float32Array(n*3),tmp=new THREE.Color();
+  const pos=new Float32Array(n*3),col=new Float32Array(n*3),uv=new Float32Array(n*2),tmp=new THREE.Color();
+  const gain=(opts.mat||terrainMat)===terrainMat?DETAIL_GAIN:1;
   for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){
     const k=j*nx+i,x=g.x0+i*cell,z=g.z0+j*cell,y=h[k]-(opts.drop||0);
-    pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z;
+    pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z;uv[k*2]=x/GROUND_TILE_M;uv[k*2+1]=z/GROUND_TILE_M;
     const hl=h[j*nx+Math.max(0,i-1)],hr=h[j*nx+Math.min(nx-1,i+1)],hu=h[Math.max(0,j-1)*nx+i],hd=h[Math.min(nz-1,j+1)*nx+i];
     const slope=Math.hypot(hr-hl,hd-hu)/(2*cell);
     const v=vn(x,z);
-    tmp.copy(PAST).lerp(DRY,Math.max(0,Math.min(1,.5+.5*Math.sin(x*.013+z*.009))*.45));
+    tmp.copy(PAST).lerp(DRY,Math.max(0,Math.min(1,.5+.5*Math.sin(x*.013+z*.009))*.3));
     if(v>.7)tmp.lerp(WOOD,Math.min(1,(v-.7)*2.2));                 // wood patches
     // concave folds (valleys) are wooded in the serra: compare with the neighbours' mean
     const conc=(hl+hr+hu+hd)/4-h[k];
@@ -36,7 +41,7 @@ export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>nu
     const t=opts.town?opts.town(x,z):0;
     if(t>0)tmp.lerp(SOIL,t*.35).lerp(DRY,t*.25);                   // trodden ground in town
     const jit=.94+.12*((Math.sin(i*12.9898+j*78.233)*43758.5453)%1+1)%1;
-    col[k*3]=tmp.r*jit;col[k*3+1]=tmp.g*jit;col[k*3+2]=tmp.b*jit;
+    col[k*3]=tmp.r*jit*gain;col[k*3+1]=tmp.g*jit*gain;col[k*3+2]=tmp.b*jit*gain;
   }
   const idx:number[]=[];
   const sk=opts.skip;
@@ -48,6 +53,7 @@ export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>nu
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  geo.setAttribute('uv',new THREE.BufferAttribute(uv,2));
   geo.setIndex(n>65535?new THREE.Uint32BufferAttribute(idx,1):new THREE.Uint16BufferAttribute(idx,1));
   geo.computeVertexNormals();geo.computeBoundingSphere();
   const m=new THREE.Mesh(geo,opts.mat||terrainMat);
@@ -55,14 +61,85 @@ export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>nu
   return m;
 }
 
-// Lay a flat polygon (a plaza, a pitch, a cemetery yard) ON the terrain: triangulate,
-// subdivide every triangle until its edges are short, and lift each vertex to the
-// ground height + `lift`. Returns the geometry (caller picks the material).
-export function drapePolygon(pts:[number,number][],hAt:(x:number,z:number)=>number,lift=.08,maxEdge=3):THREE.BufferGeometry{
+// ---- draping flat shapes EXACTLY on the terrain ----
+// The relief is a grid of planar triangles (cells of `cell` m, split on the b–c diagonal).
+// Cutting a shape along every grid line and diagonal leaves pieces that each lie inside ONE
+// terrain triangle, so lifting their corners to the ground gives a surface parallel to the
+// ground everywhere — no hill crest poking through a street, no gap under it. With the
+// grid's size (nx,nz nodes) the pieces past its edge are dropped: out there the ground is
+// the coarse far relief, drawn lower, and a draped strip would hang above it.
+export type DrapeGrid={x0:number;z0:number;cell:number;nx?:number;nz?:number};
+type DV=[number,number,number,number];                     // x, z, u, v (u,v: texture coords)
+function split(poly:DV[],f:(p:DV)=>number,k:number,lo:DV[][],hi:DV[]):void{
+  const below:DV[]=[];
+  hi.length=0;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i],b=poly[(i+1)%poly.length],da=f(a)-k,db=f(b)-k;
+    if(da<=0)below.push(a);
+    if(da>=0)hi.push(a);
+    if(da*db<0){
+      const t=da/(da-db),p:DV=[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t,a[3]+(b[3]-a[3])*t];
+      below.push(p);hi.push(p);
+    }
+  }
+  if(below.length>2)lo.push(below);
+}
+function cutBy(polys:DV[][],f:(p:DV)=>number):DV[][]{
+  const out:DV[][]=[];
+  for(const poly of polys){
+    let mn=Infinity,mx=-Infinity;for(const p of poly){const v=f(p);if(v<mn)mn=v;if(v>mx)mx=v;}
+    let rest=poly;
+    for(let k=Math.floor(mn)+1;k<mx;k++){const hi:DV[]=[];split(rest,f,k,out,hi);rest=hi;if(rest.length<3)break;}
+    if(rest.length>2)out.push(rest);
+  }
+  return out;
+}
+// Cut a convex polygon (2D points) along every integer level of each linear function in
+// `fns` — e.g. a terrain grid's lines in another frame. Returns the convex pieces.
+export function cutAlong(poly:[number,number][],fns:((x:number,z:number)=>number)[]):[number,number][][]{
+  let polys:DV[][]=[poly.map(([x,z])=>[x,z,0,0] as DV)];
+  for(const f of fns)polys=cutBy(polys,p=>f(p[0],p[1]));
+  return polys.map(q=>q.map(p=>[p[0],p[1]] as [number,number]));
+}
+// Drape CONVEX polygons given flat as (x,z,u,v) per vertex (any winding). Appends world
+// positions (and uvs when `uv` is passed) to the output arrays; every triangle faces up.
+export function drapePolys(polys:number[][],grid:DrapeGrid,hAt:(x:number,z:number)=>number,lift:number,pos:number[],uv?:number[]):void{
+  const fx=(p:DV):number=>(p[0]-grid.x0)/grid.cell,fz=(p:DV):number=>(p[1]-grid.z0)/grid.cell,fd=(p:DV):number=>fx(p)+fz(p);
+  for(const flat of polys){
+    const shape:DV[]=[];for(let k=0;k<flat.length;k+=4)shape.push([flat[k],flat[k+1],flat[k+2],flat[k+3]]);
+    for(const poly of cutBy(cutBy(cutBy([shape],fx),fz),fd)){
+      if(grid.nx!==undefined&&grid.nz!==undefined){
+        let cx=0,cz=0;for(const p of poly){cx+=fx(p);cz+=fz(p);}cx/=poly.length;cz/=poly.length;
+        if(cx<0||cz<0||cx>grid.nx-1||cz>grid.nz-1)continue;
+      }
+      const h=poly.map(p=>hAt(p[0],p[1])+lift);
+      for(let k=1;k<poly.length-1;k++){
+        const a=poly[0],b=poly[k],c=poly[k+1];
+        const area=(b[1]-a[1])*(c[0]-a[0])-(b[0]-a[0])*(c[1]-a[1]);  // > 0: +y normal for (a,b,c)
+        if(Math.abs(area)<1e-7)continue;
+        const order=area>0?[0,k,k+1]:[0,k+1,k];
+        for(const q of order){pos.push(poly[q][0],h[q],poly[q][1]);if(uv)uv.push(poly[q][2],poly[q][3]);}
+      }
+    }
+  }
+}
+
+// Lay a flat polygon (a plaza, a pitch, a cemetery yard) ON the terrain: triangulate, then
+// either drape it exactly on the terrain grid (`grid`) or, without one (model viewer),
+// subdivide every triangle until its edges are short and lift each vertex to the ground
+// height + `lift`. Returns the geometry (caller picks the material).
+export function drapePolygon(pts:[number,number][],hAt:(x:number,z:number)=>number,lift=.08,maxEdge=3,grid?:DrapeGrid):THREE.BufferGeometry{
   const contour=pts.map(p=>new THREE.Vector2(p[0],p[1]));
   if(THREE.ShapeUtils.isClockWise(contour))contour.reverse();
   const tris=THREE.ShapeUtils.triangulateShape(contour,[]);
   const out:number[]=[];
+  if(grid){
+    drapePolys(tris.map(t=>t.flatMap(i=>[contour[i].x,contour[i].y,0,0])),grid,hAt,lift,out);
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.Float32BufferAttribute(out,3));
+    geo.computeVertexNormals();
+    return geo;
+  }
   const push=(a:number[],b:number[],c:number[],depth:number):void=>{
     const e=Math.max(Math.hypot(a[0]-b[0],a[1]-b[1]),Math.hypot(b[0]-c[0],b[1]-c[1]),Math.hypot(c[0]-a[0],c[1]-a[1]));
     if(e>maxEdge&&depth<9){

@@ -7,8 +7,9 @@ import {rebocoTexture,telhaTexture} from './texturas.ts';
 // set right at the sidewalk, a clay-tile hip roof (or a flat slab hidden behind a
 // "platibanda" parapet on the two-storey ones), a wooden door, steel-framed windows,
 // and in the centre the ground floor opens as a shop (steel roll-up door + a coloured
-// awning band). On a slope the house keeps its door at street level and the wall
-// simply runs down to the ground on the low side, as the real ones do.
+// awning band). On a slope the wall simply runs down to the ground on the low side, as
+// the real ones do, and where the floor stands above the sidewalk a short concrete flight
+// climbs to the door (and to the shop's roll-up door).
 //
 // The town has thousands of them, so they are NOT separate objects: addCasa() writes
 // world-space triangles with per-vertex colour into per-chunk buckets (one material
@@ -82,7 +83,11 @@ function hipRoof(b:Buf,f:Frame,hw:number,hd:number,y:number,rh:number,cl:THREE.C
   }
 }
 
-export type CasaSpec={x:number;z:number;w:number;d:number;rot:number;floor:number;base:number;floors:number;color:number;flat:boolean;shop:number;seed:number};
+// step: how far the floor stands above the ground in front of the façade (0 = level);
+// eave: how far the tiled roof overhangs the left (−x) and right (+x) walls — less than
+// the usual EAVE where a neighbour stands close, so the two roofs never cut into each other
+export type CasaSpec={x:number;z:number;w:number;d:number;rot:number;floor:number;base:number;floors:number;color:number;flat:boolean;shop:number;seed:number;step?:number;eave?:[number,number]};
+export const EAVE=.45;
 const FLOOR_H=3.1;
 // Height of the top of a house above its floor (for collision / line of sight).
 export const casaTop=(s:{floors:number;flat:boolean;w:number;d:number}):number=>s.floors*FLOOR_H+(s.flat?.9:Math.min(s.w,s.d)*.3+.2);
@@ -154,6 +159,16 @@ function drawBalcony(context:CasaContext,x:number,y:number):void{
   }
 }
 
+// concrete flight from the sidewalk up to an opening at x (width w); the top tread is the
+// threshold, the others step down and out toward the street
+const RISE=.18,TREAD=.3;
+function drawSteps(context:CasaContext,x:number,w:number):void{
+  const {spec,halfDepth:hd}=context,h=spec.step??0;
+  if(h<.3)return;                                        // a plain threshold
+  const n=Math.ceil(h/RISE),r=h/n,x0=x-w/2-.1,x1=x+w/2+.1,low=spec.base-spec.floor;
+  for(let k=0;k<n;k++)box(context.bucket.wall,context.frame,x0,x1,low,-k*r+.02,hd+k*TREAD,hd+(k+1)*TREAD,SILL.clone().multiplyScalar(.92),SLAB);
+}
+
 function drawFront(context:CasaContext):void{
   const {spec,halfWidth:hw,wall,random}=context;
   frontPanel(context,{x0:-hw,x1:hw,y0:spec.base-spec.floor,y1:.43,color:wall.clone().multiplyScalar(.68)});
@@ -165,14 +180,15 @@ function drawFront(context:CasaContext):void{
   }
   if(spec.shop){
     const width=Math.min(spec.w-1.7,3.75),x=(random(2)-.5)*(spec.w-width-1.3);
-    drawGarage(context,{x,width,height:2.56});
+    drawGarage(context,{x,width,height:2.56});drawSteps(context,x,width);
     const sign=AWN[(spec.shop-1)%AWN.length];
     frontPanel(context,{x0:-hw+.08,x1:hw-.08,y0:2.74,y1:3.04,color:sign,depth:.02});
     box(context.bucket.trim,context.frame,-hw+.1,hw-.1,2.69,2.76,context.halfDepth,context.halfDepth+.55,sign);
-    if(spec.w>7.8)drawDoor(context,x>0?-hw+.8:hw-.8);
+    if(spec.w>7.8){const dx=x>0?-hw+.8:hw-.8;drawDoor(context,dx);drawSteps(context,dx,1.08);}
   }else{
     const doorRight=random(3)>.5,doorX=(doorRight?1:-1)*(hw-.82);
-    const garage=spec.w>7.3&&random(5)<.52;
+    // (no car climbs a flight of steps: a raised house gets windows instead of a garage)
+    const garage=spec.w>7.3&&random(5)<.52&&(spec.step??0)<.45;
     if(garage){
       const width=Math.min(3.25,spec.w*.4),x=(doorRight?-1:1)*(hw-width/2-.28);
       drawGarage(context,{x,width,height:2.48});
@@ -183,7 +199,7 @@ function drawFront(context:CasaContext):void{
         drawWindow(context,{x,y:.95,width:1.24,height:1.28,style:Math.floor(random(6+i)*3)});
       }
     }
-    drawDoor(context,doorX);
+    drawDoor(context,doorX);drawSteps(context,doorX,1.08);
   }
   for(let floor=1;floor<spec.floors;floor++){
     const count=spec.w>8?3:2;
@@ -210,8 +226,10 @@ function writeCasa(bk:Bucket,s:CasaSpec):void{
     box(bk.wall,f,-hw+.25,hw-.25,H+.05,H+.12,-hd+.25,hd-.25,SLAB);
     box(bk.trim,f,-hw,hw,H+.77,H+.85,hd,hd+.12,SILL);
   }else{
-    hipRoof(bk.roof,f,hw+.45,hd+.45,H,Math.min(s.w,s.d)*.3,TILE[Math.floor(rnd(1)*TILE.length)].clone().lerp(SILL,.27));
-    box(bk.trim,f,-hw-.45,hw+.45,H-.13,H+.04,hd+.36,hd+.48,TILE_EDGE);
+    const[eL,eR]=s.eave??[EAVE,EAVE],off=(eR-eL)/2;
+    const rf:Frame={...f,x:f.x+off*f.c,z:f.z+off*f.s};      // the roof's own centre along x
+    hipRoof(bk.roof,rf,hw+(eL+eR)/2,hd+EAVE,H,Math.min(s.w,s.d)*.3,TILE[Math.floor(rnd(1)*TILE.length)].clone().lerp(SILL,.27));
+    box(bk.trim,f,-hw-eL,hw+eR,H-.13,H+.04,hd+.36,hd+.48,TILE_EDGE);
   }
   drawFront({bucket:bk,frame:f,spec:s,halfWidth:hw,halfDepth:hd,wall,random:rnd});
   quad(bk.trim,f,[[hw+.022,.95,-.66],[hw+.022,.95,.66],[hw+.022,2.2,.66],[hw+.022,2.2,-.66]],[1,0,0],FRAME);

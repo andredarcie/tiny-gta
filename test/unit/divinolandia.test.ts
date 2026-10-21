@@ -6,6 +6,7 @@ import { groundHeight, setDivinoTerrain, DIVINO_X_MIN } from '@/core/terrain.ts'
 import * as THREE from 'three';
 import { makeTerrainMesh } from '../../src/assets/models/divinolandia/terreno.ts';
 import { makeStreets, makeWater } from '../../src/assets/models/divinolandia/rua.ts';
+import { waterLines } from '@/world/divinolandia/water.ts';
 import { addCasa, finalizeCasas, casaTop } from '../../src/assets/models/divinolandia/casa.ts';
 import { makeTrees, makeCoffee } from '../../src/assets/models/divinolandia/vegetacao.ts';
 import { makeSurface, type Surface } from '../../src/assets/models/divinolandia/praca.ts';
@@ -100,7 +101,7 @@ describe('Divinolândia town geometry builds cleanly from the baked data', () =>
     expect(checkPositions(makeTerrainMesh(nearGrid), 0, ymax)).toBe(nearGrid.nx * nearGrid.nz);
     const lines = divData.roads.map(r => ({ pts: r.pts.map(p => W(p)), hw: r.hw, paved: !!r.p, sidewalk: !!r.p }));
     expect(checkPositions(makeStreets(lines, H), 0, ymax)).toBeGreaterThan(10000);
-    const water = makeWater(divData.waters.map(w => ({ hw: w.hw, pts: w.pts.map(p => [p[0] + DIV_OX, p[1] + DIV_OZ, p[2]] as [number, number, number]) })));
+    const water = makeWater(waterLines);
     checkPositions(water, 0, ymax);
     for (const p of [...divData.plazas, ...divData.areas]) {
       if (p.k === 'hospital' || p.k === 'torre') continue;

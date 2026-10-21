@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {DIVINO} from '@/core/palette.ts';
+import {leafMat,leafMass} from './copa.ts';
 
 // Divinolândia vegetation, instanced (thousands of plants for a handful of draw calls):
 //  - mata: the broadleaf trees of the riparian forest and the wood patches in the folds of
@@ -9,14 +10,15 @@ import {DIVINO} from '@/core/palette.ts';
 //    the economy). Each instance is one ~9 m hedge of a row; rows follow the contour lines.
 // Instances are grouped in square chunks so whole chunks are culled by distance.
 const trunkM=matte({color:DIVINO.trunk});
-const leafMs=DIVINO.tree.map(c=>matte({color:c,flatShading:true}));
-const eucaM=matte({color:0x6f8a5a,flatShading:true}),eucaTrunkM=matte({color:0xcfc6b4});
-const coffeeM=matte({color:DIVINO.coffee,flatShading:true});
-const trunkG=new THREE.CylinderGeometry(.16,.26,3,5);trunkG.translate(0,1.5,0);
-const crownG=new THREE.IcosahedronGeometry(2.6,0);crownG.scale(1,.78,1);crownG.translate(0,4.6,0);
-const eucaTrunkG=new THREE.CylinderGeometry(.12,.2,9,5);eucaTrunkG.translate(0,4.5,0);
-const eucaCrownG=new THREE.IcosahedronGeometry(1.7,0);eucaCrownG.scale(.8,1.9,.8);eucaCrownG.translate(0,10.5,0);
-const coffeeG=new THREE.IcosahedronGeometry(1,1);coffeeG.scale(4.6,.95,.8);coffeeG.translate(0,.85,0);
+// crowns are lumpy leaf masses with the leaf texture (copa.ts), not faceted balls
+const leafMs=DIVINO.tree.map(c=>leafMat(c));
+const eucaM=leafMat(0x55664a),eucaTrunkM=matte({color:0xb9b0a0});
+const coffeeM=leafMat(DIVINO.coffee);
+const trunkG=new THREE.CylinderGeometry(.16,.26,3,7);trunkG.translate(0,1.5,0);
+const crownG=leafMass(1,.24,2).clone();crownG.scale(2.7,2.1,2.7);crownG.translate(0,4.7,0);
+const eucaTrunkG=new THREE.CylinderGeometry(.12,.2,9,6);eucaTrunkG.translate(0,4.5,0);
+const eucaCrownG=leafMass(2,.3,2).clone();eucaCrownG.scale(1.4,3.2,1.4);eucaCrownG.translate(0,10.5,0);
+const coffeeG=leafMass(3,.18,1,6).clone();coffeeG.scale(4.6,.95,.8);coffeeG.translate(0,.85,0);
 
 type Inst={x:number;y:number;z:number;s:number;r:number};
 const CH=400;

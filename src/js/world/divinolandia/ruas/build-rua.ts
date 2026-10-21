@@ -31,11 +31,12 @@ export function alongPolyline(pts:[number,number][],s:number):Frame{
 export const sideNormal=(f:Frame,side:'N'|'S'):[number,number]=>side==='N'?[f.uz,-f.ux]:[-f.uz,f.ux];
 
 export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:number,H:(x:number,z:number)=>number,
-  place:(o:THREE.Object3D)=>void):{lots:number;wires:THREE.Object3D}{
+  place:(o:THREE.Object3D)=>void):{lots:number;wires:THREE.Object3D;footprints:{x:number;z:number;width:number;depth:number;rotation:number}[]}{
   const{lots:LOTS,trees:TREES,cross:CROSS}=spec,crossHw=spec.crossHw??3.6;
   let n=0;
   const lift=KERB_H+.15;                                       // house floor = top of the raised sidewalk
   const drops:[number,number,number][]=[];
+  const footprints:{x:number;z:number;width:number;depth:number;rotation:number}[]=[];   // the lot bodies, for the town's pole planner
   for(const lot of LOTS){
     const w=lot.s1-lot.s0-.1,f=alongPolyline(pts,(lot.s0+lot.s1)/2),[nx,nz]=sideNormal(f,lot.side);
     const off=hw+SIDEWALK,px=f.x+nx*off,pz=f.z+nz*off,y=H(px,pz)+lift;
@@ -48,7 +49,7 @@ export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:num
     g.position.set(px,y,pz);g.rotation.y=th;place(g);
     // collision: the house body, and the front wall when there is one
     const rot=-th,top=y+(lot.f.floors??1)*FLOOR_H+1.5;
-    if(!lot.f.wallOnly){const c=set+d/2;addObb(px+nx*c,pz+nz*c,w,d,rot,top);
+    if(!lot.f.wallOnly){const c=set+d/2;addObb(px+nx*c,pz+nz*c,w,d,rot,top);footprints.push({x:px+nx*c,z:pz+nz*c,width:w,depth:d,rotation:rot});
       drops.push([px+nx*(set+.1),y+(lot.f.floors??1)*FLOOR_H-.4,pz+nz*(set+.1)]);}
     if(lot.f.front||lot.f.wallOnly){addObb(px+nx*.1,pz+nz*.1,w,.4,rot,y+(lot.f.front?.h??2.2));}
     if(lot.f.behind){const b=lot.f.behind,c=(b.at??6)+(b.d??10)/2;addObb(px+nx*c,pz+nz*c,b.w??w*.8,b.d??10,rot,top);}
@@ -92,5 +93,5 @@ export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:num
   // the street's dedicated models (corner houses, churches…)
   const extra=EXTRAS[spec.rua];
   if(extra)n+=extra({spec,pts,hw,crossHw,lift,sidewalk:SIDEWALK,H,place,along:s=>alongPolyline(pts,s),normal:sideNormal});
-  return{lots:n,wires};
+  return{lots:n,wires,footprints};
 }

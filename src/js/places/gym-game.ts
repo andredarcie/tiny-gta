@@ -300,13 +300,13 @@ function draw(){
 
   // título + indicador de série
   ctx.fillStyle='#ff8a1e';
-  ctx.font="700 14px 'IBM Plex Mono',monospace";
+  ctx.font="700 14px 'Barlow Condensed',monospace";
   ctx.fillText('IRON TEMPLE',cw/2,ch*0.075);
   ctx.fillStyle='#ffe9c9';
-  ctx.font="800 30px 'Bowlby One SC','IBM Plex Mono',monospace";
+  ctx.font="800 30px 'Alfa Slab One','Barlow Condensed',monospace";
   ctx.fillText('BENCH PRESS',cw/2,ch*0.125);
   ctx.fillStyle='#ff8a1e';
-  ctx.font="700 13px 'IBM Plex Mono',monospace";
+  ctx.font="700 13px 'Barlow Condensed',monospace";
   ctx.fillText(`SET ${setNum} OF ${TOTAL_SETS}`,cw/2,ch*0.165);
 
   // bolinhas de repetição da série atual
@@ -323,15 +323,15 @@ function draw(){
   if(phase==='ready'&&!result){
     // tela de "pronto pra iniciar?"
     ctx.fillStyle='#ffe9c9';ctx.shadowColor='#ffd24a';ctx.shadowBlur=24;
-    ctx.font="800 44px 'Bowlby One SC','IBM Plex Mono',monospace";
+    ctx.font="800 44px 'Alfa Slab One','Barlow Condensed',monospace";
     ctx.fillText('READY TO START?',cw/2,ch*0.45);
     ctx.shadowBlur=0;
     ctx.fillStyle='#ff8a1e';
-    ctx.font="700 16px 'IBM Plex Mono',monospace";
+    ctx.font="700 16px 'Barlow Condensed',monospace";
     ctx.fillText(setNum===1?'SERIES 1 OF 2 — GET SET ON THE BENCH'
                            :'NICE SET! CATCH YOUR BREATH — SERIES 2 OF 2',cw/2,ch*0.52);
     ctx.fillStyle='rgba(255,233,201,.85)';
-    ctx.font="700 14px 'IBM Plex Mono',monospace";
+    ctx.font="700 14px 'Barlow Condensed',monospace";
     ctx.fillText(state.mobile?'TAP TO START THE SET'
                              :'SPACE / CLICK TO START THE SET',cw/2,ch*0.86);
   }else if(phase==='active'){
@@ -346,7 +346,7 @@ function draw(){
     ctx.translate(cw/2,ch*0.40);
     ctx.scale(1+(1-k)*0.5,1+(1-k)*0.5);
     ctx.fillStyle=flashColor;ctx.shadowColor=flashColor;ctx.shadowBlur=24;
-    ctx.font="800 48px 'Bowlby One SC','IBM Plex Mono',monospace";
+    ctx.font="800 48px 'Alfa Slab One','Barlow Condensed',monospace";
     ctx.fillText(flashText,0,0);
     ctx.restore();
   }
@@ -356,11 +356,11 @@ function draw(){
     ctx.fillStyle='rgba(2,0,8,.62)';ctx.fillRect(0,0,cw,ch);
     const won=result==='win',c=won?'#ffd24a':'#ff2e88';
     ctx.fillStyle=c;ctx.shadowColor=c;ctx.shadowBlur=30;
-    ctx.font="800 46px 'Bowlby One SC','IBM Plex Mono',monospace";
+    ctx.font="800 46px 'Alfa Slab One','Barlow Condensed',monospace";
     ctx.fillText(won?'WORKOUT COMPLETE!':'FORM BROKE!',cw/2,ch*0.44);
     ctx.shadowBlur=0;
     ctx.fillStyle='#ffe9c9';
-    ctx.font="700 18px 'IBM Plex Mono',monospace";
+    ctx.font="700 18px 'Barlow Condensed',monospace";
     ctx.fillText(won?'TWO SOLID SETS — YOUR ARMS GREW':'NO GAINS THIS TIME',cw/2,ch*0.52);
   }
   ctx.restore();
@@ -403,11 +403,11 @@ function drawActive(panelX:number,panelW:number){
   ctx!.shadowBlur=0;
   ctx!.lineWidth=2;ctx!.strokeStyle='rgba(255,233,201,.5)';rr(stX,stY,stW,stH,9);ctx!.stroke();
   ctx!.fillStyle='#ffe9c9';
-  ctx!.font="700 11px 'IBM Plex Mono',monospace";
+  ctx!.font="700 11px 'Barlow Condensed',monospace";
   ctx!.fillText('STAMINA',cw/2,stY+stH/2);
 
   ctx!.fillStyle='rgba(255,233,201,.8)';
-  ctx!.font="700 13px 'IBM Plex Mono',monospace";
+  ctx!.font="700 13px 'Barlow Condensed',monospace";
   ctx!.fillText(state.mobile?'TAP IN THE GREEN TO PRESS'
                            :'SPACE / CLICK IN THE GREEN TO PRESS',cw/2,ch*0.84);
 }

@@ -128,7 +128,7 @@ function ensureEl(){
   el.id='profiler';
   el.style.cssText=[
     'position:fixed','top:8px','right:8px','z-index:99999','pointer-events:none',
-    'font:600 11px/1.45 "IBM Plex Mono",monospace','color:#d8f8e2',
+    'font:600 11px/1.45 "Barlow Condensed",monospace','color:#d8f8e2',
     'background:rgba(8,6,14,.82)','padding:8px 10px','border-radius:8px',
     'border:1px solid rgba(120,255,180,.25)','white-space:pre','min-width:228px',
     'text-shadow:0 1px 0 #000','box-shadow:0 4px 18px rgba(0,0,0,.5)'

@@ -16,7 +16,8 @@
 //    Rio do Peixe / streams carved into a monotone (always downhill) channel;
 //  - a FAR heightfield (48 m) over the whole DEM: the green serras on the horizon;
 //  - houses lining the real streets (OSM has almost no buildings mapped here), only
-//    inside the urban landuse and never on roads, plazas, vacant lots or landmarks;
+//    inside the urban landuse, only where the satellite evidence shows a building
+//    (docs/divinolandia/edificacoes) and never on roads, plazas, vacant lots or landmarks;
 //  - riparian forest along the water, wood patches, and coffee rows on the slopes.
 import {readFileSync,writeFileSync} from 'node:fs';
 import {gunzipSync} from 'node:zlib';
@@ -192,40 +193,101 @@ for(let j=0;j<NNZ;j++)for(let i=0;i<NNX;i++){
 // ---------------- water ----------------
 type Water={name:string;river:boolean;hw:number;pts:[number,number,number][]}; // x,z,surfaceY
 const waters:Water[]=[];
+// 1) every watercourse: resample 4 m, sample the valley floor (min across the channel and
+// its banks: the mapped line can run a few metres off the real valley floor), force the
+// surface monotone downstream (OSM ways point downstream)
+type Course={name:string;river:boolean;hw:number;depth:number;cut:number;surf:[number,number,number][]};
+const courses:Course[]=[];
 for(const e of osm.elements){
   const t=e.tags||{};
   if(!e.geometry||(t.waterway!=='river'&&t.waterway!=='stream'))continue;
   const pts=geomXZ(e).filter(p=>inNear(p[0],p[1],4));
   if(pts.length<2)continue;
   const river=t.waterway==='river'||t.name==='Rio do Peixe';
-  const hw=river?6:1.6,depth=river?2.2:.8;
-  // resample 4 m, sample the valley floor (min across the channel), force monotone downstream
+  const hw=river?6:1.6,depth=river?2.2:.5,cut=river?hw+1.5:5;
   const s:[number,number,number][]=[];
   for(let k=1;k<pts.length;k++){
     const[ax,az]=pts[k-1],[bx,bz]=pts[k],L=Math.hypot(bx-ax,bz-az),n=Math.max(1,Math.ceil(L/4));
     const nx=-(bz-az)/(L||1),nz=(bx-ax)/(L||1);
     for(let q=(k===1?0:1);q<=n;q++){
       const tt=q/n,x=ax+(bx-ax)*tt,z=az+(bz-az)*tt;
-      let m=Infinity;for(let o=-hw*2;o<=hw*2;o+=2)m=Math.min(m,nearAt(x+nx*o,z+nz*o));
+      let m=Infinity;for(let o=-cut-CELL;o<=cut+CELL;o+=2)m=Math.min(m,nearAt(x+nx*o,z+nz*o));
       s.push([x,z,m]);
     }
   }
   for(let k=1;k<s.length;k++)s[k][2]=Math.min(s[k][2],s[k-1][2]);
-  // carve: bed = surface - depth at the centreline, easing back to the bank over 2*hw
-  const surf=s.map(p=>[p[0],p[1],p[2]-.25] as [number,number,number]);
-  const R=Math.ceil(hw*2.5/CELL)+1;
-  for(const[x,z,h]of surf){
+  courses.push({name:t.name||'',river,hw,depth,cut,surf:s.map(p=>[p[0],p[1],p[2]-.25])});
+}
+// 2) a stream meets the water it flows into at that water's level (no step of water
+// hanging over the river at a confluence): from its first point inside the other channel
+// on, it runs no higher than the other's surface there
+for(const c of courses){
+  if(c.river)continue;
+  for(let k=0;k<c.surf.length;k++){
+    const[x,z,y]=c.surf[k];
+    for(const o of courses){
+      if(o===c)continue;
+      for(const q of o.surf)if(q[2]<y&&Math.hypot(q[0]-x,q[1]-z)<o.cut+c.cut){c.surf[k][2]=q[2];break;}
+    }
+    if(k)c.surf[k][2]=Math.min(c.surf[k][2],c.surf[k-1][2]);
+  }
+}
+// 3) carve a NARROW channel: the bed drops below the surface only within `cut` of the
+// centreline (the grid is 8 m, so every cross-section keeps at least one node in it) and
+// the ring of nodes just past it is kept at least BANK above the surface — the shoreline
+// then lies within one cell of the channel, where water.ts finds it and the drawn water
+// meets the bank instead of hovering over a wide carved ditch. Where a road crosses, its
+// bed stays up and is raised clear of the water (a culvert / bridge hump). The edits of
+// all the courses are applied together (a stream's bank must never refill the bed of the
+// river it joins).
+const BANK=.5,DECK=.8,ROAD_KEEP=5;
+// (a bank or road node takes the level of the NEAREST stretch of the course: on a steep stream the
+// level a few metres upstream is metres higher)
+const bed=new Map<number,number>(),bank=new Map<number,{d:number;v:number}>(),deck=new Map<number,{d:number;v:number}>();
+for(const c of courses){
+  // (roads are kept clear of the water a little further out: the shoreline can spread)
+  const reach=c.cut+2*CELL,R=Math.ceil(reach/CELL)+1;
+  for(const[x,z,h]of c.surf){
     const ci=Math.round((x-NX0)/CELL),cj=Math.round((z-NZ0)/CELL);
     for(let b=-R;b<=R;b++)for(let a=-R;a<=R;a++){
       const i=ci+a,j=cj+b;if(i<0||j<0||i>=NNX||j>=NNZ)continue;
-      const gx=NX0+i*CELL,gz=NZ0+j*CELL,dd=Math.hypot(gx-x,gz-z);
-      if(dd>hw*2.5)continue;
-      if(nearestRoad(gx,gz,10).d<2)continue;                // a road crosses here: keep the road (bridge)
-      const bed=h-depth*(1-Math.min(1,dd/(hw*2.5))**2);
-      const idx=j*NNX+i;if(near[idx]>bed)near[idx]=bed;
+      const gx=NX0+i*CELL,gz=NZ0+j*CELL,dd=Math.hypot(gx-x,gz-z),idx=j*NNX+i;
+      if(dd>reach)continue;
+      // (every node of the cells the roadway crosses: a channel node one cell off would tilt it)
+      if(nearestRoad(gx,gz,12).d<ROAD_KEEP){const q=deck.get(idx);if(!q||dd<q.d)deck.set(idx,{d:dd,v:h+DECK});continue;}
+      if(dd>c.cut+CELL)continue;
+      if(dd<c.cut)bed.set(idx,Math.min(bed.get(idx)??Infinity,h-c.depth*(1-(dd/c.cut)**2)));
+      else{const b=bank.get(idx);if(!b||dd<b.d)bank.set(idx,{d:dd,v:h+BANK});}
     }
   }
-  waters.push({name:t.name||'',river,hw,pts:surf.filter((_,k)=>k%2===0||k===surf.length-1).map(p=>[r1(p[0]),r1(p[1]),r1(p[2])])});
+  waters.push({name:c.name,river:c.river,hw:c.hw,pts:c.surf.filter((_,k)=>k%2===0||k===c.surf.length-1).map(p=>[r1(p[0]),r1(p[1]),r1(p[2])])});
+}
+// (a node far below the water is another valley, a road cut or a stream junction already
+// carved: only the banks and road beds within a step of the water are raised)
+const RAISE_MAX=1.5;
+for(const[idx,{v}]of bank)if(!bed.has(idx)&&!deck.has(idx)&&near[idx]<v&&v-near[idx]<RAISE_MAX)near[idx]=v;
+for(const[idx,v]of bed)if(!deck.has(idx)&&near[idx]>v)near[idx]=v;
+// raise the road beds at the crossings, easing the hump out along the road: each road node
+// around a raised one gets that raise minus RAMP per cell (≈ 10 %), so a culvert is a gentle
+// hump, not a kerb, and the road keeps its own grade under it
+{
+  const RAMP=.8,lift=new Map<number,number>();
+  for(const[idx,{v}]of deck)if(near[idx]<v&&v-near[idx]<RAISE_MAX)lift.set(idx,v-near[idx]);
+  let front=[...lift.keys()];
+  while(front.length){
+    const next:number[]=[];
+    for(const idx of front){
+      const i=idx%NNX,j=(idx-i)/NNX,r=lift.get(idx)!;
+      for(let b=-1;b<=1;b++)for(let a=-1;a<=1;a++){
+        const ii=i+a,jj=j+b;if((!a&&!b)||ii<0||jj<0||ii>=NNX||jj>=NNZ)continue;
+        const k=jj*NNX+ii,rk=r-RAMP*Math.hypot(a,b);
+        if(rk<=.02||(lift.get(k)??0)>=rk||bed.has(k)||nearestRoad(NX0+ii*CELL,NZ0+jj*CELL,12).d>=ROAD_KEEP)continue;
+        lift.set(k,rk);next.push(k);
+      }
+    }
+    front=next;
+  }
+  for(const[idx,r]of lift)near[idx]+=r;
 }
 const waterSegs:{ax:number;az:number;bx:number;bz:number;hw:number}[]=[];
 for(const w of waters)for(let k=1;k<w.pts.length;k++)
@@ -316,6 +378,53 @@ function nearSurveyed(x:number,z:number,m:number):boolean{
   return false;
 }
 const townStreet=new Set(['residential','tertiary','secondary','primary','living_street','unclassified']);
+// Where there really is a building (docs/divinolandia/edificacoes, written by
+// scripts/construido.py): 1 byte per metre, bit 1 = an ML-detected building footprint,
+// bit 2 = a building on the Google Maps road map, bit 4 = a zone traced on the Google Maps
+// satellite photo where houses stand that neither map has yet. A generated house stands
+// only where one of them says so — no house in a pasture, a wood or an empty lot.
+const BUILT_META:{x0:number;z0:number;nx:number;nz:number;cell:number}=JSON.parse(readFileSync(join(DOCS,'edificacoes','construido-1m-meta.json'),'utf8'));
+const built=gunzipSync(readFileSync(join(DOCS,'edificacoes','construido-1m.bin.gz')));
+function builtEvidence(h:{x:number;z:number;w:number;d:number;rot:number}):boolean{
+  const c=Math.cos(h.rot),s=Math.sin(h.rot),M=BUILT_META;let ms=0,gm=0,zone=0,n=0;
+  for(let a=0;a<9;a++)for(let b=0;b<11;b++){
+    const u=(a/8-.5)*.84*h.w,v=(b/10-.5)*.84*h.d,i=Math.floor((h.x+u*c-v*s-M.x0)/M.cell),j=Math.floor((h.z+u*s+v*c-M.z0)/M.cell);
+    n++;if(i<0||j<0||i>=M.nx||j>=M.nz)continue;
+    const k=built[j*M.nx+i];if(k&1)ms++;if(k&2)gm++;if(k&4)zone++;
+  }
+  return ms/n>=.15||gm/n>=.15||zone/n>=.5;
+}
+// every road as segments, with the clearance a house keeps from its centreline: the paved
+// town streets get a 2.1 m sidewalk at runtime (build.ts), so their whole sidewalk stays free
+type RSeg={ax:number;az:number;bx:number;bz:number;need:number};
+const rsegHash=new Map<number,RSeg[]>();
+for(const r of roads){
+  const need=r.hw+(r.paved&&r.k!=='primary'&&r.k!=='primary_link'&&!SURVEYED.has(r.name)?2.15:.3);
+  for(let k=1;k<r.pts.length;k++){
+    const g:RSeg={ax:r.pts[k-1][0],az:r.pts[k-1][1],bx:r.pts[k][0],bz:r.pts[k][1],need},m=need+1;
+    for(let i=Math.floor((Math.min(g.ax,g.bx)-m)/HC);i<=Math.floor((Math.max(g.ax,g.bx)+m)/HC);i++)
+      for(let j=Math.floor((Math.min(g.az,g.bz)-m)/HC);j<=Math.floor((Math.max(g.az,g.bz)+m)/HC);j++){
+        const key=i*100003+j;let a=rsegHash.get(key);if(!a){a=[];rsegHash.set(key,a);}a.push(g);
+      }
+  }
+}
+const onRoadBand=(x:number,z:number):boolean=>
+  (rsegHash.get(Math.floor(x/HC)*100003+Math.floor(z/HC))||[]).some(g=>segDist(x,z,g.ax,g.az,g.bx,g.bz)[0]<g.need);
+// points covering a footprint (edges and inside, ≤ 1 m apart)
+function footprint(h:{x:number;z:number;w:number;d:number;rot:number}):P2[]{
+  const c=Math.cos(h.rot),s=Math.sin(h.rot),out:P2[]=[];
+  const nu=Math.ceil(h.w),nv=Math.ceil(h.d);
+  for(let a=0;a<=nu;a++)for(let b=0;b<=nv;b++){
+    const lu=(a/nu-.5)*h.w,lv=(b/nv-.5)*h.d;out.push([h.x+lu*c-lv*s,h.z+lu*s+lv*c]);
+  }
+  return out;
+}
+const bbox=(q:P2[]):[number,number,number,number]=>[Math.min(...q.map(p=>p[0])),Math.min(...q.map(p=>p[1])),Math.max(...q.map(p=>p[0])),Math.max(...q.map(p=>p[1]))];
+const noBuildBox=noBuild.map(bbox);
+const inNoBuild=(p:P2):boolean=>noBuild.some((q,k)=>{const b=noBuildBox[k];return p[0]>=b[0]&&p[0]<=b[2]&&p[1]>=b[1]&&p[1]<=b[3]&&pip(p,q);});
+// the OSM buildings are drawn as boxes of at least 8 m (build.ts), the cell towers stand on 4 m pads
+const osmBoxes=osmBuildings.map(b=>corners({x:b.cx,z:b.cz,w:Math.max(8,b.w)+1,d:Math.max(8,b.d)+1,rot:b.rot}));
+const towerBoxes=landmarks.torresCelular.map(([x,z])=>corners({x,z,w:7,d:7,rot:0}));
 let tried=0;
 for(const r of roads){
   if(!townStreet.has(r.k)||SURVEYED.has(r.name))continue;
@@ -338,18 +447,23 @@ for(const r of roads){
         const dc=Math.hypot(h.x,h.z);
         const urban=inUrbanPoly(P)||inUrbanPoly(front)||(r.paved&&dc<900&&r.k!=='primary');
         if(!urban)continue;
-        if(noBuild.some(q=>pip(P,q)||pip(front,q)))continue;
         if(landmarkKeep.some(([x,z,R])=>Math.hypot(h.x-x,h.z-z)<R))continue;
         if(nearSurveyed(h.x,h.z,24))continue;
+        if(!builtEvidence({x:r1(h.x),z:r1(h.z),w:r1(w),d:r1(d),rot:Math.round(h.rot*1000)/1000}))continue;   // (as stored)
+        const fp=footprint(h);
+        if(fp.some(inNoBuild))continue;
         const cs=corners(h);
-        if(cs.some(c=>nearestRoad(c[0],c[1],12).d<.8))continue;
-        if(nearestRoad(h.x,h.z,14).d<.8)continue;
+        if(fp.some(p=>onRoadBand(p[0],p[1])))continue;
+        if(osmBoxes.some(b=>obbOverlap(cs,b))||towerBoxes.some(b=>obbOverlap(cs,b)))continue;
         if(nearWater(h.x,h.z,d/2+3))continue;
         const hs=cs.map(c=>nearAt(c[0],c[1]));
         if(Math.max(...hs)-Math.min(...hs)>5.5)continue;
+        // the door keeps to the street: the floor rises at most 2.4 m under the high corner
+        // (build.ts), so a steeper lot would leave the door more than a short flight up
+        if(Math.max(...hs)-nearAt(front[0],front[1])>3.5)continue;
         const k0=Math.floor(h.x/20),k1=Math.floor(h.z/20);let clash=false;
         for(let a=-1;a<=1&&!clash;a++)for(let b=-1;b<=1&&!clash;b++){
-          for(const o of hHash.get((k0+a)*100003+k1+b)||[])if(obbOverlap(cs,corners(o))){clash=true;break;}
+          for(const o of hHash.get((k0+a)*100003+k1+b)||[])if(obbOverlap(cs,corners({...o,w:o.w+.3,d:o.d+.3}))){clash=true;break;}  // + the rounding of the stored houses
         }
         if(clash)continue;
         const central=dc<260;
@@ -373,7 +487,32 @@ const blocked=(x:number,z:number,m:number):boolean=>{
     if(Math.hypot(o.x-x,o.z-z)<Math.max(o.w,o.d)/2+m)return true;
   return false;
 };
+function inHouse(x:number,z:number,m:number):boolean{
+  const k0=Math.floor(x/20),k1=Math.floor(z/20);
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(const o of hHash.get((k0+a)*100003+k1+b)||[]){
+    const c=Math.cos(o.rot),s=Math.sin(o.rot),dx=x-o.x,dz=z-o.z;
+    if(Math.abs(dx*c+dz*s)<o.w/2+m&&Math.abs(-dx*s+dz*c)<o.d/2+m)return true;
+  }
+  return false;
+}
 const urbanAt=(x:number,z:number):boolean=>inUrbanPoly([x,z])||Math.hypot(x,z)<420;
+// the mapped grounds the game draws (build.ts): no wood on a pitch, a schoolyard or among
+// the graves; coffee on none of them
+const grounds=[...plazas,...areas].map(p=>({kind:p.kind,pts:p.pts,box:bbox(p.pts)}));
+const onGround=(x:number,z:number,kinds:(k:string)=>boolean):boolean=>grounds.some(g=>kinds(g.kind)&&
+  x>=g.box[0]&&x<=g.box[2]&&z>=g.box[1]&&z<=g.box[3]&&pip([x,z],g.pts));
+const treeBanned=(k:string):boolean=>k==='campo'||k==='estadio'||k==='cemiterio'||k==='escola'||k==='praca';
+const treeBlocked=(x:number,z:number,m:number):boolean=>blocked(x,z,m)||onGround(x,z,treeBanned);
+// one coffee instance = three 9.2 m hedges 3.4 m apart along the row (vegetacao.ts makeCoffee)
+function coffeeBlocked(cx:number,cz:number,yaw:number):boolean{
+  const c=Math.cos(yaw),s=Math.sin(yaw);
+  for(const o of[-3.4,0,3.4])for(let t=-4.6;t<=4.6;t+=2.3){
+    const x=cx-s*o+c*t,z=cz+c*o+s*t;
+    if((rsegHash.get(Math.floor(x/HC)*100003+Math.floor(z/HC))||[]).some(g=>segDist(x,z,g.ax,g.az,g.bx,g.bz)[0]<g.need+1))return true;
+    if(nearWater(x,z,1)||onGround(x,z,()=>true)||inHouse(x,z,1))return true;
+  }
+  return false;
+}
 // riparian forest: the valleys of the photos are wooded along every stream
 for(const s of waterSegs){
   const L=Math.hypot(s.bx-s.ax,s.bz-s.az);
@@ -382,7 +521,7 @@ for(const s of waterSegs){
     for(const side of[-1,1]){
       const o=s.hw+rand(3,s.hw>3?26:16),nx=-(s.bz-s.az)/L*side,nz=(s.bx-s.ax)/L*side;
       const x=x0+nx*o+rand(-2,2),z=z0+nz*o+rand(-2,2);
-      if(!inNear(x,z,8)||blocked(x,z,4)||nearWater(x,z,1.5)||(urbanAt(x,z)&&random()<.7))continue;
+      if(!inNear(x,z,8)||treeBlocked(x,z,4)||nearWater(x,z,1.5)||(urbanAt(x,z)&&random()<.7))continue;
       trees.push(r1(x),r1(z),Math.round(rand(.8,1.5)*100)/100);
     }
   }
@@ -394,8 +533,8 @@ for(let n=0;n<26000;n++){
   const x=rand(NX0+20,NX0+(NNX-1)*CELL-20),z=rand(NZ0+20,NZ0+(NNZ-1)*CELL-20);
   if(urbanAt(x,z))continue;
   const v=vn(x,z);
-  if(v>.85&&!blocked(x,z,5)&&!nearWater(x,z,2))trees.push(r1(x),r1(z),Math.round(rand(.9,1.6)*100)/100);
-  else if(v<.4&&random()<.06&&!blocked(x,z,5)&&!nearWater(x,z,2))trees.push(r1(x),r1(z),Math.round(rand(1,1.7)*100)/100); // lone pasture tree
+  if(v>.85&&!treeBlocked(x,z,5)&&!nearWater(x,z,2))trees.push(r1(x),r1(z),Math.round(rand(.9,1.6)*100)/100);
+  else if(v<.4&&random()<.06&&!treeBlocked(x,z,5)&&!nearWater(x,z,2))trees.push(r1(x),r1(z),Math.round(rand(1,1.7)*100)/100); // lone pasture tree
 }
 // coffee: rows along the contour lines (perpendicular to the slope), on moderate slopes
 for(let n=0;n<9000;n++){
@@ -405,7 +544,7 @@ for(let n=0;n<9000;n++){
   const sl=slope(cx,cz);if(sl<.05||sl>.55)continue;
   const gx=nearAt(cx+4,cz)-nearAt(cx-4,cz),gz=nearAt(cx,cz+4)-nearAt(cx,cz-4);
   const yaw=Math.atan2(-gx,gz);                          // row direction ⟂ gradient
-  if(blocked(cx,cz,6)||nearWater(cx,cz,6))continue;
+  if(blocked(cx,cz,6)||nearWater(cx,cz,6)||coffeeBlocked(cx,cz,yaw))continue;
   coffee.push(r1(cx),r1(cz),Math.round(yaw*100)/100);
   if(coffee.length>=3*7000)break;
 }

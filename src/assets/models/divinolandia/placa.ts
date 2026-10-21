@@ -18,7 +18,7 @@ function signTex(lines:string[],bg:string,fg:string,aspect:number):THREE.CanvasT
   const n=lines.length;
   lines.forEach((t,i)=>{
     const size=Math.min(H*.62/n,(W-60)/Math.max(4,t.length)*1.7);
-    x.font=`700 ${size|0}px "IBM Plex Mono",monospace`;
+    x.font=`700 ${size|0}px "Barlow Condensed",monospace`;
     x.fillText(t,W/2,H*(i+.5)/n);
   });
   const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;texCache.set(key,tex);

@@ -1,17 +1,26 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
+import {cutAlong} from './terreno.ts';
 import {sextavadoTexture,zigzagTexture,gramaTexture,degrausTexture,settTexture,SEXT_W,SEXT_H,ZIGZAG_TILE_M,GRAMA_TILE_M,SETT_TILE_M} from './texturas.ts';
 
 // Ground kit for the Matriz squares (praca-alcindo.ts, praca-ladislau.ts): surfaces laid
 // over the real terrain in a square's own frame (u along the street grid, v across it,
 // both in metres). Every surface is draped vertex by vertex on groundAt(u,v) + a lift and
 // carries a polygon offset, so the layers (lawn < paths < paved squares < sidewalks) never
-// fight each other or the terrain. Not a model: no default export.
-export type GroundAt=(u:number,v:number)=>number;
+// fight each other or the terrain. Anything that lies over the town's street mesh (the
+// sidewalks, the street in front of the church, sett overlays) sits at or above STREET_TOP:
+// the street ribbons reach .172 m over the ground (rua.ts), and a paving drawn lower than
+// that lets the setts show through it in patches. Not a model: no default export.
+// groundAt(u,v): the ground height in the square's frame. When it also carries `grid` (the
+// terrain grid's two line families as linear functions of u,v, in cell units), drape() cuts
+// every surface along the terrain's own triangles and lies exactly on it; without it the
+// surface is subdivided to maxEdge and only its vertices touch the ground.
+export type GroundAt=((u:number,v:number)=>number)&{grid?:[(u:number,v:number)=>number,(u:number,v:number)=>number]};
+export const STREET_TOP=.21;
 export type P2=[number,number];
 
 const off=(n:number):Partial<THREE.MeshLambertMaterialParameters>=>({polygonOffset:true,polygonOffsetFactor:-n,polygonOffsetUnits:-n});
-export const lawnM=matte({color:0x6c9a44,map:gramaTexture(),...off(2)});
+export const lawnM=matte({color:0x5f7a40,map:gramaTexture(),...off(2)});
 export const pathM=matte({map:sextavadoTexture('vermelho'),...off(5)});
 export const pathEdgeM=matte({map:sextavadoTexture('cinza'),...off(4)});
 export const walkM=matte({map:sextavadoTexture('rosa'),...off(6)});
@@ -44,7 +53,17 @@ export function drape(pts:P2[],at:GroundAt,lift:number,m:THREE.Material,holes:P2
     else if(e===bd){const m2=b.clone().lerp(d,.5);split(a,b,m2,depth+1);split(a,m2,d,depth+1);}
     else{const m2=d.clone().lerp(a,.5);split(a,b,m2,depth+1);split(m2,b,d,depth+1);}
   };
-  for(const[i,j,k]of tris)split(all[i],all[j],all[k],0);
+  if(at.grid){
+    const[fx,fz]=at.grid,fns=[fx,fz,(u:number,v:number):number=>fx(u,v)+fz(u,v)];
+    for(const[i,j,k]of tris)for(const piece of cutAlong([[all[i].x,all[i].y],[all[j].x,all[j].y],[all[k].x,all[k].y]],fns)){
+      const p=piece.map(([u,v])=>new THREE.Vector2(u,v));
+      for(let q=1;q<p.length-1;q++){
+        const a=p[0],b=p[q],d=p[q+1],cr=(b.x-a.x)*(d.y-a.y)-(b.y-a.y)*(d.x-a.x);   // >0: CCW in u-v
+        if(Math.abs(cr)<1e-7)continue;
+        if(cr>0){vert(a);vert(d);vert(b);}else{vert(a);vert(b);vert(d);}
+      }
+    }
+  }else for(const[i,j,k]of tris)split(all[i],all[j],all[k],0);
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   geo.computeVertexNormals();
@@ -95,19 +114,19 @@ export function kerb(g:THREE.Group,at:GroundAt,pts:P2[],closed:boolean,h:number,
 // south strips running on over the crossings
 export function streetsAround(g:THREE.Group,at:GroundAt,u0:number,u1:number,v0:number,v1:number,w:{n:number;s:number;e:number;w:number},m:THREE.Material=settM):void{
   const a=u0-w.w,b=u1+w.e;
-  if(w.n)g.add(drape([[a,v0-w.n],[b,v0-w.n],[b,v0],[a,v0]],at,.16,m));
-  if(w.s)g.add(drape([[a,v1],[b,v1],[b,v1+w.s],[a,v1+w.s]],at,.16,m));
-  if(w.w)g.add(drape([[a,v0],[u0,v0],[u0,v1],[a,v1]],at,.16,m));
-  if(w.e)g.add(drape([[u1,v0],[b,v0],[b,v1],[u1,v1]],at,.16,m));
+  if(w.n)g.add(drape([[a,v0-w.n],[b,v0-w.n],[b,v0],[a,v0]],at,STREET_TOP,m));
+  if(w.s)g.add(drape([[a,v1],[b,v1],[b,v1+w.s],[a,v1+w.s]],at,STREET_TOP,m));
+  if(w.w)g.add(drape([[a,v0],[u0,v0],[u0,v1],[a,v1]],at,STREET_TOP,m));
+  if(w.e)g.add(drape([[u1,v0],[b,v0],[b,v1],[u1,v1]],at,STREET_TOP,m));
 }
 // the block's sidewalk: grey hexagonal pavers with a red paver stripe, a granite kerb at the
 // street and a low white edging along the lawn; returns the lawn outline
 export function sidewalkRing(g:THREE.Group,at:GroundAt,u0:number,u1:number,v0:number,v1:number,w:number):P2[]{
   const outer=roundRect(u0,u1,v0,v1,2.5),inner=roundRect(u0+w,u1-w,v0+w,v1-w,1.2);
   const s0=roundRect(u0+.7,u1-.7,v0+.7,v1-.7,1.8),s1=roundRect(u0+1.15,u1-1.15,v0+1.15,v1-1.15,1.5);
-  g.add(drape(outer,at,.17,walkEdgeM,[inner]));
-  g.add(drape(s0,at,.175,stripeM,[s1]));
-  kerb(g,at,outer,true,.17,.18);kerb(g,at,inner,true,.2,.12);
+  g.add(drape(outer,at,STREET_TOP,walkEdgeM,[inner]));
+  g.add(drape(s0,at,STREET_TOP+.005,stripeM,[s1]));
+  kerb(g,at,outer,true,STREET_TOP,.18);kerb(g,at,inner,true,STREET_TOP+.03,.12);
   return inner;
 }
 // place an object on the ground of the square at (u,v), turned by ry

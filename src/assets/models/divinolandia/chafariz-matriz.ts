@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
+import {leafMat} from './copa.ts';
 
 // Chafariz — the fountain in the middle of the Praça Dr. Alcindo Cardoso de Paiva, from
 // the satellite (a 13.6 m paved circle, the basin ring) and Street View: a wide round
@@ -8,7 +9,7 @@ import {matte} from '../matte.ts';
 // planters round the rim. build() is pure; origin at the centre on the ground (the base
 // sinks .6 m so the basin sits flush on a slope).
 const rimM=matte({color:0xeeebe4,side:THREE.DoubleSide}),stoneM=matte({color:0xd8d3c8}),waterM=matte({color:0x7fb7b4,emissive:0x0b1a1a});
-const hedgeM=matte({color:0x3f6b32,flatShading:true}),jetM=new THREE.MeshLambertMaterial({color:0xe9f4f6,transparent:true,opacity:.6});
+const hedgeM=leafMat(0x3a5530),jetM=new THREE.MeshLambertMaterial({color:0xe9f4f6,transparent:true,opacity:.6});
 export const CHAFARIZ_R=6.8;
 function build():THREE.Group{
   const g=new THREE.Group(),R=5.4;

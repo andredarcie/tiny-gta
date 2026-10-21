@@ -147,8 +147,8 @@ function draw(){
 
   // Halo rosado atrás do anel, dá profundidade.
   const halo=ctx.createRadialGradient(0,0,r*.6,0,0,R*1.28);
-  halo.addColorStop(0,'rgba(255,46,136,.20)');
-  halo.addColorStop(.6,'rgba(70,14,60,.10)');
+  halo.addColorStop(0,'rgba(176,64,40,.20)');
+  halo.addColorStop(.6,'rgba(40,30,20,.10)');
   halo.addColorStop(1,'rgba(0,0,0,0)');
   ctx.fillStyle=halo;
   ctx.beginPath();ctx.arc(0,0,R*1.28,0,Math.PI*2);ctx.fill();
@@ -164,14 +164,14 @@ function draw(){
     ctx.arc(0,0,r,a+seg/2-gap,a-seg/2+gap,true);
     ctx.closePath();
     const g=ctx.createRadialGradient(0,0,r,0,0,oR);
-    if(on){g.addColorStop(0,'rgba(255,96,172,.40)');g.addColorStop(1,'rgba(255,46,136,.62)');}
-    else  {g.addColorStop(0,'rgba(28,13,44,.42)'); g.addColorStop(1,'rgba(11,4,22,.66)');}
+    if(on){g.addColorStop(0,'rgba(200,90,60,.40)');g.addColorStop(1,'rgba(176,64,40,.62)');}
+    else  {g.addColorStop(0,'rgba(36,28,22,.48)'); g.addColorStop(1,'rgba(18,14,10,.7)');}
     ctx.fillStyle=g;
-    if(on){ctx.shadowColor='rgba(255,60,150,.85)';ctx.shadowBlur=28;}
+    if(on){ctx.shadowColor='rgba(0,0,0,.5)';ctx.shadowBlur=10;}
     ctx.fill();
     ctx.shadowBlur=0;
     ctx.lineWidth=on?2.6:1.1;
-    ctx.strokeStyle=on?'rgba(255,176,214,.95)':'rgba(255,233,201,.14)';
+    ctx.strokeStyle=on?'rgba(243,239,228,.95)':'rgba(255,233,201,.14)';
     ctx.stroke();
     // Glifo da arma no meio do setor (sombra leve no destacado p/ contraste).
     const gm=(oR+r)/2;
@@ -187,8 +187,8 @@ function draw(){
     if(!it.infinite){
       ctx.save();
       ctx.translate(Math.cos(a)*(oR-13),Math.sin(a)*(oR-13));
-      ctx.fillStyle=empty?'#ff6a9a':'#ffe9b0';
-      ctx.font='700 11px "IBM Plex Mono",monospace';
+      ctx.fillStyle=empty?'#e0705a':'#ffe9b0';
+      ctx.font='700 11px "Barlow Condensed",monospace';
       ctx.textAlign='center';ctx.textBaseline='middle';
       ctx.fillText(String(it.ammo),0,0);
       ctx.restore();
@@ -201,7 +201,7 @@ function draw(){
   ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.globalAlpha=ease;
   ctx.fillStyle='rgba(255,233,201,.72)';
-  ctx.font='700 12px "IBM Plex Mono",monospace';
+  ctx.font='700 12px "Barlow Condensed",monospace';
   ctx.textAlign='center';ctx.textBaseline='middle';
   ctx.fillText(state.mobile?'TAP A WEAPON  •  TAP CENTER TO CLOSE'
                           :'AIM TO SELECT  •  RELEASE TO EQUIP',cx,cy+R+30);
@@ -216,8 +216,8 @@ function drawPointer(r: number,ang: number){
   ctx.translate(r-3,0);
   ctx.beginPath();
   ctx.moveTo(11,0);ctx.lineTo(-3,-8);ctx.lineTo(-3,8);ctx.closePath();
-  ctx.fillStyle='rgba(255,180,216,.96)';
-  ctx.shadowColor='rgba(255,46,136,.9)';ctx.shadowBlur=12;
+  ctx.fillStyle='rgba(240,190,58,.96)';
+  ctx.shadowColor='rgba(176,64,40,.9)';ctx.shadowBlur=12;
   ctx.fill();
   ctx.restore();
 }
@@ -226,25 +226,25 @@ function drawHub(r: number,it: InventoryItem|undefined){
   if(!ctx||!it)return;
   // Disco central com gradiente + brilho rosado na borda.
   const hub=ctx.createRadialGradient(0,-r*.35,r*.15,0,0,r);
-  hub.addColorStop(0,'rgba(30,13,44,.96)');
-  hub.addColorStop(1,'rgba(8,3,16,.96)');
+  hub.addColorStop(0,'rgba(40,32,25,.96)');
+  hub.addColorStop(1,'rgba(20,16,12,.96)');
   ctx.beginPath();ctx.arc(0,0,r-5,0,Math.PI*2);
   ctx.fillStyle=hub;ctx.fill();
-  ctx.lineWidth=2;ctx.strokeStyle='rgba(255,122,184,.6)';
-  ctx.shadowColor='rgba(255,46,136,.5)';ctx.shadowBlur=14;
+  ctx.lineWidth=2;ctx.strokeStyle='rgba(243,239,228,.6)';
+  ctx.shadowColor='rgba(176,64,40,.5)';ctx.shadowBlur=14;
   ctx.stroke();ctx.shadowBlur=0;
   ctx.textAlign='center';ctx.textBaseline='middle';
   // Nome (auto-ajusta o tamanho pra caber no hub).
   const maxW=(r-8)*1.7;
   let fs=Math.round(r*.2);
-  ctx.font='700 '+fs+'px "IBM Plex Mono",monospace';
-  while(fs>8&&ctx.measureText(it.name).width>maxW){fs--;ctx.font='700 '+fs+'px "IBM Plex Mono",monospace';}
+  ctx.font='700 '+fs+'px "Barlow Condensed",monospace';
+  while(fs>8&&ctx.measureText(it.name).width>maxW){fs--;ctx.font='700 '+fs+'px "Barlow Condensed",monospace';}
   ctx.fillStyle='#fff';
   ctx.fillText(it.name,0,-fs*.55);
   // Munição.
   const ammo=it.infinite?'∞':(it.ammo+' / '+it.max);
-  ctx.fillStyle=it.infinite?'#9bdcf0':(it.ammo<=0?'#ff6a9a':'#ffe9b0');
-  ctx.font='700 '+Math.round(r*.17)+'px "IBM Plex Mono",monospace';
+  ctx.fillStyle=it.infinite?'#f3efe4':(it.ammo<=0?'#e0705a':'#ffe9b0');
+  ctx.font='700 '+Math.round(r*.17)+'px "Barlow Condensed",monospace';
   ctx.fillText(ammo,0,fs*.85);
 }
 

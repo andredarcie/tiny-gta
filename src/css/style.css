@@ -1,58 +1,69 @@
 :root{
-  --pink:#ff2e88; --cyan:#19e3ff; --cream:#ffe9c9; --gold:#ffd24a;
-  --ink:#14091f; --blue:#3e7bff;
+  /* Interior de SP: the colours of a small paulista town's signage and walls — the blue
+     enamel street plate (azul), the green road sign (verde), the hand-painted shop
+     lettering in terra-roxa red and lottery-shop yellow, limewash white (cal), coffee
+     brown. The old names stay so every rule and script keeps working:
+     pink = terra red, cyan = plate blue, gold = sign yellow, cream = cal. */
+  --pink:#c4452b; --cyan:#7fa6d8; --cream:#f3efe4; --gold:#f0be3a;
+  --ink:#17130f; --blue:#1f4f99;
+  --azul:#1f4f99; --verde:#1d6b3e; --terra:#a13a22; --cafe:#2a1f17;
+  --cal:#f3efe4; --amarelo:#f0be3a;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%;overflow:hidden;background:var(--ink);touch-action:none;overscroll-behavior:none;
-  font-family:'IBM Plex Mono',monospace;color:var(--cream);user-select:none}
+  font-family:'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;color:var(--cream);user-select:none}
 canvas#game{display:block;width:100%;height:100%;touch-action:none}
 
 #hud{position:fixed;inset:0;pointer-events:none;z-index:40;display:none}
-.panel{background:rgba(16,6,30,.62);border:2px solid var(--pink);
-  box-shadow:0 0 14px rgba(255,46,136,.35), inset 0 0 22px rgba(255,46,136,.08);
-  border-radius:10px;backdrop-filter:blur(3px)}
+.panel{background:rgba(24,20,16,.72);border:2px solid var(--cal);
+  box-shadow:0 0 0 2px rgba(0,0,0,.55),3px 4px 0 rgba(0,0,0,.35);
+  border-radius:6px}
 /* HUD estilo mundo aberto: pilha no canto superior direito, sem painéis */
 #vchud{position:absolute;top:20px;right:20px;display:flex;align-items:flex-start;gap:14px}
-#vc-stack{display:flex;flex-direction:column;align-items:flex-end;gap:10px;
-  font-family:'Press Start 2P',monospace;
-  text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000,1px 1px 0 #000}
-#clock{font-size:17px;color:#9bdcf0;letter-spacing:1px}
-#money{font-size:17px;color:#41ce62;letter-spacing:1px}
-#health{font-size:15px;color:#ff9ed8}
-#health-heart{font-family:'IBM Plex Mono',monospace;font-size:19px;margin-right:9px;vertical-align:-1px}
+/* the status plate: a blue enamel street sign (placa esmaltada) with its white inner
+   border, the readings in road-sign lettering */
+#vc-stack{display:flex;flex-direction:column;align-items:flex-end;gap:2px;
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;
+  padding:7px 12px 8px 14px;border-radius:7px;background:var(--azul);
+  box-shadow:inset 0 0 0 2px var(--azul),inset 0 0 0 4px var(--cal),0 0 0 2px rgba(0,0,0,.6),3px 4px 0 rgba(0,0,0,.35);
+  text-shadow:1px 1px 0 rgba(0,0,0,.45)}
+#clock{font-size:24px;line-height:1;color:var(--cal);letter-spacing:1px}
+#money{font-size:24px;line-height:1;color:#ffe08a;letter-spacing:1px}
+#health{font-size:20px;line-height:1;color:var(--cal)}
+#health-heart{font-family:'Barlow Condensed',sans-serif;font-size:20px;margin-right:6px;color:#ff8a7a}
 /* Estrelas de procurado: escondidas por padrão, reveladas só com wanted >= 1 (hud.js) */
-#stars{font-family:'IBM Plex Mono',monospace;font-size:23px;letter-spacing:4px;line-height:1;
+#stars{font-family:'Barlow Condensed',monospace;font-size:23px;letter-spacing:4px;line-height:1;
   margin-right:-4px;display:none}
 #stars.show{display:block}
-#stars .s{color:#1d4e66;transition:color .2s;display:inline-block;
-  text-shadow:2px 2px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000}
-#stars .s.on{color:#e9f4fb;text-shadow:2px 2px 0 #000,0 0 10px rgba(233,244,251,.8)}
+#stars .s{color:#4a4a48;transition:color .2s;display:inline-block;
+  text-shadow:2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000}
+#stars .s.on{color:#ffffff;text-shadow:2px 2px 0 #000}
 /* Wanted but out of every police vision cone: the lit stars hard-blink to signal the
    cooldown ("they've lost sight of you"), the way GTA flashes the stars while searching. */
 @keyframes starsearch{0%,55%{opacity:1}55.01%,100%{opacity:.2}}
 #stars.searching .s.on{animation:starsearch .85s steps(1,end) infinite}
 @keyframes blink{50%{opacity:.25}}
 /* Fôlego ao nadar: barra que esvazia; fica vermelha e pisca quando o ar acaba */
-#breath{width:118px;height:10px;border:2px solid #9bdcf0;border-radius:6px;
-  background:rgba(8,22,32,.55);box-shadow:0 0 0 2px rgba(0,0,0,.8);
+#breath{width:118px;height:10px;border:2px solid #f3efe4;border-radius:6px;
+  background:rgba(24,20,16,.55);box-shadow:0 0 0 2px rgba(0,0,0,.8);
   overflow:hidden;display:none}
 #breath.show{display:block}
 #breath-fill{height:100%;width:100%;
   background:linear-gradient(90deg,#2fb8e6,#9bf0ff);transition:width .1s linear}
 #breath.low{border-color:#ff6b9a;animation:blink .5s infinite}
-#breath.low #breath-fill{background:linear-gradient(90deg,#ff2e88,#ff9ed8)}
-#weaponhud{position:relative;width:62px;height:62px;border:3px solid #f0b6e2;border-radius:15px;
-  background:rgba(16,6,30,.45);
-  box-shadow:0 0 0 2px rgba(0,0,0,.85),inset 0 0 0 2px rgba(0,0,0,.55);
+#breath.low #breath-fill{background:linear-gradient(90deg,#ff2e88,#f0b0a0)}
+#weaponhud{position:relative;width:66px;height:66px;border-radius:7px;
+  background:var(--cal);
+  box-shadow:inset 0 0 0 2px var(--cal),inset 0 0 0 4px var(--cafe),0 0 0 2px rgba(0,0,0,.6),3px 4px 0 rgba(0,0,0,.35);
   display:flex;flex-direction:column;align-items:center;justify-content:center}
-#weapon-name{position:absolute;top:calc(100% + 7px);left:50%;transform:translateX(-50%);
-  white-space:nowrap;font-family:'Press Start 2P',monospace;font-size:7px;color:#ffe9b0;
-  text-shadow:1px 1px 0 #000;pointer-events:none}
+#weapon-name{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+  white-space:nowrap;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;letter-spacing:1px;color:var(--cal);
+  text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;pointer-events:none}
 #weapon-icon{width:46px;height:46px;display:block;
-  filter:drop-shadow(1px 1px 0 rgba(0,0,0,.9))}
-#weapon-ammo{display:none;font-family:'Press Start 2P',monospace;font-size:8px;color:#fff;
-  margin-top:1px;text-shadow:1px 1px 0 #000}
-#weapon-ammo.low{color:#ff9ed8}
+  filter:brightness(0) drop-shadow(0 0 0 #000)}
+#weapon-ammo{display:none;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;color:var(--cafe);
+  margin-top:-2px}
+#weapon-ammo.low{color:var(--terra)}
 #ammo-max{opacity:.75}
 /* GTA-style third-person reticle: a small centre dot + four short ticks with a gap,
    pure white with a crisp 1px black outline so it stays readable on any background.
@@ -70,82 +81,83 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .ch-left{left:10px}.ch-right{right:10px}
 .ch-ring{display:none} /* GTA's default reticle is dot + ticks, no ring */
 #crosshair.target .ch-dot{background:#ff3b30}
-#crosshair.target .ch-line{background:#ff3b30;box-shadow:0 0 0 1px rgba(0,0,0,.85),0 0 6px rgba(255,59,48,.7)}
+#crosshair.target .ch-line{background:#ff3b30;box-shadow:0 0 0 1px rgba(0,0,0,.85), 0 0 6px rgba(255,59,48,.7)}
 @keyframes crosspop{0%{transform:translate(-50%,-50%) scale(1)}45%{transform:translate(-50%,-50%) scale(1.22);opacity:1}100%{transform:translate(-50%,-50%) scale(1)}}
 /* nome do carro em cursiva ciano, canto inferior direito */
+/* the car's name as the painted script on a truck's door */
 #carname{position:absolute;right:30px;bottom:104px;display:none;
-  font-family:'Yellowtail',cursive;font-size:46px;line-height:1;color:#56d4e8;
-  text-shadow:2px 3px 0 #0a3543,0 0 18px rgba(86,212,232,.35);transform:rotate(-2deg)}
+  font-family:'Yellowtail',cursive;font-size:46px;line-height:1;color:var(--cal);
+  text-shadow:2px 3px 0 var(--terra),4px 5px 0 rgba(0,0,0,.45);transform:rotate(-2deg)}
 #speedo{position:absolute;right:26px;bottom:24px;display:none;
   flex-direction:column;align-items:center;line-height:1;
-  padding:6px 16px;border:2px solid rgba(255,138,30,.6);border-radius:8px;
-  background:rgba(20,9,31,.5);
-  box-shadow:0 0 12px rgba(255,138,30,.25),2px 3px 0 rgba(0,0,0,.4);
-  text-shadow:1px 1px 0 #000}
-#speedo-val{font:700 32px 'IBM Plex Mono',monospace;color:#fff}
-#speedo-unit{font:700 10px 'IBM Plex Mono',monospace;letter-spacing:2px;color:#ff8a1e;margin-top:2px}
+  padding:6px 16px 7px;border-radius:7px;background:var(--verde);
+  box-shadow:inset 0 0 0 2px var(--verde),inset 0 0 0 4px var(--cal),0 0 0 2px rgba(0,0,0,.6),3px 4px 0 rgba(0,0,0,.35);
+  text-shadow:1px 1px 0 rgba(0,0,0,.45)}
+#speedo-val{font:800 34px 'Barlow Condensed',sans-serif;color:var(--cal)}
+#speedo-unit{font:700 12px 'Barlow Condensed',sans-serif;letter-spacing:2px;color:var(--cal);margin-top:1px}
 #mapwrap{
-  position:absolute;left:18px;bottom:18px;padding:5px;border:3px solid #efa1d8;border-radius:50%;
-  background:#08050a;pointer-events:auto;cursor:pointer;
-  box-shadow:0 0 0 2px rgba(0,0,0,.92),4px 5px 0 rgba(0,0,0,.36),0 0 12px rgba(239,161,216,.28)
+  position:absolute;left:18px;bottom:18px;padding:4px;border:4px solid var(--cal);border-radius:50%;
+  background:var(--cafe);pointer-events:auto;cursor:pointer;
+  box-shadow:0 0 0 2px rgba(0,0,0,.7),3px 4px 0 rgba(0,0,0,.35)
 }
 #minimap{display:block;border-radius:50%}
 /* letreiro de localização (nome do bairro/região), ancorado ACIMA do radar —
    por ser filho do #mapwrap acompanha o radar no desktop e no celular */
-#location{position:absolute;left:2px;bottom:calc(100% + 9px);max-width:240px;
-  padding:5px 13px 5px 10px;border-left:3px solid var(--gold);border-radius:2px;
-  background:linear-gradient(90deg,rgba(8,5,10,.9),rgba(8,5,10,.34) 70%,rgba(8,5,10,0));
-  font-family:'Bowlby One SC',sans-serif;font-size:14px;letter-spacing:.5px;
-  color:var(--cream);text-shadow:2px 2px 0 #000;line-height:1.05;white-space:nowrap;
+/* where you are, on a blue enamel street plate ("R. José Augusto Machado") */
+#location{position:absolute;left:0;bottom:calc(100% + 10px);max-width:260px;
+  padding:5px 12px 6px;border-radius:5px;background:var(--azul);
+  box-shadow:inset 0 0 0 2px var(--azul),inset 0 0 0 3.5px var(--cal),0 0 0 2px rgba(0,0,0,.6),2px 3px 0 rgba(0,0,0,.35);
+  font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:17px;letter-spacing:.5px;
+  color:var(--cal);line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   pointer-events:none;opacity:0;transform:translateY(8px);
   transition:opacity .45s ease,transform .45s ease}
 #location.show{opacity:1;transform:translateY(0)}
 #prompt{position:absolute;left:50%;bottom:96px;transform:translateX(-50%);
-  padding:8px 18px;font-size:14px;letter-spacing:2px;color:var(--cream);display:none}
+  padding:7px 18px;font-weight:700;font-size:17px;letter-spacing:1px;color:var(--cream);display:none}
 #prompt b{color:var(--gold)}
 #taxihud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
   display:none;width:112px;box-sizing:border-box;padding:6px 7px;
-  border:1px solid rgba(239,161,216,.72);border-radius:4px;
-  background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  border:1px solid rgba(243,239,228,.72);border-radius:4px;
+  background:rgba(24,20,16,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
   color:var(--cream);text-shadow:1px 1px 0 #000}
 #taxihud.show{display:block}
-.taxi-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--gold);
+.taxi-label{font:700 9px 'Barlow Condensed',monospace;letter-spacing:1px;color:var(--gold);
   line-height:1}
 .taxi-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
-.taxi-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#5eff8a}
-.taxi-main b{font:700 12px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.taxi-main span{font:700 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#5eff8a}
+.taxi-main b{font:700 12px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .taxi-meter{height:3px;margin-top:4px;border-radius:2px;background:rgba(255,255,255,.13);
   overflow:hidden}
 .taxi-meter i{display:block;height:100%;border-radius:2px;background:var(--gold)}
 #racehud{position:absolute;right:12px;top:50%;transform:translateY(-50%);
   display:none;width:118px;box-sizing:border-box;padding:6px 7px;
   border:1px solid rgba(255,138,30,.72);border-radius:4px;
-  background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  background:rgba(24,20,16,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
   color:var(--cream);text-shadow:1px 1px 0 #000}
 #racehud.show{display:block}
-.race-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#ff8a1e;
+.race-label{font:700 9px 'Barlow Condensed',monospace;letter-spacing:1px;color:#ff8a1e;
   line-height:1}
 .race-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
-.race-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffce8a}
-.race-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.race-main span{font:700 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#ffce8a}
+.race-main b{font:700 14px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .race-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
-.race-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffce8a}
-.race-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.race-row span{font:700 9px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#ffce8a}
+.race-row b{font:700 11px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 /* Weed delivery run HUD (left-center, like the vigilante/medic panels) + heat bar */
 #weedhud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
   display:none;width:122px;box-sizing:border-box;padding:6px 7px;
   border:1px solid rgba(127,224,127,.7);border-radius:4px;
-  background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  background:rgba(24,20,16,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
   color:var(--cream);text-shadow:1px 1px 0 #000}
 #weedhud.show{display:block}
-.weed-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;color:#7fe07f;line-height:1}
+.weed-label{font:700 9px 'Barlow Condensed',monospace;letter-spacing:1px;color:#7fe07f;line-height:1}
 .weed-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
-.weed-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#bfe6bf}
-.weed-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.weed-main span{font:700 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#bfe6bf}
+.weed-main b{font:700 14px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .weed-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
-.weed-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#bfe6bf}
-.weed-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
-.weed-heat{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;margin-top:4px}
+.weed-row span{font:700 9px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#bfe6bf}
+.weed-row b{font:700 11px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
+.weed-heat{font:700 9px 'Barlow Condensed',monospace;letter-spacing:.5px;margin-top:4px}
 .weed-meter{height:4px;margin-top:2px;border-radius:2px;background:rgba(255,255,255,.14);overflow:hidden}
 .weed-meter i{display:block;height:100%;border-radius:2px;transition:width .2s}
 /* Vigilante (viatura) e Paramedic (ambulância): mesmo formato do taxihud, à
@@ -153,37 +165,37 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
    veículo especial por vez), então compartilham a posição sem sobrepor. */
 #vighud,#medhud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
   display:none;width:120px;box-sizing:border-box;padding:6px 7px;
-  border-radius:4px;background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  border-radius:4px;background:rgba(24,20,16,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
   color:var(--cream);text-shadow:1px 1px 0 #000}
 #vighud{border:1px solid rgba(62,123,255,.72)}
 #medhud{border:1px solid rgba(255,77,106,.72)}
 #vighud.show,#medhud.show{display:block}
-.vig-label,.med-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;line-height:1}
+.vig-label,.med-label{font:700 9px 'Barlow Condensed',monospace;letter-spacing:1px;line-height:1}
 .vig-label{color:#3e7bff}.med-label{color:#ff4d6a}
 .vig-main,.med-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
-.vig-main span,.med-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px}
+.vig-main span,.med-main span{font:700 11px 'Barlow Condensed',monospace;letter-spacing:.5px}
 .vig-main span{color:#9fc0ff}.med-main span{color:#5eff8a}
-.vig-main b,.med-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.vig-main b,.med-main b{font:700 14px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .vig-row,.med-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
-.vig-row span,.med-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px}
+.vig-row span,.med-row span{font:700 9px 'Barlow Condensed',monospace;letter-spacing:.5px}
 .vig-row span{color:#9fc0ff}.med-row span{color:#9affc0}
-.vig-row b,.med-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.vig-row b,.med-row b{font:700 11px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .vig-meter,.med-meter{height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.13);overflow:hidden}
 .vig-meter i,.med-meter i{display:block;height:100%;border-radius:2px}
 .vig-meter i{background:#3e7bff}.med-meter i{background:#ff4d6a}
 /* painel do plantão de bombeiro (#ffhud) — mesmo layout dos outros, tema laranja */
 #ffhud{position:absolute;left:12px;top:50%;transform:translateY(-50%);
   display:none;width:120px;box-sizing:border-box;padding:6px 7px;
-  border-radius:4px;background:rgba(20,9,31,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
+  border-radius:4px;background:rgba(24,20,16,.46);box-shadow:1px 2px 0 rgba(0,0,0,.45);
   color:var(--cream);text-shadow:1px 1px 0 #000;border:1px solid rgba(255,122,30,.78)}
 #ffhud.show{display:block}
-.ff-label{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;line-height:1;color:#ff9a3a}
+.ff-label{font:700 9px 'Barlow Condensed',monospace;letter-spacing:1px;line-height:1;color:#ff9a3a}
 .ff-main{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:4px}
-.ff-main span{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffd24a}
-.ff-main b{font:700 14px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.ff-main span{font:700 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#ffd24a}
+.ff-main b{font:700 14px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .ff-row{display:flex;align-items:baseline;justify-content:space-between;gap:5px;margin-top:3px}
-.ff-row span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#ffc08a}
-.ff-row b{font:700 11px 'IBM Plex Mono',monospace;color:#fff;white-space:nowrap}
+.ff-row span{font:700 9px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#ffc08a}
+.ff-row b{font:700 11px 'Barlow Condensed',monospace;color:#fff;white-space:nowrap}
 .ff-meter{height:3px;margin-top:5px;border-radius:2px;background:rgba(255,255,255,.13);overflow:hidden}
 .ff-meter i{display:block;height:100%;border-radius:2px;background:#ffd24a}
 .ff-blaze i{background:#ff5a1e}
@@ -192,152 +204,155 @@ canvas#game{display:block;width:100%;height:100%;touch-action:none}
 .ff-meter.ff-low i{background:#ff3b3b}
 .ff-low{animation:ffblink .6s steps(1) infinite}
 @keyframes ffblink{50%{opacity:.45}}
+/* messages as hand-painted shop lettering: cream slab letters with a hard painted shadow */
 #msg{position:absolute;left:50%;top:84px;transform:translateX(-50%);
-  font-family:'Bowlby One SC';font-size:24px;color:var(--cream);letter-spacing:2px;
-  text-shadow:2px 2px 0 #000,0 0 18px rgba(255,46,136,.7);opacity:0;transition:opacity .25s;
+  font-family:'Alfa Slab One';font-size:26px;color:var(--cal);letter-spacing:1px;
+  text-shadow:2px 2px 0 var(--terra),4px 4px 0 rgba(0,0,0,.55);opacity:0;transition:opacity .25s;
   white-space:nowrap;text-align:center}
 /* placar do rampage da bazuca: faixa própria ABAIXO do #msg pra não sobrepor */
 #rampage{position:absolute;left:50%;top:126px;transform:translateX(-50%);
-  font-family:'Press Start 2P',monospace;font-size:13px;color:#ff5f5f;letter-spacing:2px;
-  text-shadow:2px 2px 0 #000,0 0 18px rgba(255,46,46,.6);white-space:nowrap;display:none}
+  font-family:'Barlow Condensed',monospace;font-size:13px;color:#e05a40;letter-spacing:2px;
+  text-shadow:2px 2px 0 #000;white-space:nowrap;display:none}
 #bigtext{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(.7);
-  font-family:'Bowlby One SC';font-size:96px;letter-spacing:6px;opacity:0;
+  font-family:'Alfa Slab One';font-size:92px;letter-spacing:3px;opacity:0;
+  text-shadow:4px 4px 0 rgba(0,0,0,.6);
   transition:opacity .35s,transform .35s;white-space:nowrap}
 #bigtext.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
 /* ===== Pause menu (P / Esc / the touch II button) — see js/pause-menu.js ===== */
 #pauseov{position:fixed;inset:0;z-index:45;display:none;align-items:center;justify-content:center;
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
-  background:radial-gradient(ellipse at 50% 40%,rgba(10,2,20,.72),rgba(4,1,10,.9));
-  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+  background:radial-gradient(ellipse at 50% 40%,rgba(24,20,16,.6),rgba(12,10,8,.88))}
 .pause-shell{width:min(440px,96vw);max-height:92vh;display:flex;flex-direction:column;gap:16px;
-  background:rgba(16,6,30,.92);border:2px solid var(--cyan);border-radius:16px;padding:22px 22px 18px;
-  box-shadow:0 0 30px rgba(25,227,255,.32),inset 0 0 34px rgba(25,227,255,.07);pointer-events:auto}
-#pause-title{font-family:'Bowlby One SC';font-size:clamp(30px,7vw,46px);color:var(--cyan);
-  letter-spacing:6px;text-align:center;text-shadow:0 0 22px rgba(25,227,255,.6)}
+  background:rgba(30,24,19,.95);border-radius:8px;padding:22px 22px 18px;
+  box-shadow:inset 0 0 0 2px rgba(30,24,19,.95),inset 0 0 0 4px var(--cal),0 0 0 2px rgba(0,0,0,.7),6px 8px 0 rgba(0,0,0,.35);pointer-events:auto}
+/* PAUSED on a blue enamel plate */
+#pause-title{font-family:'Alfa Slab One';font-size:clamp(28px,6.5vw,42px);color:var(--cal);
+  letter-spacing:3px;text-align:center;align-self:center;padding:2px 22px 6px;border-radius:7px;background:var(--azul);
+  box-shadow:inset 0 0 0 2px var(--azul),inset 0 0 0 4px var(--cal),2px 3px 0 rgba(0,0,0,.4);text-shadow:2px 2px 0 rgba(0,0,0,.35)}
 #pause-body{display:flex;flex-direction:column;gap:12px;min-height:0;overflow-y:auto;
   -webkit-overflow-scrolling:touch}
 /* Main menu: a clean column of buttons */
 .pause-menu{display:flex;flex-direction:column;gap:10px}
-.pause-btn{font-family:'Bowlby One SC';font-size:16px;letter-spacing:2px;width:100%;min-height:48px;
-  padding:0 18px;border:2px solid rgba(255,233,201,.3);border-radius:10px;background:rgba(20,9,31,.8);
+.pause-btn{font-family:'Alfa Slab One';font-size:17px;letter-spacing:1px;width:100%;min-height:48px;
+  padding:0 18px;border:2px solid rgba(243,239,228,.35);border-radius:6px;background:rgba(243,239,228,.06);
   color:var(--cream);text-shadow:1px 1px 0 #000;cursor:pointer;pointer-events:auto;touch-action:manipulation;
-  transition:transform .1s,background .12s,border-color .12s,box-shadow .12s}
-.pause-btn:hover{border-color:var(--cyan);background:rgba(25,227,255,.12);box-shadow:0 0 16px rgba(25,227,255,.3)}
+  transition:transform .1s,background .12s,border-color .12s,color .12s}
+.pause-btn:hover{border-color:var(--cal);background:var(--cal);color:var(--cafe);text-shadow:none}
 .pause-btn:active{transform:scale(.97)}
-.pause-btn-go{border-color:var(--gold);color:var(--gold);box-shadow:0 0 18px rgba(255,210,74,.36)}
-.pause-btn-go:hover{background:rgba(255,210,74,.16);border-color:var(--gold);box-shadow:0 0 20px rgba(255,210,74,.5)}
-.pause-btn-danger{border-color:rgba(255,46,136,.7);color:#ff7ab0}
-.pause-btn-danger:hover{background:rgba(255,46,136,.18);border-color:var(--pink);box-shadow:0 0 16px rgba(255,46,136,.34)}
+.pause-btn-go{border-color:var(--amarelo);background:var(--amarelo);color:var(--cafe);text-shadow:none}
+.pause-btn-go:hover{background:#ffd25a;border-color:#ffd25a}
+.pause-btn-danger{border-color:rgba(196,69,43,.8);color:#f0a28e}
+.pause-btn-danger:hover{background:var(--terra);border-color:var(--terra);color:var(--cal)}
 .pause-back{margin-top:2px}
 /* Sub-panels: scroll region + table + pagination */
 .pause-scroll{overflow:auto;-webkit-overflow-scrolling:touch;max-height:48vh;border-radius:10px;
-  border:1px solid rgba(25,227,255,.22);background:rgba(8,4,16,.5)}
-.pause-table{width:100%;border-collapse:collapse;font:600 13px 'IBM Plex Mono',monospace}
-.pause-table th{position:sticky;top:0;background:rgba(20,9,31,.97);color:var(--cyan);text-align:left;
-  padding:8px 12px;font-size:10px;letter-spacing:1px;border-bottom:1px solid rgba(25,227,255,.3)}
+  border:1px solid rgba(46,96,168,.22);background:rgba(24,20,16,.5)}
+.pause-table{width:100%;border-collapse:collapse;font:600 13px 'Barlow Condensed',monospace}
+.pause-table th{position:sticky;top:0;background:rgba(24,20,16,.97);color:var(--cyan);text-align:left;
+  padding:8px 12px;font-size:10px;letter-spacing:1px;border-bottom:1px solid rgba(46,96,168,.3)}
 .pause-table td{padding:7px 12px;border-bottom:1px solid rgba(255,255,255,.06);white-space:nowrap;color:var(--cream)}
 .pause-table .num{text-align:right;font-variant-numeric:tabular-nums}
 .pause-pos{color:var(--gold);font-weight:800}
-.pause-neg{color:#ff7ab0}
+.pause-neg{color:#e08a74}
 .pause-tname{color:var(--cyan);overflow:hidden;text-overflow:ellipsis;max-width:46vw}
-.pause-me{background:rgba(255,210,74,.16);outline:1px solid rgba(255,210,74,.5)}
-.pause-when{color:rgba(255,233,201,.6);font-size:11px}
-.pause-empty,.pause-loading{padding:24px;text-align:center;color:rgba(255,233,201,.7);letter-spacing:1px}
+.pause-me{background:rgba(232,185,49,.16);outline:1px solid rgba(232,185,49,.5)}
+.pause-when{color:rgba(243,239,228,.6);font-size:11px}
+.pause-empty,.pause-loading{padding:24px;text-align:center;color:rgba(243,239,228,.7);letter-spacing:1px}
 .pause-bar{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.pause-note{font:600 11px 'IBM Plex Mono',monospace;color:rgba(255,233,201,.78);text-align:center;flex:1}
-.pause-mini{font:700 11px 'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--ink);background:var(--cyan);
+.pause-note{font:600 11px 'Barlow Condensed',monospace;color:rgba(243,239,228,.78);text-align:center;flex:1}
+.pause-mini{font:700 11px 'Barlow Condensed',monospace;letter-spacing:1px;color:var(--ink);background:var(--cyan);
   border:none;border-radius:7px;padding:7px 12px;cursor:pointer;pointer-events:auto;touch-action:manipulation}
 .pause-mini:hover{filter:brightness(1.1)}
 .pause-mini:disabled{opacity:.35;cursor:default;filter:none}
 /* Wallet summary on the transactions panel */
 .pause-wallet{display:flex;gap:8px}
 .pw-cell{flex:1;display:flex;flex-direction:column;gap:2px;align-items:center;padding:8px 6px;
-  border:1px solid rgba(25,227,255,.25);border-radius:9px;background:rgba(20,9,31,.6)}
-.pw-cell span{font:700 9px 'IBM Plex Mono',monospace;letter-spacing:1px;color:rgba(255,233,201,.6)}
-.pw-cell b{font:800 14px 'IBM Plex Mono',monospace;color:var(--cream)}
+  border:1px solid rgba(46,96,168,.25);border-radius:9px;background:rgba(24,20,16,.6)}
+.pw-cell span{font:700 9px 'Barlow Condensed',monospace;letter-spacing:1px;color:rgba(243,239,228,.6)}
+.pw-cell b{font:800 14px 'Barlow Condensed',monospace;color:var(--cream)}
 /* Settings rows (sliders + switches) */
 .pause-settings{padding:2px 14px 10px}
-.pause-set-title{font:800 11px 'IBM Plex Mono',monospace;letter-spacing:2px;color:var(--gold);
-  margin:10px 0 2px;text-shadow:0 0 10px rgba(255,210,74,.4)}
+.pause-set-title{font:800 11px 'Barlow Condensed',monospace;letter-spacing:2px;color:var(--gold);
+  margin:10px 0 2px;text-shadow:none}
 .pause-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;
-  border-bottom:1px solid rgba(255,255,255,.06);font:700 13px 'IBM Plex Mono',monospace;color:var(--cream)}
+  border-bottom:1px solid rgba(255,255,255,.06);font:700 13px 'Barlow Condensed',monospace;color:var(--cream)}
 .pause-range-wrap{display:flex;align-items:center;gap:10px;width:56%;max-width:230px}
 .pause-range{flex:1;accent-color:var(--cyan);height:4px;cursor:pointer;pointer-events:auto;touch-action:manipulation}
 .pause-range-val{min-width:44px;text-align:right;color:var(--cyan);font-variant-numeric:tabular-nums}
-.pause-switch{position:relative;width:50px;height:28px;border-radius:16px;border:2px solid rgba(255,233,201,.4);
-  background:rgba(20,9,31,.8);cursor:pointer;flex:none;pointer-events:auto;touch-action:manipulation;
+.pause-switch{position:relative;width:50px;height:28px;border-radius:16px;border:2px solid rgba(243,239,228,.4);
+  background:rgba(24,20,16,.8);cursor:pointer;flex:none;pointer-events:auto;touch-action:manipulation;
   transition:background .15s,border-color .15s}
 .pause-switch .ps-knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;
   background:var(--cream);transition:transform .15s,background .15s}
-.pause-switch.on{background:rgba(25,227,255,.3);border-color:var(--cyan)}
+.pause-switch.on{background:rgba(46,96,168,.3);border-color:var(--cyan)}
 .pause-switch.on .ps-knob{transform:translateX(22px);background:var(--cyan)}
 /* "NEW" badge on the UPDATES menu button (shown until the player opens the panel) */
-.pause-badge{display:inline-block;margin-left:9px;vertical-align:middle;font:800 9px 'IBM Plex Mono',monospace;
+.pause-badge{display:inline-block;margin-left:9px;vertical-align:middle;font:800 9px 'Barlow Condensed',monospace;
   letter-spacing:1px;color:var(--ink);background:var(--pink);border-radius:8px;padding:2px 7px;
-  box-shadow:0 0 12px rgba(255,46,136,.6);animation:pause-badge-pulse 1.4s ease-in-out infinite}
+  box-shadow:none;animation:pause-badge-pulse 1.4s ease-in-out infinite}
 @keyframes pause-badge-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 /* Updates / changelog panel: stacked cards (date chip + title + plain-language blurb) */
 .pause-updates{padding:2px 0}
 .pause-up{padding:12px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
 .pause-up:last-child{border-bottom:none}
 .pause-up-head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}
-.pause-up-date{font:700 10px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:var(--gold);white-space:nowrap;
-  background:rgba(255,210,74,.12);border:1px solid rgba(255,210,74,.3);border-radius:6px;padding:2px 7px}
-.pause-up-title{font:800 14px 'IBM Plex Mono',monospace;color:var(--cyan);text-shadow:0 0 10px rgba(25,227,255,.35)}
-.pause-up-desc{margin:0;font:600 12.5px 'IBM Plex Mono',monospace;line-height:1.5;color:rgba(255,233,201,.9)}
+.pause-up-date{font:700 10px 'Barlow Condensed',monospace;letter-spacing:.5px;color:var(--gold);white-space:nowrap;
+  background:rgba(232,185,49,.12);border:1px solid rgba(232,185,49,.3);border-radius:6px;padding:2px 7px}
+.pause-up-title{font:800 14px 'Barlow Condensed',monospace;color:var(--cyan);text-shadow:none}
+.pause-up-desc{margin:0;font:600 12.5px 'Barlow Condensed',monospace;line-height:1.5;color:rgba(243,239,228,.9)}
 /* Mini-games reference: responsive cards listing every mini-game's config (money/cost/timers).
    auto-fill grid → one column on a narrow phone, two+ on a wider PC shell, no media query. */
 .pause-mg-scroll{max-height:60vh;padding:4px}
 .pause-mg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start}
-.pause-mg-card{border:1px solid rgba(25,227,255,.22);border-radius:10px;background:rgba(25,227,255,.05);
+.pause-mg-card{border:1px solid rgba(46,96,168,.22);border-radius:10px;background:rgba(46,96,168,.05);
   padding:11px 12px 9px;display:flex;flex-direction:column;gap:2px}
-.pause-mg-name{font:800 14px 'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--cyan);
-  text-shadow:0 0 10px rgba(25,227,255,.3)}
-.pause-mg-blurb{margin:0 0 6px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.4;color:rgba(255,233,201,.72)}
+.pause-mg-name{font:800 14px 'Barlow Condensed',monospace;letter-spacing:1px;color:var(--cyan);
+  text-shadow:none}
+.pause-mg-blurb{margin:0 0 6px;font:600 11px 'Barlow Condensed',monospace;line-height:1.4;color:rgba(243,239,228,.72)}
 .pause-mg-row{padding:5px 0;border-top:1px solid rgba(255,255,255,.06)}
 .pause-mg-row:first-of-type{border-top:none}
 .pause-mg-kv{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
-.pause-mg-field{font:700 11.5px 'IBM Plex Mono',monospace;color:rgba(255,233,201,.95)}
-.pause-mg-val{font:800 12px 'IBM Plex Mono',monospace;color:var(--gold);text-align:right;
+.pause-mg-field{font:700 11.5px 'Barlow Condensed',monospace;color:rgba(243,239,228,.95)}
+.pause-mg-val{font:800 12px 'Barlow Condensed',monospace;color:var(--gold);text-align:right;
   font-variant-numeric:tabular-nums;word-break:break-word}
-.pause-mg-desc{margin-top:1px;font:500 10.5px 'IBM Plex Mono',monospace;line-height:1.35;color:rgba(255,233,201,.55)}
+.pause-mg-desc{margin-top:1px;font:500 10.5px 'Barlow Condensed',monospace;line-height:1.35;color:rgba(243,239,228,.55)}
 #house-tv{position:fixed;inset:0;z-index:64;display:none;align-items:center;justify-content:center;
   padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(48px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));
-  background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.12),rgba(2,0,8,.72) 78%);
+  background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.12),rgba(24,20,16,.72) 78%);
   pointer-events:auto}
 #house-tv.open{display:flex}
 .house-tv-shell{width:min(86vw,1180px);height:min(74vh,720px);border:10px solid #09070d;border-radius:10px;
-  background:#020204;box-shadow:0 0 0 3px rgba(255,210,74,.45),0 0 55px rgba(25,227,255,.22),0 18px 55px rgba(0,0,0,.72);
+  background:#020204;box-shadow:0 0 0 3px rgba(232,185,49,.45), 0 18px 55px rgba(0,0,0,.72);
   overflow:hidden}
 #house-tv-frame{display:block;width:100%;height:100%;border:0;background:#050505;pointer-events:auto;touch-action:auto}
 #house-tv-hint{position:fixed;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);
-  pointer-events:none;font:800 12px 'IBM Plex Mono',monospace;letter-spacing:2px;color:var(--gold);
-  text-shadow:2px 2px 0 #000,0 0 14px rgba(255,210,74,.65)}
+  pointer-events:none;font:800 12px 'Barlow Condensed',monospace;letter-spacing:2px;color:var(--gold);
+  text-shadow:2px 2px 0 #000}
 #house-tv-exit{position:fixed;right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom));
   z-index:65;display:block;min-width:74px;height:54px;border-radius:10px;border:2px solid var(--gold);
-  background:rgba(20,9,31,.88);color:var(--gold);font-family:'Bowlby One SC';font-size:14px;
-  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,210,74,.42);
+  background:rgba(24,20,16,.88);color:var(--gold);font-family:'Alfa Slab One';font-size:14px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:none;
   pointer-events:auto;touch-action:none}
 body.house-tv-open #hud{display:none!important}
 body.house-tv-open #touch-controls{display:none!important}
 
 /* mini-game do supino: canvas transparente por cima do banco enquadrado */
 #gym-game{position:fixed;inset:0;z-index:64;display:none;
-  background:radial-gradient(ellipse at 50% 36%,rgba(0,0,0,.04),rgba(2,0,8,.66) 84%);
+  background:radial-gradient(ellipse at 50% 36%,rgba(0,0,0,.04),rgba(24,20,16,.66) 84%);
   pointer-events:auto;touch-action:none}
 #gym-game.open{display:block}
 #gym-game-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
 #gym-game-exit{position:fixed;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));
   z-index:65;min-width:74px;height:48px;padding:0 16px;border-radius:10px;border:2px solid var(--pink);
-  background:rgba(20,9,31,.88);color:var(--pink);font-family:'Bowlby One SC';font-size:13px;
-  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,46,136,.42);
+  background:rgba(24,20,16,.88);color:var(--pink);font-family:'Alfa Slab One';font-size:13px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:none;
   pointer-events:auto;touch-action:none}
 body.gym-game-open #hud{display:none!important}
 body.gym-game-open #touch-controls{display:none!important}
 
 /* mini-game da dança: highway de setas + botões de pista por cima da boate */
 #dance-game{position:fixed;inset:0;z-index:64;display:none;
-  background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.02),rgba(2,0,8,.6) 86%);
+  background:radial-gradient(ellipse at 50% 30%,rgba(0,0,0,.02),rgba(24,20,16,.6) 86%);
   pointer-events:none;touch-action:none}
 #dance-game.open{display:block}
 #dance-game-canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
@@ -345,149 +360,160 @@ body.gym-game-open #touch-controls{display:none!important}
   transform:translateX(-50%);width:min(86vw,460px);height:min(18vh,108px);
   display:flex;gap:8px;z-index:65;pointer-events:none}
 .dance-lane{flex:1;border-radius:14px;border:3px solid #fff;
-  background:rgba(20,9,31,.42);color:#fff;font-size:34px;font-weight:700;line-height:1;
+  background:rgba(24,20,16,.42);color:#fff;font-size:34px;font-weight:700;line-height:1;
   display:flex;align-items:center;justify-content:center;
   pointer-events:auto;touch-action:none;-webkit-tap-highlight-color:transparent;
   text-shadow:1px 1px 0 #000;transition:background .05s,transform .05s}
 .dance-lane:active{transform:translateY(2px) scale(.97)}
-#dance-lane-0{border-color:#ff2e88;color:#ff2e88;box-shadow:0 0 16px rgba(255,46,136,.35)}
-#dance-lane-1{border-color:#19e3ff;color:#19e3ff;box-shadow:0 0 16px rgba(25,227,255,.35)}
-#dance-lane-2{border-color:#ffd24a;color:#ffd24a;box-shadow:0 0 16px rgba(255,210,74,.35)}
-#dance-lane-3{border-color:#9dff2e;color:#9dff2e;box-shadow:0 0 16px rgba(157,255,46,.35)}
-#dance-lane-0:active{background:rgba(255,46,136,.5)}
-#dance-lane-1:active{background:rgba(25,227,255,.5)}
-#dance-lane-2:active{background:rgba(255,210,74,.5)}
-#dance-lane-3:active{background:rgba(157,255,46,.5)}
+#dance-lane-0{border-color:#ff2e88;color:#ff2e88;box-shadow:none}
+#dance-lane-1{border-color:#19e3ff;color:#19e3ff;box-shadow:none}
+#dance-lane-2{border-color:#ffd24a;color:#ffd24a;box-shadow:none}
+#dance-lane-3{border-color:#7cb85a;color:#7cb85a;box-shadow:none}
+#dance-lane-0:active{background:rgba(176,64,40,.5)}
+#dance-lane-1:active{background:rgba(46,96,168,.5)}
+#dance-lane-2:active{background:rgba(232,185,49,.5)}
+#dance-lane-3:active{background:rgba(111,170,74,.5)}
 #dance-game-exit{position:fixed;right:max(18px,env(safe-area-inset-right));top:max(18px,env(safe-area-inset-top));
   z-index:66;min-width:74px;height:48px;padding:0 16px;border-radius:10px;border:2px solid var(--pink);
-  background:rgba(20,9,31,.88);color:var(--pink);font-family:'Bowlby One SC';font-size:13px;
-  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,46,136,.42);
+  background:rgba(24,20,16,.88);color:var(--pink);font-family:'Alfa Slab One';font-size:13px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:none;
   pointer-events:auto;touch-action:none}
 body.dance-game-open #hud{display:none!important}
 body.dance-game-open #touch-controls{display:none!important}
 
 /* oficina de custom: painel lateral sobre o carro girando na turntable */
 #modshop{position:fixed;inset:0;z-index:64;display:none;pointer-events:none;
-  background:linear-gradient(90deg,rgba(2,0,8,0) 38%,rgba(2,0,8,.42) 62%,rgba(2,0,8,.74) 100%)}
+  background:linear-gradient(90deg,rgba(24,20,16,0) 38%,rgba(24,20,16,.42) 62%,rgba(24,20,16,.74) 100%)}
 #modshop.open{display:block}
 #modshop-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;
   padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));
   pointer-events:none}
-#modshop-title{font-family:'Bowlby One SC';font-size:clamp(18px,3vw,26px);color:var(--cream);
-  letter-spacing:2px;text-shadow:2px 2px 0 #000,0 0 18px rgba(25,227,255,.55)}
-#modshop-money{font:800 clamp(15px,2.4vw,20px) 'IBM Plex Mono',monospace;color:var(--gold);
+#modshop-title{font-family:'Alfa Slab One';font-size:clamp(18px,3vw,26px);color:var(--cream);
+  letter-spacing:2px;text-shadow:2px 2px 0 #000}
+#modshop-money{font:800 clamp(15px,2.4vw,20px) 'Barlow Condensed',monospace;color:var(--gold);
   text-shadow:1px 1px 0 #000;margin-left:auto}
 #modshop-exit{pointer-events:auto;touch-action:none;min-width:84px;height:46px;padding:0 18px;
-  border-radius:10px;border:2px solid var(--gold);background:rgba(20,9,31,.9);color:var(--gold);
-  font-family:'Bowlby One SC';font-size:14px;letter-spacing:1px;text-shadow:1px 1px 0 #000;
-  box-shadow:0 0 18px rgba(255,210,74,.4)}
+  border-radius:10px;border:2px solid var(--gold);background:rgba(24,20,16,.9);color:var(--gold);
+  font-family:'Alfa Slab One';font-size:14px;letter-spacing:1px;text-shadow:1px 1px 0 #000;
+  box-shadow:none}
 #modshop-panel{position:absolute;top:64px;right:max(16px,env(safe-area-inset-right));
   bottom:max(16px,env(safe-area-inset-bottom));width:min(40vw,380px);
   display:flex;flex-direction:column;gap:10px;pointer-events:auto;
-  background:rgba(12,5,22,.72);border:2px solid var(--cyan);border-radius:14px;padding:12px;
-  box-shadow:0 0 28px rgba(25,227,255,.22),0 14px 40px rgba(0,0,0,.6)}
+  background:rgba(24,20,16,.72);border:2px solid var(--cyan);border-radius:14px;padding:12px;
+  box-shadow:0 14px 40px rgba(0,0,0,.6)}
 #modshop-cats{display:flex;flex-wrap:wrap;gap:6px}
-.ms-cat{flex:1 0 auto;min-width:62px;padding:8px 6px;border-radius:8px;border:2px solid rgba(255,233,201,.28);
-  background:rgba(20,9,31,.7);color:var(--cream);font:700 12px 'IBM Plex Mono',monospace;
+.ms-cat{flex:1 0 auto;min-width:62px;padding:8px 6px;border-radius:8px;border:2px solid rgba(243,239,228,.28);
+  background:rgba(24,20,16,.7);color:var(--cream);font:700 12px 'Barlow Condensed',monospace;
   letter-spacing:1px;cursor:pointer;touch-action:none}
-.ms-cat.on{border-color:var(--cyan);color:#fff;box-shadow:0 0 14px rgba(25,227,255,.4);background:rgba(25,227,255,.12)}
+.ms-cat.on{border-color:var(--cyan);color:#fff;box-shadow:none;background:rgba(46,96,168,.12)}
 #modshop-opts{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.ms-note{font:600 11px 'IBM Plex Mono',monospace;color:var(--gold);opacity:.9;margin:2px 2px 8px;letter-spacing:.5px}
+.ms-note{font:600 11px 'Barlow Condensed',monospace;color:var(--gold);opacity:.9;margin:2px 2px 8px;letter-spacing:.5px}
 .ms-grid{display:flex;flex-direction:column;gap:7px}
 .ms-opt{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;
-  border:2px solid rgba(255,233,201,.22);background:rgba(20,9,31,.62);color:var(--cream);
-  font:700 14px 'IBM Plex Mono',monospace;cursor:pointer;text-align:left;touch-action:none}
-.ms-opt.on{border-color:var(--gold);background:rgba(255,210,74,.12);box-shadow:0 0 12px rgba(255,210,74,.3)}
+  border:2px solid rgba(243,239,228,.22);background:rgba(24,20,16,.62);color:var(--cream);
+  font:700 14px 'Barlow Condensed',monospace;cursor:pointer;text-align:left;touch-action:none}
+.ms-opt.on{border-color:var(--gold);background:rgba(232,185,49,.12);box-shadow:none}
 .ms-sw{width:20px;height:20px;border-radius:5px;border:2px solid rgba(255,255,255,.6);flex:none}
 .ms-lab{flex:1}
 .ms-price{font-weight:800;font-size:12px;color:var(--gold);letter-spacing:.5px}
-.ms-opt.on .ms-price{color:#9dff2e}
+.ms-opt.on .ms-price{color:#7cb85a}
 .ms-price.owned{color:var(--cyan)}
-.ms-price.incart{color:#9dff2e}
-#modshop-cart{display:flex;align-items:center;gap:10px;border-top:2px solid rgba(25,227,255,.25);padding-top:10px}
-#modshop-total{flex:1;font:800 15px 'IBM Plex Mono',monospace;color:var(--gold);letter-spacing:.5px;text-shadow:1px 1px 0 #000}
+.ms-price.incart{color:#7cb85a}
+#modshop-cart{display:flex;align-items:center;gap:10px;border-top:2px solid rgba(46,96,168,.25);padding-top:10px}
+#modshop-total{flex:1;font:800 15px 'Barlow Condensed',monospace;color:var(--gold);letter-spacing:.5px;text-shadow:1px 1px 0 #000}
 #modshop-buy{pointer-events:auto;touch-action:none;min-height:44px;padding:0 16px;border-radius:10px;
-  border:2px solid #9dff2e;background:rgba(20,31,9,.85);color:#9dff2e;
-  font-family:'Bowlby One SC';font-size:13px;letter-spacing:1px;text-shadow:1px 1px 0 #000;
-  box-shadow:0 0 16px rgba(157,255,46,.35);cursor:pointer}
-#modshop-buy:disabled{opacity:.4;border-color:rgba(255,233,201,.3);color:rgba(255,233,201,.5);box-shadow:none;cursor:default}
-#modshop-buy.confirm{border-color:var(--gold);color:var(--gold);background:rgba(31,22,9,.9);box-shadow:0 0 18px rgba(255,210,74,.5)}
+  border:2px solid #7cb85a;background:rgba(24,20,16,.85);color:#7cb85a;
+  font-family:'Alfa Slab One';font-size:13px;letter-spacing:1px;text-shadow:1px 1px 0 #000;
+  box-shadow:none;cursor:pointer}
+#modshop-buy:disabled{opacity:.4;border-color:rgba(243,239,228,.3);color:rgba(243,239,228,.5);box-shadow:none;cursor:default}
+#modshop-buy.confirm{border-color:var(--gold);color:var(--gold);background:rgba(24,20,16,.9);box-shadow:none}
 #modshop-toast{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));
   transform:translateX(-50%) translateY(10px);opacity:0;transition:opacity .15s,transform .15s;
-  pointer-events:none;font:800 16px 'Bowlby One SC','IBM Plex Mono',monospace;letter-spacing:1px;
-  color:#9dff2e;text-shadow:2px 2px 0 #000,0 0 16px rgba(157,255,46,.5)}
+  pointer-events:none;font:800 16px 'Alfa Slab One','Barlow Condensed',monospace;letter-spacing:1px;
+  color:#7cb85a;text-shadow:2px 2px 0 #000}
 #modshop-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 body.mod-shop-open #hud{display:none!important}
 body.mod-shop-open #touch-controls{display:none!important}
 @media (max-width:760px){
   #modshop-panel{width:auto;left:max(10px,env(safe-area-inset-left));top:auto;height:46vh}
-  #modshop{background:linear-gradient(0deg,rgba(2,0,8,.8) 0%,rgba(2,0,8,.3) 46%,rgba(2,0,8,0) 70%)}
+  #modshop{background:linear-gradient(0deg,rgba(24,20,16,.8) 0%,rgba(24,20,16,.3) 46%,rgba(24,20,16,0) 70%)}
 }
 /* THREADS clothing store — reuses the .ms-* option classes; mirrors the mod-shop chrome */
 #clothesshop{position:fixed;inset:0;z-index:64;display:none;pointer-events:none;
-  background:linear-gradient(90deg,rgba(8,0,8,0) 38%,rgba(8,0,8,.42) 62%,rgba(8,0,8,.74) 100%)}
+  background:linear-gradient(90deg,rgba(24,20,16,0) 38%,rgba(24,20,16,.42) 62%,rgba(24,20,16,.74) 100%)}
 #clothesshop.open{display:block}
 #clothesshop-top{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;
   padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 12px max(16px,env(safe-area-inset-left));pointer-events:none}
-#clothesshop-title{font-family:'Bowlby One SC';font-size:clamp(18px,3vw,26px);color:var(--cream);
-  letter-spacing:2px;text-shadow:2px 2px 0 #000,0 0 18px rgba(255,111,174,.55)}
-#clothesshop-money{font:800 clamp(15px,2.4vw,20px) 'IBM Plex Mono',monospace;color:var(--gold);text-shadow:1px 1px 0 #000;margin-left:auto}
+#clothesshop-title{font-family:'Alfa Slab One';font-size:clamp(18px,3vw,26px);color:var(--cream);
+  letter-spacing:2px;text-shadow:2px 2px 0 #000}
+#clothesshop-money{font:800 clamp(15px,2.4vw,20px) 'Barlow Condensed',monospace;color:var(--gold);text-shadow:1px 1px 0 #000;margin-left:auto}
 #clothesshop-exit{pointer-events:auto;touch-action:none;min-width:84px;height:46px;padding:0 18px;border-radius:10px;
-  border:2px solid var(--gold);background:rgba(31,9,24,.9);color:var(--gold);font-family:'Bowlby One SC';font-size:14px;
-  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,210,74,.4)}
+  border:2px solid var(--gold);background:rgba(24,20,16,.9);color:var(--gold);font-family:'Alfa Slab One';font-size:14px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:none}
 #clothesshop-panel{position:absolute;top:64px;right:max(16px,env(safe-area-inset-right));
   bottom:max(16px,env(safe-area-inset-bottom));width:min(40vw,380px);display:flex;flex-direction:column;gap:10px;pointer-events:auto;
-  background:rgba(18,5,18,.74);border:2px solid #ff6fae;border-radius:14px;padding:12px;
-  box-shadow:0 0 28px rgba(255,111,174,.22),0 14px 40px rgba(0,0,0,.6)}
+  background:rgba(24,20,16,.74);border:2px solid #c46856;border-radius:14px;padding:12px;
+  box-shadow:0 14px 40px rgba(0,0,0,.6)}
 #clothesshop-cats{display:flex;flex-wrap:wrap;gap:6px}
 #clothesshop-opts{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
-#clothesshop-cart{display:flex;align-items:center;gap:10px;border-top:2px solid rgba(255,111,174,.25);padding-top:10px}
-#clothesshop-total{flex:1;font:800 15px 'IBM Plex Mono',monospace;color:var(--gold);letter-spacing:.5px;text-shadow:1px 1px 0 #000}
+#clothesshop-cart{display:flex;align-items:center;gap:10px;border-top:2px solid rgba(196,104,86,.25);padding-top:10px}
+#clothesshop-total{flex:1;font:800 15px 'Barlow Condensed',monospace;color:var(--gold);letter-spacing:.5px;text-shadow:1px 1px 0 #000}
 #clothesshop-buy{pointer-events:auto;touch-action:none;min-height:44px;padding:0 16px;border-radius:10px;
-  border:2px solid #9dff2e;background:rgba(20,31,9,.85);color:#9dff2e;font-family:'Bowlby One SC';font-size:13px;
-  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 16px rgba(157,255,46,.35);cursor:pointer}
-#clothesshop-buy:disabled{opacity:.4;border-color:rgba(255,233,201,.3);color:rgba(255,233,201,.5);box-shadow:none;cursor:default}
-#clothesshop-buy.confirm{border-color:var(--gold);color:var(--gold);background:rgba(31,22,9,.9);box-shadow:0 0 18px rgba(255,210,74,.5)}
+  border:2px solid #7cb85a;background:rgba(24,20,16,.85);color:#7cb85a;font-family:'Alfa Slab One';font-size:13px;
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:none;cursor:pointer}
+#clothesshop-buy:disabled{opacity:.4;border-color:rgba(243,239,228,.3);color:rgba(243,239,228,.5);box-shadow:none;cursor:default}
+#clothesshop-buy.confirm{border-color:var(--gold);color:var(--gold);background:rgba(24,20,16,.9);box-shadow:none}
 #clothesshop-toast{position:absolute;left:50%;bottom:max(22px,env(safe-area-inset-bottom));
   transform:translateX(-50%) translateY(10px);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;
-  font:800 16px 'Bowlby One SC','IBM Plex Mono',monospace;letter-spacing:1px;color:#9dff2e;text-shadow:2px 2px 0 #000,0 0 16px rgba(157,255,46,.5)}
+  font:800 16px 'Alfa Slab One','Barlow Condensed',monospace;letter-spacing:1px;color:#7cb85a;text-shadow:2px 2px 0 #000}
 #clothesshop-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media (max-width:760px){
   #clothesshop-panel{width:auto;left:max(10px,env(safe-area-inset-left));top:auto;height:46vh}
-  #clothesshop{background:linear-gradient(0deg,rgba(8,0,8,.8) 0%,rgba(8,0,8,.3) 46%,rgba(8,0,8,0) 70%)}
+  #clothesshop{background:linear-gradient(0deg,rgba(24,20,16,.8) 0%,rgba(24,20,16,.3) 46%,rgba(24,20,16,0) 70%)}
 }
+/* Title: the town's own sign — a sky over the green serras with the Matriz's tower, the
+   name on painted-sign lettering and plates (inline SVG in index.html, no image files) */
 #title{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;cursor:pointer;
-  background:
-    radial-gradient(ellipse at 50% 118%, rgba(255,217,160,.75), transparent 55%),
-    linear-gradient(180deg,#2e7fd9 0%,#5aa7e8 40%,#a8d8f0 68%,#ffc98a 100%)}
-#title::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
-  background:repeating-linear-gradient(0deg,transparent 0 46px,rgba(255,255,255,.14) 46px 48px)}
-#logo{font-family:'Bowlby One SC';font-size:clamp(16px,3.25vw,38px);line-height:.92;
-  transform:skewX(-7deg) rotate(-2deg);text-align:center;color:var(--cream);
-  text-shadow:4px 4px 0 var(--pink),8px 8px 0 #5a0e3a,0 0 50px rgba(255,46,136,.55)}
+  align-items:center;justify-content:center;cursor:pointer;overflow:hidden;
+  background:linear-gradient(180deg,#5d8fc9 0%,#8db4dc 42%,#d9e1e3 72%,#e9dcc2 100%)}
+#title::before{content:none}
+#title-scene{position:absolute;left:0;right:0;bottom:0;width:100%;height:58%;pointer-events:none}
+#logo{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
+  font-size:clamp(14px,2.6vw,30px);transform:rotate(-2deg)}
+/* "GTA": hand-painted slab letters, cream with a terra-roxa drop and a dark outline */
+#logo .lg-gta{font-family:'Alfa Slab One';font-size:4.3em;line-height:.9;letter-spacing:.04em;color:var(--cal);
+  -webkit-text-stroke:.035em var(--cafe);paint-order:stroke fill;
+  text-shadow:.07em .07em 0 var(--terra),.12em .12em 0 var(--cafe)}
+/* "DIVINOLÂNDIA": the blue enamel street plate */
+#logo .lg-town{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:2.4em;line-height:1;letter-spacing:.06em;
+  color:var(--cal);background:var(--azul);padding:.12em .55em .16em;border-radius:.22em;
+  box-shadow:inset 0 0 0 .08em var(--azul),inset 0 0 0 .16em var(--cal),.08em .1em 0 rgba(0,0,0,.4)}
+/* "SP": the green road sign */
+#logo .lg-sp{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.5em;line-height:1;letter-spacing:.12em;
+  color:var(--cal);background:var(--verde);padding:.12em .6em .14em;border-radius:.2em;
+  box-shadow:inset 0 0 0 .07em var(--verde),inset 0 0 0 .14em var(--cal),.06em .08em 0 rgba(0,0,0,.4)}
 #logo span{display:block}
 /* Briefing shown at the start of each mini game (see js/activities/minigame-intro.ts) */
 #mg-intro{position:fixed;inset:0;z-index:46;display:none;align-items:center;justify-content:center;
   padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
-  background:radial-gradient(ellipse at 50% 40%,rgba(10,2,20,.35),rgba(6,1,14,.78) 80%);
+  background:radial-gradient(ellipse at 50% 40%,rgba(24,20,16,.35),rgba(24,20,16,.78) 80%);
   -webkit-tap-highlight-color:transparent}
 #mg-intro.show{display:flex}
 .mgi-box{width:min(440px,92vw);max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;
-  background:rgba(20,9,31,.82);border:2px solid var(--cyan);
+  background:rgba(24,20,16,.82);border:2px solid var(--cyan);
   border-radius:16px;padding:18px 20px 20px;text-align:center;
-  box-shadow:0 0 26px rgba(25,227,255,.4),0 18px 55px rgba(0,0,0,.6)}
-.mgi-sub{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:4px;color:var(--gold);opacity:.8}
-#mgi-title{font-family:'Bowlby One SC';font-size:30px;line-height:1.1;letter-spacing:1px;color:var(--cream);
-  text-shadow:0 0 18px rgba(255,210,74,.5);margin:2px 0 14px}
-#mgi-go{margin-top:16px;font-family:'Bowlby One SC';font-size:20px;letter-spacing:3px;
+  box-shadow:0 18px 55px rgba(0,0,0,.6)}
+.mgi-sub{font:700 12px 'Barlow Condensed',monospace;letter-spacing:4px;color:var(--gold);opacity:.8}
+#mgi-title{font-family:'Alfa Slab One';font-size:30px;line-height:1.1;letter-spacing:1px;color:var(--cream);
+  text-shadow:none;margin:2px 0 14px}
+#mgi-go{margin-top:16px;font-family:'Alfa Slab One';font-size:20px;letter-spacing:3px;
   color:var(--ink);background:var(--gold);padding:10px 32px;border:none;border-radius:8px;
-  cursor:pointer;box-shadow:0 0 22px rgba(255,210,74,.6),3px 3px 0 #7a3a00}
-.mgi-desc{margin-top:12px;font:600 11px 'IBM Plex Mono',monospace;line-height:1.45;
+  cursor:pointer;box-shadow:3px 3px 0 #7a3a00}
+.mgi-desc{margin-top:12px;font:600 11px 'Barlow Condensed',monospace;line-height:1.45;
   color:var(--cream);opacity:.78;text-align:center}
 .mgi-desc:empty{display:none}
 .mgi-desc b{color:var(--gold)}
-.mgi-hint{margin-top:10px;font:600 11px 'IBM Plex Mono',monospace;color:var(--cream);opacity:.6;letter-spacing:1px}
+.mgi-hint{margin-top:10px;font:600 11px 'Barlow Condensed',monospace;color:var(--cream);opacity:.6;letter-spacing:1px}
 @media (max-width:560px){
   .mgi-box{width:min(360px,94vw);padding:14px 14px 16px}
   #mgi-title{font-size:24px}
@@ -505,33 +531,33 @@ body.mod-shop-open #touch-controls{display:none!important}
   .mgi-hint{margin-top:7px}
 }
 
-#play{margin-top:24px;font-family:'Bowlby One SC';font-size:26px;letter-spacing:5px;
-  color:#fff;background:var(--gold);padding:12px 38px;border:none;border-radius:8px;
-  cursor:pointer;box-shadow:0 0 28px rgba(255,210,74,.7),4px 4px 0 #7a3a00;
-  animation:pulse 1.1s ease-in-out infinite}
+#play{position:relative;margin-top:26px;font-family:'Alfa Slab One';font-size:26px;letter-spacing:3px;
+  color:var(--cafe);background:var(--amarelo);padding:10px 40px 12px;border:none;border-radius:6px;
+  cursor:pointer;box-shadow:inset 0 0 0 3px var(--amarelo),inset 0 0 0 5px var(--cafe),4px 5px 0 rgba(0,0,0,.4);
+  animation:pulse 1.4s ease-in-out infinite}
 @keyframes pulse{50%{transform:scale(1.06)}}
 
 #missionpass{position:fixed;inset:0;z-index:58;display:none;
   flex-direction:column;align-items:center;justify-content:center;
   pointer-events:none;
-  background:radial-gradient(ellipse at 50% 50%,rgba(30,10,60,.6) 0%,rgba(0,0,0,.2) 100%)}
-#mp-title{font-family:'Bowlby One SC';font-size:clamp(46px,9vw,88px);
-  color:var(--gold);letter-spacing:6px;
-  text-shadow:4px 4px 0 #000,0 0 55px rgba(255,210,74,.65);
+  background:radial-gradient(ellipse at 50% 50%,rgba(24,20,16,.6) 0%,rgba(0,0,0,.2) 100%)}
+#mp-title{font-family:'Alfa Slab One';font-size:clamp(46px,9vw,88px);
+  color:var(--amarelo);letter-spacing:3px;
+  text-shadow:4px 4px 0 var(--terra),7px 7px 0 rgba(0,0,0,.6);
   animation:mpslide .55s cubic-bezier(.22,1,.36,1) both}
-#mp-mission{font-family:'Bowlby One SC';font-size:clamp(13px,2.2vw,20px);
+#mp-mission{font-family:'Alfa Slab One';font-size:clamp(13px,2.2vw,20px);
   color:var(--cream);letter-spacing:4px;margin-top:8px;
   text-shadow:2px 2px 0 #000;
   animation:mpslide .55s .12s cubic-bezier(.22,1,.36,1) both}
 #mp-respect{margin-top:24px;font-size:13px;letter-spacing:3px;
-  color:var(--cyan);text-shadow:0 0 16px rgba(25,227,255,.7);
+  color:var(--cyan);text-shadow:none;
   animation:mpslide .55s .25s cubic-bezier(.22,1,.36,1) both}
 #mp-bar{width:220px;height:11px;
   background:rgba(255,255,255,.08);border:1px solid var(--cyan);
   border-radius:6px;margin-top:9px;overflow:hidden;
   animation:mpslide .55s .3s cubic-bezier(.22,1,.36,1) both}
 #mp-bar-fill{height:100%;width:0;background:var(--cyan);
-  box-shadow:0 0 14px rgba(25,227,255,.9);
+  box-shadow:none;
   transition:width 1.6s .9s ease-out}
 @keyframes mpslide{from{opacity:0;transform:translateX(-50px)}to{opacity:1;transform:none}}
 
@@ -543,8 +569,8 @@ body.mod-shop-open #touch-controls{display:none!important}
 body.cine #cine-top,body.cine #cine-bottom{transform:none}
 #cine-sub{position:fixed;left:50%;bottom:calc(13vh + 20px);transform:translateX(-50%);
   z-index:61;max-width:min(880px,86vw);text-align:center;pointer-events:none;
-  font:400 clamp(15px,2.4vw,24px)/1.45 'IBM Plex Mono',monospace;color:#fff;
-  text-shadow:2px 2px 2px #000,-1px -1px 1px #000,0 0 10px rgba(0,0,0,.9);
+  font:400 clamp(15px,2.4vw,24px)/1.45 'Barlow Condensed',monospace;color:#fff;
+  text-shadow:2px 2px 2px #000, -1px -1px 1px #000, 0 0 10px rgba(0,0,0,.9);
   opacity:0;transition:opacity .3s}
 body.cine #cine-sub{opacity:1}
 /* speaker tag above the subtitle line (THE BOSS / YOU) */
@@ -555,9 +581,9 @@ body.cine #hud,body.cine #touch-controls,body.cine #weedhud{display:none!importa
 /* Faixa do modo OVERKILL: aparece no topo enquanto o modo está ligado */
 #overkill{position:fixed;top:54px;left:50%;transform:translateX(-50%);z-index:40;
   display:none;white-space:nowrap;padding:6px 16px;border-radius:8px;
-  font:800 clamp(15px,2.3vw,24px)/1 'IBM Plex Mono',monospace;color:#fff;
+  font:800 clamp(15px,2.3vw,24px)/1 'Barlow Condensed',monospace;color:#fff;
   letter-spacing:.05em;background:rgba(176,20,42,.85);border:2px solid #ff5a72;
-  text-shadow:1px 1px 2px #000;box-shadow:0 0 18px rgba(255,46,80,.6)}
+  text-shadow:1px 1px 2px #000;box-shadow:none}
 #overkill.show{display:block;animation:okPulse 1s ease-in-out infinite}
 @keyframes okPulse{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.05)}}
 body.cine #overkill{display:none!important}
@@ -566,8 +592,8 @@ body.cine #overkill{display:none!important}
    a interação do jogador (o diálogo não passa mais sozinho) */
 #cine-hint{position:fixed;right:24px;bottom:calc(13vh + 18px);z-index:61;
   pointer-events:none;letter-spacing:.08em;color:#fff;opacity:0;
-  font:600 clamp(11px,1.7vw,15px)/1 'IBM Plex Mono',monospace;
-  text-shadow:1px 1px 2px #000,0 0 8px rgba(0,0,0,.9)}
+  font:600 clamp(11px,1.7vw,15px)/1 'Barlow Condensed',monospace;
+  text-shadow:1px 1px 2px #000, 0 0 8px rgba(0,0,0,.9)}
 #cine-hint.show{animation:cineHintBlink 1.1s steps(1,end) infinite}
 @keyframes cineHintBlink{0%,55%{opacity:.95}56%,100%{opacity:.2}}
 
@@ -575,18 +601,18 @@ body.cine #overkill{display:none!important}
 #story-fade{position:fixed;inset:0;z-index:63;background:#000;opacity:0;visibility:hidden;pointer-events:none;
   display:flex;align-items:center;justify-content:center;transition:opacity .9s,visibility .9s}
 #story-fade.on{opacity:1;visibility:visible}
-#story-fade .txt{font:700 clamp(16px,2.6vw,28px)/1.3 'IBM Plex Mono',monospace;letter-spacing:.2em;color:var(--cream);
+#story-fade .txt{font:700 clamp(16px,2.6vw,28px)/1.3 'Barlow Condensed',monospace;letter-spacing:.2em;color:var(--cream);
   text-shadow:0 0 18px rgba(0,0,0,.9)}
 
 /* Fim do prólogo */
 #prologue-end{position:fixed;inset:0;z-index:62;display:flex;flex-direction:column;
   align-items:center;justify-content:center;text-align:center;pointer-events:none;
-  background:rgba(2,0,8,.88);opacity:0;visibility:hidden;transition:opacity 1.2s,visibility 1.2s}
+  background:rgba(24,20,16,.88);opacity:0;visibility:hidden;transition:opacity 1.2s,visibility 1.2s}
 #prologue-end.show{opacity:1;visibility:visible}
 #pe-sub{font-size:14px;letter-spacing:6px;color:var(--cyan);
-  text-shadow:0 0 16px rgba(25,227,255,.7)}
-#pe-title{font-family:'Bowlby One SC';font-size:clamp(46px,10vw,96px);color:var(--gold);
-  letter-spacing:8px;margin-top:6px;text-shadow:4px 4px 0 #000,0 0 55px rgba(255,210,74,.65)}
+  text-shadow:none}
+#pe-title{font-family:'Alfa Slab One';font-size:clamp(46px,10vw,96px);color:var(--gold);
+  letter-spacing:8px;margin-top:6px;text-shadow:4px 4px 0 #000}
 #pe-text{margin-top:26px;font-size:14px;line-height:2;letter-spacing:3px;color:var(--cream);
   text-shadow:2px 2px 0 #000;max-width:86vw}
 
@@ -594,7 +620,7 @@ body.cine #overkill{display:none!important}
   text-align:right;opacity:0;visibility:hidden;
   transition:opacity .4s,visibility .4s;pointer-events:none}
 #radio-hud.show{opacity:1;visibility:visible}
-#radio-name{font-family:'Bowlby One SC';font-size:15px;letter-spacing:2px;
+#radio-name{font-family:'Alfa Slab One';font-size:15px;letter-spacing:2px;
   line-height:1;text-shadow:2px 2px 0 #000}
 #radio-tag{font-size:10px;letter-spacing:3px;color:var(--cream);opacity:.7;margin-top:4px}
 
@@ -604,27 +630,27 @@ body.cine #overkill{display:none!important}
 body.is-mobile #touch-controls{display:block}
 .touch-stick{position:absolute;width:clamp(104px,18vw,138px);aspect-ratio:1;border-radius:50%;
   pointer-events:auto;touch-action:none;
-  background:radial-gradient(circle,rgba(255,255,255,.1) 0 28%,rgba(25,227,255,.13) 29% 58%,rgba(20,9,31,.18) 59%);
-  border:2px solid rgba(255,233,201,.28);box-shadow:0 0 18px rgba(25,227,255,.2);
+  background:radial-gradient(circle,rgba(255,255,255,.1) 0 28%,rgba(46,96,168,.13) 29% 58%,rgba(24,20,16,.18) 59%);
+  border:2px solid rgba(243,239,228,.28);box-shadow:none;
   opacity:.48;transition:opacity .12s,transform .12s}
 .touch-stick.active{opacity:.82;transform:scale(1.04)}
 .stick-knob{position:absolute;left:50%;top:50%;width:clamp(42px,7vw,56px);aspect-ratio:1;
   border-radius:50%;transform:translate(-50%,-50%);
-  background:rgba(255,233,201,.22);border:2px solid rgba(255,233,201,.5);
-  box-shadow:0 0 14px rgba(255,210,74,.18);transition:transform .04s linear}
-.touch-stick.active .stick-knob{background:rgba(255,210,74,.32);border-color:rgba(255,210,74,.72)}
+  background:rgba(243,239,228,.22);border:2px solid rgba(243,239,228,.5);
+  box-shadow:none;transition:transform .04s linear}
+.touch-stick.active .stick-knob{background:rgba(232,185,49,.32);border-color:rgba(232,185,49,.72)}
 #stick-move{left:max(18px,env(safe-area-inset-left));bottom:max(18px,env(safe-area-inset-bottom))}
 #stick-look{right:max(112px,calc(env(safe-area-inset-right) + 112px));bottom:max(18px,env(safe-area-inset-bottom))}
 .touch-btn{position:absolute;min-width:clamp(58px,9vw,74px);height:clamp(58px,9vw,74px);
-  border-radius:50%;border:2px solid rgba(255,233,201,.42);pointer-events:auto;touch-action:none;
-  background:rgba(20,9,31,.34);color:var(--cream);font-family:'Bowlby One SC';font-size:clamp(10px,2vw,14px);
-  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:0 0 18px rgba(255,46,136,.22);
+  border-radius:50%;border:2px solid rgba(243,239,228,.42);pointer-events:auto;touch-action:none;
+  background:rgba(24,20,16,.34);color:var(--cream);font-family:'Alfa Slab One';font-size:clamp(10px,2vw,14px);
+  letter-spacing:1px;text-shadow:1px 1px 0 #000;box-shadow:none;
   opacity:.62;transition:opacity .12s,transform .12s,background .12s}
-.touch-btn.active{opacity:.94;transform:scale(.96);background:rgba(255,210,74,.3)}
+.touch-btn.active{opacity:.94;transform:scale(.96);background:rgba(232,185,49,.3)}
 .touch-btn.disabled{opacity:.28}
-.touch-btn:disabled{color:rgba(255,233,201,.55)}
-.touch-btn-primary{border-color:rgba(255,210,74,.72);color:var(--gold)}
-.touch-btn-danger{border-color:rgba(255,46,136,.82);color:#fff;background:rgba(255,46,136,.32)}
+.touch-btn:disabled{color:rgba(243,239,228,.55)}
+.touch-btn-primary{border-color:rgba(232,185,49,.72);color:var(--gold)}
+.touch-btn-danger{border-color:rgba(176,64,40,.82);color:#fff;background:rgba(176,64,40,.32)}
 .touch-btn-small{min-width:clamp(44px,7vw,54px);height:clamp(44px,7vw,54px);font-size:clamp(9px,1.7vw,12px)}
 #btn-shoot,#btn-brake,#btn-radio,#btn-wpn,#btn-aim,#btn-gas,#btn-steer-left,#btn-steer-right{display:none}
 #btn-shoot.show,#btn-brake.show,#btn-radio.show,#btn-wpn.show,#btn-aim.show,
@@ -632,7 +658,7 @@ body.is-mobile #touch-controls{display:block}
 #btn-shoot{right:max(18px,env(safe-area-inset-right));bottom:max(18px,env(safe-area-inset-bottom))}
 /* AIM sits just left of FIRE (toggle); .on = engaged (gold) */
 #btn-aim{right:max(96px,calc(env(safe-area-inset-right) + 96px));bottom:max(18px,env(safe-area-inset-bottom))}
-#btn-aim.on{border-color:rgba(255,210,74,.95);background:rgba(255,210,74,.34);color:var(--gold);opacity:1}
+#btn-aim.on{border-color:rgba(232,185,49,.95);background:rgba(232,185,49,.34);color:var(--gold);opacity:1}
 #btn-interact{right:max(24px,calc(env(safe-area-inset-right) + 24px));bottom:max(96px,calc(env(safe-area-inset-bottom) + 96px))}
 /* RAD (no carro) e WPN (a pé) ocupam o mesmo canto — nunca aparecem juntos */
 #btn-radio,#btn-wpn{right:max(24px,calc(env(safe-area-inset-right) + 24px));bottom:max(170px,calc(env(safe-area-inset-bottom) + 170px))}
@@ -665,7 +691,7 @@ body.paused #touch-controls #btn-radio,body.paused #touch-controls #btn-interact
    no próprio canvas (faz fade junto com a abertura). No PC o ponteiro fica travado
    no #game, então a roda NÃO captura ponteiro; no mobile ela captura os toques. */
 #weapon-wheel{position:fixed;inset:0;z-index:56;display:none;pointer-events:none;
-  background:rgba(6,2,12,.22);
+  background:rgba(24,20,16,.22);
   -webkit-backdrop-filter:blur(3px) saturate(1.05);backdrop-filter:blur(3px) saturate(1.05)}
 #weapon-wheel.open{display:block}
 body.is-mobile #weapon-wheel.open{pointer-events:auto}
@@ -673,7 +699,7 @@ body.is-mobile #weapon-wheel.open{pointer-events:auto}
 body.wheel-open #touch-controls{opacity:0;pointer-events:none}
 
 #rotate-device{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
-  background:rgba(8,3,16,.88);font-family:'Bowlby One SC';font-size:clamp(28px,9vw,58px);
+  background:rgba(24,20,16,.88);font-family:'Alfa Slab One';font-size:clamp(28px,9vw,58px);
   color:var(--gold);letter-spacing:4px;text-align:center;text-shadow:3px 3px 0 #000;padding:24px}
 body.is-portrait-blocked #rotate-device{display:flex}
 
@@ -681,15 +707,16 @@ body.is-portrait-blocked #rotate-device{display:flex}
   .panel{border-width:1px;border-radius:8px;backdrop-filter:none}
   #vchud{top:max(10px,env(safe-area-inset-top));right:max(72px,calc(env(safe-area-inset-right) + 72px));gap:9px}
   #vc-stack{gap:6px}
-  #clock,#money{font-size:12px}
-  #health{font-size:11px}
-  #health-heart{font-size:14px;margin-right:6px}
+  #vc-stack{padding:5px 9px 6px 10px}
+  #clock,#money{font-size:17px}
+  #health{font-size:15px}
+  #health-heart{font-size:15px;margin-right:4px}
   #stars{font-size:16px;letter-spacing:2px}
   #breath{width:84px;height:8px}
-  #weaponhud{width:46px;height:46px;border-width:2px;border-radius:11px}
+  #weaponhud{width:48px;height:48px;border-radius:6px}
   #weapon-icon{width:34px;height:34px}
-  #weapon-ammo{font-size:6px}
-  #weapon-name{font-size:6px;top:calc(100% + 5px)}
+  #weapon-ammo{font-size:10px}
+  #weapon-name{font-size:10px;top:calc(100% + 4px)}
   #carname{font-size:30px;right:max(18px,env(safe-area-inset-right));
     bottom:max(96px,calc(env(safe-area-inset-bottom) + 96px))}
   /* no celular o canto inferior direito tem o stick de câmera: velocímetro
@@ -702,7 +729,7 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #mapwrap{left:max(14px,env(safe-area-inset-left));bottom:calc(max(18px,env(safe-area-inset-bottom)) + clamp(112px,18vw,138px) + 8px);
     padding:3px;border-width:2px}
   #minimap{width:clamp(81px,13.5vw,102px);height:clamp(81px,13.5vw,102px)} /* 25% smaller on mobile */
-  #location{font-size:11px;max-width:58vw;padding:4px 10px 4px 8px;bottom:calc(100% + 7px)}
+  #location{font-size:13px;max-width:58vw;padding:3px 9px 4px;bottom:calc(100% + 7px)}
   #taxihud{left:max(8px,env(safe-area-inset-left));top:50%;bottom:auto;width:96px;padding:5px 6px}
   .taxi-label{font-size:8px}.taxi-main{margin-top:4px;gap:4px}
   .taxi-main span{font-size:10px}.taxi-main b{font-size:11px}
@@ -738,53 +765,53 @@ body.is-portrait-blocked #rotate-device{display:flex}
   #mp-title{font-size:clamp(36px,10vw,72px);letter-spacing:3px;text-align:center}
   #mp-mission,#mp-respect{max-width:86vw;text-align:center;line-height:1.35}
   #title{padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
-  #logo{font-size:clamp(12px,2.75vw,30px)}
+  #logo{font-size:clamp(11px,2.4vw,26px)}
   #play{margin-top:16px;font-size:clamp(18px,4vw,24px);padding:10px 24px}
 }
 
 /* Title in short landscape (mobile is locked to landscape; also short desktop
    windows): shrink the logo and tighten PLAY so both fit the height. */
 @media (max-height:560px) and (orientation:landscape){
-  #logo{font-size:clamp(9px,2.125vw,18px)}
+  #logo{font-size:clamp(8px,1.9vw,16px)}
   #play{margin-top:14px}
 }
 
 /* Galeria de objetos (tecla I) */
 #modelviewer{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
-  background:radial-gradient(ellipse at 50% 40%,rgba(20,9,31,.78),rgba(8,4,16,.92));
+  background:radial-gradient(ellipse at 50% 40%,rgba(24,20,16,.78),rgba(24,20,16,.92));
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #modelviewer.open{display:flex}
 .mv-box{width:min(720px,96vw);max-height:92vh;display:flex;flex-direction:column;gap:14px;
-  background:rgba(16,6,30,.92);border:2px solid var(--pink);border-radius:14px;padding:18px 18px 14px;
-  box-shadow:0 0 26px rgba(255,46,136,.45),inset 0 0 30px rgba(255,46,136,.1)}
+  background:rgba(24,20,16,.92);border:2px solid var(--pink);border-radius:14px;padding:18px 18px 14px;
+  box-shadow:inset 0 0 30px rgba(176,64,40,.1)}
 .mv-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.mv-title{font-family:'Bowlby One SC';font-size:clamp(22px,4vw,30px);color:var(--cream);
-  letter-spacing:1px;text-shadow:2px 2px 0 #7a0f3d,0 0 18px rgba(255,46,136,.6)}
-#mv-close{font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;color:var(--cream);
-  background:rgba(255,46,136,.16);border:2px solid var(--pink);border-radius:8px;
+.mv-title{font-family:'Alfa Slab One';font-size:clamp(22px,4vw,30px);color:var(--cream);
+  letter-spacing:1px;text-shadow:2px 2px 0 #5a2a1a}
+#mv-close{font-family:'Barlow Condensed',monospace;font-size:18px;line-height:1;color:var(--cream);
+  background:rgba(176,64,40,.16);border:2px solid var(--pink);border-radius:8px;
   width:38px;height:38px;cursor:pointer;transition:background .15s,transform .15s}
-#mv-close:hover{background:rgba(255,46,136,.4);transform:scale(1.06)}
+#mv-close:hover{background:rgba(176,64,40,.4);transform:scale(1.06)}
 .mv-selects{display:flex;gap:12px;flex-wrap:wrap}
 .mv-selects select{flex:1 1 200px}
-#mv-cat,#mv-select{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:15px;color:var(--cream);
-  background:rgba(20,9,31,.85);border:2px solid var(--cyan);border-radius:10px;
+#mv-cat,#mv-select{font-family:'Barlow Condensed',monospace;font-weight:600;font-size:15px;color:var(--cream);
+  background:rgba(24,20,16,.85);border:2px solid var(--cyan);border-radius:10px;
   padding:11px 36px 11px 14px;cursor:pointer;width:100%;
-  box-shadow:0 0 14px rgba(25,227,255,.3),inset 0 0 16px rgba(25,227,255,.06);
+  box-shadow:inset 0 0 16px rgba(46,96,168,.06);
   appearance:none;-webkit-appearance:none;
   background-image:linear-gradient(45deg,transparent 50%,var(--cyan) 50%),linear-gradient(135deg,var(--cyan) 50%,transparent 50%);
   background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px,6px 6px;background-repeat:no-repeat}
-#mv-cat{border-color:var(--gold);box-shadow:0 0 14px rgba(255,210,74,.3),inset 0 0 16px rgba(255,210,74,.06);
+#mv-cat{border-color:var(--gold);box-shadow:inset 0 0 16px rgba(232,185,49,.06);
   background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);
   background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px,6px 6px;background-repeat:no-repeat}
-#mv-cat option,#mv-select option{background:#14091f;color:var(--cream)}
+#mv-cat option,#mv-select option{background:#17130f;color:var(--cream)}
 .mv-stage{position:relative;flex:1;min-height:300px;border-radius:12px;overflow:hidden;
-  border:2px solid rgba(25,227,255,.35);
-  background:radial-gradient(ellipse at 50% 30%,rgba(62,123,255,.18),rgba(8,4,16,.6) 70%)}
+  border:2px solid rgba(46,96,168,.35);
+  background:radial-gradient(ellipse at 50% 30%,rgba(62,123,255,.18),rgba(24,20,16,.6) 70%)}
 #mv-canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
 #mv-canvas:active{cursor:grabbing}
-.mv-hint{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;
-  color:rgba(255,233,201,.7)}
+.mv-hint{text-align:center;font-family:'Barlow Condensed',monospace;font-size:12px;letter-spacing:1px;
+  color:rgba(243,239,228,.7)}
 .mv-hint b{color:var(--gold)}
 @media (max-width:640px),(pointer:coarse){
   .mv-box{width:96vw;max-height:94vh;padding:14px 14px 10px}
@@ -800,12 +827,12 @@ body.is-portrait-blocked #rotate-device{display:flex}
 #pauseov{animation:pauseOvIn .16s ease both}
 .pause-shell{animation:pauseShellIn .24s cubic-bezier(.2,.85,.25,1) both}
 /* Slim neon scrollbars for the menu body and inner scroll panes. */
-#pause-body,.pause-scroll{scrollbar-width:thin;scrollbar-color:rgba(25,227,255,.5) transparent}
+#pause-body,.pause-scroll{scrollbar-width:thin;scrollbar-color:rgba(46,96,168,.5) transparent}
 #pause-body::-webkit-scrollbar,.pause-scroll::-webkit-scrollbar{width:8px;height:8px}
 #pause-body::-webkit-scrollbar-thumb,.pause-scroll::-webkit-scrollbar-thumb{
-  background:rgba(25,227,255,.38);border-radius:8px}
+  background:rgba(46,96,168,.38);border-radius:8px}
 #pause-body::-webkit-scrollbar-thumb:hover,.pause-scroll::-webkit-scrollbar-thumb:hover{
-  background:rgba(25,227,255,.6)}
+  background:rgba(46,96,168,.6)}
 #pause-body::-webkit-scrollbar-track,.pause-scroll::-webkit-scrollbar-track{background:transparent}
 /* Keyboard focus ring (PC). */
 .pause-btn:focus-visible,.pause-mini:focus-visible,.pause-switch:focus-visible,
@@ -828,29 +855,29 @@ body.is-portrait-blocked #rotate-device{display:flex}
 /* Mapa completo (tecla M) — overlay com a visão geral do mundo */
 #fullmap{position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;
   padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(16px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
-  background:radial-gradient(ellipse at 50% 40%,rgba(20,9,31,.82),rgba(8,4,16,.94));
+  background:radial-gradient(ellipse at 50% 40%,rgba(24,20,16,.82),rgba(24,20,16,.94));
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 #fullmap.open{display:flex}
 body.map-open #touch-controls{display:none!important}
 .fm-box{display:flex;flex-direction:column;gap:10px;max-width:96vw;max-height:96vh;
-  background:rgba(16,6,30,.92);border:2px solid var(--pink);border-radius:14px;padding:14px 14px 10px;
-  box-shadow:0 0 26px rgba(255,46,136,.45),inset 0 0 30px rgba(255,46,136,.1)}
+  background:rgba(24,20,16,.92);border:2px solid var(--pink);border-radius:14px;padding:14px 14px 10px;
+  box-shadow:inset 0 0 30px rgba(176,64,40,.1)}
 .fm-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.fm-title{font-family:'Bowlby One SC';font-size:clamp(20px,3.4vw,28px);color:var(--cream);
-  letter-spacing:1px;text-shadow:2px 2px 0 #7a0f3d,0 0 18px rgba(255,46,136,.6)}
-#fm-close{font-family:'IBM Plex Mono',monospace;font-size:18px;line-height:1;color:var(--cream);
-  background:rgba(255,46,136,.16);border:2px solid var(--pink);border-radius:8px;
+.fm-title{font-family:'Alfa Slab One';font-size:clamp(20px,3.4vw,28px);color:var(--cream);
+  letter-spacing:1px;text-shadow:2px 2px 0 #5a2a1a}
+#fm-close{font-family:'Barlow Condensed',monospace;font-size:18px;line-height:1;color:var(--cream);
+  background:rgba(176,64,40,.16);border:2px solid var(--pink);border-radius:8px;
   width:36px;height:36px;flex:none;cursor:pointer;transition:background .15s,transform .15s}
-#fm-close:hover{background:rgba(255,46,136,.4);transform:scale(1.06)}
+#fm-close:hover{background:rgba(176,64,40,.4);transform:scale(1.06)}
 .fm-stage{position:relative;align-self:center;border-radius:12px;overflow:hidden;
-  border:2px solid rgba(25,227,255,.35);background:#4d6a30;box-shadow:inset 0 0 30px rgba(8,4,16,.4)}
+  border:2px solid rgba(46,96,168,.35);background:#4d6a30;box-shadow:inset 0 0 30px rgba(24,20,16,.4)}
 /* Mapa SEMPRE inteiro na tela: o canvas é um elemento substituído com proporção
    intrínseca (definida em hud.js), então max-width/max-height em unidades de
    viewport o reduzem mantendo a proporção — cabe em qualquer tela sem cortar. */
 #fullmap-canvas{display:block;width:auto;height:auto;
   max-width:94vw;max-height:calc(94vh - 118px)}
-.fm-hint{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;letter-spacing:1px;
-  color:rgba(255,233,201,.7)}
+.fm-hint{text-align:center;font-family:'Barlow Condensed',monospace;font-size:12px;letter-spacing:1px;
+  color:rgba(243,239,228,.7)}
 .fm-hint b{color:var(--gold)}
 @media (max-width:640px),(pointer:coarse){
   .fm-box{padding:10px 10px 8px;gap:8px}
@@ -865,9 +892,9 @@ body.map-open #touch-controls{display:none!important}
 #npc-labels{position:fixed;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 .npc-label{
   position:absolute;transform:translate(-50%,-50%);white-space:nowrap;display:none;
-  font:700 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:#fff;
+  font:700 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:#fff;
   padding:1px 6px;border-radius:6px;background:rgba(0,0,0,.45);
-  text-shadow:1px 1px 0 #000,-1px -1px 0 #000,1px -1px 0 #000,-1px 1px 0 #000;
+  text-shadow:1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
 }
 @media (max-width:640px),(pointer:coarse){ .npc-label{font-size:10px;padding:1px 5px} }
 
@@ -879,10 +906,10 @@ body.map-open #touch-controls{display:none!important}
 
 /* NPC roster filters (pause menu): a label + a wrap of toggle chips per dimension. */
 .pause-filter{display:flex;align-items:flex-start;gap:8px;margin:0 0 7px}
-.pause-filter-label{flex:0 0 52px;font:700 11px 'IBM Plex Mono',monospace;letter-spacing:1px;
+.pause-filter-label{flex:0 0 52px;font:700 11px 'Barlow Condensed',monospace;letter-spacing:1px;
   color:var(--gold);padding-top:5px}
 .pause-chips{display:flex;flex-wrap:wrap;gap:5px;flex:1}
-.pause-chip{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:var(--cream);
+.pause-chip{font:600 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:var(--cream);
   background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:999px;
   padding:3px 10px;cursor:pointer}
 .pause-chip:hover{background:rgba(255,255,255,.14)}
@@ -890,10 +917,10 @@ body.map-open #touch-controls{display:none!important}
 /* NPC roster: collapsible filter bar — a SHOW/HIDE toggle + active-filter summary. */
 .pause-filter-bar{display:flex;align-items:center;gap:10px;margin:0 0 8px}
 .npc-filter-toggle.on{background:var(--gold);color:#1a1410} /* gold when a filter is active */
-.npc-filter-active{font:600 11px 'IBM Plex Mono',monospace;letter-spacing:.5px;color:var(--gold)}
+.npc-filter-active{font:600 11px 'Barlow Condensed',monospace;letter-spacing:.5px;color:var(--gold)}
 
 /* Full-map "Show NPCs" toggle button (sits in the map header next to close). */
-#fm-npcs{font:700 12px 'IBM Plex Mono',monospace;letter-spacing:1px;color:var(--cream);
+#fm-npcs{font:700 12px 'Barlow Condensed',monospace;letter-spacing:1px;color:var(--cream);
   background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.22);border-radius:7px;
   padding:5px 12px;cursor:pointer;margin-left:auto}
 #fm-npcs:hover{background:rgba(255,255,255,.16)}
@@ -903,10 +930,10 @@ body.map-open #touch-controls{display:none!important}
    the screen over a faint dark band, gentle fade. Lingers a while (duration set in JS). */
 #police-radio{position:fixed;left:50%;bottom:10%;transform:translateX(-50%);
   max-width:min(82vw,680px);text-align:center;pointer-events:none;z-index:8;
-  font:500 16px/1.4 'IBM Plex Mono',monospace;color:#f4f4f4;
+  font:500 16px/1.4 'Barlow Condensed',monospace;color:#f4f4f4;
   background:rgba(0,0,0,.34);border-radius:5px;padding:5px 14px;
   opacity:0;transition:opacity .5s ease;
-  text-shadow:0 1px 3px #000,0 0 5px rgba(0,0,0,.8)}
+  text-shadow:0 1px 3px #000, 0 0 5px rgba(0,0,0,.8)}
 #police-radio.show{opacity:.96}
 #police-radio b{color:#cfe0ff;font-weight:600}
 @media (max-width:640px),(pointer:coarse){

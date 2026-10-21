@@ -63,7 +63,7 @@ export function tickFps(): void {
   if(now-fpsLast<500)return;
   const fps=Math.round(fpsFrames*1000/(now-fpsLast));
   hudFps.textContent=fps+' FPS';
-  hudFps.style.color=fps>=50?'#41ce62':fps>=30?'#ffd24a':'#ff2e88';
+  hudFps.style.color=fps>=50?'#7cb85a':fps>=30?'#f0be3a':'#e0705a';
   fpsFrames=0;fpsLast=now;
 }
 
@@ -578,10 +578,10 @@ export function drawMinimap(): void {
   mm.restore();
   mm.restore();
 
-  // aro do radar
-  mm.strokeStyle='rgba(5,3,8,.96)';mm.lineWidth=6;
+  // radar rim: the blue of the enamel street plates, inside the white frame (CSS #mapwrap)
+  mm.strokeStyle='rgba(20,16,12,.96)';mm.lineWidth=6;
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R-2,0,Math.PI*2);mm.stroke();
-  mm.strokeStyle='#efa1d8';mm.lineWidth=3;
+  mm.strokeStyle='#1f4f99';mm.lineWidth=3;
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R-4,0,Math.PI*2);mm.stroke();
   mm.strokeStyle='rgba(255,255,255,.42)';mm.lineWidth=1;
   mm.beginPath();mm.arc(MM_C,MM_C,MM_R-5.8,0,Math.PI*2);mm.stroke();
@@ -703,7 +703,7 @@ export function drawFullMap(): void {
   fm.textAlign='center';fm.textBaseline='middle';
   for(const r of mapRegionLabels){
     const txt=r.name.toUpperCase();
-    fm.font=`800 ${r.kind==='city'?12:14}px "IBM Plex Mono",monospace`;
+    fm.font=`800 ${r.kind==='city'?12:14}px "Barlow Condensed",monospace`;
     const hw=fm.measureText(txt).width/2+10;       // meia-largura do texto + folga
     const[bx,by]=P(r.cx,r.cz);
     let lx=Math.round(bx),ly=Math.round(by);
@@ -728,7 +728,7 @@ export function drawFullMap(): void {
     if(m.big)storyHalo(fm,px,py,m.color||'#ffd24a',1.6);
     mmCircleIcon(fm,px,py,m,m.big?1.9:1.25);
     if(m.label){
-      fm.font='700 10px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
+      fm.font='700 10px "Barlow Condensed",monospace';fm.textAlign='center';fm.textBaseline='top';
       const ly=py+(m.big?21:15);
       fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText(m.label,px,ly);
       fm.fillStyle=m.big?(m.color||'#ffd24a'):'#ffe9c9';fm.fillText(m.label,px,ly);
@@ -768,7 +768,7 @@ function drawFmPlayer(P:(wx:number,wz:number)=>Pt):void{
     fm.fillStyle='#fff';fm.strokeStyle='#000';fm.lineWidth=2;
     fm.beginPath();fm.moveTo(0,-11);fm.lineTo(-8,9);fm.lineTo(0,4.5);fm.lineTo(8,9);
     fm.closePath();fm.fill();fm.stroke();fm.restore();
-    fm.font='700 11px "IBM Plex Mono",monospace';fm.textAlign='center';fm.textBaseline='top';
+    fm.font='700 11px "Barlow Condensed",monospace';fm.textAlign='center';fm.textBaseline='top';
     fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('YOU',px,py+13);
     fm.fillStyle='#9bf0ff';fm.fillText('YOU',px,py+13);
   }

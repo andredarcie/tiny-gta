@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {SQUARES} from '@/world/divinolandia/sites-table.ts';
 import {matte} from '../matte.ts';
+import {leafMat,leafMass} from './copa.ts';
 import {lawnM,stoneM,zigzagM,soilM,drape,sidewalkRing,circle,path,kerb,put,type GroundAt,type P2} from './praca-chao.ts';
 import Banco from './banco-praca.ts';
 import Poste from './poste-colonial.ts';
@@ -31,8 +32,8 @@ const W0=2.6;                                         // sidewalk width
 const whiteM=matte({color:0xf2efe8}),winM=matte({color:0x55636e}),doorM=matte({color:0x6f7c86});
 const brickM=matte({color:0x9a5a42}),roofDarkM=matte({color:0x4f5b53}),glassM=matte({color:0x7f949e});
 const rubberM=matte({color:0x4f4f86}),steelM=matte({color:0xd1b13a}),redM=matte({color:0xb3262a});
-const bustM=matte({color:0x3f3a35}),blueM=matte({color:0x2c4f9a}),flowerM=matte({color:0xf2f0e6,flatShading:true});
-const shrubM=matte({color:0x3e6a31,flatShading:true});
+const bustM=matte({color:0x3f3a35}),blueM=matte({color:0x2c4f9a}),flowerM=leafMat(0xe8e6dc);
+const shrubM=leafMat(0x3c5a30);
 
 function box(g:THREE.Object3D,m:THREE.Material,w:number,h:number,d:number,x:number,y:number,z:number):THREE.Mesh{
   const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y+h/2,z);b.castShadow=true;b.receiveShadow=true;g.add(b);return b;
@@ -144,7 +145,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
   put(g,halfMoonBench(3.9),at,41,-25.5,0,.1);put(g,bust(),at,41,-27.3,0,.1);
   put(g,urn(),at,-31.5,-19.5,0,.08);
   {const bed=drape(circle(-28.6,-19.2,2.4,18),at,.1,soilM);g.add(bed);
-    for(let i=0;i<14;i++){const a=i/14*Math.PI*1.4-.5,r=1.6+(i%3)*.35,f=new THREE.Mesh(new THREE.IcosahedronGeometry(.32,0),i%2?flowerM:shrubM);
+    for(let i=0;i<14;i++){const a=i/14*Math.PI*1.4-.5,r=1.6+(i%3)*.35,f=new THREE.Mesh(leafMass(1+i%3,.3,2),i%2?flowerM:shrubM);f.scale.setScalar(.34);
       const u=-28.6+Math.cos(a)*r,v=-19.2+Math.sin(a)*r;f.position.set(u,at(u,v)+.35,v);g.add(f);}}
   put(g,kiosk(),at,-36.4,35.5,Math.PI/2,.1);
   // ---- trees (crowns from the satellite: u, v, crown radius, kind) ----
@@ -156,7 +157,7 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
   T.forEach(([u,v,r,k],i)=>put(g,Arvore.build({kind:k||'copa',r,seed:i+11}),at,u,v,i*.7));
   // round shrubs in the lawns
   for(const[u,v]of[[-8,-14],[12,-13],[30,-20],[-28,24],[20,12],[34,15],[-12,9],[28,36],[-31,-12],[16,-28]] as P2[]){
-    const s=new THREE.Mesh(new THREE.IcosahedronGeometry(.9,1),shrubM);s.scale.y=.7;s.position.set(u,at(u,v)+.55,v);s.castShadow=true;g.add(s);}
+    const s=new THREE.Mesh(leafMass(1+(u&1),.26,2),shrubM);s.scale.setScalar(.95);s.scale.y=.7;s.position.set(u,at(u,v)+.55,v);s.castShadow=true;g.add(s);}
   // ---- benches (u, v, facing angle: the seat looks along +z turned by ry) ----
   const B:[number,number,number][]=[
     [16,-25,-2.4],[8,-17,-2.4],[1,-11.5,-2.4],[20,-30.5,.73],[12,-23,.73],

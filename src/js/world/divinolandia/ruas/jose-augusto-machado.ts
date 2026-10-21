@@ -26,8 +26,10 @@ export const ROSA_AT=272;
 const TILE='#a9573c',TILE_DARK='#8e4632',WHITE='#f1efe9';
 export const LOTS:Lot[]=[
   // ---------------- block A (Manoel P. de Souza → Barão do Rio Branco), north side ----------------
-  {side:'N',s0:6,s1:18,f:{floors:2,wall:'#dcc7be',roof:'flat',d:11,
-    open:[{t:'window',x:-2,w:1.3,fl:1,shutters:WHITE},{t:'window',x:2.6,w:.9,fl:1},{t:'door',x:3.6,w:1},{t:'window',x:-1.5,w:1.4,grille:true}]}},
+  // (the corner with Manoel P. de Souza is acute — that street runs off to the NNE — so the
+  // corner house starts 12 m in and stays 9 m deep, clear of its roadway and sidewalk)
+  {side:'N',s0:12,s1:18,f:{floors:2,wall:'#dcc7be',roof:'flat',d:9,
+    open:[{t:'window',x:-1,w:1.3,fl:1,shutters:WHITE},{t:'window',x:1.3,w:.9,fl:1},{t:'door',x:1.8,w:1},{t:'window',x:-.75,w:1.4,grille:true}]}},
   {side:'N',s0:18,s1:31,f:{wall:'#dcc9ae',roof:'hip',roofColor:TILE,plinth:{h:.4,c:'#b8a78c'},
     open:[{t:'garage',x:-3.4,w:3.2,c:'#9da0a3'},{t:'window',x:1.2,w:1.4,shutters:WHITE},{t:'window',x:4.2,w:1.2,grille:true}]}},
   {side:'N',s0:31,s1:43,f:{wall:'#4f6c50',roof:'gable',roofColor:TILE_DARK,fascia:'#7a5232',eave:.8,plinth:{h:.35,c:'#5f5e5a'},

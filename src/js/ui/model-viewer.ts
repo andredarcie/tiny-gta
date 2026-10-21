@@ -95,7 +95,7 @@ function build(): void {
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFShadowMap;
-  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMapping=THREE.AgXToneMapping;
   renderer.toneMappingExposure=1.2;
 
   vscene=new THREE.Scene();

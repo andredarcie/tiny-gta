@@ -14,7 +14,7 @@ const SEARCH_SHIFTS=[0,-4,4,-7,7];
 
 type Sample={x:number;z:number;alongX:number;alongZ:number};
 type OrientedHouse=HouseFootprint&{cos:number;sin:number};
-type RoadSegment={ax:number;az:number;bx:number;bz:number;name:string};
+type RoadSegment={ax:number;az:number;bx:number;bz:number;road:number};
 
 function roadLength(points:[number,number][]):number{
   let length=0;
@@ -68,9 +68,11 @@ function farFromSites(x:number,z:number,sites:{x:number;z:number}[],clearance:nu
   return sites.every(site=>(x-site.x)**2+(z-site.z)**2>=clearance**2);
 }
 
-function nearCrossing(x:number,z:number,roadName:string,segments:RoadSegment[]):boolean{
+// near any OTHER road (by index: OSM splits one named street into several ways, and every
+// unnamed track shares the empty name)
+function nearCrossing(x:number,z:number,road:number,segments:RoadSegment[]):boolean{
   for(const segment of segments){
-    if(segment.name===roadName)continue;
+    if(segment.road===road)continue;
     if(x<Math.min(segment.ax,segment.bx)-CROSSING_CLEARANCE||x>Math.max(segment.ax,segment.bx)+CROSSING_CLEARANCE
       ||z<Math.min(segment.az,segment.bz)-CROSSING_CLEARANCE||z>Math.max(segment.az,segment.bz)+CROSSING_CLEARANCE)continue;
     const dx=segment.bx-segment.ax,dz=segment.bz-segment.az;
@@ -81,12 +83,12 @@ function nearCrossing(x:number,z:number,roadName:string,segments:RoadSegment[]):
   return false;
 }
 
-type SiteContext={houses:OrientedHouse[];areas:[number,number][][];junctions:PoleSite[];placed:PoleSite[];segments:RoadSegment[];roadName:string};
+type SiteContext={houses:OrientedHouse[];areas:[number,number][][];junctions:PoleSite[];placed:PoleSite[];segments:RoadSegment[];road:number};
 function eligibleSite(site:PoleSite,context:SiteContext):boolean{
   const {x,z}=site;
   return farFromSites(x,z,context.junctions,JUNCTION_CLEARANCE)
     &&farFromSites(x,z,context.placed,MIN_POLE_SEPARATION)
-    &&!nearCrossing(x,z,context.roadName,context.segments)
+    &&!nearCrossing(x,z,context.road,context.segments)
     &&!nearHouse(x,z,context.houses)
     &&!context.areas.some(area=>insidePolygon(x,z,area));
 }
@@ -95,13 +97,13 @@ export function planRoadPoles(plan:PolePlan):PoleSite[][]{
   const houses=plan.houses.map(house=>({...house,cos:Math.cos(house.rotation),sin:Math.sin(house.rotation)}));
   const junctions=plan.roads.flatMap(road=>road.pts.length>1?[road.pts[0],road.pts[road.pts.length-1]]:[])
     .map(([x,z])=>({x,z,r:0}));
-  const segments=plan.roads.flatMap(road=>road.pts.slice(1).map((point,index)=>({
-    ax:road.pts[index][0],az:road.pts[index][1],bx:point[0],bz:point[1],name:road.name,
+  const segments=plan.roads.flatMap((road,roadIndex)=>road.pts.slice(1).map((point,index)=>({
+    ax:road.pts[index][0],az:road.pts[index][1],bx:point[0],bz:point[1],road:roadIndex,
   })));
   const placed:PoleSite[]=[],routes:PoleSite[][]=[];
-  for(const road of plan.roads){
+  for(const[roadIndex,road]of plan.roads.entries()){
     if(!road.enabled||!road.paved||plan.surveyedStreets.includes(road.name)||road.pts.length<2)continue;
-    const context={houses,areas:plan.protectedAreas,junctions,placed,segments,roadName:road.name};
+    const context={houses,areas:plan.protectedAreas,junctions,placed,segments,road:roadIndex};
     const length=roadLength(road.pts);
     if(length<FIRST_POLE+END_CLEARANCE)continue;
     const side=streetSide(road),offset=road.halfWidth+(road.sidewalk?.55:1.25);

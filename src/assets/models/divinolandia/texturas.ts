@@ -1,18 +1,21 @@
 import * as THREE from 'three';
 
-// Procedural canvas textures for Divinolândia surfaces that read as their MATERIAL, not
-// as a photo (art direction: no photo textures, ever): the irregular grey stone cladding
-// ("pedra" on base walls and façade panels), the paralelepípedo cobblestone of the old
-// centre streets, and corrugated metal site fencing. Drawn once, tiled with RepeatWrapping;
-// geometry supplies UVs in metres (1 texture tile = TILE_M metres).
+// Procedural canvas textures for Divinolândia's surfaces — the photoreal art direction's
+// material detail (grain, wear, joints, weathering), painted in code from what the town's
+// photos show (no image files are loaded: the game ships no binary assets). Drawn once,
+// tiled with RepeatWrapping; geometry supplies UVs in metres (1 texture tile = TILE_M m).
+// The "multiply" textures (terrain, asphalt, dirt, foliage) are near-white detail that the
+// surface colour multiplies, so the palette still sets the colour.
 const cache=new Map<string,THREE.CanvasTexture>();
-function make(key:string,size:number,paint:(x:CanvasRenderingContext2D,s:number)=>void):THREE.CanvasTexture{
+// linear=true: a "multiply" detail map whose pixel values are used as-is (no sRGB decode),
+// so a pixel of 217 multiplies the colour by 0.85 exactly
+function make(key:string,size:number,paint:(x:CanvasRenderingContext2D,s:number)=>void,linear=false):THREE.CanvasTexture{
   const hit=cache.get(key);if(hit)return hit;
   // outside a browser (Node unit tests build the geometry) there is no canvas: blank texture
   if(typeof document==='undefined')return new THREE.Texture() as THREE.CanvasTexture;
   const c=document.createElement('canvas');c.width=c.height=size;
   paint(c.getContext('2d')!,size);
-  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;
+  const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=linear?THREE.NoColorSpace:THREE.SRGBColorSpace;t.anisotropy=4;
   cache.set(key,t);return t;
 }
 // deterministic noise so every load paints the same pattern
@@ -84,11 +87,12 @@ export function telhaTexture():THREE.CanvasTexture{
     x.fillStyle='#6b2f1f';x.fillRect(0,0,s,s);
     for(let j=0;j<rows;j++)for(let i=0;i<cols;i++){
       const v=.85+r()*.3,g=x.createLinearGradient(i*cw,0,(i+1)*cw,0);
-      const c=(k:number):string=>`rgb(${Math.min(255,190*v*k)|0},${Math.min(255,98*v*k)|0},${Math.min(255,66*v*k)|0})`;
+      const c=(k:number):string=>`rgb(${Math.min(255,168*v*k)|0},${Math.min(255,104*v*k)|0},${Math.min(255,82*v*k)|0})`;
       g.addColorStop(0,c(.55));g.addColorStop(.35,c(1.05));g.addColorStop(.7,c(.9));g.addColorStop(1,c(.5));
       x.fillStyle=g;x.fillRect(i*cw+1,j*rh,cw-2,rh-2);
       x.fillStyle='rgba(30,10,5,.45)';x.fillRect(i*cw,j*rh+rh-5,cw,5);          // course shadow
-      if(r()<.25){x.fillStyle='rgba(40,40,30,.18)';x.fillRect(i*cw+2,j*rh,cw-4,rh*.6);} // weathering
+      if(r()<.6){x.fillStyle=`rgba(38,36,30,${.12+r()*.22})`;x.fillRect(i*cw+2,j*rh,cw-4,rh*(.3+r()*.6));} // weathering
+      if(r()<.3){x.fillStyle='rgba(120,120,105,.18)';x.fillRect(i*cw+3,j*rh+rh*.5,cw-6,rh*.35);}            // lichen
     }
   });
 }
@@ -224,4 +228,63 @@ export function degrausTexture():THREE.CanvasTexture{
     for(let k=0;k<2;k++){const y=k*s/2;
       x.fillStyle='#d7d2c6';x.fillRect(0,y,s,s/2);x.fillStyle='#a9a397';x.fillRect(0,y+s/2-9,s,6);x.fillStyle='#7e786d';x.fillRect(0,y+s/2-3,s,3);}
   });
+}
+
+// ---- photoreal "multiply" details ----
+// soft tileable blots: each drawn at the 9 wrap offsets so the tile repeats seamlessly
+function blot(x:CanvasRenderingContext2D,s:number,px:number,py:number,R:number,style:string):void{
+  x.fillStyle=style;
+  for(const ox of[-s,0,s])for(const oy of[-s,0,s]){x.beginPath();x.arc(px+ox,py+oy,R,0,Math.PI*2);x.fill();}
+}
+// Ground: grass tufts, bare patches and pebbles at the scale you see from a car or on foot.
+// 1 tile = 8 m. Mean ≈ 0.85 — terreno.ts lifts the vertex colours to match.
+export const GROUND_TILE_M=8;
+export function soloTexture():THREE.CanvasTexture{
+  return make('solo',512,(x,s)=>{
+    const r=rng(23);
+    x.fillStyle='#dadada';x.fillRect(0,0,s,s);
+    for(let k=0;k<260;k++){const g=170+Math.floor(r()*80);blot(x,s,r()*s,r()*s,8+r()*40,`rgba(${g},${g},${g},.28)`);}
+    for(let k=0;k<9000;k++){                              // blades / clods
+      const g=120+Math.floor(r()*135),px=r()*s,py=r()*s;
+      x.fillStyle=`rgba(${g},${g},${g},.55)`;x.fillRect(px,py,1+r()*2,1+r()*3);
+    }
+    for(let k=0;k<500;k++){const g=235+Math.floor(r()*20);x.fillStyle=`rgba(${g},${g},${g},.6)`;x.fillRect(r()*s,r()*s,2,2);}
+  },true);
+}
+// Asphalt: aggregate speckle, darker patches of repairs and oil, hairline cracks. 1 tile = 2 m
+// (the street ribbons' UVs, rua.ts). Mean ≈ 0.85.
+export function asfaltoTexture():THREE.CanvasTexture{
+  return make('asfalto',256,(x,s)=>{
+    const r=rng(29);
+    x.fillStyle='#d8d8d8';x.fillRect(0,0,s,s);
+    for(let k=0;k<40;k++){const g=150+Math.floor(r()*70);blot(x,s,r()*s,r()*s,10+r()*40,`rgba(${g},${g},${g},.25)`);}
+    for(let k=0;k<7000;k++){const g=110+Math.floor(r()*145);x.fillStyle=`rgb(${g},${g},${g})`;x.fillRect(r()*s,r()*s,1,1);}
+    x.strokeStyle='rgba(60,60,60,.55)';x.lineWidth=1;
+    for(let k=0;k<5;k++){let px=r()*s,py=r()*s;x.beginPath();x.moveTo(px,py);
+      for(let q=0;q<8;q++){px+=(r()-.5)*40;py+=(r()-.5)*40;x.lineTo(px,py);}x.stroke();}
+  },true);
+}
+// Dirt road (terra roxa batida): fine dust, darker ruts along the travel direction (v), small
+// stones. 1 tile = 2 m. Mean ≈ 0.85.
+export function terraTexture():THREE.CanvasTexture{
+  return make('terra',256,(x,s)=>{
+    const r=rng(31);
+    x.fillStyle='#dcdcdc';x.fillRect(0,0,s,s);
+    for(let k=0;k<70;k++){const g=165+Math.floor(r()*80);blot(x,s,r()*s,r()*s,6+r()*30,`rgba(${g},${g},${g},.3)`);}
+    for(let k=0;k<6000;k++){const g=140+Math.floor(r()*115);x.fillStyle=`rgba(${g},${g},${g},.7)`;x.fillRect(r()*s,r()*s,1,1);}
+    for(let k=0;k<120;k++){const g=245;x.fillStyle=`rgba(${g},${g},${g},.7)`;x.fillRect(r()*s,r()*s,2+r()*2,2);}
+  },true);
+}
+// Foliage: leaf clusters — light-catching tops and dark gaps — for the tree crowns.
+// Mean ≈ 0.8; wrapped round the crown by its own UVs.
+export function folhagemTexture():THREE.CanvasTexture{
+  return make('folhagem',256,(x,s)=>{
+    const r=rng(37);
+    x.fillStyle='#9a9a9a';x.fillRect(0,0,s,s);
+    for(let k=0;k<2600;k++){
+      const g=Math.floor(110+r()*145),px=r()*s,py=r()*s,R=2+r()*5;
+      blot(x,s,px,py,R,`rgba(${g},${g},${g},.75)`);
+    }
+    for(let k=0;k<600;k++){blot(x,s,r()*s,r()*s,1.5+r()*3,'rgba(40,40,40,.6)');}
+  },true);
 }

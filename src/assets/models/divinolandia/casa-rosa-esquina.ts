@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
+import {leafMat,leafMass} from './copa.ts';
 import {Kit,P,STONE,plain,holedWall,fillOpening,wallX,wallZ,dirt,railing,roof,dish,waterTank,meterBox,houseNumber,REVEAL,type Op,type Hole} from './kit-fachada.ts';
 
 // A casa rosa da esquina — the rosy-beige house on the south-west corner of Rua José
@@ -143,11 +144,11 @@ function build():THREE.Group{
   part(g,.32,ROSA_D-6.25,E,k=>{railing(k,-1.1,1.1,L+.2,1.4,0,WHITE,'lattice');});
   // garden: floor, the yellow-flowered shrub, roses, a small palm
   const garden=new THREE.Mesh(new THREE.BoxGeometry(4.6,.2,ROSA_D-6),matte({color:'#6f8d47'}));garden.position.set(-2.4,L-.1,(ROSA_D-6)/2+.6);g.add(garden);
-  const leaf=matte({color:'#4b8233',flatShading:true}),yellow=matte({color:'#e9c83a'}),rose=matte({color:'#d9708f'});
-  const bush=new THREE.Mesh(new THREE.IcosahedronGeometry(1.5,1),leaf);bush.position.set(-3.6,L+1.6,2.6);bush.scale.set(1.15,1.25,1);bush.castShadow=true;g.add(bush);
+  const leaf=leafMat('#46663a'),yellow=matte({color:'#e9c83a'}),rose=matte({color:'#d9708f'});
+  const bush=new THREE.Mesh(leafMass(2,.26,2),leaf);bush.position.set(-3.6,L+1.6,2.6);bush.scale.set(1.7,1.9,1.5);bush.castShadow=true;g.add(bush);
   for(let i=0;i<26;i++){const f=new THREE.Mesh(new THREE.IcosahedronGeometry(.12,0),yellow);const a=i*2.39,r=1.3+(i%4)*.12;
     f.position.set(-3.6+Math.cos(a)*r,L+1.3+Math.sin(i*1.3)*1.2,2.6+Math.sin(a)*r*.9);g.add(f);}
-  for(let z=3;z<ROSA_D-12;z+=1.8){const b=new THREE.Mesh(new THREE.IcosahedronGeometry(.45,1),leaf);b.position.set(-.8,L+.5,z);g.add(b);
+  for(let z=3;z<ROSA_D-12;z+=1.8){const b=new THREE.Mesh(leafMass(1,.26,2),leaf);b.scale.setScalar(.45);b.position.set(-.8,L+.5,z);g.add(b);
     for(let i=0;i<4;i++){const f=new THREE.Mesh(new THREE.IcosahedronGeometry(.09,0),rose);f.position.set(-.8+Math.cos(i*1.6)*.4,L+.75,z+Math.sin(i*1.6)*.4);g.add(f);}}
   g.userData.h=L+2*F+2.5;
   return g;

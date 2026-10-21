@@ -154,7 +154,7 @@ function nameTexture():THREE.Texture{
   if(nameTex)return nameTex;
   if(typeof document==='undefined')return nameTex=new THREE.Texture();
   const c=document.createElement('canvas');c.width=1024;c.height=64;const x=c.getContext('2d')!;
-  x.fillStyle='#2f5466';x.font='700 40px "IBM Plex Mono",monospace';x.textAlign='center';x.textBaseline='middle';
+  x.fillStyle='#2f5466';x.font='700 40px "Barlow Condensed",monospace';x.textAlign='center';x.textBaseline='middle';
   x.fillText('HOSPITAL REGIONAL DE DIVINOLÂNDIA',512,34);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return nameTex=t;
 }
