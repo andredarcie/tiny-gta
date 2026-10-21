@@ -203,7 +203,7 @@ function addExtra(g:THREE.Group,e:Extra,o:LojaOpts):void{
     case'bollards':for(let x=e.x0;x<=e.x1+.01;x+=1.6){const b=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,.8,8),col(e.c??'#e3c23a'));b.position.set(x,.4,1.9);g.add(b);}break;
     case'rail':{const y=e.y??0,c=col(e.c);box(c,e.x1-e.x0,.05,.05,(e.x0+e.x1)/2,y+1,.9);for(let x=e.x0;x<=e.x1+.01;x+=.12)box(c,.025,1,.025,x,y,.9);break;}
     case'motos':for(let i=0;i<e.n;i++){const m=new THREE.Group(),c=['#c42b2b','#1d1d1d','#2a4fa0','#e8e6df'][i%4];
-      m.position.set(e.x+i*.9,0,2.3);m.rotation.y=Math.PI/2+.25;g.add(m);
+      m.position.set(e.x+i*.9,0,1.45);m.rotation.y=Math.PI/2+.25;g.add(m);   // (on the 2.1 m sidewalk)
       for(const wx of[-.65,.65]){const w=new THREE.Mesh(new THREE.TorusGeometry(.28,.07,6,14),col('#151515'));w.position.set(wx,.32,0);m.add(w);}
       const b=new THREE.Mesh(new THREE.BoxGeometry(1,.3,.28),col(c));b.position.set(0,.65,0);m.add(b);
       const t=new THREE.Mesh(new THREE.BoxGeometry(.45,.22,.3),col(c));t.position.set(.2,.85,0);m.add(t);
@@ -222,7 +222,7 @@ function addExtra(g:THREE.Group,e:Extra,o:LojaOpts):void{
       const b=new THREE.Mesh(new THREE.SphereGeometry(.3,8,6),col('#4a7a3a'));b.position.set(x,.62,.35);b.scale.set(1,.85,1);g.add(b);}break;
     case'drums':for(let i=0;i<e.n;i++){const d=new THREE.Mesh(new THREE.CylinderGeometry(.29,.29,.88,12),col(e.c??'#2d5aa0'));d.position.set(e.x+i*.62,.44,.5);g.add(d);}break;
     case'bin':{const b=new THREE.Mesh(new THREE.CylinderGeometry(.2,.2,.75,12,1,true),get('binM'+(e.c??''),()=>matte({color:e.c??'#3a9a4a',wireframe:true})));
-      b.position.set(e.x,.95,2.25);g.add(b);box('#3a9a4a',.05,.6,.05,e.x,0,2.25);break;}
+      b.position.set(e.x,.95,1.75);g.add(b);box('#3a9a4a',.05,.6,.05,e.x,0,1.75);break;}
   }
 }
 

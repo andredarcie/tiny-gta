@@ -364,6 +364,7 @@ export function buildDivinolandia():void{
     }),
     houses:[...D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),...surveyedLots,
       ...lojas.map(p=>({x:p.x-p.nx*p.d/2+DIV_OX,z:p.z-p.nz*p.d/2+DIV_OZ,width:p.w,depth:p.d,rotation:Math.atan2(p.uz,p.ux)})),
+      ...PUB_SOLIDS.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
       ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot}))],
     protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(ALL_LOTS) as LotId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),

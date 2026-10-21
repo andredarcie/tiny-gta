@@ -144,7 +144,8 @@ const jorgeGalhano:Publico={id:'jorgegalhano',nome:'Praça Jorge Galhano',origin
   return r;}};
 
 // ============================== Praça Pedro Ribeiro de Paiva ==============================
-const PR:P2[]=[[572.9,317.2],[613.3,272.2],[622.2,270.4],[655,297.6],[654.6,303],[593.4,332.5],[583.9,335.5],[573.6,328.5]];
+// (the OSM outline's east tip reaches over the Rua Zaki Haddad's kerb: pulled back 2.5 m)
+const PR:P2[]=[[572.9,317.2],[613.3,272.2],[622.2,270.4],[652.6,297.2],[652.3,301.9],[593.4,332.5],[583.9,335.5],[573.6,328.5]];
 const pedroRibeiro:Publico={id:'pedroribeiro',nome:'Praça Pedro Ribeiro de Paiva',origin:cen(PR),foot:[],build(at){
   const{r,g}=root(cen(PR));
   const inner=inset(PR,2.3);
@@ -163,7 +164,7 @@ const pedroRibeiro:Publico={id:'pedroribeiro',nome:'Praça Pedro Ribeiro de Paiv
     for(let k=0;k<=Math.ceil(L/2.5);k++){const t=k/Math.ceil(L/2.5),x=a[0]+(b[0]-a[0])*t-1.9,z=a[1]+(b[1]-a[1])*t-2.6;block(g,pm,x,at(x,z)+STREET_TOP,z,.06,1.1,.06);}
     for(const h of[.55,1.05]){const rl=new THREE.Mesh(new THREE.BoxGeometry(L,.05,.05),pm);rl.position.set((a[0]+b[0])/2-1.9,at((a[0]+b[0])/2,(a[1]+b[1])/2)+STREET_TOP+h,(a[1]+b[1])/2-2.6);rl.rotation.y=ry;g.add(rl);}}
   // painted concrete benches (red/blue) along the paths
-  for(const[x,z,ry]of[[628,277,.75],[640,286,.8],[650,296,.85],[603,282,-.8]] as [number,number,number][])concBench(g,at,x,z,ry,'#c84a4a','#5f8fc8');
+  for(const[x,z,ry]of[[628,277,.75],[640,286,.8],[650,296,.85],[612,287,-.8]] as [number,number,number][])concBench(g,at,x,z,ry,'#c84a4a','#5f8fc8');
   for(const[x,z]of[[620,300],[606,312],[634,306]] as P2[])put(g,at,Poste.build(),x,z);
   return r;}};
 

@@ -179,7 +179,8 @@ function building(g:THREE.Group,at:GroundAt,F1:number):void{
   const S=face([504,-4.9],[495,-.75],inside);
   opening(g,S,5.4,y0+.05,3.4,2.8,{fill:darkM(),frame:'#b9bcbf'});
   onFace(g,S,signMat(['GELO SÃO JOSÉ','depósito'],{bg:'#f4f4f1',fg:'#1f4fa3',w:512,h:160}),5.4,y0+2.95,2.6,.7,.03,.05);
-  {const[x,,z]=S.at(2.6,0,.55);iceChest(g,x,at(x,z),z,S.ry);}
+  // (the second ice chest of the photos stands on this side's pavement; in the town data the
+  // wall is right at the Lourival's roadway, so it is left out rather than put in the street)
   latticeRail(g,S,.3,S.len-.3,F1,1,1.0,'#7f8589');
   windows(g,S,F1,[3,6.4]);
 

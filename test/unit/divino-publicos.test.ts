@@ -56,6 +56,23 @@ describe('public buildings and squares (publicos.ts, pracas-centro.ts)', () => {
       }
     expect([...new Set(bad)]).toEqual([]);
   });
+  it('no prop, grave, wall piece or bench stands on a roadway', () => {
+    const segs = D.roads.flatMap(r => r.pts.slice(1).map((q, i) => ({ a: r.pts[i], b: q, hw: r.hw, n: r.n || r.k })));
+    const onRoad = (x: number, z: number): string | null => {
+      for (const g of segs) { const dx = g.b[0] - g.a[0], dz = g.b[1] - g.a[1], l = dx * dx + dz * dz || 1; let t = ((x - g.a[0]) * dx + (z - g.a[1]) * dz) / l; t = t < 0 ? 0 : t > 1 ? 1 : t;
+        if (Math.hypot(x - g.a[0] - t * dx, z - g.a[1] - t * dz) < g.hw - .2) return g.n; }
+      return null;
+    };
+    const bad: string[] = [];
+    for (const p of ALL) {
+      const y0 = H(...p.origin), at: GroundAt = (x, z) => H(x, z) - y0;
+      const g = p.build(at); g.position.set(p.origin[0], 0, p.origin[1]); g.updateMatrixWorld(true);
+      const box = new THREE.Box3(), c = new THREE.Vector3(), sz = new THREE.Vector3();
+      g.traverse(o => { const m = o as THREE.Mesh; if (!m.isMesh) return; box.setFromObject(m); box.getSize(sz); if (sz.x > 6 || sz.z > 6) return;   // (ground layers span the streets' edges)
+        box.getCenter(c); const r = onRoad(c.x, c.z); if (r) bad.push(`${p.id} on ${r}`); });
+    }
+    expect([...new Set(bad)]).toEqual([]);
+  });
   it('they collide with no game lot and no surveyed business', () => {
     const bad: string[] = [];
     const lots = (Object.keys(ALL_LOTS) as LotId[]).map(id => { const s = ALL_LOTS[id]; return { id, r: rectC(s.x, s.z, s.w, s.d, -s.face) }; });

@@ -272,7 +272,7 @@ const pm:Publico={id:'pm',nome:'Polícia Militar e Piscina Municipal',origin:onR
     for(const[x,z]of[[px,pz],[qx,qz]] as P2[]){block(g,flat('#4f6fb8'),x,at(x,z)-.2,z,3.6,.75,1,f.ry);
       for(const k of[-1,1]){const[tx,,tz]=[x+Math.cos(-f.ry)*k*1.1,0,z+Math.sin(-f.ry)*k*1.1];const p=Palmeira.build({h:2.4,seed:Math.round(tx)});p.position.set(tx,at(x,z)+.5,tz);g.add(p);}}
     // the red bus shelter beside it
-    {const[x,,z]=f.at(f.len+1.5,0,2.6);block(g,flat('#d9534a'),x,at(x,z),z,3.4,2.2,.06,f.ry);block(g,flat('#4f8fd0'),x,at(x,z)+2.2,z,3.6,.08,1.4,f.ry);}
+    {const[x,,z]=f.at(f.len+2.2,0,.9);block(g,flat('#d9534a'),x,at(x,z),z,3.4,2.2,.06,f.ry);block(g,flat('#4f8fd0'),x,at(x,z)+2.2,z,3.6,.08,1.2,f.ry);}   // (on the sidewalk)
   }
   // the pool behind its wall: blue water, white tiled edge
   const lo=Math.min(...POOL.map(p=>at(...p)));
@@ -405,12 +405,35 @@ const estadio:Publico={id:'estadio',nome:'Estádio Municipal Armando Grespan',or
 const CA=-Math.atan2(61,65);                                     // the rows' direction
 const CEM:P2[]=[[-159.7,178.6],[-119.9,224.5],[-143.3,245.6],[-191.8,284.6],[-108.6,386.5],[-116.9,407],[-134.7,382.4],[-172.2,397.2],[-178.7,389.6],
   [-227.3,408],[-252.7,379.6],[-272.5,349.2],[-298.5,310.1],[-267.5,283.5],[-233.5,249],[-210.6,227.9],[-201,217.7],[-182.5,200.2]];   // OSM outline
+// the streets along its edges and the three service drives through it (OSM): the walls
+// stand back from the streets, the drives pass through gates, no grave on them
+export const CEM_ROADS:{pts:P2[];hw:number}[]=[
+  {hw:3.6,pts:[[-304.9,309],[-272.3,280.6],[-236.4,248.6],[-209.1,220.1],[-195.3,197.3],[-176.7,152]]},     // Rua Manoel Pereira de Souza
+  {hw:3.3,pts:[[-304.9,309],[-282.2,342.3],[-251.1,388.5],[-233.7,413],[-222.4,434]]},
+  {hw:2.6,pts:[[-209.1,220.1],[-194.9,234.3]]},
+  {hw:2.6,pts:[[-251.1,388.5],[-236.5,383],[-223.5,377.8],[-210.7,370.1],[-159.6,336.3]]},
+  {hw:2.6,pts:[[-282.2,342.3],[-271.5,341.6],[-260.7,340.5],[-247.9,338.1],[-235.6,337],[-211.4,339.2]]},
+  {hw:3.6,pts:[[-138.2,252.3],[-140.5,255.9],[-150.7,318.2],[-150.3,324.8]]},                               // Rua Guanabura
+];
+// distance from (x,z) to the edge of the nearest of those roadways (negative = on it)
+export function cemRoad(x:number,z:number):number{
+  let m=1e9;
+  for(const r of CEM_ROADS)for(let i=1;i<r.pts.length;i++){const[ax,az]=r.pts[i-1],[bx,bz]=r.pts[i],dx=bx-ax,dz=bz-az,l=dx*dx+dz*dz||1;
+    let t=((x-ax)*dx+(z-az)*dz)/l;t=t<0?0:t>1?1:t;m=Math.min(m,Math.hypot(x-ax-t*dx,z-az-t*dz)-r.hw);}
+  return m;
+}
 const cemiterio:Publico={id:'cemiterio',nome:'Cemitério Municipal',origin:[-191,300],foot:[[-158,268,8,10,0,6]],build(at){
   const{r,g}=root([-191,300]);
   const poly=CEM,ins=cen(poly);
-  // walls: high and white on the lower (west) street edges, 2.2 m elsewhere
+  // walls: high and white on the lower (west) street edges, 2.2 m elsewhere; each wall piece
+  // moved in off the street it borders (the OSM outline runs down the street's middle), and
+  // left out where a service drive goes through (the gates)
   poly.forEach((a,i)=>{const b=poly[(i+1)%poly.length],f=face(a,b,ins),high=(a[0]+b[0])/2<-250&&(a[1]+b[1])/2>300;
-    for(let s=0;s<f.len;s+=4){const w=Math.min(4,f.len-s),[x,,z]=f.at(s+w/2,0,-.12),y=at(x,z),h=high?3.6:2.2;
+    for(let s=0;s<f.len;s+=4){const w=Math.min(4,f.len-s);let o=-.12;
+      for(let k=0;k<30;k++){const[x,,z]=f.at(s+w/2,0,o);if(cemRoad(x,z)>1.4)break;o-=.5;}
+      const[x,,z]=f.at(s+w/2,0,o);
+      if(cemRoad(x,z)<1.4||!pointInPoly(x,z,poly))continue;              // a drive's gate, or pushed out of the ground
+      const y=at(x,z),h=high?3.6:2.2;
       const m=new THREE.Mesh(new THREE.BoxGeometry(w+.02,h+.6,.25),flat(high?'#f0efea':'#dcd8cf'));m.position.set(x,y+h/2-.3,z);m.rotation.y=f.ry;g.add(m);}});
   // graves on the rotated grid, inside the walls, off the paths
   const c=Math.cos(CA),s=Math.sin(CA),cols=['#efede8','#d9d6cf','#bdbab3','#8e8c88','#5a5856','#c9b9a6','#e6e0d6'];
@@ -420,6 +443,7 @@ const cemiterio:Publico={id:'cemiterio',nome:'Cemitério Municipal',origin:[-191
     const x=ins[0]+u*c-v*s,z=ins[1]+u*s+v*c;
     if(!pointInPoly(x,z,poly,3))continue;
     if(Math.abs(v-5)<1.6||Math.abs(u-12)<1.8||Math.abs(u+50)<1.6)continue;   // the main paths
+    if(cemRoad(x,z)<2.4)continue;                                              // off the drives and the streets (a grave is 2.4 m long)
     if(Math.hypot(x+158,z-268)<9)continue;                                    // the chapel
     const k=n++,rr=rnd(k),y=at(x,z),col=cols[Math.floor(rnd(k+7)*cols.length)];
     const t=new THREE.Group();t.position.set(x,y,z);t.rotation.y=-CA;g.add(t);
@@ -436,7 +460,7 @@ const cemiterio:Publico={id:'cemiterio',nome:'Cemitério Municipal',origin:[-191
   for(let k=0;k<10;k++){const a=poly[0],b=poly[1],t=.1+k*.08,x=a[0]+(b[0]-a[0])*t-3,z=a[1]+(b[1]-a[1])*t+3,y=at(x,z);
     const blk=new THREE.Mesh(new THREE.BoxGeometry(3,2.6,1.2),flat('#a6a39d'));blk.position.set(x,y+1.3,z);blk.rotation.y=-Math.atan2(b[1]-a[1],b[0]-a[0]);g.add(blk);}
   for(const[x,z]of[[-210,248],[-232,270],[-180,232],[-250,300],[-268,322],[-160,330],[-138,350],[-225,355]] as P2[])tree(g,at,x,z,'cipreste',.9);
-  for(const[x,z]of[[-175,308],[-180,325],[-205,355],[-168,215],[-245,385]] as P2[])tree(g,at,x,z,'copa',1.1);
+  for(const[x,z]of[[-175,308],[-180,325],[-205,355],[-168,215],[-232,397]] as P2[])tree(g,at,x,z,'copa',1.1);
   // the chapel of rest at the top entrance
   {const C=rect(-158,268,8,10,CA+Math.PI/2);const{y0,eave,F}=building(g,at,C,{h:3.4,wall:'#f2f1ec',plinth:'#b9b5ab',plinthH:.4,roof:'hip',tile:'#b0603f',rise:2});
     const f=F[0];opening(g,f,f.len/2,y0,1.6,2.6,{fill:T('capDoor',()=>matte({color:'#6a4630'})),frame:'#e6dcd2',panes:2});
