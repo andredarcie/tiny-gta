@@ -107,6 +107,7 @@ docs/divinolandia/relevo/dem-u16.bin.gz  ┴─ tools/bake-divinolandia.ts ─�
 - **Vegetação**: mata ciliar ao longo de todos os córregos, manchas de mata e **cafezais em curva de nível** nas encostas.
 - **Marcos modelados**: Igreja Matriz + coreto + praças, Prefeitura, Hospital Regional, Torre do Mirante com o deck, estádio/campos, cemitério com túmulos, escolas, placa de entrada "DIVINOLÂNDIA · ALT. 1058 m".
 - **Postos de combustível** (do Street View + satélite z20/z21, `src/assets/models/divinolandia/posto-*.ts`): Auto Posto Triângulo (Petrobras), Posto Petrobras / Auto Posto Passoni, Posto Lurain e Posto Taurus. Ficam no relevo real do lote (sem terraplenagem).
+- **Comércio** (76 supermercados, bancos, farmácias e lojas, cada um a partir da sua foto do Street View): `src/js/world/divinolandia/comercio/lojas.ts` (dados) + `loja-comercio.ts` (fachada + letreiros, toldos, revestimentos). As capturas apontadas para cada lugar saem de `npx tsx tools/capture-streetview.ts --batch <jobs.json>`.
 - **Monumento ao Ciclista** (entrada leste, Av. A × SP-344; `monumento-ciclista.ts`): o arco de concreto com os três ciclistas de aço inox e a praça em meia-lua. O satélite com grade em metros sai de `npx tsx tools/capture-satellite.ts <nome> <lat> <lng> [meia-largura]`.
 - O HUD mostra o **nome real da rua** onde você está. O radar e o mapa (M) desenham a cidade real.
 

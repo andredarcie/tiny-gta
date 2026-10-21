@@ -44,6 +44,7 @@ import PostoTaurus,{ORIGIN as TAU_O,POSTO_FOOT as TAU_FOOT} from '../../../asset
 import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../../../assets/models/divinolandia/monumento-ciclista.ts';
 import EntornoCiclista,{ORIGIN as ENT_O,ENTORNO_FOOT as ENT_FOOT} from '../../../assets/models/divinolandia/entorno-ciclista.ts';
 import Mahindra,{ORIGIN as MAH_O,MAHINDRA_FOOT as MAH_FOOT} from '../../../assets/models/divinolandia/concessionaria-mahindra.ts';
+import {buildLoja} from '../../../assets/models/divinolandia/loja-comercio.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
@@ -51,6 +52,8 @@ import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
 import {waterLines} from './water.ts';
 import {SITE_TABLE,ALL_LOTS,onSiteLot,siteLotPolygon,type LotId} from './sites-table.ts';
+import {LOJAS} from './comercio/lojas.ts';
+import {planLojas,type Placed} from './comercio/plan.ts';
 
 type P2=[number,number];
 const H=divinoHeight;
@@ -292,11 +295,30 @@ export function buildDivinolandia():void{
     }
   }
 
+  // ---------- the real businesses (supermarkets, banks, shops), from Street View ----------
+  // (comercio/lojas.ts + plan.ts): each a Fachada dressed as the shop it is, on the
+  // sidewalk line of its street; the generated houses under them are left out below
+  const lojas=planLojas(LOJAS);
+  {
+    const shops=new THREE.Group();
+    for(const p of lojas){
+      const[x,z]=w([p.x,p.z]),y=H(x,z)+.15;
+      let lo=y;for(const[lx,lz]of lojaCorners(p))lo=Math.min(lo,H(lx+DIV_OX,lz+DIV_OZ));
+      // built at its surveyed frontage (signs and openings are laid out for it), then squeezed
+      // to the frontage the planner could give it at a street corner
+      const g=buildLoja({w:p.spec.w,f:{...p.spec.f,d:p.d-(p.spec.f.setback??0)},shop:p.spec.shop,base:Math.min(-.4,lo-y-.4),seed:p.spec.id.length*31});
+      g.position.set(x,y,z);g.rotation.y=Math.atan2(p.nx,p.nz);g.scale.x=p.w/p.spec.w;shops.add(g);
+      const c=p.d/2;addObb(x-p.nx*c,z-p.nz*c,p.w,p.d,-Math.atan2(p.nx,p.nz),y+(p.spec.f.floors??1)*3+1.2);
+    }
+    placeStatic(shops);
+  }
+
   // ---------- houses ----------
   const casas:CasaSpec[]=[];
   for(let i=0;i<D.houses.length;i++){
     const[hx0,hz0,hw,hd,rot,fl,c,roof,shop]=D.houses[i];
     if(houseOnSite(hx0,hz0,hw,hd,rot))continue;           // the lot of a game place (sites-table.ts)
+    if(lojas.some(p=>Math.hypot(p.x-hx0,p.z-hz0)<40&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),lojaCorners(p,.3))))continue;   // a real business stands there
     if(rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),EUCLIDES_LOT))continue;   // the school's campus and its entrance
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
     const at=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
@@ -326,6 +348,7 @@ export function buildDivinolandia():void{
         enabled:line.sidewalk||arterial&&townAt(mid[0],mid[1])>0};
     }),
     houses:[...D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),...surveyedLots,
+      ...lojas.map(p=>({x:p.x-p.nx*p.d/2+DIV_OX,z:p.z-p.nz*p.d/2+DIV_OZ,width:p.w,depth:p.d,rotation:Math.atan2(p.uz,p.ux)})),
       ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot}))],
     protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(ALL_LOTS) as LotId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),
@@ -435,6 +458,11 @@ function houseOnSite(x:number,z:number,hw:number,hd:number,rot:number):boolean{
     const s=ALL_LOTS[id];
     return Math.hypot(s.x-x,s.z-z)<(Math.hypot(s.w,s.d)+Math.hypot(hw,hd))/2+2&&rectsOverlap(house,siteLotPolygon(id,2));
   });
+}
+// the four corners (town-local) of a business's lot, grown by m
+function lojaCorners(p:Placed,m=0):P2[]{
+  const a=p.w/2+m;
+  return[[-a,-m],[a,-m],[a,p.d+m],[-a,p.d+m]].map(([u,v])=>[p.x+p.ux*u-p.nx*v,p.z+p.uz*u-p.nz*v] as P2);
 }
 // corners of a w×d rectangle centred at (x,z) whose local +x runs along (cos rot, sin rot)
 function rectCorners(x:number,z:number,w:number,d:number,rot:number):P2[]{

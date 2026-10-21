@@ -119,7 +119,7 @@ export function dirt(k:Kit,x0:number,x1:number,y0:number,h:number,z:number):void
 }
 
 // ---------------- openings ----------------
-export type OpenKind='door'|'window'|'garage'|'gate'|'glass'|'arch'|'shop';
+export type OpenKind='door'|'window'|'garage'|'gate'|'glass'|'arch'|'shop'|'open';
 export type Op={t:OpenKind;x:number;w:number;h?:number;y?:number;fl?:number;c?:string;grille?:boolean;shutters?:string;frame?:string;awning?:string;st?:'sliding'|'basculante'|'fixed';leaves?:boolean};
 export function opDims(o:Op):{x0:number;x1:number;y0:number;y1:number}{
   const h=o.h??(o.t==='garage'||o.t==='gate'?2.4:o.t==='door'?2.15:o.t==='shop'?2.7:o.t==='glass'?1.9:o.t==='arch'?1.6:1.2);
@@ -188,6 +188,19 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
         for(let x=x0+.12;x<x1;x+=.12)k.box(plain(shade(c,.75)),x-.012,x+.012,y0,y1,zi,zi+.03);}
       else{k.quadUV(ribbed(c),[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],w/.5,h/.5);}
       ring(zi,plain(shade(c,.85)),.06);
+      break;
+    }
+    case'open':{
+      // a shop's open doorway: the dark interior, a floor, and shelves of goods along the back
+      const zb=z-REVEAL-2.6,dark=plain('#2b2724');
+      k.quadUV(dark,[x0,y0,zb],[x1,y0,zb],[x1,y1,zb],[x0,y1,zb],1,1);
+      k.quad(plain('#8d8a84'),[x0,y0+.01,zb],[x1,y0+.01,zb],[x1,y0+.01,z-REVEAL],[x0,y0+.01,z-REVEAL]);
+      for(const xx of[x0,x1])k.quad(dark,[xx,y0,zb],[xx,y0,z-REVEAL],[xx,y1,z-REVEAL],[xx,y1,zb]);
+      k.quad(dark,[x0,y1,zb],[x1,y1,zb],[x1,y1,z-REVEAL],[x0,y1,z-REVEAL]);
+      const goods=['#b8433a','#d7b04a','#4d7fb5','#e6e2d8','#5f8d4e','#c97a3a'];
+      for(let r=0;r<4;r++){const yy=y0+.35+r*.45;
+        k.box(plain('#6e6a64'),x0+.1,x1-.1,yy-.03,yy,zb+.02,zb+.4);
+        for(let i=0,xx=x0+.15;xx<x1-.25;i++,xx+=.32)k.box(plain(goods[(i+r*2)%goods.length]),xx,xx+.24,yy,yy+.26,zb+.05,zb+.3);}
       break;
     }
     case'arch':{
