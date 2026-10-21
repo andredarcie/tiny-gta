@@ -1,9 +1,10 @@
 import {expect, test} from '@playwright/test';
 
-// The town's four fuel stations (src/assets/models/divinolandia/posto-*.ts) and the Monumento
-// ao Ciclista (monumento-ciclista.ts) seen from the
+// The town's four fuel stations (src/assets/models/divinolandia/posto-*.ts), the Monumento
+// ao Ciclista and its surroundings (monumento-ciclista.ts, entorno-ciclista.ts,
+// concessionaria-mahindra.ts) seen from the
 // Street View panoramas they were modelled from, for a side-by-side with
-// docs/divinolandia/referencias-streetview/posto-*/ and monumento-ciclista*/ (local images, captured with
+// docs/divinolandia/referencias-streetview/posto-*/, monumento-ciclista*/ and entorno-*/ (local images, captured with
 // tools/capture-streetview.ts; capture.txt holds each panorama's world position).
 // Street View heading 0 = north = world -z. Screenshots go to output/visual/postos/.
 const P={
@@ -12,6 +13,7 @@ const P={
   lur:{x:6288.9,z:4797.1},lurW:{x:6247.7,z:4805.1},
   tau:{x:5040.3,z:4513.4},tauN:{x:5043.8,z:4493.5},tauS:{x:5035.9,z:4533.3},
   mon:{x:6481.4,z:4820.8},monW:{x:6454.7,z:4835.0},monNW:{x:6461.9,z:4816.2},monS:{x:6465.4,z:4852.3},monE:{x:6517.0,z:4830.7},
+  jw:{x:6444.7,z:4801.7},s2:{x:6474.9,z:4870.4},av:{x:6495.0,z:4817.2},mah:{x:6514.4,z:4852.6},
 };
 const VIEWS:{name:string;camera:{x:number;z:number};heading:number}[]=[
   {name:'triangulo-h270',camera:P.tri,heading:270},{name:'triangulo-h315',camera:P.tri,heading:315},
@@ -29,6 +31,10 @@ const VIEWS:{name:string;camera:{x:number;z:number};heading:number}[]=[
   {name:'monumento-w-h090',camera:P.monW,heading:90},{name:'monumento-w-h045',camera:P.monW,heading:45},
   {name:'monumento-nw-h135',camera:P.monNW,heading:135},{name:'monumento-s-h000',camera:P.monS,heading:0},
   {name:'monumento-e-h270',camera:P.monE,heading:270},
+  {name:'entorno-jw-h180',camera:P.jw,heading:180},{name:'entorno-jw-h225',camera:P.jw,heading:225},{name:'entorno-jw-h135',camera:P.jw,heading:135},
+  {name:'entorno-s-h270',camera:P.monS,heading:270},{name:'entorno-s-h225',camera:P.monS,heading:225},{name:'entorno-s-h090',camera:P.monS,heading:90},
+  {name:'entorno-s2-h090',camera:P.s2,heading:90},{name:'entorno-av-h135',camera:P.av,heading:135},{name:'entorno-av-h180',camera:P.av,heading:180},
+  {name:'entorno-mah-h180',camera:P.mah,heading:180},{name:'entorno-mah-h270',camera:P.mah,heading:270},
 ];
 
 test('the fuel stations match their Street View panoramas',async({page})=>{

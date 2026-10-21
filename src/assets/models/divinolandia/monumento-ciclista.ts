@@ -20,7 +20,7 @@ import Palmeira from './palmeira-fenix.ts';
 //    ground falls away): lawn, a ring path of grey pavers with red borders, the gravel bed
 //    round the monument with stepping discs, spotlights and fountain grass, round concrete
 //    planters with palms, the low round flower bed, the curved concrete bench with its
-//    white gravel, the bike rack of steel hoops and the grey drinking-water post.
+//    white gravel, the bike rack of steel hoops and the grey electricity panel.
 // build({groundAt}) is pure; TOWN-LOCAL coordinates shifted by ORIGIN (as the fuel stations).
 // MONUMENTO_FOOT = collision boxes [x, z, w, d, rot, height] (town-local).
 export const ORIGIN:P2=[1480.3,-167.9];
@@ -112,12 +112,15 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
       leg(-1);leg(1);h.position.set(x,y+.55,z);h.rotation.y=-Math.atan2(Math.sin(a)*N[1]+Math.cos(a)*U[1],Math.sin(a)*N[0]+Math.cos(a)*U[0]);g.add(h);   // each hoop across the row
     }
   }
-  // ---- the drinking-water post (bebedouro) at the north corner
+  // ---- the electricity panel at the north corner: the grey cabinet with its two meter
+  // windows on its own short concrete post (Street View entorno-av)
   {
     const[x,z]=polar(9.6,1.95),y=at(x,z);
-    const b=new THREE.Mesh(new THREE.BoxGeometry(.55,1.25,.45),flat('#8f969a'));b.position.set(x,y+.62,z);b.castShadow=true;g.add(b);
-    const cap=new THREE.Mesh(new THREE.BoxGeometry(.7,.06,.6),flat('#6f7579'));cap.position.set(x,y+1.28,z);g.add(cap);
-    const bowl=new THREE.Mesh(new THREE.BoxGeometry(.35,.08,.25),flat('#d6d9da'));bowl.position.set(x,y+.95,z+.3);g.add(bowl);
+    const post=new THREE.Mesh(new THREE.BoxGeometry(.22,2.6,.22),flat('#b9b8b2'));post.position.set(x-.45,y+1.3,z);g.add(post);
+    const b=new THREE.Mesh(new THREE.BoxGeometry(.75,1.25,.45),flat('#8f969a'));b.position.set(x,y+.95,z);b.castShadow=true;g.add(b);
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(.85,.06,.55),flat('#6f7579'));cap.position.set(x,y+1.6,z);g.add(cap);
+    for(const dy of[.35,-.1]){const w=new THREE.Mesh(new THREE.BoxGeometry(.28,.2,.02),flat('#d6d9da'));w.position.set(x,y+.95+dy,z+.235);g.add(w);}
+    const base=new THREE.Mesh(new THREE.BoxGeometry(.85,.3,.55),flat('#a9a8a2'));base.position.set(x,y+.15,z);g.add(base);
   }
   return root;
 }

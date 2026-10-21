@@ -13,6 +13,8 @@ import Lurain, { ORIGIN as LUR_O, POSTO_FOOT as LUR_F } from '../../src/assets/m
 import Taurus, { ORIGIN as TAU_O, POSTO_FOOT as TAU_F } from '../../src/assets/models/divinolandia/posto-taurus.ts';
 import Monumento, { ORIGIN as MON_O, MONUMENTO_FOOT as MON_F } from '../../src/assets/models/divinolandia/monumento-ciclista.ts';
 import { PLAY } from '@/world/divinolandia/data.ts';
+import Entorno, { ORIGIN as ENT_O, ENTORNO_FOOT as ENT_F } from '../../src/assets/models/divinolandia/entorno-ciclista.ts';
+import Mahindra, { ORIGIN as MAH_O, MAHINDRA_FOOT as MAH_F } from '../../src/assets/models/divinolandia/concessionaria-mahindra.ts';
 
 type P2 = [number, number];
 const STATIONS = [
@@ -89,5 +91,38 @@ describe('fuel stations (posto-*.ts)', () => {
       const L = DRAPED_LOTS[id as keyof typeof DRAPED_LOTS], x = (lng - LON0) * MX, z = (LAT0 - lat) * MZ;
       expect(Math.hypot(x - L.x, z - L.z)).toBeLessThan(Math.max(L.w, L.d) / 2 + 2);
     }
+  });
+});
+
+describe('the surroundings of the Monumento ao Ciclista (entorno-ciclista.ts, concessionaria-mahindra.ts)', () => {
+  const PARTS = [
+    { name: 'entorno', model: Entorno, origin: ENT_O, foot: ENT_F },
+    { name: 'mahindra', model: Mahindra, origin: MAH_O, foot: MAH_F },
+  ];
+  it('build on the real terrain', () => {
+    for (const p of PARTS) {
+      const y0 = H(...p.origin);
+      const at: GroundAt = (x, z) => H(x, z) - y0;
+      const g = p.model.build({ groundAt: at });
+      g.updateMatrixWorld(true);
+      const b = new THREE.Box3().setFromObject(g);
+      expect(b.max.y).toBeLessThan(16); expect(b.min.y).toBeGreaterThan(-10);
+      expect(b.max.x - b.min.x).toBeLessThan(140);
+    }
+  });
+  it('keep every building, wall, tree and pole off the roadways and out of the square', () => {
+    const bad: string[] = [];
+    for (const p of PARTS) for (const [x, z, w, d, rot] of p.foot) {
+      const c = Math.cos(rot), sn = Math.sin(rot);
+      for (let a = -.5; a <= .5; a += .1) for (let k = -.5; k <= .5; k += .25) {
+        const px = x + a * w * c - k * d * sn, pz = z + a * w * sn + k * d * c;
+        for (const r of D.roads) for (let i = 1; i < r.pts.length; i++) {
+          const dist = segDist(px, pz, r.pts[i - 1][0], r.pts[i - 1][1], r.pts[i][0], r.pts[i][1]);
+          if (dist < r.hw - .05) bad.push(`${p.name} box@${x.toFixed(1)},${z.toFixed(1)} on ${r.n || r.k}`);
+        }
+        if (Math.hypot(px - MON_O[0], pz - MON_O[1]) < 11 && (px - MON_O[0]) * -.461 + (pz - MON_O[1]) * -.887 > 0) bad.push(`${p.name} box@${x},${z} in the square`);
+      }
+    }
+    expect([...new Set(bad)]).toEqual([]);
   });
 });
