@@ -288,3 +288,38 @@ export function folhagemTexture():THREE.CanvasTexture{
     for(let k=0;k<600;k++){blot(x,s,r()*s,r()*s,1.5+r()*3,'rgba(40,40,40,.6)');}
   },true);
 }
+// Gas-station forecourt (pátio de concreto): poured slabs with saw-cut joints every 2 m,
+// trowel grain, tyre-dark patches and oil drips round where cars stop. 1 tile = 4 m.
+export const CONCRETO_TILE_M=4;
+export function concretoTexture():THREE.CanvasTexture{
+  return make('concreto',256,(x,s)=>{
+    const r=rng(41);
+    x.fillStyle='#b9b6af';x.fillRect(0,0,s,s);
+    for(let k=0;k<60;k++){const g=150+Math.floor(r()*70);blot(x,s,r()*s,r()*s,8+r()*36,`rgba(${g},${g-2},${g-6},.22)`);}
+    for(let k=0;k<5000;k++){const g=140+Math.floor(r()*100);x.fillStyle=`rgba(${g},${g},${g},.5)`;x.fillRect(r()*s,r()*s,1,1);}
+    for(let k=0;k<14;k++){blot(x,s,r()*s,r()*s,2+r()*7,'rgba(45,42,38,.35)');}    // oil drips
+    x.strokeStyle='rgba(70,66,60,.7)';x.lineWidth=2;
+    for(const p of[0,s/2]){x.beginPath();x.moveTo(p,0);x.lineTo(p,s);x.stroke();x.beginPath();x.moveTo(0,p);x.lineTo(s,p);x.stroke();}
+  });
+}
+// Exposed brick (tijolo à vista) of the upper floors: red-orange bricks, pale mortar,
+// brick-to-brick tone changes. 1 tile = 1 m (4 bricks × 13 courses).
+export function tijoloTexture():THREE.CanvasTexture{
+  return make('tijolo',256,(x,s)=>{
+    const r=rng(43),rows=13,bh=s/rows,bw=s/4;
+    x.fillStyle='#c9bfb2';x.fillRect(0,0,s,s);
+    for(let j=0;j<rows;j++)for(let i=-1;i<5;i++){
+      const ox=(j%2)*bw/2,v=Math.floor((r()-.5)*40);
+      x.fillStyle=`rgb(${168+v},${86+v/2},${58+v/3})`;x.fillRect(i*bw+ox+1.5,j*bh+1.5,bw-3,bh-3);
+    }
+  });
+}
+// Glazed white wall tiles (azulejo 15×15) of the station shops and pillars: thin grey
+// grout, a slight sheen variation. 1 tile = 0.6 m (4 × 4 tiles).
+export function azulejoTexture():THREE.CanvasTexture{
+  return make('azulejo',128,(x,s)=>{
+    const r=rng(47),n=4,t=s/n;
+    x.fillStyle='#b9bcbd';x.fillRect(0,0,s,s);
+    for(let j=0;j<n;j++)for(let i=0;i<n;i++){const v=Math.floor(r()*10);x.fillStyle=`rgb(${236+v},${238+v},${236+v})`;x.fillRect(i*t+1,j*t+1,t-2,t-2);}
+  });
+}

@@ -66,7 +66,7 @@ function demAt(lat:number,lon:number):number{
 const demXZ=(x:number,z:number):number=>demAt(toLat(z),toLon(x));
 
 // ---------------- grids ----------------
-const CELL=8, NX0=-1500, NZ0=-1150, NNX=376, NNZ=411;  // near: x -1500..1500, z -1150..2130
+const CELL=8, NX0=-1700, NZ0=-1150, NNX=414, NNZ=411;  // near: x -1700..1604, z -1150..2130 (west: the sítio by the masonic monument; east: the Mahindra dealer)
 const near=new Float64Array(NNX*NNZ);
 for(let j=0;j<NNZ;j++)for(let i=0;i<NNX;i++)near[j*NNX+i]=demXZ(NX0+i*CELL,NZ0+j*CELL);
 function blur(g:Float64Array,nx:number,nz:number):void{
@@ -371,10 +371,13 @@ const landmarkKeep:[number,number,number][]=[
   [landmarks.torre[0],landmarks.torre[1],40],[landmarks.prefeitura[0],landmarks.prefeitura[1],16],
 ];
 // keep generated houses off the surveyed street (its lots come from the street spec)
-const surveyedPts=roads.filter(r=>SURVEYED.has(r.name)).map(r=>r.pts);
-function nearSurveyed(x:number,z:number,m:number):boolean{
-  for(const pts of surveyedPts)for(let i=1;i<pts.length;i++)
-    if(segDist(x,z,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1])[0]<m)return true;
+// each surveyed street's lot band: half width + sidewalk (2.2) + its deepest lot + a margin
+const surveyedPts=roads.filter(r=>SURVEYED.has(r.name)).map(r=>{const sp=SURVEYED.get(r.name)!;
+  return{pts:r.pts,band:r.hw+2.6+Math.max(...sp.lots.map(l=>(l.f.d??12)+(l.f.setback??0)))};});
+// within the street's lot band (m = 0) — or within m of its centreline
+function nearSurveyed(x:number,z:number,m=0):boolean{
+  for(const{pts,band}of surveyedPts)for(let i=1;i<pts.length;i++)
+    if(segDist(x,z,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1])[0]<(m||band))return true;
   return false;
 }
 const townStreet=new Set(['residential','tertiary','secondary','primary','living_street','unclassified']);
@@ -448,7 +451,9 @@ for(const r of roads){
         const urban=inUrbanPoly(P)||inUrbanPoly(front)||(r.paved&&dc<900&&r.k!=='primary');
         if(!urban)continue;
         if(landmarkKeep.some(([x,z,R])=>Math.hypot(h.x-x,h.z-z)<R))continue;
-        if(nearSurveyed(h.x,h.z,24))continue;
+        // a surveyed street's own frontage comes from its spec; a house of a cross street goes only
+        // where its footprint reaches the band of the surveyed lots
+        if(SURVEYED.has(r.name)||corners(h).some(c=>nearSurveyed(c[0],c[1]))||nearSurveyed(h.x,h.z))continue;
         if(!builtEvidence({x:r1(h.x),z:r1(h.z),w:r1(w),d:r1(d),rot:Math.round(h.rot*1000)/1000}))continue;   // (as stored)
         const fp=footprint(h);
         if(fp.some(inNoBuild))continue;

@@ -37,13 +37,26 @@ import PracaLadislau,{LADISLAU,MATRIZ_AT} from '../../../assets/models/divinolan
 import {CORETO_R} from '../../../assets/models/rural/coreto.ts';
 import type {GroundAt} from '../../../assets/models/divinolandia/praca-chao.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
+import PostoTriangulo,{ORIGIN as TRI_O,POSTO_FOOT as TRI_FOOT} from '../../../assets/models/divinolandia/posto-triangulo.ts';
+import PostoPassoni,{ORIGIN as PAS_O,POSTO_FOOT as PAS_FOOT} from '../../../assets/models/divinolandia/posto-passoni.ts';
+import PostoLurain,{ORIGIN as LUR_O,POSTO_FOOT as LUR_FOOT} from '../../../assets/models/divinolandia/posto-lurain.ts';
+import PostoTaurus,{ORIGIN as TAU_O,POSTO_FOOT as TAU_FOOT} from '../../../assets/models/divinolandia/posto-taurus.ts';
+import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../../../assets/models/divinolandia/monumento-ciclista.ts';
+import EntornoCiclista,{ORIGIN as ENT_O,ENTORNO_FOOT as ENT_FOOT} from '../../../assets/models/divinolandia/entorno-ciclista.ts';
+import Mahindra,{ORIGIN as MAH_O,MAHINDRA_FOOT as MAH_FOOT} from '../../../assets/models/divinolandia/concessionaria-mahindra.ts';
+import {buildLoja} from '../../../assets/models/divinolandia/loja-comercio.ts';
+import {PUBLICOS,PUBLICOS_OSM} from '../../../assets/models/divinolandia/publicos.ts';
+import {PRACAS} from '../../../assets/models/divinolandia/pracas-centro.ts';
+import {SITIO} from '../../../assets/models/divinolandia/sitio-maconaria.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
 import {waterLines} from './water.ts';
-import {SITE_TABLE,onSiteLot,siteLotPolygon,type SiteId} from './sites-table.ts';
+import {SITE_TABLE,ALL_LOTS,onSiteLot,siteLotPolygon,type LotId} from './sites-table.ts';
+import {LOJAS} from './comercio/lojas.ts';
+import {planLojas,type Placed} from './comercio/plan.ts';
 
 type P2=[number,number];
 const H=divinoHeight;
@@ -141,6 +154,7 @@ export function buildDivinolandia():void{
     const k=p.k as Surface|'hospital'|'torre';
     if(k==='hospital'||k==='torre')continue;
     if(p.n&&MATRIZ_SQUARES.has(p.n))continue;             // laid out 1:1 below (praca-alcindo/ladislau)
+    if(p.n&&SURVEYED_GROUNDS.has(p.n))continue;           // squares and grounds rebuilt from Street View (publicos.ts, pracas-centro.ts)
     if(p.n!=='Escola Municipal Euclides da Cunha')ground.add(makeSurface(k,pts,H,nearGrid));
     let cx=0,cz=0;for(const q of pts){cx+=q[0];cz+=q[1];}cx/=pts.length;cz/=pts.length;
     if(k==='praca'||k==='verde'){
@@ -231,6 +245,7 @@ export function buildDivinolandia():void{
   }
   for(const b of D.buildings){
     if(b.kind==='townhall')continue;                      // built above
+    if(PUBLICOS_OSM.has(b.name??'')&&(b.name||Math.hypot(b.cx-590,b.cz-322)<10))continue;   // rebuilt from Street View (publicos.ts)
     const [bx,bz]=w([b.cx,b.cz]),th=-b.rot;
     const fl=b.kind==='church'||b.kind==='place_of_worship'?1:2;
     const f=slopeFloor(bx,bz,Math.max(8,b.w),Math.max(8,b.d),b.rot);
@@ -248,6 +263,19 @@ export function buildDivinolandia():void{
     for(const[cx,cz,bw,bd,ht]of foot)obbFromModel(ox,oz,th,cx,cz,bw,bd,y+ht);
   }
   // the sanatorium's glass entrance is the street door of the game's hospital (models/city/hospital.ts)
+
+  // ---------- the four fuel stations, the Monumento ao Ciclista and its surroundings (the
+  // lots round the east entrance, the Mahindra dealer), 1:1 from Street View (posto-*.ts,
+  // monumento-ciclista.ts, entorno-ciclista.ts, concessionaria-mahindra.ts): each is built in town-local metres and stands on the
+  // real slope of its lot (sites-table.ts DRAPED_LOTS) ----------
+  for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT],
+    [MonumentoCiclista,MON_O,MON_FOOT],[EntornoCiclista,ENT_O,ENT_FOOT],[Mahindra,MAH_O,MAH_FOOT]] as const){
+    const[ox,oz]=w(origin),y0=H(ox,oz);
+    const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
+    at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
+    const m=model.build({groundAt:at});m.position.set(ox,y0,oz);placeStatic(m);
+    for(const[x,z,bw,bd,rot,ht]of foot){const[wx,wz]=w([x,z]);addObb(wx,wz,bw,bd,rot,H(wx,wz)+ht);}
+  }
 
   // ---------- Morro da Torre: the tower + the mirante deck facing the town ----------
   {
@@ -272,11 +300,42 @@ export function buildDivinolandia():void{
     }
   }
 
+  // ---------- public buildings, grounds and squares rebuilt from Street View (publicos.ts,
+  // pracas-centro.ts), each on the real slope of its lot ----------
+  for(const p of[...PUBLICOS,...PRACAS,...SITIO]){
+    const[ox,oz]=w(p.origin),y0=H(ox,oz);
+    const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
+    at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
+    const m=p.build(at);m.position.set(ox,y0,oz);placeStatic(m);
+    for(const[x,z,bw,bd,rot,ht]of p.foot){const[wx,wz]=w([x,z]);addObb(wx,wz,bw,bd,rot,H(wx,wz)+ht);}
+  }
+
+  // ---------- the real businesses (supermarkets, banks, shops), from Street View ----------
+  // (comercio/lojas.ts + plan.ts): each a Fachada dressed as the shop it is, on the
+  // sidewalk line of its street; the generated houses under them are left out below
+  const lojas=planLojas(LOJAS);
+  {
+    const shops=new THREE.Group();
+    for(const p of lojas){
+      // (on a surveyed street the shop floor is the top of its raised sidewalk: KERB_H + .15)
+      const[x,z]=w([p.x,p.z]),y=H(x,z)+(SURVEYED.has(p.road)?.32:.15);
+      let lo=y;for(const[lx,lz]of lojaCorners(p))lo=Math.min(lo,H(lx+DIV_OX,lz+DIV_OZ));
+      // built at its surveyed frontage (signs and openings are laid out for it), then squeezed
+      // to the frontage the planner could give it at a street corner
+      const g=buildLoja({w:p.spec.w,f:{...p.spec.f,d:p.d-(p.spec.f.setback??0)},shop:p.spec.shop,kind:p.spec.kind,base:Math.min(-.4,lo-y-.4),seed:[...p.spec.id].reduce((h,c)=>(h*31+c.charCodeAt(0))%9973,7)});
+      g.position.set(x,y,z);g.rotation.y=Math.atan2(p.nx,p.nz);g.scale.x=p.w/p.spec.w;shops.add(g);
+      const c=p.d/2;addObb(x-p.nx*c,z-p.nz*c,p.w,p.d,-Math.atan2(p.nx,p.nz),y+(p.spec.f.floors??1)*3+1.2);
+    }
+    placeStatic(shops);
+  }
+
   // ---------- houses ----------
   const casas:CasaSpec[]=[];
   for(let i=0;i<D.houses.length;i++){
     const[hx0,hz0,hw,hd,rot,fl,c,roof,shop]=D.houses[i];
     if(houseOnSite(hx0,hz0,hw,hd,rot))continue;           // the lot of a game place (sites-table.ts)
+    if(PUB_SOLIDS.some(([sx,sz,sw,sd,sr])=>Math.hypot(sx-hx0,sz-hz0)<60&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),rectCorners(sx,sz,sw+1,sd+1,sr))))continue;   // a rebuilt public building
+    if(lojas.some(p=>Math.hypot(p.x-hx0,p.z-hz0)<40&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),lojaCorners(p,.3))))continue;   // a real business stands there
     if(rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),EUCLIDES_LOT))continue;   // the school's campus and its entrance
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
     const at=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
@@ -306,8 +365,10 @@ export function buildDivinolandia():void{
         enabled:line.sidewalk||arterial&&townAt(mid[0],mid[1])>0};
     }),
     houses:[...D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),...surveyedLots,
+      ...lojas.map(p=>({x:p.x-p.nx*p.d/2+DIV_OX,z:p.z-p.nz*p.d/2+DIV_OZ,width:p.w,depth:p.d,rotation:Math.atan2(p.uz,p.ux)})),
+      ...PUB_SOLIDS.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
       ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot}))],
-    protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(SITE_TABLE) as SiteId[]).map(id=>siteLotPolygon(id,3))]
+    protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(ALL_LOTS) as LotId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),
     surveyedStreets:[...SURVEYED],
   }).map(route=>route.map(site=>({...site,y:H(site.x,site.z)})));
@@ -411,10 +472,15 @@ const EUCLIDES_LOT:P2[]=(()=>{
 function houseOnSite(x:number,z:number,hw:number,hd:number,rot:number):boolean{
   if(onSiteLot(x,z))return true;
   const house=rectCorners(x,z,hw,hd,rot);
-  return(Object.keys(SITE_TABLE) as SiteId[]).some(id=>{
-    const s=SITE_TABLE[id];
+  return(Object.keys(ALL_LOTS) as LotId[]).some(id=>{
+    const s=ALL_LOTS[id];
     return Math.hypot(s.x-x,s.z-z)<(Math.hypot(s.w,s.d)+Math.hypot(hw,hd))/2+2&&rectsOverlap(house,siteLotPolygon(id,2));
   });
+}
+// the four corners (town-local) of a business's lot, grown by m
+function lojaCorners(p:Placed,m=0):P2[]{
+  const a=p.w/2+m;
+  return[[-a,-m],[a,-m],[a,p.d+m],[-a,p.d+m]].map(([u,v])=>[p.x+p.ux*u-p.nx*v,p.z+p.uz*u-p.nz*v] as P2);
 }
 // corners of a w×d rectangle centred at (x,z) whose local +x runs along (cos rot, sin rot)
 function rectCorners(x:number,z:number,w:number,d:number,rot:number):P2[]{
@@ -561,6 +627,10 @@ function placeName(x:number,z:number):string{
   return name;
 }
 
+// the collision boxes of the rebuilt public buildings (town-local): no generated house there
+const PUB_SOLIDS=PUBLICOS.flatMap(p=>p.foot);
+const SURVEYED_GROUNDS=new Set(['Praça Dom Bosco','Praça Nossa Senhora do Rosário','Praça Jorge Galhano','Praça Pedro Ribeiro de Paiva',
+  'Escola Estadual Deputado Vicente Nasser','Estádio Municipal Armando Grespan','Cemitério Municipal']);
 // the two squares of the Matriz, laid out 1:1 (praca-alcindo.ts / praca-ladislau.ts)
 const MATRIZ_SQUARES=new Set(['Praça Doutor Alcindo Cardoso de Paiva','Praça Professor Ladislau Rodrigues Pinto']);
 function inMatrizSquare(lx:number,lz:number):boolean{

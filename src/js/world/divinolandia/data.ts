@@ -111,8 +111,10 @@ export const SITE_FLOOR={} as Record<SiteId,number>;
   }
 }
 
-// Playable box: the near grid minus a margin (the far serras are scenery only).
-export const PLAY={x0:nearGrid.x0+40,x1:NEAR_X1-40,z0:nearGrid.z0+40,z1:NEAR_Z1-40};
+// Playable box: the near grid minus a margin (the far serras are scenery only). The east
+// side keeps only 6 m: the town's east entrance (the Monumento ao Ciclista, x ≈ 1468..1492
+// town-local) stands right by the edge of the baked grid.
+export const PLAY={x0:nearGrid.x0+40,x1:NEAR_X1-6,z0:nearGrid.z0+40,z1:NEAR_Z1-40};
 
 // Ground height in WORLD coordinates. Registered into groundHeight right here, as soon as
 // the town data is decoded, so anything placed while the modules load (shop facades,

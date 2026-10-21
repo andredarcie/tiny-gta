@@ -58,6 +58,8 @@ export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:num
   // raised sidewalks: per block side, each lot's stretch in its paving, gaps in cement
   const strips:{pts:[number,number][];nx:number[];nz:number[];w:number;k:Paving}[]=[];
   const strip=(side:'N'|'S',a:number,b:number,k:Paving):void=>{
+    // stretches whose own model paves the front (a square's ring, a landmark's forecourt)
+    for(const o of spec.keepOut??[])if(o.walk===false&&o.side===side&&o.s1>a&&o.s0<b){strip(side,a,o.s0,k);strip(side,o.s1,b,k);return;}
     if(b-a<.5)return;
     const P:[number,number][]=[],NX:number[]=[],NZ:number[]=[];
     for(let s=a;;s=Math.min(b,s+2)){const f=alongPolyline(pts,s),[nx,nz]=sideNormal(f,side);P.push([f.x+nx*hw,f.z+nz*hw]);NX.push(nx);NZ.push(nz);if(s>=b)break;}

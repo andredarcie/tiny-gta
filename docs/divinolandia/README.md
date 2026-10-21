@@ -106,6 +106,9 @@ docs/divinolandia/relevo/dem-u16.bin.gz  ┴─ tools/bake-divinolandia.ts ─�
 - **Casas**: o OSM quase não tem prédios mapeados em Divinolândia, então o bake **enfileira casas ao longo das ruas reais** (3.832), só dentro da área urbana do OSM. Ficam de fora ruas, praças, lotes vagos ("L.V"), rios e marcos. São casas térreas e sobrados de cal colorida, telhado de telha ou platibanda, e no centro o térreo vira comércio (porta de aço + toldo).
 - **Vegetação**: mata ciliar ao longo de todos os córregos, manchas de mata e **cafezais em curva de nível** nas encostas.
 - **Marcos modelados**: Igreja Matriz + coreto + praças, Prefeitura, Hospital Regional, Torre do Mirante com o deck, estádio/campos, cemitério com túmulos, escolas, placa de entrada "DIVINOLÂNDIA · ALT. 1058 m".
+- **Postos de combustível** (do Street View + satélite z20/z21, `src/assets/models/divinolandia/posto-*.ts`): Auto Posto Triângulo (Petrobras), Posto Petrobras / Auto Posto Passoni, Posto Lurain e Posto Taurus. Ficam no relevo real do lote (sem terraplenagem).
+- **Comércio** (76 supermercados, bancos, farmácias e lojas, cada um a partir da sua foto do Street View): `src/js/world/divinolandia/comercio/lojas.ts` (dados) + `loja-comercio.ts` (fachada + letreiros, toldos, revestimentos). As capturas apontadas para cada lugar saem de `npx tsx tools/capture-streetview.ts --batch <jobs.json>`.
+- **Monumento ao Ciclista** (entrada leste, Av. A × SP-344; `monumento-ciclista.ts`): o arco de concreto com os três ciclistas de aço inox e a praça em meia-lua. O satélite com grade em metros sai de `npx tsx tools/capture-satellite.ts <nome> <lat> <lng> [meia-largura]`.
 - O HUD mostra o **nome real da rua** onde você está. O radar e o mapa (M) desenham a cidade real.
 
 Para regenerar: `python docs/divinolandia/scripts/fetch-dem.py` (baixa os tiles), `python docs/divinolandia/scripts/render-overview.py` (limpa o relevo, gera mapas e o DEM compacto), `npm run bake:divinolandia` (gera os dados do jogo), `python docs/divinolandia/scripts/render-bake.py` (imagem de conferência). Para atualizar o OSM: `python -I docs/divinolandia/scripts/overpass.py docs/divinolandia/scripts/q-urbano.overpassql docs/divinolandia/osm/urbano.json`.
@@ -117,6 +120,7 @@ A partir daqui as ruas passam a ser **100% fiéis**, uma de cada vez: cada lote 
 | Rua | Spec | Notas |
 |---|---|---|
 | **Rua José Augusto Machado** (367 m) | `src/js/world/divinolandia/ruas/jose-augusto-machado.ts` | 46 lotes nos dois lados entre a Manoel Pereira de Souza e a Joaquim Garcia. Asfalto no 1º quarteirão, **paralelepípedo** da Barão do Rio Branco até a Francisco Pereira de Souza, asfalto no último. A **casa rosa da esquina** (nº 228 / R. Francisco Pereira de Souza nº 58) tem modelo próprio (`src/assets/models/divinolandia/casa-rosa-esquina.ts`). Também estão lá a casa verde de grafiato com lambrequim, a casa azul, o sobrado de pedra com hera, a "Faculdade UNINA", a clínica "Letícia Brandi", o terreno da torre de celular, as resedás rosas e as palmeiras. |
+| **Rua XV de Novembro** (692 m) | `src/js/world/divinolandia/ruas/xv-de-novembro.ts` | 79 lotes nos dois lados, da ponta oeste até a Lourival de Medeiros, cada um a partir de uma foto do Street View apontada para ele (`xv-N-*`, `xv-S-*`). Paralelepípedo em toda a extensão. Convive com os 30 comércios levantados (`comercio/lojas.ts`), a Prefeitura e as praças, que desenham a própria calçada. |
 
 Paralelepípedo também confirmado nas ruas Barão do Rio Branco, Leonor Mendes de Barros e Francisco Pereira de Souza.
 

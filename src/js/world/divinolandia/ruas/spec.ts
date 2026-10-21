@@ -30,7 +30,8 @@ export interface StreetSpec{
   // paving of the sidewalk stretches no lot covers (default cement), per side + block index
   gapWalk?:{side:Side;block:number;k:Paving}[];
   // stretches [s0,s1] of a side left alone: game sites / landmark models stand there
-  keepOut?:{side:Side;s0:number;s1:number;why:string}[];
+  // (walk:false = no sidewalk drawn there either: a square or a landmark paves its own front)
+  keepOut?:{side:Side;s0:number;s1:number;why:string;walk?:boolean}[];
 }
 
 // chain the OSM pieces of one street into a single polyline, oriented as documented above

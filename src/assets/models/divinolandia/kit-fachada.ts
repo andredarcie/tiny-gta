@@ -30,6 +30,10 @@ export const ribbed=(c:string):THREE.Material=>get('f'+c,()=>matte({color:c,map:
 export const stoneM=():THREE.Material=>get('stone',()=>matte({map:stoneTexture(),side:THREE.DoubleSide}));
 export const corrM=():THREE.Material=>get('corr',()=>matte({map:corrugatedTexture(),side:THREE.DoubleSide}));
 export const glassM=():THREE.Material=>get('glass',()=>matte({map:vidroTexture()}));
+// a shop window you can see into: faintly tinted, a little reflective sheen
+export const clearGlassM=():THREE.Material=>get('clearGlass',()=>new THREE.MeshLambertMaterial({color:0xbfd3dc,transparent:true,opacity:.22,depthWrite:false,side:THREE.DoubleSide}));
+// the lit ceiling panels of a shop (they glow a little at dusk)
+export const lampM=():THREE.Material=>get('lamp',()=>matte({color:'#f6f4ea',emissive:0x8a877c}));
 export const dirtM=():THREE.Material=>get('dirt',()=>new THREE.MeshLambertMaterial({map:sujeiraTexture(),transparent:true,depthWrite:false,
   polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2}));
 const TILE_FOR=new Map<THREE.Material,number>();
@@ -104,8 +108,10 @@ export function holedWall(k:Kit,m:THREE.Material,x0:number,x1:number,y0:number,y
   }
   for(const h of hs){
     const zb=z-depth;
-    k.quad(m,[h.x0,h.y0,z],[h.x1,h.y0,z],[h.x1,h.y0,zb],[h.x0,h.y0,zb]);          // sill face
-    k.quad(m,[h.x0,h.y1,zb],[h.x1,h.y1,zb],[h.x1,h.y1,z],[h.x0,h.y1,z]);          // head
+    // (a hole cut to the top or the foot of the wall has no head / sill: that face would
+    // lie on whatever caps the wall there)
+    if(h.y0>y0+1e-4)k.quad(m,[h.x0,h.y0,z],[h.x1,h.y0,z],[h.x1,h.y0,zb],[h.x0,h.y0,zb]);          // sill face
+    if(h.y1<y1-1e-4)k.quad(m,[h.x0,h.y1,zb],[h.x1,h.y1,zb],[h.x1,h.y1,z],[h.x0,h.y1,z]);          // head
     k.quad(m,[h.x0,h.y0,zb],[h.x0,h.y1,zb],[h.x0,h.y1,z],[h.x0,h.y0,z]);          // jambs
     k.quad(m,[h.x1,h.y0,z],[h.x1,h.y1,z],[h.x1,h.y1,zb],[h.x1,h.y0,zb]);
   }
@@ -119,7 +125,9 @@ export function dirt(k:Kit,x0:number,x1:number,y0:number,h:number,z:number):void
 }
 
 // ---------------- openings ----------------
-export type OpenKind='door'|'window'|'garage'|'gate'|'glass'|'arch'|'shop';
+export type OpenKind='door'|'window'|'garage'|'gate'|'glass'|'arch'|'shop'|'open'|'vitrine';
+// what a shop shows through its open door or its see-through window (the Op's `c`)
+export type Interior='super'|'roupa'|'farma'|'banco'|'tech'|'casa'|'geral';
 export type Op={t:OpenKind;x:number;w:number;h?:number;y?:number;fl?:number;c?:string;grille?:boolean;shutters?:string;frame?:string;awning?:string;st?:'sliding'|'basculante'|'fixed';leaves?:boolean};
 export function opDims(o:Op):{x0:number;x1:number;y0:number;y1:number}{
   const h=o.h??(o.t==='garage'||o.t==='gate'?2.4:o.t==='door'?2.15:o.t==='shop'?2.7:o.t==='glass'?1.9:o.t==='arch'?1.6:1.2);
@@ -132,14 +140,17 @@ export const holeOf=(o:Op):Hole=>{const d=opDims(o);return{...d,y1:d.y1+(o.t==='
 export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
   const{x0,x1,y0,y1}=opDims(o),w=x1-x0,h=y1-y0,zi=z-REVEAL+.02;
   const frameC=o.frame||'#f2f0ea',fr=plain(frameC),t=.05;
+  // the frame round an opening: just inside the hole and a few mm in front of its pane, so
+  // none of its faces lies on the reveal or on the glass
+  const E=.004;
   const ring=(zz:number,c:THREE.Material,tt=t,dz=.05):void=>{
-    k.box(c,x0,x1,y1-tt,y1,zz,zz+dz);k.box(c,x0,x1,y0,y0+tt,zz,zz+dz);
-    k.box(c,x0,x0+tt,y0,y1,zz,zz+dz);k.box(c,x1-tt,x1,y0,y1,zz,zz+dz);
+    k.box(c,x0+E,x1-E,y1-tt,y1-E,zz+E,zz+dz);k.box(c,x0+E,x1-E,y0+E,y0+tt,zz+E,zz+dz);
+    k.box(c,x0+E,x0+tt,y0+E,y1-E,zz+E,zz+dz);k.box(c,x1-tt,x1-E,y0+E,y1-E,zz+E,zz+dz);
   };
   switch(o.t){
     case'window':case'glass':{
       // granite sill sticking out under the window
-      if(o.t==='window')k.box(plain('#e3dfd6'),x0-.06,x1+.06,y0-.05,y0,z-REVEAL,z+.06);
+      if(o.t==='window')k.box(plain('#e3dfd6'),x0-.06,x1+.06,y0-.05,y0+.006,z-REVEAL+E,z+.06);
       if(o.shutters&&o.leaves){                         // shutters swung OPEN against the wall
         const lm=louvre(o.shutters),lw=w/2;
         for(const[a,b]of[[x0-lw-.04,x0-.04],[x1+.04,x1+lw+.04]] as [number,number][])
@@ -147,13 +158,13 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
       }
       if(o.shutters&&!o.leaves){                        // closed louvred shutters in the frame
         k.quadUV(louvre(o.shutters),[x0,y0,zi+.02],[x1,y0,zi+.02],[x1,y1,zi+.02],[x0,y1,zi+.02],w/.5,h/.5);
-        k.box(plain(o.shutters),(x0+x1)/2-.02,(x0+x1)/2+.02,y0,y1,zi+.02,zi+.06);
+        k.box(plain(o.shutters),(x0+x1)/2-.02,(x0+x1)/2+.02,y0+E,y1-E,zi+.02+E,zi+.06);
       }else{
         k.quadUV(glassM(),[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],1,1);
         const panes=o.st==='fixed'?1:o.t==='glass'?Math.max(2,Math.round(w/1.1)):w>1.3?4:2;
-        for(let p=1;p<panes;p++){const x=x0+p*w/panes;k.box(fr,x-.025,x+.025,y0,y1,zi,zi+.05);}
-        if(o.t==='glass'&&h>1.6)k.box(fr,x0,x1,y0+h*.62-.025,y0+h*.62+.025,zi,zi+.05);
-        if(o.st==='basculante')for(let r=1;r<3;r++){const y=y0+r*h/3;k.box(fr,x0,x1,y-.02,y+.02,zi,zi+.04);}
+        for(let p=1;p<panes;p++){const x=x0+p*w/panes;k.box(fr,x-.025,x+.025,y0+E,y1-E,zi+E,zi+.05);}
+        if(o.t==='glass'&&h>1.6)k.box(fr,x0+E,x1-E,y0+h*.62-.025,y0+h*.62+.025,zi+E,zi+.05);
+        if(o.st==='basculante')for(let r=1;r<3;r++){const y=y0+r*h/3;k.box(fr,x0+E,x1-E,y-.02,y+.02,zi+E,zi+.04);}
       }
       ring(zi,fr);
       if(o.grille){const gm=plain(o.frame||'#efece4');
@@ -165,7 +176,7 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
       const dm=plain(o.c||'#6a4630');
       k.quadUV(dm,[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],1,1);
       for(const[px,py]of[[.25,.2],[.75,.2],[.25,.62],[.75,.62]]){
-        const cx=x0+w*px,cy=y0+h*py;k.box(plain(shade(o.c||'#6a4630',.85)),cx-w*.17,cx+w*.17,cy-h*.17,cy+h*.17,zi,zi+.03);}
+        const cx=x0+w*px,cy=y0+h*py;k.box(plain(shade(o.c||'#6a4630',.85)),cx-w*.17,cx+w*.17,cy-h*.17,cy+h*.17,zi+E,zi+.03);}
       k.box(plain('#c9b88a'),x1-.16,x1-.1,y0+1,y0+1.08,zi,zi+.07);
       ring(zi,plain(shade(o.c||'#6a4630',.7)),.07);
       break;
@@ -175,9 +186,9 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
       const grill=o.grille?.38:0;
       k.quadUV(ribbed(c),[x0,y0,zi],[x1,y0,zi],[x1,y1-grill,zi],[x0,y1-grill,zi],w/.5,(h-grill)/.5);
       if(grill){k.quadUV(plain('#262422'),[x0,y1-grill,zi-.02],[x1,y1-grill,zi-.02],[x1,y1,zi-.02],[x0,y1,zi-.02],1,1);
-        for(let x=x0+.1;x<x1-.05;x+=.14)k.box(plain(c),x-.02,x+.02,y1-grill,y1,zi,zi+.04);
-        k.box(plain(c),x0,x1,y1-grill-.04,y1-grill,zi,zi+.05);}
-      k.box(plain('#8d8f91'),(x0+x1)/2-.12,(x0+x1)/2+.12,y0+.9,y0+.95,zi,zi+.06);   // handle
+        for(let x=x0+.1;x<x1-.05;x+=.14)k.box(plain(c),x-.02,x+.02,y1-grill,y1-E,zi+E,zi+.04);
+        k.box(plain(c),x0+E,x1-E,y1-grill-.04,y1-grill,zi+E,zi+.05);}
+      k.box(plain('#8d8f91'),(x0+x1)/2-.12,(x0+x1)/2+.12,y0+.9,y0+.95,zi+E,zi+.06);   // handle
       ring(zi,plain(shade(c,.8)),.06);
       break;
     }
@@ -185,9 +196,21 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
       const c=o.c||'#e9e7e1',gm=plain(c);
       const dark=new THREE.Color(c).getHSL({h:0,s:0,l:0}).l<.45;
       if(dark){k.quadUV(gm,[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],1,1);
-        for(let x=x0+.12;x<x1;x+=.12)k.box(plain(shade(c,.75)),x-.012,x+.012,y0,y1,zi,zi+.03);}
+        for(let x=x0+.12;x<x1;x+=.12)k.box(plain(shade(c,.75)),x-.012,x+.012,y0+E,y1-E,zi+E,zi+.03);}
       else{k.quadUV(ribbed(c),[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],w/.5,h/.5);}
       ring(zi,plain(shade(c,.85)),.06);
+      break;
+    }
+    case'open':case'vitrine':{
+      // a shop seen through its open door or its see-through window: the room behind, lit
+      shopInterior(k,x0,x1,y0,y1,z-REVEAL,(o.c as Interior)||'geral',o.t==='open');
+      if(o.t==='vitrine'){
+        k.quadUV(clearGlassM(),[x0,y0,zi],[x1,y0,zi],[x1,y1,zi],[x0,y1,zi],1,1);
+        const fr=plain(o.frame||'#2f3133'),panes=Math.max(1,Math.round(w/1.8));
+        for(let p=1;p<panes;p++){const x=x0+p*w/panes;k.box(fr,x-.03,x+.03,y0+E,y1-E,zi-.01,zi+.04);}
+        k.box(fr,x0+E,x1-E,y0+E,y0+.08,zi-.01,zi+.04);k.box(fr,x0+E,x1-E,y1-.05,y1-E,zi-.01,zi+.04);
+        k.box(fr,x0+E,x0+.05,y0+E,y1-E,zi-.01,zi+.04);k.box(fr,x1-.05,x1-E,y0+E,y1-E,zi-.01,zi+.04);
+      }
       break;
     }
     case'arch':{
@@ -203,6 +226,70 @@ export function fillOpening(k:Kit,o:Op,z:number,wallMat:THREE.Material):void{
     const am=plain(o.awning),ya=y1+.2;
     k.quad(am,[x0-.2,ya+.35,z],[x1+.2,ya+.35,z],[x1+.2,ya,z+.85],[x0-.2,ya,z+.85]);
     k.box(am,x0-.2,x1+.2,ya-.12,ya,z+.82,z+.86);
+  }
+}
+// The room behind a shop front (depth 3 m from the wall's inner face zf): walls, floor,
+// ceiling with lit panels, and the goods of its trade — supermarket gondolas, clothes on
+// rails, pharmacy shelves, bank ATMs, phones and TVs, furniture and paint, or mixed goods.
+const GOODS=['#b8433a','#d7b04a','#4d7fb5','#e6e2d8','#5f8d4e','#c97a3a','#7a4a8a','#e8e6df'];
+// The building the next rooms belong to (x across, the back wall's z): fachada.ts sets it
+// before it fills the openings, so a room never pokes out of a side wall nor lies on one.
+let room={x0:-1e9,x1:1e9,back:-1e9,taken:[] as [number,number][]};
+export function setRoomBounds(x0:number,x1:number,back:number):void{room={x0,x1,back,taken:[]};}
+export function shopInterior(k:Kit,x0:number,x1:number,y0:number,y1:number,zf:number,theme:Interior,door=false):void{
+  const D=Math.max(1.2,Math.min(3,zf-room.back-.2)),zb=zf-D,wall=plain(theme==='banco'?'#d9d7d0':theme==='farma'?'#f1f1ee':'#e6e1d6'),dark=plain('#3a3632');
+  // side walls .43 m beyond the opening (off the 5 cm grid the fronts are laid out on),
+  // and short of the building's own side walls
+  // an opening over one that already has its room (a shop window above a garage ramp)
+  // looks into that same room: only a dark backing
+  if(room.taken.some(([a,b])=>Math.min(b,x1)-Math.max(a,x0)>(x1-x0)*.5)){
+    k.quadUV(plain('#2b2724'),[x0,y0,zf-.6],[x1,y0,zf-.6],[x1,y1,zf-.6],[x0,y1,zf-.6],1,1);return;
+  }
+  let rx0=Math.max(x0-.43,room.x0+.07),rx1=Math.min(x1+.43,room.x1-.07);
+  for(const[a,b]of room.taken){if(a<x0)rx0=Math.max(rx0,b+.03);else rx1=Math.min(rx1,a-.03);}   // stop at a neighbour's room
+  if(rx1-rx0<.6){k.quadUV(plain('#2b2724'),[x0,y0,zf-.6],[x1,y0,zf-.6],[x1,y1,zf-.6],[x0,y1,zf-.6],1,1);return;}
+  room.taken.push([rx0,rx1]);
+  const top=Math.max(y1+.03,y0+2.7)+.011;
+  k.quadUV(wall,[rx0,y0,zb],[rx1,y0,zb],[rx1,top,zb],[rx0,top,zb],1,1);
+  k.quad(plain(theme==='super'||theme==='farma'?'#d8d6d0':'#a59f95'),[rx0,y0+.004,zb],[rx1,y0+.004,zb],[rx1,y0+.004,zf],[rx0,y0+.004,zf]);
+  for(const xx of[rx0,rx1])k.quad(door?dark:wall,[xx,y0,zb],[xx,y0,zf],[xx,top,zf],[xx,top,zb]);
+  k.quad(plain('#efede8'),[rx0,top,zb],[rx1,top,zb],[rx1,top,zf],[rx0,top,zf]);
+  x0=Math.max(x0,rx0+.1);x1=Math.min(x1,rx1-.1);
+  for(let x=x0+.5;x<x1-.3;x+=1.6)k.box(lampM(),x,x+1.1,top-.04,top-.01,zb+.8,zb+1.1);
+  const rnd=(i:number):number=>{const v=Math.sin(x0*12.9898+i*78.233)*43758.5453;return v-Math.floor(v);};
+  const shelf=(xa:number,xb:number,z0:number,zd:number,rows:number,c:string,item:number):void=>{
+    k.box(plain(c),xa,xb,y0+.02,y0+.08,z0,z0+zd);k.box(plain(c),xa+.01,xb-.01,y0+.083,y0+rows*.42+.2,z0+zd*.45,z0+zd*.55);
+    for(let r=0;r<rows;r++){const yy=y0+.15+r*.42;k.box(plain(c),xa-.005,xb+.005,yy-.03,yy,z0+.003,z0+zd-.003);
+      for(let i=0,xx=xa+.05;xx<xb-item;i++,xx+=item+.04){const h=.12+rnd(i+r*7)*.18;k.box(plain(GOODS[Math.floor(rnd(i*3+r)*GOODS.length)]),xx,xx+item,yy+.003,yy+h,z0+.05,z0+zd-.05);}}   // (standing on the board, not in it)
+  };
+  switch(theme){
+    case'super':
+      shelf(rx0+.05,rx1-.05,zb+.05,.45,4,'#cfd2d4',.14);                              // wall shelves
+      for(const gz of[zb+1.3,zb+2.1])shelf(x0+.2,x1-.2,gz,.5,3,'#d9dbdc',.16);          // gondolas
+      k.box(plain('#c9302c'),x0+.1,x0+.7,y0+.02,y0+.9,zf-.35,zf-.06);                      // checkout (clear of the gondolas)
+      break;
+    case'farma':
+      shelf(rx0+.05,rx1-.05,zb+.05,.3,5,'#f4f4f2',.08);
+      k.box(plain('#f4f4f2'),x0+.3,x1-.3,y0+.02,y0+1,zb+1.6,zb+2.1);k.box(plain('#2f8a4e'),x0+.31,x1-.31,y0+1.003,y0+1.05,zb+1.61,zb+2.09);
+      break;
+    case'roupa':
+      for(const rz of[zb+.4,zb+1.6]){k.box(plain('#9a9c9e'),x0+.1,x1-.1,y0+1.5,y0+1.53,rz,rz+.03);
+        for(let i=0,xx=x0+.15;xx<x1-.2;i++,xx+=.13){const c=GOODS[Math.floor(rnd(i+rz)*GOODS.length)],h=.7+rnd(i)*.4;k.box(plain(c),xx,xx+.1,y0+1.5-h,y0+1.48,rz-.2,rz+.22);}}
+      k.box(plain('#d9c9a8'),x1-1.4,x1-.4,y0+.02,y0+.9,zf-.7,zf-.25);                      // counter (right; window mannequins stand left)
+      break;
+    case'banco':
+      for(let x=x0+.3;x<x1-.6;x+=1.1){k.box(plain('#6f7478'),x,x+.75,y0+.02,y0+1.65,zb+.02,zb+.6);k.box(plain('#1d3550'),x+.12,x+.62,y0+1.05,y0+1.45,zb+.603,zb+.613);
+        k.box(plain('#2a2a2a'),x+.2,x+.55,y0+.8,y0+.9,zb+.603,zb+.75);}
+      break;
+    case'tech':
+      for(let r=0;r<3;r++)for(let x=x0;x<x1-.4;x+=.55)k.box(plain(r===2?'#1a1a1c':'#2a2b2e'),x,x+.45,y0+.6+r*.6,y0+.95+r*.6,zb+.02,zb+.1);
+      k.box(plain('#cfe0e8'),x0+.3,x1-.3,y0+.02,y0+1,zb+1.4,zb+1.9);
+      break;
+    case'casa':
+      k.box(plain('#6b4a3a'),x0+.2,x0+2,y0+.02,y0+.45,zb+.4,zb+1.3);k.box(plain('#6b4a3a'),x0+.2,x0+2,y0+.453,y0+.85,zb+.4,zb+.597);   // sofa
+      for(let x=x0+2.4;x<x1-.6;x+=.8)k.box(plain(rnd(x)>.5?'#f2f2ee':'#c9cbcc'),x,x+.65,y0+.02,y0+1.7*(.5+rnd(x*3)*.5),zb+.1,zb+.75);   // appliances
+      break;
+    default:shelf(rx0+.05,rx1-.05,zb+.05,.4,4,'#8a8680',.22);
   }
 }
 export const shade=(c:string,f:number):string=>'#'+new THREE.Color(c).multiplyScalar(f).getHexString();
@@ -312,11 +399,11 @@ export function roof(k:Kit,kind:RoofKind,w:number,d:number,y:number,z0:number,o:
 // ---------------- small things that make a Brazilian street ----------------
 export function meterBox(k:Kit,x:number,y:number,z:number):void{          // "padrão" de energia
   k.box(plain('#9fa3a6'),x-.22,x+.22,y,y+.55,z,z+.18);
-  k.box(plain('#1f2a33'),x-.12,x+.12,y+.28,y+.42,z+.18,z+.19);
+  k.box(plain('#1f2a33'),x-.12,x+.12,y+.28,y+.42,z+.183,z+.19);
   k.box(plain('#6e7275'),x-.03,x+.03,y+.55,y+1.6,z+.05,z+.11);              // conduit up
 }
 export function houseNumber(k:Kit,x:number,y:number,z:number):void{
-  k.box(plain('#2c3e66'),x-.15,x+.15,y,y+.18,z,z+.02);k.box(plain('#f2f2f2'),x-.1,x+.1,y+.05,y+.13,z+.02,z+.025);
+  k.box(plain('#2c3e66'),x-.15,x+.15,y,y+.18,z,z+.02);k.box(plain('#f2f2f2'),x-.1,x+.1,y+.05,y+.13,z+.023,z+.028);
 }
 export function waterTank(k:Kit,x:number,y:number,z:number):void{          // blue fibreglass caixa d'água
   const t=new THREE.Mesh(new THREE.CylinderGeometry(.62,.55,.85,14),plain('#3d73b5'));t.position.set(x,y+.43,z);t.castShadow=true;k.add(t);

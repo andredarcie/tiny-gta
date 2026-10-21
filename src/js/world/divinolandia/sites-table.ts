@@ -51,6 +51,27 @@ export const SITE_TABLE={
 } satisfies Record<string,SiteSpec>;
 export type SiteId=keyof typeof SITE_TABLE;
 
+// Real places DRAPED on the terrain instead of levelled: the town's four fuel stations,
+// rebuilt from Street View on their sloping forecourts, and the Monumento ao Ciclista (src/assets/models/divinolandia/
+// posto-*.ts; build.ts places them). The lot (same rectangle convention as above, face 0 =
+// x along w, z along d) only keeps the generated houses, poles and trees off the station.
+export const DRAPED_LOTS={
+  postoTriangulo:{x:511.5,z:-14.5,face:0,w:33,d:27,name:'Auto Posto Triângulo'},
+  postoPassoni:  {x:1137.75,z:-142.75,face:0,w:48.5,d:26.5,name:'Posto Petrobras (Auto Posto Passoni)'},
+  postoLurain:   {x:1280.5,z:-229,face:0,w:35,d:34,name:'Posto Lurain'},
+  postoTaurus:   {x:55.5,z:-481.75,face:0,w:29,d:46.5,name:'Posto Taurus'},
+  // the Monumento ao Ciclista and its half-moon square at the east entrance (monumento-ciclista.ts)
+  monumentoCiclista:{x:1480.3,z:-171.5,face:0,w:24,d:16,name:'Monumento ao Ciclista'},
+  // the west entrance on the Rua São Paulo (sitio-maconaria.ts): the masonic monument, the
+  // palm drive of the sítio, the sede and the casinha up the track
+  maconaria:{x:-1322,z:-596,face:0,w:18,d:20,name:'Monumento maçônico'},
+  sitioEntrada:{x:-1358,z:-556.5,face:0,w:84,d:20,name:'Entrada do sítio'},
+  sitioSede:{x:-1501,z:-611,face:0,w:58,d:62,name:'Sede do sítio'},
+  sitioCasinha:{x:-1572,z:-560,face:0,w:40,d:30,name:'Casinha do sítio'},
+} satisfies Record<string,SiteSpec>;
+export type LotId=SiteId|keyof typeof DRAPED_LOTS;
+export const ALL_LOTS:Record<LotId,SiteSpec>={...SITE_TABLE,...DRAPED_LOTS};
+
 // The two squares of the Igreja Matriz, laid out 1:1 (praca-alcindo.ts, praca-ladislau.ts),
 // each in its own frame: centre (x,z) town-local, turned by rot (u east along the street
 // grid, v south), the block u0..u1 × v0..v1 out to the kerb. data.ts lays the ground of
@@ -67,19 +88,19 @@ export const SQUARE_BLEND=6;
 // natural ground over this many more metres (the heightfield cell is 8 m)
 export const SITE_PAD=4, SITE_BLEND=18;
 
-// Is the town-LOCAL point (lx,lz) on a site's lot (footprint grown by `margin`)? The
-// town build skips generated houses, poles and trees there.
+// Is the town-LOCAL point (lx,lz) on a site's lot or a draped lot (footprint grown by
+// `margin`)? The town build skips generated houses, poles and trees there.
 export function onSiteLot(lx:number,lz:number,margin=2):boolean{
-  for(const id in SITE_TABLE){
-    const s=SITE_TABLE[id as SiteId],dx=lx-s.x,dz=lz-s.z;
+  for(const id in ALL_LOTS){
+    const s=ALL_LOTS[id as LotId],dx=lx-s.x,dz=lz-s.z;
     const fx=Math.sin(s.face),fz=Math.cos(s.face);
     if(Math.abs(dx*fz-dz*fx)<s.w/2+margin&&Math.abs(dx*fx+dz*fz)<s.d/2+margin)return true;
   }
   return false;
 }
 // the lot outline (town-local), for the pole planner's protected areas
-export function siteLotPolygon(id:SiteId,margin=2):[number,number][]{
-  const s=SITE_TABLE[id],fx=Math.sin(s.face),fz=Math.cos(s.face),ux=fz,uz=-fx;
+export function siteLotPolygon(id:LotId,margin=2):[number,number][]{
+  const s=ALL_LOTS[id],fx=Math.sin(s.face),fz=Math.cos(s.face),ux=fz,uz=-fx;
   const a=s.w/2+margin,b=s.d/2+margin;
   return[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[s.x+ux*u*a+fx*v*b,s.z+uz*u*a+fz*v*b]);
 }
