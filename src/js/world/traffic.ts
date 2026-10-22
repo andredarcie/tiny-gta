@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {pick,irand,wrapA,clamp,groundHeight} from '@/core/constants.ts';
+import {poseOnGround} from '@/actors/vehicle-ground.ts';
 import {state,carNames,carColors} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
@@ -120,18 +121,17 @@ export function updateTraffic(dt:number){
     t.speed+=(target-t.speed)*(target<t.speed?5:2.5)*dt;
     t.run.advance(Math.max(0,t.speed)*dt);
     const np=t.run.at(0,_p);
-    const gy=groundHeight(np.x,np.z);
-    t.g.position.set(np.x,gy,np.z);
     const want=Math.atan2(np.dx,np.dz);
     const dh=wrapA(want-t.heading);
     t.heading+=dh*Math.min(1,10*dt);
-    // pitch with the slope under the wheelbase
-    const fx=Math.sin(t.heading),fz=Math.cos(t.heading);
-    const slope=groundHeight(np.x+fx*1.3,np.z+fz*1.3)-groundHeight(np.x-fx*1.3,np.z-fz*1.3);
-    t.g.rotation.set(-Math.atan2(slope,2.6),t.heading,0);
-    // LOD: a far car is neither drawn nor animated; it keeps driving (above).
+    // LOD: a far car is neither drawn nor posed; it keeps driving (above).
     const cdx=np.x-pp.x,cdz=np.z-pp.z,cd2=cdx*cdx+cdz*cdz;
-    if(cd2>=CAR_CULL2){t.g.visible=false;continue;}
+    if(cd2>=CAR_CULL2){t.g.visible=false;t.g.position.set(np.x,groundHeight(np.x,np.z),np.z);continue;}
+    // sits on its four wheels (height, pitch AND roll from the contacts; the underside
+    // never cuts into a crest) — the same model as the player's car (vehicle-ground.ts)
+    const pose=poseOnGround(groundHeight,np.x,np.z,t.heading);
+    t.g.position.set(np.x,pose.y,np.z);
+    t.g.rotation.set(-pose.pitch,t.heading,pose.roll);
     t.g.visible=true;
     if(t.driver)t.driver.visible=cd2<48*48;
     spinWheels(t.g,t.speed,dt,clamp(dh*2,-1,1));

@@ -11,6 +11,7 @@ import Arvore from '../../../../assets/models/divinolandia/arvore-rua.ts';
 import {makeSidewalks,KERB_H,type Paving} from '../../../../assets/models/divinolandia/calcada.ts';
 import Poste,{makeWires} from '../../../../assets/models/divinolandia/poste-rede.ts';
 import {addObb} from '../collide.ts';
+import {groundRange,type P2} from '../ground-fit.ts';
 import type {StreetSpec} from './spec.ts';
 import {EXTRAS} from './extras.ts';
 
@@ -41,9 +42,8 @@ export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:num
     const w=lot.s1-lot.s0-.1,f=alongPolyline(pts,(lot.s0+lot.s1)/2),[nx,nz]=sideNormal(f,lot.side);
     const off=hw+SIDEWALK,px=f.x+nx*off,pz=f.z+nz*off,y=H(px,pz)+lift;
     const d=lot.f.d??12,set=lot.f.setback??0;
-    // walls reach down to the lowest ground under the lot (sloping streets)
-    let lo=y;
-    for(const a of[-.5,.5])for(const b of[0,.5,1]){const x=px+f.ux*a*w+nx*b*(d+set),z=pz+f.uz*a*w+nz*b*(d+set);lo=Math.min(lo,H(x,z));}
+    // walls reach down to the lowest ground under the lot (exact over the whole footprint)
+    const lo=Math.min(y,groundRange([-.5,.5,.5,-.5].map((a,k)=>{const b=k<2?0:1;return[px+f.ux*a*w+nx*b*(d+set),pz+f.uz*a*w+nz*b*(d+set)] as P2;})).min);
     const g=buildFachada({...lot.f,w,base:Math.min(lot.f.base??-1.2,lo-y-.6),seed:Math.round(lot.s0*13+(lot.side==='N'?1:2))});
     const th=Math.atan2(-nx,-nz);                                // local +z (façade) faces the street
     g.position.set(px,y,pz);g.rotation.y=th;place(g);

@@ -5,6 +5,7 @@ import {roadside} from '@/world/divinolandia/nav.ts';
 import {DIV_OX,DIV_OZ,PLAY} from '@/world/divinolandia/data.ts';
 import {FORT_EXIT} from '../../assets/models/rural/abandoned-fort.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
+import {stepBody,newBody,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
@@ -205,6 +206,7 @@ const SMOKE_CRASHES=2;   // 2ª batida: motor começa a fumegar
 const HEAVY_CRASHES=3;   // 3ª batida: fumaça densa (prestes a explodir)
 const EXPLODE_CRASHES=4; // 4ª batida: pega fogo e explode
 const CRASH_CD=.7;       // debounce: roçar na parede conta como UMA batida só
+const SCRAPE_V=6;        // m/s INTO an obstacle below which a hit is only a scrape (no damage)
 
 interface Smoke{g:THREE.Mesh;t:number;life:number;vx:number;vy:number;vz:number;s0:number;s1:number;}
 const smoke:Smoke[]=[];      // baforadas ativas {g,t,life,vx,vy,vz,s0,s1}
@@ -245,7 +247,7 @@ export function updateCarFx(dt:number){
 
 // Zera o dano acumulado de um carro (a oficina chama isto ao reparar o lataria)
 export function resetCarDamage(g:THREE.Object3D|null|undefined){
-  if(!g)return;const ud=g.userData;ud.crashCount=0;ud.crashCd=0;
+  if(!g)return;const ud=g.userData;ud.crashCount=0;ud.crashCd=0;ud.damage=0;
 }
 
 // O carro DIRIGIDO explode: efeito + onda de choque (mata/empurra ao redor e
@@ -265,8 +267,9 @@ function explodePlayerCar():boolean{
   return true;
 }
 
-// Uma batida do carro do jogador: amassa BEM mais que um carro qualquer e, por
-// debounce, conta como evento único. Escala: dent maior -> fumaça -> explosão.
+// A crash of the player's car (speed = how fast it went INTO the obstacle): dents it much
+// more than any other car and, debounced, counts once. Damage ∝ impact energy; the stages
+// (dent -> smoke -> fire -> explosion) follow the accumulated damage.
 // Devolve true se o carro foi destruído (o chamador deve abortar o frame).
 function registerCrash(speed:number,pt:THREE.Vector3,dir:THREE.Vector3):boolean{
   if(cur!.bike||cur!.tractor)return false; // moto/trator não amassam/explodem (só carro tem lataria)
@@ -276,10 +279,13 @@ function registerCrash(speed:number,pt:THREE.Vector3,dir:THREE.Vector3):boolean{
   dentCar(cur!.g,pt,dir,Math.min(.7,.34+speed*.012),{radius:2.2,max:.85});
   if((ud.crashCd||0)>0)return false; // ainda na mesma colisão: não conta de novo
   ud.crashCd=CRASH_CD;
-  ud.crashCount=(ud.crashCount||0)+1;
+  // damage from the impact energy (0..100): 10 m/s ≈ 10, 20 m/s ≈ 40, flat-out head-on ≈ 100
+  const before=ud.crashCount||0;
+  ud.damage=(ud.damage||0)+speed*speed*.1;
+  ud.crashCount=ud.damage>=100?EXPLODE_CRASHES:ud.damage>=65?HEAVY_CRASHES:ud.damage>=35?SMOKE_CRASHES:1;
   if(ud.crashCount>=EXPLODE_CRASHES)return explodePlayerCar();
-  if(ud.crashCount===SMOKE_CRASHES)message('MOTOR DANIFICADO!','var(--gold)');
-  else if(ud.crashCount===HEAVY_CRASHES)message('MOTOR PEGANDO FOGO!','var(--pink)');
+  if(ud.crashCount===SMOKE_CRASHES&&before<SMOKE_CRASHES)message('MOTOR DANIFICADO!','var(--gold)');
+  else if(ud.crashCount===HEAVY_CRASHES&&before<HEAVY_CRASHES)message('MOTOR PEGANDO FOGO!','var(--pink)');
   return false;
 }
 
@@ -408,9 +414,10 @@ function poseSeatTransfer(progress:number,leaving:boolean):void{
 // Entrar no carro é uma sequência: aproxima, abre, se acomoda no banco, fecha e assenta.
 interface Entering{f:{c:Vehicle;kind:string};door:THREE.Object3D|null;side:number;t:number;phase:number;}
 let entering:Entering|null=null;
-export function enterCar(){
+// `prefer`: get into this parked car even if another one is nearer (test scaffolding)
+export function enterCar(prefer?:Vehicle){
   if(entering)return;
-  const f=nearestCar(3.6);if(!f)return;
+  const f=prefer&&idleCars.includes(prefer)?{c:prefer,kind:'idle'}:nearestCar(3.6);if(!f)return;
   // escolhe a porta do lado em que o jogador está (carro tem duas portas)
   const cg=f.c.g,h=f.c.heading??cg.rotation.y;
   const dx=player.g.position.x-cg.position.x,dz=player.g.position.z-cg.position.z;
@@ -875,17 +882,26 @@ export function updateCar(dt:number){
     p.x=px0;p.z=pz0;
     cur!.speed=0;
   }
+  const qx=p.x,qz=p.z;
   if(collideStatics(p,1.3)){
-    const spd=Math.abs(cur!.speed);
-    if(spd>4){
-      // até batida leve já amassa feio; em alta velocidade destrói a frente
-      if(spd>6){thud(spd);state.shake=Math.min(.6,spd*.02);}
+    // The impact is what the car drives INTO the obstacle: the speed along the push-out
+    // normal. Grazing a wall or brushing a kerbside pole is a scrape (no damage, the car
+    // keeps most of its speed); only a real hit dents it, and damage grows with the
+    // impact energy (∝ speed²), so a town full of poles no longer blows cars up.
+    let nx=p.x-qx,nz=p.z-qz;const nl=Math.hypot(nx,nz);
+    const vx=Math.sin(cur!.heading)*cur!.speed,vz=Math.cos(cur!.heading)*cur!.speed;
+    let vn=Math.abs(cur!.speed);                                  // (no push-out direction: count all of it)
+    if(nl>1e-6){nx/=nl;nz/=nl;vn=Math.max(0,-(vx*nx+vz*nz));}
+    if(vn>SCRAPE_V){
+      thud(vn);state.shake=Math.min(.6,vn*.02);
       const fwd=cur!.speed>0?1:-1;
       _dentPt.set(p.x+Math.sin(cur!.heading)*2.2*fwd,p.y+.65,p.z+Math.cos(cur!.heading)*2.2*fwd);
       _dentDir.set(-Math.sin(cur!.heading)*fwd,0,-Math.cos(cur!.heading)*fwd);
-      if(registerCrash(spd,_dentPt,_dentDir))return; // bateu demais: carro explodiu
+      if(registerCrash(vn,_dentPt,_dentDir))return; // bateu demais: carro explodiu
     }
-    cur!.speed*=-.25;
+    // head-on: bounce back; glancing: slide along it, losing a little speed
+    const head=Math.abs(cur!.speed)>.5&&vn>Math.abs(cur!.speed)*.6;
+    cur!.speed*=head?-.25:.9;
   }
   // carros estacionados também são sólidos pro carro dirigido
   for(const c of idleCars){
@@ -904,30 +920,29 @@ export function updateCar(dt:number){
       cur!.speed*=.5;
     }
   }
-  cur!.g.rotation.y=cur!.heading;
   // moto inclina pra DENTRO da curva, já perceptível em velocidade média;
   // carro só rola levemente. clamp em 0 evita inclinar dando ré.
   const leanT=bike
     ?-st*clamp(cur!.speed/18,0,1)*.42
     :-st*clamp(cur!.speed/MAX,0,1)*.06;
-  cur!.g.rotation.z=THREE.MathUtils.lerp(cur!.g.rotation.z,leanT,bike?6*dt:10*dt);
-  // Terreno: o carro acompanha a altura (dá pra subir a montanha) e inclina no morro.
-  // Segue a altura rápido o bastante pra não enterrar o nariz na rampa em alta.
-  let gh=groundHeight(p.x,p.z);
-  // Anti-teleport at the bridge: groundHeight returns the DECK height for ANY x,z under the
-  // deck footprint, so driving/being shoved INTO that footprint from below (off the side of the
-  // bridge, against a tower/pier) used to snap the car instantly UP onto the deck. If the ground
-  // is a big step ABOVE the car (an elevated deck overhead — not a drivable slope, whose per-frame
-  // rise stays well under this), bounce off and DON'T climb it: you can't drive up through the
-  // underside of the bridge. Normal ramps/hills (gradual) never hit this.
-  if(gh-p.y>2.5){p.x=px0;p.z=pz0;cur!.speed*=-.25;gh=groundHeight(p.x,p.z);}
-  p.y+=(gh-p.y)*Math.min(1,12*dt);
-  if(p.y<gh)p.y=gh;                       // nunca afunda no terreno
-  const fx=Math.sin(cur!.heading),fz=Math.cos(cur!.heading);
-  const slope=groundHeight(p.x+fx*1.3,p.z+fz*1.3)-groundHeight(p.x-fx*1.3,p.z-fz*1.3);
-  cur!.g.rotation.x=THREE.MathUtils.lerp(cur!.g.rotation.x,-Math.atan2(slope,2.6),Math.min(1,8*dt));
+  const ud=cur!.g.userData;
+  ud.lean=THREE.MathUtils.lerp(ud.lean||0,leanT,bike?6*dt:10*dt);
+  // Ground contact: the ray-cast vehicle model (actors/vehicle-ground.ts) — the four wheels
+  // (two on a bike) rest on the exact terrain triangles, pitch and roll follow them, the
+  // underside never dips into a crest, and over a crest at speed the car flies and lands
+  // (fixed 120 Hz sub-steps along this frame's move).
+  // Anti-teleport at the bridge-like steps: a ground far ABOVE the car (an overhang, not a
+  // drivable slope) bounces it back instead of lifting it onto it.
+  if(groundHeight(p.x,p.z)-p.y>2.5){p.x=px0;p.z=pz0;cur!.speed*=-.25;}
+  let body=ud.body as VehicleBody|undefined;
+  if(!body||Math.abs(body.y-p.y)>.6){body=newBody(p.y);ud.body=body;}   // fresh car, or moved by someone else (a jump, a teleport)
+  stepBody(body,groundHeight,px0,pz0,p.x,p.z,cur!.heading,dt,bike?BIKE:CAR);
+  p.y=body.y;
+  cur!.g.rotation.order='YXZ';
+  cur!.g.rotation.set(-body.pitch,cur!.heading,body.roll+ud.lean);
   // A montanha "pesa": a gravidade na rampa segura a subida e puxa na descida, então
   // o morro respeita a física — você precisa de embalo pra escalar e ganha na descida.
+  const slope=Math.tan(body.pitch)*2.6;
   const grade=clamp(slope/2.6,-1.2,1.2);             // inclinação à frente (subida>0)
   if(Math.abs(grade)>.02){
     cur!.speed-=grade*(trac?16:13)*dt;                // componente da gravidade ao longo da pista

@@ -7,6 +7,8 @@ import {radioPlay} from '@/ui/radio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
 import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
 import {groundHeight,DIVINO_X_MIN} from '@/core/constants.ts';
+import {poseOnGround,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
+import {obbsNear} from '@/world/divinolandia/collide.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts';
@@ -99,6 +101,7 @@ declare global {
     __test?: {
       profileView: (view: {x:number;z:number;height:number;targetX:number;targetZ:number;targetHeight:number;fov:number} | null) => unknown;
       setTod: (t: number) => number;
+      obbsNear: (x: number, z: number, r: number) => unknown;
       carNear: (x: number, z: number) => {x: number; z: number} | null;
       explodeNear: (x: number, z: number) => boolean;
       cineShot: (shot: {a: CineKey; b?: CineKey; ms?: number; fov?: number; tod?: number} | null) => boolean;
@@ -572,7 +575,10 @@ window.render_game_to_text=()=>{
     ledger:economy.debugLedger(), // {balance,checkpoint,window,pending,last[]} — money as a tx ledger
     wanted:state.wanted,
     player:{x:pp.x,y:pp.y,z:pp.z,heading:state.mode==='car'?c?.heading:player.heading},
-    vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi}:null,
+    vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi,
+      heading:c.heading,crashes:c.g.userData.crashCount||0,air:(c.g.userData.body as VehicleBody|undefined)?.air||0,
+      // how far the car sits below its resting height on its wheels (> 0 = cutting into the ground)
+      sink:c.plane||c.boat?0:poseOnGround(groundHeight,c.g.position.x,c.g.position.z,c.heading,c.bike?BIKE:CAR).y-c.g.position.y}:null,
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
     boatRace:refs.getBoatRaceState?.()||null,
@@ -625,6 +631,8 @@ window.__test={
       viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},drawingBuffer:{width:size.x,height:size.y},renderScale:getRenderScale(),tod:getTod(),
       shadows:renderer.shadowMap.enabled};
   },
+  // Debug/test: the collision boxes near a world point (what a car is bumping into)
+  obbsNear:(x: number,z: number,r: number)=>obbsNear(x,z,r),
   // Video/test: jump the clock to time of day t (0..1; .5 = noon).
   setTod:(t: number)=>{setTod(t);return getTod();},
   // Video: the car (moving or parked) nearest (x,z), within 80 m, or null.
@@ -662,7 +670,7 @@ window.__test={
     if(state.mode!=='foot')return state.mode;
     const carPosition=playerCar.g.position;
     player.g.position.set(carPosition.x-1.5,carPosition.y,carPosition.z+.35);
-    enterCar();
+    enterCar(playerCar);                     // the hero car itself (the plaza's taxi parks right by it)
     return state.mode;
   },
   exitCar:()=>{exitCar();return state.mode;},

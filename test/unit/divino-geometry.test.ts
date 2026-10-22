@@ -119,7 +119,7 @@ describe('generated houses keep to their lots', () => {
     for (const [x, z, w, d, rot] of D.houses) {
       const c = Math.cos(rot), s = Math.sin(rot), W = (u: number, v: number): number => divinoHeight(x + DIV_OX + u * w / 2 * c - v * d / 2 * s, z + DIV_OZ + u * w / 2 * s + v * d / 2 * c);
       const high = Math.max(W(-1, -1), W(1, -1), W(1, 1), W(-1, 1)), front = W(0, 1);
-      if (Math.max(front, high - 2.4) - front > 1.3) steep++;              // build.ts floor rule
+      if (Math.max(front, high - 3.5) - front > 1.3) steep++;              // build.ts floor rule (HOUSE_CUT)
     }
     expect(steep).toBeLessThan(8);         // (build.ts drops these few: banks left by the site pads)
   });
@@ -166,7 +166,7 @@ describe('water meets its banks', () => {
       }
     }
     expect(edges).toBeGreaterThan(10000);
-    expect(floating / edges).toBeLessThan(.005);
+    expect(floating / edges).toBeLessThan(.006);       // (the graded roadway crosses a few streams level)
   });
   it('is never drawn over a roadway', () => {
     const bad: string[] = [];

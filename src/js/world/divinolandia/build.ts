@@ -19,6 +19,8 @@ import {message} from '@/ui/hud.ts';
 import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
 import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR} from './data.ts';
 import {addObb,setPlayBounds} from './collide.ts';
+import {parkOnGround} from '@/actors/vehicle-ground.ts';
+import {groundRange,fitBuilding,rect} from './ground-fit.ts';
 import {makeTerrainTiles,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
 import {enableTerrainLod,updateTerrainLod} from '../../../assets/models/divinolandia/terrain-tiles.ts';
 import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
@@ -324,7 +326,7 @@ export function buildDivinolandia():void{
     for(const p of lojas){
       // (on a surveyed street the shop floor is the top of its raised sidewalk: KERB_H + .15)
       const[x,z]=w([p.x,p.z]),y=H(x,z)+(SURVEYED.has(p.road)?.32:.15);
-      let lo=y;for(const[lx,lz]of lojaCorners(p))lo=Math.min(lo,H(lx+DIV_OX,lz+DIV_OZ));
+      const lo=Math.min(y,groundRange(lojaCorners(p).map(([lx,lz])=>[lx+DIV_OX,lz+DIV_OZ] as P2)).min);   // exact low under the shop
       // built at its surveyed frontage (signs and openings are laid out for it), then squeezed
       // to the frontage the planner could give it at a street corner
       const g=buildLoja({w:p.spec.w,f:{...p.spec.f,d:p.d-(p.spec.f.setback??0)},shop:p.spec.shop,kind:p.spec.kind,base:Math.min(-.4,lo-y-.4),seed:[...p.spec.id].reduce((h,c)=>(h*31+c.charCodeAt(0))%9973,7)});
@@ -343,14 +345,11 @@ export function buildDivinolandia():void{
     if(lojas.some(p=>Math.hypot(p.x-hx0,p.z-hz0)<40&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),lojaCorners(p,.3))))continue;   // a real business stands there
     if(rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),EUCLIDES_LOT))continue;   // the school's campus and its entrance
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
-    const at=(u:number,v:number):number=>H(x+u*hw/2*cs-v*hd/2*sn,z+u*hw/2*sn+v*hd/2*cs);
-    const hs=[at(-1,-1),at(1,-1),at(1,1),at(-1,1)];
-    // the lowest ground anywhere along the walls (between the corners the terrain's own
-    // triangles can dip lower than all four)
-    let low=Math.min(...hs);
-    for(let k=0;k<=8;k++){const t=k/4-1;low=Math.min(low,at(t,-1),at(t,1),at(-1,t),at(1,t));}
+    // level floor at the doorstep (street side), base down to the lowest ground under the
+    // whole footprint — exact (ground-fit.ts), so no wall ever floats over a dip
     const front=H(x-sn*hd/2,z+cs*hd/2);
-    const floor=Math.max(front,Math.max(...hs)-2.4)+.15,base=low-.6;
+    const fit=fitBuilding(rect(x,z,hw,hd,rot),[x-sn*hd/2,z+cs*hd/2],{footing:.6,maxBuried:HOUSE_CUT});
+    const floor=fit.floor,base=fit.base;
     if(floor-front>1.45)continue;                         // a place's levelled pad left it on a bank too steep for a doorstep
     casas.push({x,z,w:hw,d:hd,rot,floor,base,floors:fl,color:c,flat:!!roof,shop,seed:i+1,step:floor-front});
   }
@@ -399,11 +398,11 @@ export function buildDivinolandia():void{
   const parked:{k:'uno'|'kombi';c:number}[]=[{k:'uno',c:0xc23b4e},{k:'kombi',c:0},{k:'uno',c:0xe8e6df},{k:'uno',c:0x3b7ac2},{k:'uno',c:0x5b5f6b},{k:'kombi',c:0}];
   const spots=streetSpots(lines,px,pz,parked.length+1);
   // the pink hero car waits right next to the plaza
-  if(spots[0]){const s=spots[0];playerCar.g.position.set(s.x,H(s.x,s.z),s.z);playerCar.heading=s.h;playerCar.g.rotation.y=s.h;}
+  if(spots[0]){const s=spots[0];parkOnGround(playerCar.g,H,s.x,s.z,s.h);playerCar.heading=s.h;}
   parked.forEach((p,i)=>{
     const s=spots[i+1];if(!s)return;
     const g=p.k==='uno'?makeFiatUno(p.c):makeKombi();
-    g.position.set(s.x,H(s.x,s.z),s.z);g.rotation.y=s.h;
+    parkOnGround(g,H,s.x,s.z,s.h);                         // on its four wheels (the street is graded level across)
     idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':'KOMBI',police:false});
   });
 
@@ -460,13 +459,15 @@ function inOsmBuilding(x:number,z:number,m:number):boolean{
     return Math.abs(dx*c+dz*s)<Math.max(8,b.w)/2+m&&Math.abs(-dx*s+dz*c)<Math.max(8,b.d)/2+m;
   });
 }
+// How deep a generated house may be cut into the slope behind it (a storey: the graded
+// streets leave the ground behind the front lots higher than the doorstep on hillsides)
+const HOUSE_CUT=3.5;
 // Floor of a plain box building (Predio) on a slope: the mean ground, but buried at most
 // 1.2 m on the high side; its plinth (`base` below the floor) reaches the lowest ground.
 function slopeFloor(x:number,z:number,w:number,d:number,rot:number):{y:number;base:number}{
-  const c=Math.cos(rot),s=Math.sin(rot),hs:number[]=[];
-  for(let a=-1;a<=1;a+=.5)for(let b=-1;b<=1;b+=.5)hs.push(H(x+a*w/2*c-b*d/2*s,z+a*w/2*s+b*d/2*c));
-  const mean=hs.reduce((p,q)=>p+q,0)/hs.length,y=Math.max(mean,Math.max(...hs)-1.2);
-  return{y,base:Math.max(1.5,y-Math.min(...hs)+.4)};
+  const{min,max}=groundRange(rect(x,z,w,d,rot));               // exact, over the whole footprint
+  const y=Math.max((min+max)/2,max-1.2);
+  return{y,base:Math.max(1.5,y-min+.4)};
 }
 // the Euclides da Cunha campus (escola-euclides.ts frame: x across, z toward the street),
 // grown 1.5 m, town-local

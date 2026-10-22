@@ -9,7 +9,7 @@
 const PLAY={x0:0,x1:0,z0:0,z1:0};
 export function setPlayBounds(b:{x0:number;x1:number;z0:number;z1:number}):void{Object.assign(PLAY,b);}
 
-type Obb={x:number;z:number;hw:number;hd:number;c:number;s:number;h:number}; // h = top (world y)
+type Obb={x:number;z:number;hw:number;hd:number;c:number;s:number;h:number;tag?:string}; // h = top (world y)
 const CELL=24;
 const grid=new Map<number,Obb[]>();
 const key=(i:number,j:number):number=>i*73856093^j*19349663;
@@ -17,14 +17,30 @@ export const obbCount={n:0};
 
 // Register a box centred at (x,z), full size w×d, yaw `rot` (rotation of its local
 // +x axis toward +z, as the bake writes it), top at world y `top`.
-export function addObb(x:number,z:number,w:number,d:number,rot:number,top:number):void{
-  const o:Obb={x,z,hw:w/2,hd:d/2,c:Math.cos(rot),s:Math.sin(rot),h:top};
+export function addObb(x:number,z:number,w:number,d:number,rot:number,top:number,tag?:string):void{
+  const o:Obb={x,z,hw:w/2,hd:d/2,c:Math.cos(rot),s:Math.sin(rot),h:top,tag:tag??addObb.tag};
   const r=Math.hypot(w,d)/2+2;                             // +2: bodies (r ≤ 1.4) query only their own cell
   for(let i=Math.floor((x-r)/CELL);i<=Math.floor((x+r)/CELL);i++)
     for(let j=Math.floor((z-r)/CELL);j<=Math.floor((z+r)/CELL);j++){
       const k=key(i,j);let a=grid.get(k);if(!a){a=[];grid.set(k,a);}a.push(o);
     }
   obbCount.n++;
+}
+
+// the kind of thing being registered (set by the builder around a batch; diagnostics only)
+addObb.tag='' as string;
+
+// Debug/test: the boxes whose footprint comes within r of (x,z).
+export function obbsNear(x:number,z:number,r:number):{x:number;z:number;w:number;d:number;top:number;tag:string;dist:number}[]{
+  const out:{x:number;z:number;w:number;d:number;top:number;tag:string;dist:number}[]=[],seen=new Set<Obb>();
+  for(let i=Math.floor((x-r)/CELL);i<=Math.floor((x+r)/CELL);i++)for(let j=Math.floor((z-r)/CELL);j<=Math.floor((z+r)/CELL);j++)
+    for(const o of grid.get(key(i,j))||[]){
+      if(seen.has(o))continue;seen.add(o);
+      const dx=x-o.x,dz=z-o.z,lu=dx*o.c+dz*o.s,lv=-dx*o.s+dz*o.c;
+      const d=Math.hypot(Math.max(Math.abs(lu)-o.hw,0),Math.max(Math.abs(lv)-o.hd,0));
+      if(d<=r)out.push({x:o.x,z:o.z,w:o.hw*2,d:o.hd*2,top:o.h,tag:o.tag||'?',dist:d});
+    }
+  return out.sort((a,b)=>a.dist-b.dist);
 }
 
 // Push a circle (radius r) out of every box it overlaps; clamp to the playable area.
