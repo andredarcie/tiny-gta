@@ -34,7 +34,7 @@ const fmtDate=(d: string): string=>{try{return new Date(d+'T00:00:00').toLocaleD
 // ---- updates / changelog (driven by data/updates.json, newest-first) ----
 // The newest entry's id is what we remember as "seen": when it differs from the
 // stored value, the menu shows a NEW badge until the player opens the panel.
-const UPDATES_SEEN_KEY='tinycrime_updates_seen';
+const UPDATES_SEEN_KEY='gtadivinolandia_updates_seen';
 const UPDATES_LIST=UPDATES as Update[];
 const latestUpdateId=(): string=>(UPDATES_LIST&&UPDATES_LIST[0]&&UPDATES_LIST[0].id)||'';
 function hasUnseenUpdates(): boolean {

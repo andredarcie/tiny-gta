@@ -1,8 +1,8 @@
-# Privacy Policy — Tiny Theft Auto
+# Privacy Policy — GTA Divinolândia
 
 _Last updated: 2026-09-28_
 
-Tiny Theft Auto ("the game", "we") is a single-player, fully offline browser/Android
+GTA Divinolândia ("the game", "we") is a single-player, fully offline browser/Android
 game. This policy explains what data the game handles. **Google Play requires a
 publicly hosted privacy policy URL** — publish this file at a stable URL (e.g.
 GitHub Pages) and paste that URL into the Play Console listing and the Data Safety
@@ -37,7 +37,7 @@ Families").
 ## Your choices / deletion
 
 You can erase your saved progress any time by clearing the site data in your browser,
-or on Android via **Settings → Apps → Tiny Theft Auto → Storage → Clear data**.
+or on Android via **Settings → Apps → GTA Divinolândia → Storage → Clear data**.
 
 ## Contact
 

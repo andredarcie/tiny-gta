@@ -488,10 +488,6 @@ body.mod-shop-open #touch-controls{display:none!important}
 #logo .lg-town{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:2.4em;line-height:1;letter-spacing:.06em;
   color:var(--cal);background:var(--azul);padding:.12em .55em .16em;border-radius:.22em;
   box-shadow:inset 0 0 0 .08em var(--azul),inset 0 0 0 .16em var(--cal),.08em .1em 0 rgba(0,0,0,.4)}
-/* "SP": the green road sign */
-#logo .lg-sp{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:1.5em;line-height:1;letter-spacing:.12em;
-  color:var(--cal);background:var(--verde);padding:.12em .6em .14em;border-radius:.2em;
-  box-shadow:inset 0 0 0 .07em var(--verde),inset 0 0 0 .14em var(--cal),.06em .08em 0 rgba(0,0,0,.4)}
 #logo span{display:block}
 /* Briefing shown at the start of each mini game (see js/activities/minigame-intro.ts) */
 #mg-intro{position:fixed;inset:0;z-index:46;display:none;align-items:center;justify-content:center;

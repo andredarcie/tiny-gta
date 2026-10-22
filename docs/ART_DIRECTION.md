@@ -70,5 +70,5 @@ The interface speaks the signage of a small paulista town, not neon:
   Yellowtail stays for painted script (the car's name).
 - No glows: hard painted shadows only. Colours live in `src/css/style.css` `:root` (the old
   names `--pink/--cyan/--gold/--cream` now hold terra / plate blue / yellow / cal).
-- Title screen: "GTA Divinolândia SP" over an inline-SVG view of the town under the serra
+- Title screen: "GTA Divinolândia" over an inline-SVG view of the town under the serra
   (index.html — still no image files).

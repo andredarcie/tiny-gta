@@ -1,6 +1,6 @@
-# Android build (Tiny Theft Auto)
+# Android build (GTA Divinolândia)
 
-Tiny Theft Auto ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
+GTA Divinolândia ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
 bundles the production web build (`dist/`) straight into a native APK, so the game
 runs **fully offline** inside an Android System WebView — no server to host, no
 PWA hosting, no Digital Asset Links. The game has no online features at all (fonts
@@ -117,11 +117,11 @@ What this repo already satisfies:
 
 What you must do **in the Play Console / before going public** (can't live in the repo):
 
-- ✅ **Trademark / IP — addressed.** The app ships as **"Tiny Theft Auto"** (`app_name`/
+- ⚠️ **Trademark / IP — RISK.** The app ships as **"GTA Divinolândia"** (`app_name`/
   `title_activity_main` in `strings.xml`, the title-screen logo, the page `<title>`,
-  and `appName` in `capacitor.config.json`) and carries no third-party game branding,
-  so it doesn't lean on any existing open-world franchise's trademark that Play's IP
-  policy would flag. Keep the **store listing, icon, and screenshots** original too.
+  and `appName` in `capacitor.config.json`). "GTA" is a third-party trademark, which
+  Play's IP policy is likely to flag. The owner's call. Keep the **store listing, icon,
+  and screenshots** original either way.
   (`applicationId` stays `com.andredarcie.tinygta` — an internal id, not user-visible.)
 
 - 📋 **Privacy policy URL** — the game collects no data, but Play still asks for a
@@ -129,7 +129,7 @@ What you must do **in the Play Console / before going public** (can't live in th
   the listing.
 - 📋 **Data Safety form** — fill it using the table at the bottom of `PRIVACY.md`.
 - 📋 **Content rating (IARC questionnaire)** — declare cartoon/action violence;
-  Tiny Theft Auto is **not** a "Designed for Families" title.
+  GTA Divinolândia is **not** a "Designed for Families" title.
 - 📋 **Target audience & content** — set Teen/Mature, not directed at children.
 - 📋 **Store listing assets** — 512×512 hi-res icon, 1024×500 feature graphic, and
   at least 2 landscape screenshots.

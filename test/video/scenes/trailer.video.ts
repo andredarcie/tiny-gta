@@ -16,9 +16,9 @@ const K = (x: number, z: number, h: number, tx: number, tz: number, th: number):
 test('video: trailer', async ({ page }) => {
   test.setTimeout(420_000);
   const d = await Director.start(page, 'trailer', {
-    title: 'DIVINOLÂNDIA',
-    subtitle: 'O trailer oficial',
-    outro: 'TINY CRIME',
+    title: 'TRAILER OFICIAL',
+    subtitle: 'Bem-vindo ao interior',
+    outro: 'GTA DIVINOLÂNDIA',
     outroSub: 'Divinolândia te espera',
     outroVo: 'final',
     music: 2,                                   // the groove station under the whole trailer

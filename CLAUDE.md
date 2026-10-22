@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Tiny Crime — a browser open-world-style game built with **TypeScript (strict)** ES modules and Three.js, bundled by Vite. No UI framework. The whole world (city, terrain, characters, vehicles, effects) is generated procedurally in code; there are **no image/model binary assets** loaded at runtime — textures are drawn to `<canvas>` and geometry is built from Three.js primitives.
+GTA Divinolândia — a browser open-world-style game built with **TypeScript (strict)** ES modules and Three.js, bundled by Vite. No UI framework. The whole world (city, terrain, characters, vehicles, effects) is generated procedurally in code; there are **no image/model binary assets** loaded at runtime — textures are drawn to `<canvas>` and geometry is built from Three.js primitives.
 
 ## Commands
 
