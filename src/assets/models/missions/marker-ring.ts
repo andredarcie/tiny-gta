@@ -13,4 +13,4 @@ export function makeMarkerRing(color=0x19e3ff): THREE.Mesh{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Marker ring',build:(o:{color?:number})=>makeMarkerRing(o.color??0x19e3ff)};
+export default {category:'Missões',label:'Anel marcador',build:(o:{color?:number})=>makeMarkerRing(o.color??0x19e3ff)};

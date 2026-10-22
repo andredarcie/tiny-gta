@@ -15,7 +15,7 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. A ação CRUSH já fica indisponível durante uma sessão (ver a trava
 // nas zoneActions do input/hud).
-new MiniGame({id:MiniGameId.CAR_CRUSHER,name:'Scrap Crusher',exclusive:false});
+new MiniGame({id:MiniGameId.CAR_CRUSHER,name:'Ferro-Velho',exclusive:false});
 
 // SCRAP CRUSHER — minigame estilo "sucata/esmagador de carros" do open-world. Uma prensa
 // industrial fica fixa numa interseção da cidade. O jogador entra de carro na
@@ -175,14 +175,14 @@ function dropFromLists(c: any){
 function startCrush(){
   if(crushing)return;
   // regra 1x/dia: já usou a prensa hoje? avisa e não começa.
-  if(refs.mgPlayedToday?.(MiniGameId.CAR_CRUSHER)){message('SCRAP CRUSHER - ALREADY USED TODAY, COME BACK TOMORROW','var(--pink)');return;}
+  if(refs.mgPlayedToday?.(MiniGameId.CAR_CRUSHER)){message('FERRO-VELHO - JÁ USADO HOJE, VOLTE AMANHÃ','var(--pink)');return;}
   car=cur;                 // captura o carro atual ANTES de qualquer coisa
   if(!car)return;
   // RECUSA veículos únicos/especiais: destruí-los os removeria do mundo pra
   // sempre (o táxi/viatura/etc. nunca voltariam direito). Mostra aviso e aborta.
   if(isSpecialVehicle(car)){
     car=null;
-    message("CAN'T CRUSH THIS VEHICLE",'var(--pink)');
+    message('NÃO DÁ PRA PRENSAR ESTE VEÍCULO','var(--pink)');
     blip([196,147],.12,'square',.16);
     return;
   }
@@ -194,7 +194,7 @@ function startCrush(){
   // sucata: aleatório uniforme em [minScrap, maxScrap]
   reward=REWARDS.carCrusher.minScrap+Math.floor(Math.random()*(REWARDS.carCrusher.maxScrap-REWARDS.carCrusher.minScrap+1));
   press.position.y=PRESS_UP;
-  message('SCRAP CRUSHER - SCRAPPING...','var(--cyan)');
+  message('FERRO-VELHO - PRENSANDO...','var(--cyan)');
   blip([330,247,196],.1,'sawtooth',.18);
 }
 
@@ -214,7 +214,7 @@ function payAndScrap(){
     const p=scrap.g.position;
     spawnImpactFX(p.x,PAD_Y,p.z);
   }
-  bigText('SCRAPPED +$'+reward,'var(--gold)');
+  bigText('PRENSADO +R$'+reward,'var(--gold)');
   setTimeout(hideBig,1100);
   blip([523,659,784,1047],.09,'square',.2);
 }
@@ -261,7 +261,7 @@ export function updateCarCrusher(dt: number){
     if(k>=1){
       press.position.y=PRESS_UP;
       crushing=false;phase='idle';
-      message('SCRAP CRUSHER READY','var(--cyan)');
+      message('FERRO-VELHO LIBERADO','var(--cyan)');
     }
   }
 }
@@ -276,13 +276,13 @@ export function updateCarCrusher(dt: number){
   const p=cur.g.position;
   if(Math.hypot(p.x-PAD.x,p.z-PAD.z)>PAD_RANGE||Math.abs(cur.speed)>STOP_SPEED)return null;
   if(isSpecialVehicle(cur))
-    return{label:'CRUSH',prompt:"CAN'T CRUSH THIS VEHICLE",enabled:false,run(){}};
-  return{label:'CRUSH',prompt:'CRUSH THIS CAR',enabled:true,run(){startCrush();}};
+    return{label:'PRENSAR',prompt:'NÃO DÁ PRA PRENSAR ESTE VEÍCULO',enabled:false,run(){}};
+  return{label:'PRENSAR',prompt:'PRENSAR ESTE CARRO',enabled:true,run(){startCrush();}};
 });
 
 // blip fixo no radar/mapa (ícone 'crusher': desconhecido desenha genérico, ok)
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
-  [{x:PAD.x,z:PAD.z,icon:'crusher',color:'#9aa3ad',label:'SCRAP CRUSHER'}]);
+  [{x:PAD.x,z:PAD.z,icon:'crusher',color:'#9aa3ad',label:'FERRO-VELHO'}]);
 
 // debug
 refs.getCarCrusherState=()=>({crushing,phase});

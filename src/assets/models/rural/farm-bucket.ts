@@ -55,4 +55,4 @@ export function makeFarmBucket(): THREE.Group{
   return g;
 }
 
-export default {category:'Rural',label:'Farm bucket',build:()=>{const b=makeFarmBucket();b.userData.setWater(.7);return b;},zoom:2.4};
+export default {category:'Rural',label:'Balde da roça',build:()=>{const b=makeFarmBucket();b.userData.setWater(.7);return b;},zoom:2.4};

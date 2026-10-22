@@ -23,4 +23,4 @@ export function makeBudTray(): THREE.Group{
   return g;
 }
 
-export default {category:'Rural',label:'Bud trim tray',build:makeBudTray,zoom:3};
+export default {category:'Rural',label:'Bandeja de poda',build:makeBudTray,zoom:3};

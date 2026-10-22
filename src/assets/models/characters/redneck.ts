@@ -45,7 +45,7 @@ export function buildRedneck(opts: {color?: number; pants?: number}={}): THREE.G
   return g;
 }
 
-export default {category:'Characters',label:'Redneck',build:buildRedneck};
+export default {category:'Personagens',label:'Caipira',build:buildRedneck};
 
 export function makeRedneck(opts?: {color?: number; pants?: number}): THREE.Group{
   const g=buildRedneck(opts);scene.add(g);return g;

@@ -20,4 +20,4 @@ export function makeStarField(): {points: THREE.Points; material: THREE.PointsMa
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Daynight',label:'Star field',build:()=>makeStarField()};
+export default {category:'Céu',label:'Céu estrelado',build:()=>makeStarField()};

@@ -32,7 +32,7 @@ function keepOutTex(): THREE.CanvasTexture {
   x.fillStyle='#8a1f1f';x.fillRect(8,8,240,144);
   x.fillStyle='#e9e2cf';x.fillRect(18,18,220,124);
   x.fillStyle='#8a1f1f';x.textAlign='center';x.textBaseline='middle';
-  x.font='900 46px monospace';x.fillText('KEEP',128,56);x.fillText('OUT',128,106);
+  x.font='900 46px monospace';x.fillText('NÃO',128,56);x.fillText('ENTRE',128,106);
   signTex=new THREE.CanvasTexture(c);signTex.colorSpace=THREE.SRGBColorSpace;
   return signTex;
 }
@@ -182,7 +182,7 @@ function build(): THREE.Group {
   return g;
 }
 
-export default {category:'Rural',label:'Abandoned fort',build};
+export default {category:'Rural',label:'Forte abandonado',build};
 
 // The compound stands on its pad up in the serra south of the town (sites-table.ts
 // 'fort'), gate toward -z; the Site only moves it (no turn), so the courtyard points

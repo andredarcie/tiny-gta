@@ -31,7 +31,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Broadleaf tree',build};
+export default {category:'Objetos',label:'Árvore frondosa',build};
 
 // Broadleaf tree → a random code-built tree variant, baked into the merged nature chunks
 // (see nature/kit.ts + nature/batch.ts). build() above is the model-viewer gallery piece.

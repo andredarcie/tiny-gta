@@ -50,19 +50,19 @@ function bribeFor(val: number){
 // obvious). The cop's demand carries the real bribe number.
 function buildLines(bribe: number){
   const lines=[
-    "OFFICER: Evening. Funny spot for a stroll — middle of nowhere, great big backpack.",
-    "YOU: Birdwatching. Real rare birds out this way, officer.",
-    "OFFICER: Birds. Sure. So you won't mind me peeking inside the little pharmacy you're wearing?",
-    "YOU: Okay, okay. It's not what it looks like. It's exactly what it looks like.",
-    "OFFICER: Caught you red-handed, kid — pack stuffed to the zipper. That's a long, long vacation.",
-    "YOU: Or... I make a generous, fully tax-deductible donation to the policeman's wallet fund?",
+    "POLICIAL: Boa noite. Lugar engraçado pra passear — no meio do nada, com essa mochilona.",
+    "VOCÊ: Observando passarinho. Tem uns bem raros por aqui, seu guarda.",
+    "POLICIAL: Passarinho. Sei. Então não se importa se eu der uma olhada nessa farmacinha nas suas costas?",
+    "VOCÊ: Tá bom, tá bom. Não é o que parece. É exatamente o que parece.",
+    "POLICIAL: Te peguei no flagra, moleque — mochila cheia até o zíper. Isso dá umas férias bem longas.",
+    "VOCÊ: Ou... eu faço uma doação generosa, dedutível do imposto, pro fundo da carteira do policial?",
   ];
   if(bribe>0){
-    lines.push(`OFFICER: Now you're speaking my language. $${bribe}, and this little forest never happened.`);
-    lines.push("YOU: Pleasure doing business. You never saw me, I never saw your second income.");
+    lines.push(`POLICIAL: Agora você tá falando a minha língua. R$${bribe}, e esse matinho aqui nunca existiu.`);
+    lines.push("VOCÊ: Foi um prazer negociar. Você nunca me viu, eu nunca vi o seu bico.");
   }else{
-    lines.push("OFFICER: Broke too? Tragic. Fine — I'll keep the merchandise and we'll call it even.");
-    lines.push("YOU: A robbery AND a lecture. Best night ever.");
+    lines.push("POLICIAL: Duro também? Que tragédia. Beleza — eu fico com a mercadoria e a gente fica quite.");
+    lines.push("VOCÊ: Um assalto E um sermão. Melhor noite da minha vida.");
   }
   return lines;
 }
@@ -84,7 +84,7 @@ export function startDrugBust(){
   const cop=makePed(0x21407e,0x141d35); // dark-blue uniform reads as police
   const cx=WOODS.x+2.6,cz=WOODS.z+.5;
   cop.position.set(cx,groundHeight(cx,cz),cz);
-  copNpc=new Npc(cop,{kind:'officer',hp:NPC_HP_TOUGH,register:false,area:'Roadside bust'});
+  copNpc=new Npc(cop,{kind:'officer',hp:NPC_HP_TOUGH,register:false,area:'Batida na estrada'});
 
   playCutscene(cop,COP_VOICE,buildLines(bribe),()=>finishDrugBust(bribe));
 }
@@ -95,8 +95,8 @@ function finishDrugBust(bribe: number){
   refs.seizeDrugBackpack?.(); // the cop pockets the stash; ends the delivery run
   state.mode='foot';
   message(bribe>0
-    ?`YOU PAID THE COP $${bribe}. STASH SEIZED — NOW WALK HOME.`
-    :'THE COP TOOK YOUR STASH AND LEFT YOU IN THE WOODS.','var(--blue)');
+    ?`VOCÊ PAGOU R$${bribe} PRO POLICIAL. A ERVA FOI APREENDIDA — AGORA VOLTA A PÉ.`
+    :'O POLICIAL LEVOU SUA ERVA E TE LARGOU NO MATO.','var(--blue)');
 }
 
 refs.isCarryingDrugs=isCarryingDrugs;

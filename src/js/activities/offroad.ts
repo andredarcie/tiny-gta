@@ -221,7 +221,7 @@ function finishRace(){
   hideRaceHud();
 }
 
-function abortRace(text='RACE ABANDONED',col='var(--pink)'){
+function abortRace(text='CORRIDA ABANDONADA',col='var(--pink)'){
   finishRace();
   // morte/prisão no meio da corrida: o cut de WASTED/BUSTED já assumiu o banner;
   // não apaga nem sobrescreve com "RACE ABANDONED".
@@ -233,9 +233,9 @@ function abortRace(text='RACE ABANDONED',col='var(--pink)'){
 function loseRace(){
   markMiniGamePlayed(game.id);
   finishRace();
-  bigText('YOU LOST','var(--pink)');
+  bigText('VOCÊ PERDEU','var(--pink)');
   scheduleHide(2200);
-  message('THE RIVALS FINISHED FIRST - NO PRIZE','var(--pink)');
+  message('OS RIVAIS CHEGARAM PRIMEIRO - SEM PRÊMIO','var(--pink)');
   blip([330,247,196],.12,'sawtooth',.18);
 }
 
@@ -250,12 +250,12 @@ function completeRace(){
   economy.earn(paid,'offroad');
   // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
-  const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
+  const ord=place+'º';
   finishRace();
-  bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');
+  bigText(place===1?'VOCÊ VENCEU!':`${ord} LUGAR`,place===1?'var(--gold)':'var(--cyan)');
   scheduleHide(2200);
-  message(paid>0?`${ord} OF ${total} - +$${paid}${bonus>0?' SPEED BONUS!':''}`
-    :`${ord} OF ${total} - NO PRIZE`,paid>0?'var(--gold)':'var(--pink)');
+  message(paid>0?`${ord} DE ${total} - +R$${paid}${bonus>0?' BÔNUS DE VELOCIDADE!':''}`
+    :`${ord} DE ${total} - SEM PRÊMIO`,paid>0?'var(--gold)':'var(--pink)');
   blip(place===1?[523,659,784,1047]:[440,330],.09,'sine',.18);
 }
 
@@ -271,16 +271,16 @@ function updateRaceHud(){
   if(phase==='countdown'){
     raceHud.innerHTML=`
       <div class="race-label">OFF-ROAD</div>
-      <div class="race-main"><span>GET READY</span><b>${Math.max(1,Math.ceil(cdT))}</b></div>`;
+      <div class="race-main"><span>PREPARE-SE</span><b>${Math.max(1,Math.ceil(cdT))}</b></div>`;
     return;
   }
   const t=raceT,mm=Math.floor(t/60),ss=Math.floor(t%60);
   const clock=`${mm}:${String(ss).padStart(2,'0')}`;
   raceHud.innerHTML=`
     <div class="race-label">OFF-ROAD</div>
-    <div class="race-main"><span>POS</span><b>${playerPlace()}/${racers.length+1}</b></div>
-    <div class="race-row"><span>CP</span><b>${Math.min(playerCp+1,route.length)}/${route.length}</b></div>
-    <div class="race-row"><span>TIME</span><b>${clock}</b></div>`;
+    <div class="race-main"><span>POSIÇÃO</span><b>${playerPlace()}/${racers.length+1}</b></div>
+    <div class="race-row"><span>PC</span><b>${Math.min(playerCp+1,route.length)}/${route.length}</b></div>
+    <div class="race-row"><span>TEMPO</span><b>${clock}</b></div>`;
 }
 
 // marcadores: mostra SÓ o checkpoint atual (o próximo que o jogador tem que
@@ -371,7 +371,7 @@ export function updateOffroad(dt: number){
       if(n!==lastCdShown){lastCdShown=n;blip([523],.12,'square',.18);} // bip por número
     }else{
       phase='racing';freezePos=null;state.controlsLocked=false;
-      bigText('GO!','var(--gold)');scheduleHide(700);
+      bigText('VAI!','var(--gold)');scheduleHide(700);
       blip([784,1047],.14,'square',.22);
       raceMusicOn();
     }

@@ -21,7 +21,7 @@ const faceTex=makeTex(320,140,(x,w,h)=>{
   x.fillStyle='#3c9163';x.fillRect(0,0,w,h);
   x.strokeStyle='#e9f5ec';x.lineWidth=4;x.strokeRect(9,9,w-18,h-18);
   x.fillStyle='#eafaef';x.textAlign='center';x.textBaseline='middle';
-  x.font='bold 70px Georgia, serif';x.fillText('$',w/2,h/2+3);
+  x.font='bold 70px Georgia, serif';x.fillText('R$',w/2,h/2+3);
 });
 
 
@@ -75,4 +75,4 @@ export function makeMoneyDrop({pickup=true}: {pickup?:boolean}={}): THREE.Group{
 }
 
 // Model descriptor for the model-viewer (auto-discovered). No glow ring in the gallery.
-export default {category:'Missions',label:'Money drop',build:()=>makeMoneyDrop({pickup:false})};
+export default {category:'Missões',label:'Dinheiro no chão',build:()=>makeMoneyDrop({pickup:false})};

@@ -166,7 +166,7 @@ function recolorRole(g: THREE.Object3D,role: string,color: number): void{
 }
 
 // Padrão de modelo: build() puro; descriptor pro model-viewer (descoberta automática).
-export default {category:'Characters',label:'Pedestrian',build:buildToonPlayer};
+export default {category:'Personagens',label:'Pedestre',build:buildToonPlayer};
 
 // Gameplay uses makePed(color,pantsColor) and expects the ped already in the scene.
 export function makePed(color: number,pantsColor?: number): THREE.Group{

@@ -52,15 +52,15 @@ addNightclub(solids); // the building on its Rua São José lot + the off-map ro
 export const club=new ClubInterior({
   group:clubInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:CLUB_DOOR,spawnOut:CLUB_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
-  fx:clubFx,enterMsg:'WELCOME TO THE FLAMINGO',enterColor:'var(--pink)',
+  fx:clubFx,enterMsg:'BEM-VINDO À BOATE FLAMINGO',enterColor:'var(--pink)',
   exterior:{...CLUB_SITE.P(-154,-22),r:24}, // fachada: gangue não chega perto
   spawnOutHeading:CLUB_SITE.head(-Math.PI/2), // stepping out faces the street
-  mapIcon:{id:'club',label:'THE FLAMINGO',icon:'club',color:'#ff2e88'},
+  mapIcon:{id:'club',label:'BOATE FLAMINGO',icon:'club',color:'#ff2e88'},
 });
 
 // Give every clubber a name (and the women the female look). They dance for good
 // (the bounce/sway in updateFx).
-for(const d of clubFx.dancers){nameInteriorNpc(d.g,'dancer','The Flamingo');}
+for(const d of clubFx.dancers){nameInteriorNpc(d.g,'dancer','Boate Flamingo');}
 
 // jogador no meio da pista, dentro da boate (HUD/interact usam isto)
 function clubDanceNear(){
@@ -72,16 +72,16 @@ function clubDanceNear(){
 // Rótulo do HUD pra ação DANCE (só na pista, com o mini-game fechado).
 export function clubDanceState(){
   if(!clubDanceNear()||danceGameActive())return null;
-  return{label:'DANCE',prompt:'HIT THE DANCE FLOOR',enabled:true};
+  return{label:'DANÇAR',prompt:'CAIR NA PISTA',enabled:true};
 }
 
 // Ação na pista (chamada pelo performInteract): abre o mini-game de ritmo.
 export function clubDance(){
   if(!clubDanceNear())return false;
   // regra 1x/dia: já dançou hoje? avisa e não abre a pista.
-  if(refs.mgPlayedToday?.(MiniGameId.DANCE)){message('ALREADY DANCED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
+  if(refs.mgPlayedToday?.(MiniGameId.DANCE)){message('JÁ DANÇOU HOJE - VOLTE AMANHÃ','var(--pink)');return true;}
   // briefing com o top 5 antes de dançar; a pista abre quando o jogador "passa"
-  openMiniGameIntro(MiniGameId.DANCE,'Dance Fever',()=>openDanceGame({onFinish:onDanceFinish}));
+  openMiniGameIntro(MiniGameId.DANCE,'Febre da Dança',()=>openDanceGame({onFinish:onDanceFinish}));
   return true;
 }
 
@@ -89,11 +89,11 @@ export function clubDance(){
 function onDanceFinish(info:{won:boolean;grade:string;score:number;maxCombo:number;reward:number;accuracy:number;newBest:boolean}){
   if(info.reward>0){
     economy.earn(info.reward,'dance');
-    message(`GRADE ${info.grade}! THE CROWD TIPS YOU $${info.reward}`,'var(--gold)');
+    message(`NOTA ${info.grade}! A GALERA TE DEU R$${info.reward} DE GORJETA`,'var(--gold)');
   }else if(info.won){
-    message(`GRADE ${info.grade} - KEEP PRACTICING FOR A TIP`,'var(--cream)');
+    message(`NOTA ${info.grade} - CONTINUE TREINANDO PRA GANHAR GORJETA`,'var(--cream)');
   }else{
-    message('THE CROWD BOOED YOU OFF THE FLOOR','var(--pink)');
+    message('A GALERA TE VAIOU E TE TIROU DA PISTA','var(--pink)');
   }
   markMiniGamePlayed(MiniGameId.DANCE);
 }

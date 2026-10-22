@@ -53,7 +53,7 @@ const FISTS: FpHandsPose={
 
 // Melee --------------------------------------------------------------------
 export const FIST=new MeleeWeapon({
-  id:'fist',name:'FIST',slot:1,fireRate:.5,
+  id:'fist',name:'SOCO',slot:1,fireRate:.5,
   hold:{fpHands:FISTS},
   extra:{range:1.5,knock:5,lethal:false}}); // punches stagger/knock back; several down a person
 
@@ -64,13 +64,13 @@ export const FIST=new MeleeWeapon({
 // weapons.js (pistol = two-handed clasp, smg/rifle = support hand on the foregrip,
 // shoulder = launcher braced on the shoulder).
 const BAT=new MeleeWeapon({
-  id:'bat',name:'BASEBALL BAT',slot:2,fireRate:.55,price:25,
+  id:'bat',name:'TACO DE BEISEBOL',slot:2,fireRate:.55,price:25,
   makeModel:makeBaseballBatModel,hold:{scale:.86,fpHands:BAT_HANDS},
   extra:{range:2.1,knock:9,lethal:true}});
 
 // Small firearms -----------------------------------------------------------
 const PISTOL=new FirearmWeapon({
-  id:'pistol',name:'PISTOL',slot:3,fireRate:.18,maxAmmo:90,price:100,
+  id:'pistol',name:'PISTOLA',slot:3,fireRate:.18,maxAmmo:90,price:100,
   makeModel:makePistolModel,hold:{scale:.26,y:.02,z:.03,grip:'pistol',fpHands:TWO_HANDED_PISTOL},
   recoil:{kick:.09,shake:.08,crosshair:1},
   extra:{range:52,speed:86,damage:1}});
@@ -82,7 +82,7 @@ const UZI=new FirearmWeapon({
   extra:{range:42,speed:88,damage:1,spread:.045}});
 
 const SHOTGUN=new FirearmWeapon({
-  id:'shotgun',name:'SHOTGUN',slot:5,fireRate:.8,maxAmmo:30,price:500,
+  id:'shotgun',name:'ESPINGARDA',slot:5,fireRate:.8,maxAmmo:30,price:500,
   makeModel:makeShotgunModel,hold:{z:-.03,scale:.75,grip:'rifle',fpHands:RIFLE_HANDS},
   recoil:{kick:.18,shake:.13,crosshair:1},
   extra:{range:30,speed:84,damage:.6,pellets:8,spread:.1,vol:1.1}});
@@ -101,35 +101,35 @@ const M16=new FirearmWeapon({
   extra:{range:62,speed:96,damage:2,spread:.025}});
 
 const SNIPER=new FirearmWeapon({
-  id:'sniper',name:'SNIPER RIFLE',slot:8,fireRate:1.2,maxAmmo:20,price:1800,
+  id:'sniper',name:'FUZIL DE PRECISÃO',slot:8,fireRate:1.2,maxAmmo:20,price:1800,
   makeModel:makeSniperRifleModel,hold:{z:-.05,scale:.9,grip:'rifle',fpHands:RIFLE_HANDS},
   recoil:{kick:.22,shake:.16,crosshair:1},
   extra:{range:130,speed:140,damage:4,vol:1.2}});
 
 // Thrown -------------------------------------------------------------------
 const GRENADE=new ThrownWeapon({
-  id:'grenade',name:'GRENADE',slot:9,maxAmmo:12,price:120,
+  id:'grenade',name:'GRANADA',slot:9,maxAmmo:12,price:120,
   makeModel:makeGrenadeModel,hold:{x:.02,y:-.02,fpHands:SINGLE_HAND},
   extra:{kind:'grenade',fuse:1.7,power:15}});
 
 const MOLOTOV=new ThrownWeapon({
-  id:'molotov',name:'MOLOTOV COCKTAIL',slot:10,maxAmmo:12,price:100,
+  id:'molotov',name:'COQUETEL MOLOTOV',slot:10,maxAmmo:12,price:100,
   makeModel:makeMolotovModel,hold:{x:.02,y:-.04,fpHands:SINGLE_HAND},
   extra:{kind:'molotov',power:15}});
 
 // Heavy --------------------------------------------------------------------
 const ROCKET=new RocketWeapon({
-  id:'rocket',name:'ROCKET LAUNCHER',maxAmmo:15,price:2200,
+  id:'rocket',name:'BAZUCA',maxAmmo:15,price:2200,
   makeModel:makeRocketLauncherModel,hold:{z:-.05,y:.14,scale:.75,grip:'shoulder',fpHands:ROCKET_HANDS}});
 
 const FLAME=new FlamethrowerWeapon({
-  id:'flame',name:'FLAMETHROWER',maxAmmo:500,price:2000,
+  id:'flame',name:'LANÇA-CHAMAS',maxAmmo:500,price:2000,
   makeModel:makeFlamethrowerModel,hold:{z:-.02,scale:.9,grip:'rifle',fpHands:RIFLE_HANDS},
   extra:{range:7}});
 
 // Special ------------------------------------------------------------------
 const DETONATOR=new DetonatorWeapon({
-  id:'detonator',name:'DETONATOR',price:300,
+  id:'detonator',name:'DETONADOR',price:300,
   makeModel:makeDetonatorModel,hold:{y:-.06,fpHands:SINGLE_HAND}});
 
 // Ordem do ciclo (Fist primeiro, mais "leves" → mais "pesadas").

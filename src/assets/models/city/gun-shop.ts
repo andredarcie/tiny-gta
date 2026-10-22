@@ -86,7 +86,7 @@ function signTexture():THREE.CanvasTexture{
   x.font='900 46px monospace';
   x.shadowColor='#f5c518';x.shadowBlur=22;
   x.fillStyle='#fff3c4';
-  for(let k=0;k<3;k++)x.fillText('AMMO DEPOT',256,64); // passadas extras = glow
+  for(let k=0;k<3;k++)x.fillText('LOJA DE ARMAS',256,64); // passadas extras = glow
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
@@ -102,7 +102,7 @@ function labelTexture(name:string,price:number):THREE.CanvasTexture{
   while(x.measureText(name).width>236&&fs>10){fs-=2;x.font=`900 ${fs}px monospace`;}
   x.lineWidth=6;x.strokeStyle='#000';x.strokeText(name,128,30);
   x.fillStyle='#ffe9b0';x.fillText(name,128,30);
-  const pt=`$${price}`;
+  const pt=`R$${price}`;
   x.font='900 30px monospace';
   x.lineWidth=6;x.strokeStyle='#000';x.strokeText(pt,128,70);
   x.fillStyle='#f5c518';x.fillText(pt,128,70); // dourado do AMMO DEPOT
@@ -125,8 +125,8 @@ function panelTexture(lines:string,{bg='#17130f',fg='#ffe7b0',sub='#f5c518'}:{bg
     x.font=`900 ${fs}px monospace`;
     x.lineWidth=7;x.strokeStyle='#000';
     const y=92+i*58-(arr.length-1)*22;
-    x.strokeText(line,256,y);
-    x.fillStyle=i===0?fg:sub;x.fillText(line,256,y);
+    x.strokeText(line,256,y,470); // maxWidth: long lines squeeze to fit
+    x.fillStyle=i===0?fg:sub;x.fillText(line,256,y,470);
   });
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
@@ -291,7 +291,7 @@ function addShootingRange(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.16,2.75,2.25),darkM);
   exitDoor.position.set(RANGE_BOUNDS.x0+.34,1.38,RANGE_EXIT.z);
   exitDoor.castShadow=true;exitDoor.receiveShadow=true;group.add(exitDoor);
-  const exitSign=makePanel('EXIT',1.15,.42,{bg:'#17130f',fg:'#ffe7b0',sub:'#f5c518'});
+  const exitSign=makePanel('SAÍDA',1.15,.42,{bg:'#17130f',fg:'#ffe7b0',sub:'#f5c518'});
   exitSign.position.set(RANGE_BOUNDS.x0+.45,2.85,RANGE_EXIT.z);
   exitSign.rotation.y=Math.PI/2;group.add(exitSign);
   gunShopFx.rangeExitArrow=makeDoorArrow();
@@ -302,7 +302,7 @@ function addShootingRange(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
     color:0x7a6848,transparent:true,opacity:.94,side:THREE.DoubleSide
   }));
   weaponMat.rotation.x=-Math.PI/2;weaponMat.position.set(-716.7,.052,-435.8);group.add(weaponMat);
-  const weaponSign=makePanel('TRAINING WEAPONS',4.4,.7,{bg:'#17130f',fg:'#fff1c0',sub:'#f5c518'});
+  const weaponSign=makePanel('ARMAS DE TREINO',4.4,.7,{bg:'#17130f',fg:'#fff1c0',sub:'#f5c518'});
   weaponSign.position.set(RANGE_BOUNDS.x0+.42,3.7,-435.8);
   weaponSign.rotation.y=Math.PI/2;group.add(weaponSign);
   const weaponRail=new THREE.Mesh(new THREE.BoxGeometry(.12,2.2,14.0),steelM);
@@ -337,7 +337,7 @@ function addShootingRange(solids:{x0:number,x1:number,z0:number,z1:number,h:numb
     l.position.set(x,5.35,cZ);group.add(l);
   }
 
-  const rangeRules=makePanel('SAFETY LINE\nEYE AND EAR PROTECTION',4.5,1.1,
+  const rangeRules=makePanel('LINHA DE SEGURANÇA\nUSE PROTEÇÃO DE OLHOS E OUVIDOS',4.5,1.1,
     {bg:'#16140f',fg:'#fff1c0',sub:'#f5c518'});
   rangeRules.position.set(-707.1,4.15,RANGE_BOUNDS.z0+.45);
   rangeRules.rotation.y=Math.PI;group.add(rangeRules);
@@ -426,16 +426,16 @@ export function addGunShop(solids:{x0:number,x1:number,z0:number,z1:number,h:num
   const rangeDoor=new THREE.Mesh(new THREE.BoxGeometry(.14,2.7,2.25),darkM);
   rangeDoor.position.set(0,0,1.12);rangeDoor.castShadow=true;rangeDoor.receiveShadow=true;
   rangeDoorPivot.add(rangeDoor);gunShopInterior.add(rangeDoorPivot);
-  const rangeDoorSign=makePanel('RANGE',1.1,.42,{bg:'#17130f',fg:'#ffe7b0',sub:'#f5c518'});
+  const rangeDoorSign=makePanel('ESTANDE',1.1,.42,{bg:'#17130f',fg:'#ffe7b0',sub:'#f5c518'});
   rangeDoorSign.position.set(-785.5,3.25,RANGE_ENTRY.z);
   rangeDoorSign.rotation.y=Math.PI/2;gunShopInterior.add(rangeDoorSign);
   gunShopFx.rangeEntryArrow=makeDoorArrow();
   gunShopFx.rangeEntryArrow.position.set(RANGE_ENTRY.x-.85,1.7,RANGE_ENTRY.z);
   gunShopInterior.add(gunShopFx.rangeEntryArrow);
   gunShopFx.rangeDoor={pivot:rangeDoorPivot,open:0};
-  const rules=makePanel('ID REQUIRED\nNO REFUNDS',3.5,1.55,{bg:'#211813',fg:'#fff4cf',sub:'#f5c518'});
+  const rules=makePanel('DOCUMENTO OBRIGATÓRIO\nNÃO FAZEMOS DEVOLUÇÃO',3.5,1.55,{bg:'#211813',fg:'#fff4cf',sub:'#f5c518'});
   rules.position.set(-813.85,3.4,-385.2);rules.rotation.y=Math.PI/2;gunShopInterior.add(rules);
-  const wallLogo=makePanel('AMMO DEPOT\nLICENSED DEALER',5.2,1.55,
+  const wallLogo=makePanel('LOJA DE ARMAS\nREVENDEDOR AUTORIZADO',5.2,1.55,
     {bg:'#1b1209',fg:'#fff3c4',sub:'#f5c518'});
   wallLogo.position.set(-800,4.55,-390.88);gunShopInterior.add(wallLogo);
 
@@ -454,8 +454,8 @@ export function addGunShop(solids:{x0:number,x1:number,z0:number,z1:number,h:num
   const rackWeapons=ARSENAL.filter((w:any)=>['pistol','uzi','shotgun','ak47','m16','sniper','rocket','flame'].includes(w.id));
   rackWeapons.slice(0,4).forEach((w:any,i:number)=>wallWeapon(w,-808+i*2.1,3.15,-390.45,Math.PI/2,.95));
   rackWeapons.slice(4).forEach((w:any,i:number)=>wallWeapon(w,-785.52,3.1,-388+i*2.15,0,.95));
-  addAmmoShelf(-790.6,-390.35,0,'AMMO');
-  addAmmoShelf(-808.5,-369.35,Math.PI,'GEAR');
+  addAmmoShelf(-790.6,-390.35,0,'MUNIÇÃO');
+  addAmmoShelf(-808.5,-369.35,Math.PI,'EQUIPAMENTO');
   addShootingRange(solids);
   addSecurityCamera(-813.9,5.1,-389.9,Math.PI/2);
   addSecurityCamera(-785.55,5.1,-370.2,-Math.PI/2);

@@ -23,7 +23,7 @@ function buildHeli(opts={}): THREE.Group{
 }
 
 // Padrão de modelo: build() puro; descriptor pro model-viewer.
-export default {category:'Police',label:'Helicopter',build:buildHeli};
+export default {category:'Polícia',label:'Helicóptero',build:buildHeli};
 
 // Compat: gameplay usa makeHeli() e espera o heli (e o alvo do holofote) na cena.
 export function makeHeli(): THREE.Group{

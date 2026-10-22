@@ -8,4 +8,4 @@ export function makeImpactRing(radius: number, color: THREE.ColorRepresentation)
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Effects',label:'Impact ring',build:(o: {radius?: number; color?: THREE.ColorRepresentation}={})=>makeImpactRing(o.radius??1,o.color??0x19e3ff)};
+export default {category:'Efeitos',label:'Anel de impacto',build:(o: {radius?: number; color?: THREE.ColorRepresentation}={})=>makeImpactRing(o.radius??1,o.color??0x19e3ff)};

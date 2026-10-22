@@ -40,7 +40,7 @@ function signTexture(): THREE.CanvasTexture{
   const x=c.getContext('2d')!;
   x.fillStyle='#14091f';x.fillRect(0,0,256,48);
   x.font='900 34px "Barlow Condensed",monospace';x.textAlign='center';x.textBaseline='middle';
-  x.fillStyle='#ffd24a';x.fillText('PHONE',128,26);
+  x.fillStyle='#ffd24a';x.fillText('TELEFONE',128,26);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
@@ -174,4 +174,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Phone booth',build};
+export default {category:'Objetos',label:'Orelhão',build};

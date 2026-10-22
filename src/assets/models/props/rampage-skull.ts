@@ -71,4 +71,4 @@ export function makeRampageSkull(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'Rampage skull',build:()=>makeRampageSkull()};
+export default {category:'Objetos',label:'Caveira da fúria',build:()=>makeRampageSkull()};

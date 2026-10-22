@@ -34,4 +34,4 @@ export function makeGrenadeModel({pickup=false}:{pickup?:boolean}={}): THREE.Gro
   return g;
 }
 
-export default {category:'Weapons',label:'Grenade',build:()=>makeGrenadeModel()};
+export default {category:'Armas',label:'Granada',build:()=>makeGrenadeModel()};

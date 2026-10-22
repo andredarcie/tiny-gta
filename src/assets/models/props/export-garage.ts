@@ -110,7 +110,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Export garage',build};
+export default {category:'Objetos',label:'Galpão de exportação',build};
 
 // Back-compat / atalho de gameplay: factory direta.
 export function makeExportGarage(): THREE.Group{return build();}

@@ -65,7 +65,7 @@ export class Officer extends Npc{
   // Street route to the player (A*), used ONLY when far + a house blocks the straight line,
   // so a deployed officer rounds the block instead of wedging against a wall.
   path?:Wp[];pathI?:number;repathT?:number;goalN?:number;
-  override aliveState():string{return this.mode==='return'?'Returning to car':'In pursuit';}
+  override aliveState():string{return this.mode==='return'?'Voltando pra viatura':'Em perseguição';}
 }
 
 interface CopMissile{g:THREE.Object3D;dir:THREE.Vector3;left:number;}
@@ -100,8 +100,8 @@ let policeLethal=false;       // recomputed each frame in updateCops
 let resisted=false;           // latched true when the suspect fights back at ★1
 let lastDeployT=-99;          // when officers last got out of a cruiser
 let surrenderBarkT=0;         // throttle for the spoken surrender orders
-const SURRENDER_LINES=['Hands up! You\'re under arrest!','Freeze! Get on the ground, now!',
-  'Don\'t move! Hands where I can see them!','Drop the weapon and surrender — last warning!'];
+const SURRENDER_LINES=['Mãos pra cima! Você está preso!','Parado! Deita no chão, agora!',
+  'Não se mexe! Mãos onde eu possa ver!','Larga a arma e se entrega — último aviso!'];
 
 // The FIXED police roster from npcs.json (kind:'police'). The pool never grows beyond
 // this — the same named officers patrol and respond; a destroyed cruiser is replaced
@@ -159,7 +159,7 @@ export function spawnCop(){
   // tag the driver as a named police NPC so it shows in the census (and
   // reconcileVehicleNpcs leaves it be).
   if(c.driver)c.driver.userData.occupantNpc=new Npc(c.driver,{kind:'police',register:false,showLabel:true,
-    area:isSheriff?'Sheriff':'Police Patrol',name:def?.name,gender:def?.sex,personality:def?.personality,dialogues:def?.dialogues});
+    area:isSheriff?'Delegado':'Patrulha',name:def?.name,gender:def?.sex,personality:def?.personality,dialogues:def?.dialogues});
   cops.push(c);
 }
 
@@ -203,13 +203,13 @@ export function initPolice(){
 
 // Player's actual shirt colour → a plain colour word, for the suspect description.
 const COLOR_NAMES:[number,string][]=[
-  [0xc23b4e,'red'],[0x19e3ff,'cyan'],[0x3b7ac2,'blue'],[0x2a3f6e,'navy'],[0xcf9a3a,'yellow'],
-  [0x3aa06b,'green'],[0xd96fae,'pink'],[0xe8e3d2,'white'],[0x222831,'black'],[0x7a4f9e,'purple'],
-  [0x8a7a44,'tan'],[0xff8a3a,'orange'],[0x8a8f99,'grey'],
+  [0xc23b4e,'vermelha'],[0x19e3ff,'ciano'],[0x3b7ac2,'azul'],[0x2a3f6e,'azul-marinho'],[0xcf9a3a,'amarela'],
+  [0x3aa06b,'verde'],[0xd96fae,'rosa'],[0xe8e3d2,'branca'],[0x222831,'preta'],[0x7a4f9e,'roxa'],
+  [0x8a7a44,'cáqui'],[0xff8a3a,'laranja'],[0x8a8f99,'cinza'],
 ];
 function colorName(hex:number):string{
   const r=(hex>>16)&255,g=(hex>>8)&255,b=hex&255;
-  let best='dark',bd=1e9;
+  let best='escura',bd=1e9;
   for(const[h,n] of COLOR_NAMES){
     const dr=((h>>16)&255)-r,dg=((h>>8)&255)-g,db=(h&255)-b,d=dr*dr+dg*dg+db*db;
     if(d<bd){bd=d;best=n;}
@@ -218,15 +218,15 @@ function colorName(hex:number):string{
 }
 function suspectDesc():string{
   const shirt=(player.g.userData.clothing?.shirt as number)??0x19e3ff;
-  return `wearing a ${colorName(shirt)} shirt`;
+  return `de camiseta ${colorName(shirt)}`;
 }
-function regionName(x:number,z:number):string{return regionAt(x,z)||'the area';}
+function regionName(x:number,z:number):string{return regionAt(x,z)||'a região';}
 // "Ronald", "Ronald and Stephanie", "Ronald, Stephanie and Timothy"
 function nameList(names:string[]):string{
   const a=names.filter(Boolean);
   if(a.length<=1)return a[0]||'';
-  if(a.length===2)return `${a[0]} and ${a[1]}`;
-  return `${a.slice(0,-1).join(', ')} and ${a[a.length-1]}`;
+  if(a.length===2)return `${a[0]} e ${a[1]}`;
+  return `${a.slice(0,-1).join(', ')} e ${a[a.length-1]}`;
 }
 const sheriffCop=()=>cops.find(c=>c.isSheriff);
 const distTo=(c:Cop,x:number,z:number)=>Math.hypot(c.g.position.x-x,c.g.position.z-z);
@@ -238,7 +238,7 @@ function radioDispatch(x:number,z:number){
   if(radioCd>0||!cops.length)return;
   radioCd=6;
   const sheriff=sheriffCop();
-  const sName=sheriff?.name||'Dispatch';
+  const sName=sheriff?.name||'Central';
   const region=regionName(x,z);
   const desc=suspectDesc();
   const sorted=[...cops].sort((a,b)=>distTo(a,x,z)-distTo(b,x,z));
@@ -250,11 +250,11 @@ function radioDispatch(x:number,z:number){
   if(nearest?.isSheriff){
     // the sheriff himself is closest
     const second=partner?.name;
-    line=`<b>Sheriff ${sName}</b>: "Dispatch, shots fired in <b>${region}</b> — suspect ${desc}. `+
-      (second?`I'm 10-76, <b>${second}</b> and I responding Code 3."`:`I'm 10-76, responding Code 3."`);
+    line=`<b>Delegado ${sName}</b>: "Central, disparos em <b>${region}</b> — suspeito ${desc}. `+
+      (second?`Estou a caminho, eu e <b>${second}</b>, com sirene ligada."`:`Estou a caminho, com sirene ligada."`);
   }else{
     const who=nameList([nearest?.name,partner?.name].filter(Boolean) as string[]);
-    line=`<b>Sheriff ${sName}</b>: "Shots fired in <b>${region}</b>, suspect ${desc}. <b>${who}</b>, respond Code 3."`;
+    line=`<b>Delegado ${sName}</b>: "Disparos em <b>${region}</b>, suspeito ${desc}. <b>${who}</b>, desloquem com sirene ligada."`;
   }
   radioMessage(line);
 }
@@ -262,45 +262,45 @@ function radioDispatch(x:number,z:number){
 // An officer was just killed — the radio calls it in by name (gravely wounded, officer
 // needs assistance), so every cop reads as a named person, not a faceless unit.
 function radioOfficerDown(name?:string){
-  const sName=sheriffCop()?.name||'Dispatch';
-  const who=name?`<b>Officer ${name}</b>`:'an officer';
-  radioMessage(`<b>Sheriff ${sName}</b>: "10-99 — ${who} has been gravely wounded! Officer needs assistance, all units respond!"`);
+  const sName=sheriffCop()?.name||'Central';
+  const who=name?`o <b>policial ${name}</b>`:'um policial';
+  radioMessage(`<b>Delegado ${sName}</b>: "Urgente — ${who} foi gravemente ferido! Policial precisa de apoio, todas as viaturas!"`);
 }
 
 // A lost unit has come back from afar — the radio puts them back in service by name.
 function radioReturn(name?:string){
-  const sName=sheriffCop()?.name||'Dispatch';
-  const who=name?`<b>Unit ${name}</b>`:'a unit';
-  radioMessage(`<b>Sheriff ${sName}</b>: "Be advised, ${who} is 10-8, back in service and resuming patrol."`);
+  const sName=sheriffCop()?.name||'Central';
+  const who=name?`a <b>viatura de ${name}</b>`:'uma viatura';
+  radioMessage(`<b>Delegado ${sName}</b>: "Atenção, ${who} está de volta ao serviço e retomando o patrulhamento."`);
 }
 
 // A vehicle just exploded. Police cruisers are named (the officer inside is hurt);
 // other vehicles are reported as a generic explosion at the location.
 function radioCarExplosion(x:number,z:number,copName?:string){
-  const sName=sheriffCop()?.name||'Dispatch';
+  const sName=sheriffCop()?.name||'Central';
   const region=regionName(x,z);
   if(copName){
-    radioMessage(`<b>Sheriff ${sName}</b>: "10-52! Officer <b>${copName}</b>'s unit just went up in <b>${region}</b> — he's hurt, get me fire and rescue!"`,7500);
+    radioMessage(`<b>Delegado ${sName}</b>: "Urgente! A viatura do policial <b>${copName}</b> acabou de explodir em <b>${region}</b> — tem ferido, mandem bombeiro e resgate!"`,7500);
   }else{
     if(carRadioCd>0)return; // don't spam on a rampage of civilian cars
     carRadioCd=8;
-    radioMessage(`<b>Sheriff ${sName}</b>: "Dispatch, vehicle explosion reported in <b>${region}</b>. Rolling fire and rescue."`);
+    radioMessage(`<b>Delegado ${sName}</b>: "Central, explosão de veículo em <b>${region}</b>. Acionando bombeiro e resgate."`);
   }
 }
 
 // Each rise in the wanted level speaks once on the radio (more units, then the army at
 // the top), always naming the officers/soldiers involved.
 function radioEscalate(star:number){
-  const sName=sheriffCop()?.name||'Dispatch';
+  const sName=sheriffCop()?.name||'Central';
   if(star>=ARMY_AT){
     const army=(refs.armyNames?.()||[]) as string[];
-    const who=army.length?nameList(army):'all available units';
-    radioMessage(`<b>Sheriff ${sName}</b>: "All units, suspect is 10-32 and out of control — requesting military support. <b>${who}</b>, you are cleared to engage."`,6500);
+    const who=army.length?nameList(army):'todas as unidades disponíveis';
+    radioMessage(`<b>Delegado ${sName}</b>: "Todas as viaturas, o suspeito está armado e fora de controle — pedindo apoio do Exército. <b>${who}</b>, autorizados a abrir fogo."`,6500);
     return;
   }
   // name the cruisers now responding (the first `star` units)
   const who=nameList(cops.slice(0,Math.min(POOL,star)).map(c=>c.name||'').filter(Boolean));
-  radioMessage(`<b>Sheriff ${sName}</b>: "Be advised, suspect is 10-32, armed and dangerous in <b>${regionName(playerPos().x,playerPos().z)}</b>. <b>${who}</b>, converge and engage Code 3."`,5600);
+  radioMessage(`<b>Delegado ${sName}</b>: "Atenção, suspeito armado e perigoso em <b>${regionName(playerPos().x,playerPos().z)}</b>. <b>${who}</b>, cerquem e abordem com sirene ligada."`,5600);
 }
 
 function deployOfficers(c:Cop){
@@ -314,8 +314,8 @@ function deployOfficers(c:Cop){
     const gx=c.g.position.x+Math.cos(h)*side,gz=c.g.position.z-Math.sin(h)*side;
     g.position.set(gx,groundHeight(gx,gz),gz);
     const o=new Officer(g,{
-      kind:'officer',hp:NPC_HP_TOUGH,drop:null,wanted:1.5,wantedMsg:'OFFICER DOWN!',crime:'cop_killed',
-      punchToDown:4,showLabel:true,area:c.isSheriff?'Sheriff':'On patrol',name:c.name,gender:c.sex, // the cruiser's named cop, on foot — same identity as the driver
+      kind:'officer',hp:NPC_HP_TOUGH,drop:null,wanted:1.5,wantedMsg:'POLICIAL ABATIDO!',crime:'cop_killed',
+      punchToDown:4,showLabel:true,area:c.isSheriff?'Delegado':'Em patrulha',name:c.name,gender:c.sex, // the cruiser's named cop, on foot — same identity as the driver
     });
     o.car=c;o.bob=rand(0,6);o.shootT=rand(.5,1.1);o.mode='hunt';
     o.rocket=Math.floor(state.wanted)>=ROCKET_AT;
@@ -502,7 +502,7 @@ export function updateHeli(dt:number){
   if(need&&!heli){
     heli=makeHeli();
     heli.position.copy(playerPos()).add(new THREE.Vector3(60,45,60));
-    message('POLICE HELICOPTER IN THE AREA!','var(--pink)');
+    message('HELICÓPTERO DA POLÍCIA NA ÁREA!','var(--pink)');
   }
   if(!need&&heli){scene.remove(heli,heli.userData.spot.target);heli=null;return;}
   if(!heli)return;
@@ -715,7 +715,7 @@ export function updateCops(dt:number){
     // only when the suspect is on the ground (not on a roof or in the air)
     if(pp.y-groundHeight(pp.x,pp.z)<6&&(arrived||stuck4s)){
       deployOfficers(c);
-      if(state.time-lastShout>6){lastShout=state.time;message('POLICE! FREEZE!','var(--blue)');}
+      if(state.time-lastShout>6){lastShout=state.time;message('POLÍCIA! PARADO!','var(--blue)');}
       continue;
     }
     const activeCur=cur;
@@ -781,7 +781,7 @@ export function updateCops(dt:number){
     (state.mode==='foot'||Math.abs(cur?.speed||0)<3.5);
   if(state.wanted>0&&inContact){
     state.bustT+=dt;
-    if(state.bustT>.4)message('THE POLICE HAVE YOU SURROUNDED!','var(--blue)');
+    if(state.bustT>.4)message('A POLÍCIA TE CERCOU!','var(--blue)');
     if(state.bustT>=BUST_TIME){getBusted();return;}
   }else state.bustT=Math.max(0,state.bustT-dt*1.2);
   // The star NEVER cools while the police are on you (an officer on foot, or a chasing

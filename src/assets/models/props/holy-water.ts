@@ -25,4 +25,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Holy water',build};
+export default {category:'Objetos',label:'Água benta',build};

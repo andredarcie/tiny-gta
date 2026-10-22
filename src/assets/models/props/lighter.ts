@@ -20,4 +20,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Lighter',build};
+export default {category:'Objetos',label:'Isqueiro',build};

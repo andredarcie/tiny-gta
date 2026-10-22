@@ -528,8 +528,8 @@ window.__renderScale=getRenderScale; // debug/profiler
 // Aviso anti self-XSS no console (padrão dos grandes sites): desencoraja colar
 // código de terceiros, que pode roubar/zerar a conta do jogador.
 try{
-  console.log('%cSTOP!','color:#ff2e88;font:900 42px sans-serif;text-shadow:2px 2px 0 #000');
-  console.log("%cThis console is meant for developers. If someone told you to paste or run code here, it's almost certainly a scam — running scripts here can compromise your account and wipe your progress. Don't do it.",'color:#ffd24a;font:600 15px sans-serif');
+  console.log('%cPARE!','color:#ff2e88;font:900 42px sans-serif;text-shadow:2px 2px 0 #000');
+  console.log('%cEste console é para desenvolvedores. Se alguém pediu para você colar ou rodar código aqui, é golpe, quase com certeza — rodar scripts aqui pode comprometer seu jogo e apagar seu progresso. Não faça isso.','color:#ffd24a;font:600 15px sans-serif');
 }catch(e){}
 
 const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)

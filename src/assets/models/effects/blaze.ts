@@ -46,4 +46,4 @@ function makeBlaze(): THREE.Group{
 }
 
 export function makeBlazeModel(): THREE.Group{return makeBlaze();}
-export default {category:'Effects',label:'Blaze',build:makeBlaze};
+export default {category:'Efeitos',label:'Labareda',build:makeBlaze};

@@ -58,76 +58,76 @@ function sel(carG:THREE.Object3D):ModSelection{return carG.userData.modsel||(car
 
 // ----- catálogo de mods -----
 const CATS:ModCategory[]=[
-  {id:'paint',label:'PAINT',note:'Respray repairs damage & loses the cops',
+  {id:'paint',label:'PINTURA',note:'A pintura conserta o estrago e despista a polícia',
    cur:g=>g.userData.color,
    options:[
-     {id:0xff2e88,label:'Hot Pink',price:120,sw:'#ff2e88'},
-     {id:0xc2293f,label:'Race Red',price:120,sw:'#c2293f'},
-     {id:0xff7a1e,label:'Sunset',price:120,sw:'#ff7a1e'},
-     {id:0xffd24a,label:'Gold',price:160,sw:'#ffd24a'},
-     {id:0x6ddf3a,label:'Lime',price:120,sw:'#6ddf3a'},
-     {id:0x19c3b0,label:'Teal',price:120,sw:'#19c3b0'},
-     {id:0x2a6cff,label:'Electric',price:120,sw:'#2a6cff'},
-     {id:0x8a3ff0,label:'Purple',price:120,sw:'#8a3ff0'},
-     {id:0xeef1f5,label:'Pearl',price:140,sw:'#eef1f5'},
-     {id:0xb9bec9,label:'Silver',price:120,sw:'#b9bec9'},
-     {id:0x15171c,label:'Midnight',price:140,sw:'#15171c'},
-     {id:0x3f6b3a,label:'Army',price:120,sw:'#3f6b3a'},
+     {id:0xff2e88,label:'Rosa-choque',price:120,sw:'#ff2e88'},
+     {id:0xc2293f,label:'Vermelho Corrida',price:120,sw:'#c2293f'},
+     {id:0xff7a1e,label:'Pôr do Sol',price:120,sw:'#ff7a1e'},
+     {id:0xffd24a,label:'Dourado',price:160,sw:'#ffd24a'},
+     {id:0x6ddf3a,label:'Verde-limão',price:120,sw:'#6ddf3a'},
+     {id:0x19c3b0,label:'Verde-água',price:120,sw:'#19c3b0'},
+     {id:0x2a6cff,label:'Azul Elétrico',price:120,sw:'#2a6cff'},
+     {id:0x8a3ff0,label:'Roxo',price:120,sw:'#8a3ff0'},
+     {id:0xeef1f5,label:'Pérola',price:140,sw:'#eef1f5'},
+     {id:0xb9bec9,label:'Prata',price:120,sw:'#b9bec9'},
+     {id:0x15171c,label:'Meia-noite',price:140,sw:'#15171c'},
+     {id:0x3f6b3a,label:'Militar',price:120,sw:'#3f6b3a'},
    ],
    preview(g,o){applyPaint(g,o.id as number);},
    commit(g,o){repairCar(g);state.wanted=0;state.lastCrime=-99;}}, // reparo/perder a polícia só ao PAGAR
 
-  {id:'rims',label:'RIMS',
+  {id:'rims',label:'RODAS',
    cur:g=>sel(g).rims,
    options:[
-     {id:'stock',label:'Stock',price:0,hub:0xb9bec9,sw:'#9aa0aa'},
-     {id:'chrome',label:'Chrome',price:160,hub:0xe8eef5,sw:'#e8eef5'},
-     {id:'gold',label:'Gold',price:240,hub:0xffd24a,sw:'#ffd24a'},
-     {id:'black',label:'Murdered',price:150,hub:0x15171c,sw:'#15171c'},
-     {id:'red',label:'Red',price:180,hub:0xc2293f,sw:'#c2293f'},
-     {id:'blue',label:'Blue',price:180,hub:0x2a6cff,sw:'#2a6cff'},
+     {id:'stock',label:'Original',price:0,hub:0xb9bec9,sw:'#9aa0aa'},
+     {id:'chrome',label:'Cromada',price:160,hub:0xe8eef5,sw:'#e8eef5'},
+     {id:'gold',label:'Dourada',price:240,hub:0xffd24a,sw:'#ffd24a'},
+     {id:'black',label:'Toda Preta',price:150,hub:0x15171c,sw:'#15171c'},
+     {id:'red',label:'Vermelha',price:180,hub:0xc2293f,sw:'#c2293f'},
+     {id:'blue',label:'Azul',price:180,hub:0x2a6cff,sw:'#2a6cff'},
    ],
    preview(g,o){setRims(g,o.hub as number);sel(g).rims=o.id as string;}},
 
-  {id:'spoiler',label:'SPOILER',
+  {id:'spoiler',label:'AEROFÓLIO',
    cur:g=>sel(g).spoiler,
    options:[
-     {id:'none',label:'None',price:0},
-     {id:'lip',label:'Lip',price:180},
-     {id:'wing',label:'Sport Wing',price:280},
-     {id:'gt',label:'GT Wing',price:380},
+     {id:'none',label:'Nenhum',price:0},
+     {id:'lip',label:'Lâmina',price:180},
+     {id:'wing',label:'Asa Esportiva',price:280},
+     {id:'gt',label:'Asa GT',price:380},
    ],
    preview(g,o){setSpoiler(g,o.id as string);sel(g).spoiler=o.id as string;}},
 
-  {id:'neon',label:'NEON',note:'Underglow that lights up the night',
+  {id:'neon',label:'NEON',note:'Luz por baixo do carro que ilumina a noite',
    cur:g=>sel(g).neon,
    options:[
-     {id:'off',label:'Off',price:0,color:null},
-     {id:'pink',label:'Pink',price:220,color:0xff2e88,sw:'#ff2e88'},
-     {id:'cyan',label:'Cyan',price:220,color:0x19e3ff,sw:'#19e3ff'},
-     {id:'green',label:'Green',price:220,color:0x6ddf3a,sw:'#6ddf3a'},
-     {id:'gold',label:'Gold',price:240,color:0xffd24a,sw:'#ffd24a'},
-     {id:'purple',label:'Purple',price:220,color:0x8a3ff0,sw:'#8a3ff0'},
-     {id:'red',label:'Red',price:220,color:0xff3b3b,sw:'#ff3b3b'},
+     {id:'off',label:'Desligado',price:0,color:null},
+     {id:'pink',label:'Rosa',price:220,color:0xff2e88,sw:'#ff2e88'},
+     {id:'cyan',label:'Ciano',price:220,color:0x19e3ff,sw:'#19e3ff'},
+     {id:'green',label:'Verde',price:220,color:0x6ddf3a,sw:'#6ddf3a'},
+     {id:'gold',label:'Dourado',price:240,color:0xffd24a,sw:'#ffd24a'},
+     {id:'purple',label:'Roxo',price:220,color:0x8a3ff0,sw:'#8a3ff0'},
+     {id:'red',label:'Vermelho',price:220,color:0xff3b3b,sw:'#ff3b3b'},
    ],
    preview(g,o){setNeon(g,o.color as number|null);sel(g).neon=o.id as string;}},
 
-  {id:'hood',label:'HOOD',
+  {id:'hood',label:'CAPÔ',
    cur:g=>sel(g).hood,
    options:[
-     {id:'stock',label:'Stock',price:0},
-     {id:'scoop',label:'Scoop',price:170},
-     {id:'vents',label:'Vents',price:210},
+     {id:'stock',label:'Original',price:0},
+     {id:'scoop',label:'Tomada de ar',price:170},
+     {id:'vents',label:'Respiros',price:210},
    ],
    preview(g,o){setHood(g,o.id as string);sel(g).hood=o.id as string;}},
 
-  {id:'engine',label:'ENGINE',note:'More top speed & quicker pickup',
+  {id:'engine',label:'MOTOR',note:'Mais velocidade máxima e arrancada mais rápida',
    cur:g=>sel(g).engine,
    options:[
-     {id:'stock',label:'Stock',price:0,mul:1.0},
-     {id:'street',label:'Street',price:450,mul:1.12},
-     {id:'sport',label:'Sport',price:950,mul:1.26},
-     {id:'race',label:'Race',price:1700,mul:1.42},
+     {id:'stock',label:'Original',price:0,mul:1.0},
+     {id:'street',label:'Rua',price:450,mul:1.12},
+     {id:'sport',label:'Esportivo',price:950,mul:1.26},
+     {id:'race',label:'Corrida',price:1700,mul:1.42},
    ],
    preview(g,o){sel(g).engine=o.id as string;}, // motor não muda o visual; só marca a escolha
    commit(g,o){g.userData.speedMul=o.mul;}}, // o ganho de velocidade só vale ao PAGAR
@@ -190,12 +190,12 @@ export function modShopActive():boolean{return active;}
 
 export function modShopState(){
   if(active||!padNear())return null;
-  return{label:'MOD',prompt:'CUSTOMIZE CAR',enabled:true};
+  return{label:'TUNAR',prompt:'TUNAR O CARRO',enabled:true};
 }
 
 // blip do radar (não é Interior, então o hud desenha à parte)
 export function workshopBlip(){
-  return{x:WORKSHOP_PAD.x,z:WORKSHOP_PAD.z,icon:'wrench',color:'#19e3ff',label:'MOD GARAGE'};
+  return{x:WORKSHOP_PAD.x,z:WORKSHOP_PAD.z,icon:'wrench',color:'#19e3ff',label:'OFICINA DE TUNAGEM'};
 }
 
 function toast(msg:string,bad?:boolean):void{
@@ -205,7 +205,7 @@ function toast(msg:string,bad?:boolean):void{
   toastEl.classList.add('show');toastT=1.4;
 }
 
-function renderMoney():void{if(moneyEl)moneyEl.textContent='$'+Math.max(0,Math.round(state.money));}
+function renderMoney():void{if(moneyEl)moneyEl.textContent='R$'+Math.max(0,Math.round(state.money));}
 
 function renderOptions():void{
   if(!optsEl)return;
@@ -224,9 +224,9 @@ function renderOptions():void{
     if(opt.sw){const sw=document.createElement('span');sw.className='ms-sw';sw.style.background=opt.sw;btn.appendChild(sw);}
     const lab=document.createElement('span');lab.className='ms-lab';lab.textContent=opt.label;btn.appendChild(lab);
     const pr=document.createElement('span');pr.className='ms-price';
-    if(isOwned){pr.textContent='OWNED';pr.classList.add('owned');}
-    else if(isCur){pr.textContent=opt.price>0?'IN CART':'SELECTED';pr.classList.add('incart');}
-    else pr.textContent=opt.price>0?'$'+opt.price:'FREE';
+    if(isOwned){pr.textContent='INSTALADO';pr.classList.add('owned');}
+    else if(isCur){pr.textContent=opt.price>0?'NO CARRINHO':'ESCOLHIDO';pr.classList.add('incart');}
+    else pr.textContent=opt.price>0?'R$'+opt.price:'GRÁTIS';
     btn.appendChild(pr);
     btn.addEventListener('pointerdown',(e:PointerEvent)=>{e.preventDefault();e.stopPropagation();choose(opt.id);});
     grid.appendChild(btn);
@@ -237,10 +237,10 @@ function renderOptions():void{
 // barra do carrinho: total + botão FINALIZE (com confirmação no 2º toque)
 function renderCart():void{
   const total=cartTotal();
-  if(totalEl)totalEl.textContent=total>0?`CART  $${total}`:'CART EMPTY';
+  if(totalEl)totalEl.textContent=total>0?`CARRINHO  R$${total}`:'CARRINHO VAZIO';
   if(buyEl){
     buyEl.disabled=total<=0;
-    buyEl.textContent=confirmBuy&&total>0?`CONFIRM  $${total}`:'FINALIZE & BUY';
+    buyEl.textContent=confirmBuy&&total>0?`CONFIRMAR  R$${total}`:'FECHAR COMPRA';
     buyEl.classList.toggle('confirm',confirmBuy&&total>0);
   }
 }
@@ -249,20 +249,20 @@ function finalizeBuy():void{
   const c=refs.getCur?.();if(!c)return;
   const items=cartItems();
   const total=items.reduce((s,it)=>s+it.opt.price,0);
-  if(total<=0){toast('NOTHING TO BUY',true);confirmBuy=false;renderCart();return;}
+  if(total<=0){toast('NADA PARA COMPRAR',true);confirmBuy=false;renderCart();return;}
   if(state.money<total){
-    toast(`NEED $${total}`,true);blip([180,130],.12,'sawtooth',.18);confirmBuy=false;renderCart();return;
+    toast(`PRECISA DE R$${total}`,true);blip([180,130],.12,'sawtooth',.18);confirmBuy=false;renderCart();return;
   }
   if(!confirmBuy){ // 1º toque: pede confirmação
     confirmBuy=true;renderCart();
-    toast('PRESS BUY AGAIN TO CONFIRM');blip([440,560],.06,'square',.12);return;
+    toast('APERTE COMPRAR DE NOVO PARA CONFIRMAR');blip([440,560],.06,'square',.12);return;
   }
   // 2º toque: cobra o carrinho de uma vez e instala de vez (vira "owned")
   economy.spend(total,'mod-shop');
   for(const {cat,opt} of items)cat.commit?.(c.g,opt);
   baseline=snapshot(c.g);
   confirmBuy=false;
-  toast(`PURCHASED  -$${total}`);
+  toast(`COMPRADO  -R$${total}`);
   blip([523,659,784,1047],.08,'square',.18);
   renderMoney();renderOptions();renderCart();
 }
@@ -325,7 +325,7 @@ export function closeModShop():boolean{
   overlay!.classList.remove('open');overlay!.setAttribute('aria-hidden','true');
   if(state.started&&!state.mobile&&!input.touchActive)
     document.getElementById('game')?.requestPointerLock?.();
-  if(hadCart)message('LEFT THE GARAGE - UNPAID CHANGES DISCARDED','var(--pink)');
+  if(hadCart)message('SAIU DA OFICINA - O QUE NÃO FOI PAGO FOI DESCARTADO','var(--pink)');
   return true;
 }
 

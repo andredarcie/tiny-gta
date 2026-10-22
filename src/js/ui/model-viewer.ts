@@ -68,7 +68,7 @@ async function discover(): Promise<void> {
   for(const def of NPC_DEFS){
     if(!def.name)continue;
     const name=def.name,female=def.sex==='F';
-    entries.push({cat:'NPCs',label:name+(female?' ♀':' ♂'),zoom:1,yaw:0,
+    entries.push({cat:'Moradores',label:name+(female?' ♀':' ♂'),zoom:1,yaw:0,
       load:async()=>{
         let h=0;for(let i=0;i<name.length;i++)h=(h*31+name.charCodeAt(i))|0;
         const g=buildToonPlayer({color:SHIRT_COLORS[Math.abs(h)%SHIRT_COLORS.length]});

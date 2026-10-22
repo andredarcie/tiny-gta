@@ -69,10 +69,10 @@ function saleTexture(sold: boolean): THREE.CanvasTexture{
   x.fillStyle=sold?'#244d2a':'#7a2230';
   x.textAlign='center';x.textBaseline='middle';
   if(sold){
-    x.font='900 70px monospace';x.fillText('SOLD',128,128);
+    x.font='900 52px monospace';x.fillText('VENDIDA',128,128);
   }else{
-    x.font='900 52px monospace';x.fillText('FOR',128,70);x.fillText('SALE',128,128);
-    x.font='900 40px monospace';x.fillText('$'+HOUSE_PRICE,128,190);
+    x.font='900 52px monospace';x.fillText('VENDE-',128,70);x.fillText('SE',128,128);
+    x.font='900 40px monospace';x.fillText('R$'+HOUSE_PRICE,128,190);
   }
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
 }
@@ -110,7 +110,7 @@ function tvPreviewTexture(): THREE.CanvasTexture{
     rr(56+i*54,226,28,22,7);
   }
   x.fillStyle='#e8f7ff';x.font='900 16px monospace';x.textAlign='right';
-  x.fillText('LIVE PREVIEW',478,36);
+  x.fillText('AO VIVO',478,36);
   x.fillStyle='#ffffff';x.beginPath();x.moveTo(438,182);x.lineTo(470,214);x.lineTo(452,218);x.lineTo(444,238);x.lineTo(431,232);x.lineTo(439,212);x.closePath();x.fill();
   tvPreviewTex=new THREE.CanvasTexture(c);
   tvPreviewTex.colorSpace=THREE.SRGBColorSpace;
@@ -832,8 +832,8 @@ function buildInteriorPreview(): THREE.Group{
   return g;
 }
 
-export default {category:'Rural',label:'Ranch house',build:buildExteriorPreview,
+export default {category:'Rural',label:'Casa do sítio',build:buildExteriorPreview,
   variants:[
-    {label:'Ranch house - exterior',build:buildExteriorPreview,zoom:.58,yaw:Math.PI},
-    {label:'Ranch house - interior',build:buildInteriorPreview,zoom:.62},
+    {label:'Casa do sítio - exterior',build:buildExteriorPreview,zoom:.58,yaw:Math.PI},
+    {label:'Casa do sítio - interior',build:buildInteriorPreview,zoom:.62},
   ]};

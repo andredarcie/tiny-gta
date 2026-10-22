@@ -72,6 +72,6 @@ export function addWanted(n:number,why?:string,crime='pursuit'){
   if(state.wanted>=MAX_STARS)state.sixStarT=state.time; // reached/still at max: (re)arm the 6-star hold
   if(Math.floor(state.wanted)>before){
     blip([880,660,880],0.08,'square',.14);
-    message(why||('WANTED ★'+Math.floor(state.wanted)),'var(--pink)');
+    message(why||('PROCURADO ★'+Math.floor(state.wanted)),'var(--pink)');
   }
 }

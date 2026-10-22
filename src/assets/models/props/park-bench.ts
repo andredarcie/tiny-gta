@@ -22,7 +22,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Park bench',build};
+export default {category:'Objetos',label:'Banco de parque',build};
 
 export function addParkBench(x: number,z: number,ry=0): {x0:number;x1:number;z0:number;z1:number;h:number}{
   const g=build();g.position.set(x,0,z);g.rotation.y=ry;bakeProp(g);

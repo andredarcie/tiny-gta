@@ -16,7 +16,7 @@ import type {ZoneAction} from '@/core/types.ts';
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. As ações ARM/DETONATE já ficam indisponíveis durante uma sessão
 // (trava nas zoneActions do input/hud).
-new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Demo Garage',exclusive:false});
+new MiniGame({id:MiniGameId.BOMB_SHOP,name:'Oficina de Bombas',exclusive:false});
 
 // DEMO GARAGE estilo open-world (garagem clandestina do artificeiro): pare o CARRO dentro da
 // garagem e pague pra instalar uma bomba. Depois saia a pé, afaste-se e DETONE —
@@ -98,11 +98,11 @@ function armBomb(){
   if(!cur||state.mode!=='car')return;
   if(armedCar===cur)return;                 // já está armado: não cobra de novo
   if(isSpecialVehicle(cur)){
-    message('CANT RIG THIS VEHICLE','var(--gold)');
+    message('NÃO DÁ PRA ARMAR ESTE VEÍCULO','var(--gold)');
     return;
   }
   if(state.money<PRICE){
-    message('NOT ENOUGH CASH ($'+PRICE+')','var(--gold)');
+    message('DINHEIRO INSUFICIENTE (R$'+PRICE+')','var(--gold)');
     return;
   }
   // re-armar um carro novo sem ter detonado o anterior: solta o antigo limpo.
@@ -111,7 +111,7 @@ function armBomb(){
   armedCar=cur;
   t=0;tickT=0;
   attachBeacon(armedCar.g);
-  message('CAR BOMB ARMED - GET OUT AND DETONATE','var(--gold)');
+  message('CARRO-BOMBA ARMADO - SAIA E DETONE','var(--gold)');
   // bipe de "armado" (acorde curto) + um tom agudo de confirmação
   blip([523,392,261],.1,'square',.18);
   blip([880],.12,'sine',.12);
@@ -144,7 +144,7 @@ function detonate(){
   // remove it before the FX so the detonation actually consumes the car.
   removeBombCar(car);
   refs.explodeAt?.(pos);
-  bigText('BOOM!','var(--gold)');
+  bigText('BUM!','var(--gold)');
   setTimeout(hideBig,1100);
   // BOOM em camadas: estouro grave (sawtooth caindo) + estalo agudo de detonação
   blip([200,150,90,60],.16,'sawtooth',.24);
@@ -158,11 +158,11 @@ function detonate(){
   if(state.mode!=='car'||!cur)return null;
   const p=cur.g.position;
   if(Math.hypot(p.x-PAD.x,p.z-PAD.z)>PAD_RANGE||Math.abs(cur.speed)>ARM_SPEED)return null;
-  if(armedCar===cur)return{label:'ARMED',prompt:'BOMB ALREADY ARMED',enabled:false} as ZoneAction;
+  if(armedCar===cur)return{label:'ARMADO',prompt:'BOMBA JÁ ARMADA',enabled:false} as ZoneAction;
   // veículo único/de missão: mostra o prompt mas desabilitado (não corrompe).
   if(isSpecialVehicle(cur))
-    return{label:'BOMB',prompt:'CANT RIG THIS VEHICLE',enabled:false} as ZoneAction;
-  return{label:'BOMB',prompt:'ARM CAR BOMB ($'+PRICE+')',enabled:state.money>=PRICE,
+    return{label:'BOMBA',prompt:'NÃO DÁ PRA ARMAR ESTE VEÍCULO',enabled:false} as ZoneAction;
+  return{label:'BOMBA',prompt:'ARMAR CARRO-BOMBA (R$'+PRICE+')',enabled:state.money>=PRICE,
     run(){armBomb();}};
 });
 
@@ -170,13 +170,13 @@ function detonate(){
 (refs.zoneActions||(refs.zoneActions=[])).push(()=>{
   if(state.mode!=='foot'||!armedCar)return null;
   if(playerPos().distanceTo(armedCar.g.position)>DETONATE_RANGE)return null;
-  return{label:'DETONATE',prompt:'DETONATE CAR BOMB',enabled:true,
+  return{label:'DETONAR',prompt:'DETONAR CARRO-BOMBA',enabled:true,
     run(){detonate();}};
 });
 
 // POI fixo no radar (ícone 'bomb'; se desconhecido o hud cai no genérico, ok).
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
-  [{x:PAD.x,z:PAD.z,icon:'bomb',color:'#ff3b3b',label:'DEMO GARAGE'}]);
+  [{x:PAD.x,z:PAD.z,icon:'bomb',color:'#ff3b3b',label:'OFICINA DE BOMBAS'}]);
 
 // debug: estado pro render_game_to_text
 refs.getBombShopState=()=>({armed:!!armedCar});

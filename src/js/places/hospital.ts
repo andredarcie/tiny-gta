@@ -21,8 +21,8 @@ class HospitalInterior extends Interior{
   sayT?:number;
   override onEnter(){
     message(state.health<100
-      ?'HOSPITAL - GRAB THE GREEN CROSS TO HEAL, THEN HEAD OUT'
-      :'HOSPITAL - HEAD FOR THE EXIT','var(--cyan)');
+      ?'HOSPITAL - PEGUE A CRUZ VERDE PARA SE CURAR E DEPOIS SAIA'
+      :'HOSPITAL - VÁ PARA A SAÍDA','var(--cyan)');
   }
   override updateFx(dt:number){
     if(hospFx.heal){ // kit de cura girando/flutuando
@@ -36,7 +36,7 @@ class HospitalInterior extends Interior{
     if(sick&&this.sayT<=0&&!sick.userData.speaking){
       const pp=playerPos(),sp=sick.position;
       if(Math.hypot(pp.x-sp.x,pp.z-sp.z)<5){
-        say(sick,"I remember you... you look just like the last thing I saw before I ended up in here.",
+        say(sick,'Eu lembro de você... você é igualzinho à última coisa que eu vi antes de vir parar aqui.',
           {life:9,yOff:1.7});
         this.sayT=15; // só repete bem depois
       }
@@ -62,7 +62,7 @@ class HospitalInterior extends Interior{
       const pp=playerPos();
       if(Math.hypot(pp.x-HOSP_HEAL.x,pp.z-HOSP_HEAL.z)<HEAL_RANGE){
         state.health=100;
-        message('FULLY HEALED','var(--cyan)');
+        message('TOTALMENTE CURADO','var(--cyan)');
         blip([523,659,784,1047],.09,'sine',.18);
       }
     }

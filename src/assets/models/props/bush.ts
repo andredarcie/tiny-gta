@@ -23,7 +23,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Bush',build};
+export default {category:'Objetos',label:'Arbusto',build};
 
 // Bush → a random code-built shrub (round bush / flowering bush / leafy plant), see nature/kit.ts.
 export function addBush(px: number,pz: number): void{

@@ -69,7 +69,7 @@ function applyArmPose(arm: THREE.Group,pose: FpArmPose):void{
 }
 
 // Model-viewer descriptor (auto-discovered). Shows a hand straight-on for inspection.
-export default {category:'Characters',label:'FP Hand',build:()=>{
+export default {category:'Personagens',label:'Mão (1ª pessoa)',build:()=>{
   const m=new THREE.MeshStandardMaterial({color:0xc8a06a,roughness:.85});
   return buildHand(m,1);
 }};

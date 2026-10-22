@@ -91,12 +91,12 @@ export function updateWeaponPickups(dt: number){
       p.respawnAt=state.time+RESPAWN_CD;
       if(p.g.parent)scene.remove(p.g);
       if(isNew){
-        bigText('NEW WEAPON','var(--gold)');
-        message('FOUND '+p.name,'var(--gold)');
+        bigText('ARMA NOVA','var(--gold)');
+        message('ACHOU '+p.name,'var(--gold)');
         blip([660,990,1320],0.09,'square',.18);
         setTimeout(hideBig,1200);
       }else{
-        message(p.name+' - AMMO REFILLED','var(--cyan)');
+        message(p.name+' - MUNIÇÃO REABASTECIDA','var(--cyan)');
         blip([660,990],0.07,'sine',.16);
       }
     }

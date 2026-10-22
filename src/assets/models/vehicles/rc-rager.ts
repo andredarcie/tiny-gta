@@ -70,7 +70,7 @@ function buildRcRager(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Vehicles',label:'RC rager',build:buildRcRager};
+export default {category:'Veículos',label:'Carrinho RC',build:buildRcRager};
 
 // Compat com o padrão dos outros veículos: factory direta.
 export function makeRcRager(): THREE.Group{const g=buildRcRager();return g;}

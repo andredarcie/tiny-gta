@@ -28,41 +28,41 @@ const STATION_RANGE=2.6;
 
 // ----- outfit catalogue (colour ids are hex numbers; hat/glasses ids are variants) -----
 const CATS:ClothCat[]=[
-  {id:'shirt',label:'SHIRT',options:[
-    {id:0x19e3ff,label:'Cyan',price:60,sw:'#19e3ff'},
-    {id:0xc23b4e,label:'Red',price:60,sw:'#c23b4e'},
-    {id:0x3b7ac2,label:'Blue',price:60,sw:'#3b7ac2'},
-    {id:0xcf9a3a,label:'Mustard',price:60,sw:'#cf9a3a'},
-    {id:0x3aa06b,label:'Green',price:60,sw:'#3aa06b'},
-    {id:0xd96fae,label:'Pink',price:70,sw:'#d96fae'},
-    {id:0x7a4f9e,label:'Purple',price:70,sw:'#7a4f9e'},
-    {id:0xe8e3d2,label:'White',price:80,sw:'#e8e3d2'},
-    {id:0x15171c,label:'Black',price:80,sw:'#15171c'},
+  {id:'shirt',label:'CAMISETA',options:[
+    {id:0x19e3ff,label:'Ciano',price:60,sw:'#19e3ff'},
+    {id:0xc23b4e,label:'Vermelha',price:60,sw:'#c23b4e'},
+    {id:0x3b7ac2,label:'Azul',price:60,sw:'#3b7ac2'},
+    {id:0xcf9a3a,label:'Mostarda',price:60,sw:'#cf9a3a'},
+    {id:0x3aa06b,label:'Verde',price:60,sw:'#3aa06b'},
+    {id:0xd96fae,label:'Rosa',price:70,sw:'#d96fae'},
+    {id:0x7a4f9e,label:'Roxa',price:70,sw:'#7a4f9e'},
+    {id:0xe8e3d2,label:'Branca',price:80,sw:'#e8e3d2'},
+    {id:0x15171c,label:'Preta',price:80,sw:'#15171c'},
   ]},
-  {id:'pants',label:'PANTS',options:[
-    {id:0x202435,label:'Navy',price:50,sw:'#202435'},
-    {id:0x2e2a24,label:'Khaki',price:50,sw:'#4a4030'},
-    {id:0x3d3f46,label:'Grey',price:50,sw:'#3d3f46'},
-    {id:0x18191f,label:'Black',price:50,sw:'#18191f'},
-    {id:0x5a3a26,label:'Brown',price:50,sw:'#5a3a26'},
-    {id:0x355a8a,label:'Denim',price:60,sw:'#355a8a'},
+  {id:'pants',label:'CALÇA',options:[
+    {id:0x202435,label:'Azul-marinho',price:50,sw:'#202435'},
+    {id:0x2e2a24,label:'Cáqui',price:50,sw:'#4a4030'},
+    {id:0x3d3f46,label:'Cinza',price:50,sw:'#3d3f46'},
+    {id:0x18191f,label:'Preta',price:50,sw:'#18191f'},
+    {id:0x5a3a26,label:'Marrom',price:50,sw:'#5a3a26'},
+    {id:0x355a8a,label:'Jeans',price:60,sw:'#355a8a'},
   ]},
-  {id:'shoe',label:'SHOES',options:[
-    {id:0x111117,label:'Black',price:40,sw:'#111117'},
-    {id:0xe8e3d2,label:'White',price:50,sw:'#e8e3d2'},
-    {id:0x33251e,label:'Brown',price:40,sw:'#33251e'},
-    {id:0xc23b4e,label:'Red',price:50,sw:'#c23b4e'},
-    {id:0x1f2733,label:'Slate',price:40,sw:'#1f2733'},
+  {id:'shoe',label:'TÊNIS',options:[
+    {id:0x111117,label:'Preto',price:40,sw:'#111117'},
+    {id:0xe8e3d2,label:'Branco',price:50,sw:'#e8e3d2'},
+    {id:0x33251e,label:'Marrom',price:40,sw:'#33251e'},
+    {id:0xc23b4e,label:'Vermelho',price:50,sw:'#c23b4e'},
+    {id:0x1f2733,label:'Grafite',price:40,sw:'#1f2733'},
   ]},
-  {id:'hat',label:'HAT',note:'Headwear sits on top of your hair',options:[
-    {id:0,label:'None',price:0},
-    {id:1,label:'Cap',price:120,sw:'#1b1d24'},
-    {id:2,label:'Beanie',price:100,sw:'#c23b4e'},
+  {id:'hat',label:'CHAPÉU',note:'O chapéu fica por cima do cabelo',options:[
+    {id:0,label:'Nenhum',price:0},
+    {id:1,label:'Boné',price:120,sw:'#1b1d24'},
+    {id:2,label:'Gorro',price:100,sw:'#c23b4e'},
   ]},
-  {id:'glasses',label:'GLASSES',options:[
-    {id:0,label:'None',price:0},
-    {id:1,label:'Shades',price:90,sw:'#0a0a0e'},
-    {id:2,label:'Blue',price:90,sw:'#123a6b'},
+  {id:'glasses',label:'ÓCULOS',options:[
+    {id:0,label:'Nenhum',price:0},
+    {id:1,label:'Escuros',price:90,sw:'#0a0a0e'},
+    {id:2,label:'Azuis',price:90,sw:'#123a6b'},
   ]},
 ];
 
@@ -80,7 +80,7 @@ const overlay=$('clothesshop'),catsEl=$('clothesshop-cats'),optsEl=$('clothessho
 // ----- interior -----
 class ClothingStoreInterior extends Interior{
   override onEnter():void{
-    message('THREADS - STEP ON THE PODIUM TO CHANGE YOUR OUTFIT','var(--gold)');
+    message('LOJA DE ROUPAS - SUBA NO PROVADOR PARA TROCAR O VISUAL','var(--gold)');
     blip([392,523,659],.08,'square',.12);
   }
   override onExit():void{ if(active)closeClothesShop(); }
@@ -98,7 +98,7 @@ export const clothingStore=new ClothingStoreInterior({
   fx:clothesFx,
   exterior:{...CLOTHES_SITE.P(-22,110),r:22},
   spawnOutHeading:CLOTHES_SITE.head(-Math.PI/2), // stepping out faces the street
-  mapIcon:{id:'clothing-store',label:'THREADS',icon:'shirt',color:'#ff6fae'},
+  mapIcon:{id:'clothing-store',label:'LOJA DE ROUPAS',icon:'shirt',color:'#ff6fae'},
 });
 
 function nearStation():boolean{
@@ -110,7 +110,7 @@ function nearStation():boolean{
 export function clothesShopActive():boolean{return active;}
 export function clothesShopState(){
   if(active||!nearStation())return null;
-  return{label:'WEAR',prompt:'CHANGE OUTFIT',enabled:true};
+  return{label:'VESTIR',prompt:'TROCAR O VISUAL',enabled:true};
 }
 
 // ----- cart / pricing (mirrors the mod shop) -----
@@ -138,7 +138,7 @@ function toast(msg:string,bad?:boolean):void{
   toastEl.textContent=msg;toastEl.style.color=bad?'#ff2e88':'#9dff2e';
   toastEl.classList.add('show');toastT=1.4;
 }
-function renderMoney():void{if(moneyEl)moneyEl.textContent='$'+Math.max(0,Math.round(state.money));}
+function renderMoney():void{if(moneyEl)moneyEl.textContent='R$'+Math.max(0,Math.round(state.money));}
 
 function renderOptions():void{
   if(!optsEl)return;
@@ -154,9 +154,9 @@ function renderOptions():void{
     if(opt.sw){const sw=document.createElement('span');sw.className='ms-sw';sw.style.background=opt.sw;btn.appendChild(sw);}
     const lab=document.createElement('span');lab.className='ms-lab';lab.textContent=opt.label;btn.appendChild(lab);
     const pr=document.createElement('span');pr.className='ms-price';
-    if(isOwned){pr.textContent='WORN';pr.classList.add('owned');}
-    else if(isCur){pr.textContent=opt.price>0?'IN CART':'SELECTED';pr.classList.add('incart');}
-    else pr.textContent=opt.price>0?'$'+opt.price:'FREE';
+    if(isOwned){pr.textContent='VESTINDO';pr.classList.add('owned');}
+    else if(isCur){pr.textContent=opt.price>0?'NO CARRINHO':'ESCOLHIDO';pr.classList.add('incart');}
+    else pr.textContent=opt.price>0?'R$'+opt.price:'GRÁTIS';
     btn.appendChild(pr);
     btn.addEventListener('pointerdown',(e:PointerEvent)=>{e.preventDefault();e.stopPropagation();choose(cat,opt.id);});
     grid.appendChild(btn);
@@ -165,10 +165,10 @@ function renderOptions():void{
 }
 function renderCart():void{
   const total=cartTotal();
-  if(totalEl)totalEl.textContent=total>0?`CART  $${total}`:'CART EMPTY';
+  if(totalEl)totalEl.textContent=total>0?`CARRINHO  R$${total}`:'CARRINHO VAZIO';
   if(buyEl){
     buyEl.disabled=total<=0;
-    buyEl.textContent=confirmBuy&&total>0?`CONFIRM  $${total}`:'FINALIZE & BUY';
+    buyEl.textContent=confirmBuy&&total>0?`CONFIRMAR  R$${total}`:'FECHAR COMPRA';
     buyEl.classList.toggle('confirm',confirmBuy&&total>0);
   }
 }
@@ -196,16 +196,16 @@ function choose(cat:ClothCat,optId:number):void{
 function finalizeBuy():void{
   const items=cartItems();
   const total=items.reduce((s,it)=>s+it.opt.price,0);
-  if(total<=0){toast('NOTHING TO BUY',true);confirmBuy=false;renderCart();return;}
-  if(state.money<total){toast(`NEED $${total}`,true);blip([180,130],.12,'sawtooth',.18);confirmBuy=false;renderCart();return;}
-  if(!confirmBuy){confirmBuy=true;renderCart();toast('PRESS BUY AGAIN TO CONFIRM');blip([440,560],.06,'square',.12);return;}
+  if(total<=0){toast('NADA PARA COMPRAR',true);confirmBuy=false;renderCart();return;}
+  if(state.money<total){toast(`PRECISA DE R$${total}`,true);blip([180,130],.12,'sawtooth',.18);confirmBuy=false;renderCart();return;}
+  if(!confirmBuy){confirmBuy=true;renderCart();toast('APERTE COMPRAR DE NOVO PARA CONFIRMAR');blip([440,560],.06,'square',.12);return;}
   economy.spend(total,'clothing-store');
   state.clothing.shirt=preview.shirt;state.clothing.pants=preview.pants;state.clothing.shoe=preview.shoe;
   state.clothing.hat=preview.hat;state.clothing.glasses=preview.glasses;
   applyPlayerClothing();
   baseline={...preview};
   confirmBuy=false;
-  toast(`NEW OUTFIT  -$${total}`);
+  toast(`VISUAL NOVO  -R$${total}`);
   blip([523,659,784,1047],.08,'square',.18);
   renderMoney();renderOptions();renderCart();
 }
@@ -240,7 +240,7 @@ export function closeClothesShop():boolean{
   document.body.classList.remove('mod-shop-open');
   overlay!.classList.remove('open');overlay!.setAttribute('aria-hidden','true');
   if(state.started&&!state.mobile&&!input.touchActive)document.getElementById('game')?.requestPointerLock?.();
-  if(hadCart)message('LEFT THE FITTING ROOM - UNPAID CHANGES DISCARDED','var(--pink)');
+  if(hadCart)message('SAIU DO PROVADOR - O QUE NÃO FOI PAGO FOI DESCARTADO','var(--pink)');
   return true;
 }
 // performInteract hook (on foot, inside the store, near the podium)

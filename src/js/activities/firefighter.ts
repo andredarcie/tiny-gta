@@ -37,7 +37,7 @@ import type {ZoneAction} from '@/core/types.ts';
 //  - sair do caminhão / WASTED / BUSTED encerra; caminhão destruído reaparece.
 // ============================================================================
 
-const FF_BUILD=' ◆ FIREFIGHTER';
+const FF_BUILD=' ◆ BOMBEIRO';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',FF_BUILD);
 
 const ORANGE=0xff7a1e;
@@ -179,17 +179,17 @@ function clearParticles(){
 }
 
 // mini game (sessão): trava o mundo enquanto o plantão roda; o alvo é o incêndio
-const game=new MiniGame({id:MiniGameId.FIREFIGHTER,name:'Fire Brigade',
-  blips:()=>fire?[{x:fire.x,z:fire.z,icon:'fire',color:'#ff7a1e',label:'FIRE',current:true,reveal:false}]:[]});
+const game=new MiniGame({id:MiniGameId.FIREFIGHTER,name:'Bombeiros',
+  blips:()=>fire?[{x:fire.x,z:fire.z,icon:'fire',color:'#ff7a1e',label:'INCÊNDIO',current:true,reveal:false}]:[]});
 
 // ---------- registries (auto-registro no topo do módulo) ----------
 (refs.carEnterLabels||(refs.carEnterLabels=[])).push((c: any)=>
-  c===truck?{label:'FIRE',prompt:'START FIRE BRIGADE',enabled:true} as ZoneAction:null);
+  c===truck?{label:'INCÊNDIO',prompt:'COMEÇAR PLANTÃO DE BOMBEIRO',enabled:true} as ZoneAction:null);
 
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
   phase==='duty'&&fire
-    ?[{x:fire.x,z:fire.z,icon:'fire',color:'#ff7a1e',label:'FIRE',current:true,reveal:false}]
-    :[{x:truck.g.position.x,z:truck.g.position.z,icon:'fire',color:'#ff7a1e',label:'FIRE BRIGADE'}]);
+    ?[{x:fire.x,z:fire.z,icon:'fire',color:'#ff7a1e',label:'INCÊNDIO',current:true,reveal:false}]
+    :[{x:truck.g.position.x,z:truck.g.position.z,icon:'fire',color:'#ff7a1e',label:'BOMBEIROS'}]);
 
 refs.getFirefighterState=()=>({onDuty:phase==='duty',level,fires,timeLeft,
   blaze:fire?+(fire.hp/fire.maxHp).toFixed(2):0});
@@ -227,7 +227,7 @@ function spawnFire(initial?: boolean){
   let grant=clamp(Math.round(dist*TIME_PER_M+FIRE_BASE),TIME_MIN,TIME_MAX);
   if(initial)grant+=START_BUFFER;
   timeLeft+=grant;timeRef=timeLeft;
-  message(`FIRE ${Math.round(dist)}m AWAY · +${grant}s`,'var(--gold)');
+  message(`INCÊNDIO A ${Math.round(dist)}m · +${grant}s`,'var(--gold)');
 }
 
 // escala visual do fogo conforme a fração de vida (0.45 quase apagado → 1 raging),
@@ -263,19 +263,19 @@ function startDuty(){
   if(!game.begin())return; // outra sessão de mini game rolando: não começa
   phase='duty';level=1;fires=0;timeLeft=0;lastBeep=-1;
   setFireSiren(true);
-  bigText('FIRE BRIGADE','var(--gold)');setTimeout(hideBig,1100);
+  bigText('BOMBEIROS','var(--gold)');setTimeout(hideBig,1100);
   blip([523,659,784],.09,'square',.18);
   spawnFire(true); // 1º incêndio: concede o tempo (distância) + folga de partida
   updateFfHud();
 }
 
-function endDuty(text='FIRE BRIGADE OVER',col='var(--cyan)'){
+function endDuty(text='PLANTÃO DE BOMBEIRO ENCERRADO',col='var(--cyan)'){
   removeFire();
   clearParticles();
   setSpraying(false);
   setFireSiren(false);
   if(cannon)cannon.rotation.y=0;
-  const summary=fires>0?` - ${fires} FIRES / LVL ${level}`:'';
+  const summary=fires>0?` - ${fires} INCÊNDIOS / NÍV ${level}`:'';
   // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   phase='off';
@@ -295,15 +295,15 @@ function extinguishFire(){
   for(let i=0;i<10;i++)spawnSmoke(fire!.x,fire!.gy+.5+rand(0,1.4),fire!.z,false);
   thud(6);
   state.shake=Math.max(state.shake,.12);
-  message(speedBonus>0?`FIRE OUT +$${reward} (QUICK! +$${speedBonus})`:`FIRE OUT +$${reward}`,'var(--gold)');
-  bigText('FIRE OUT','var(--gold)');setTimeout(hideBig,1100);
+  message(speedBonus>0?`FOGO APAGADO +R$${reward} (RÁPIDO! +R$${speedBonus})`:`FOGO APAGADO +R$${reward}`,'var(--gold)');
+  bigText('FOGO APAGADO','var(--gold)');setTimeout(hideBig,1100);
   blip([523,659,784,1047],.1,'square',.2);
   removeFire();
   setSpraying(false);
   // recompensa do open-world: apagar FLAME_AT incêndios libera o lança-chamas
   if(fires===FLAME_AT&&buyWeapon('flame')){
-    message('FLAMETHROWER UNLOCKED!','var(--pink)');
-    bigText('FLAMETHROWER','var(--pink)');setTimeout(hideBig,1400);
+    message('LANÇA-CHAMAS DESBLOQUEADO!','var(--pink)');
+    bigText('LANÇA-CHAMAS','var(--pink)');setTimeout(hideBig,1400);
     blip([440,660,880,1320],.12,'square',.2);
   }
   level++;
@@ -383,12 +383,12 @@ function updateFfHud(){
   const blazePct=fire?Math.round(clamp(fire.hp/fire.maxHp,0,1)*100):0;
   const low=timeLeft<LOW_TIME?' ff-low':''; // tempo acabando: vermelho piscando
   ffHud.innerHTML=`
-    <div class="ff-label">FIRE BRIGADE</div>
-    <div class="ff-main"><span>LEVEL</span><b>${level}</b></div>
-    <div class="ff-row"><span>FIRES</span><b>${fires}</b></div>
-    <div class="ff-row${low}"><span>TIME</span><b>${Math.ceil(timeLeft)}s</b></div>
+    <div class="ff-label">BOMBEIROS</div>
+    <div class="ff-main"><span>NÍVEL</span><b>${level}</b></div>
+    <div class="ff-row"><span>INCÊNDIOS</span><b>${fires}</b></div>
+    <div class="ff-row${low}"><span>TEMPO</span><b>${Math.ceil(timeLeft)}s</b></div>
     <div class="ff-meter${low}"><i style="width:${timePct}%"></i></div>
-    <div class="ff-row"><span>BLAZE</span><b>${blazePct}%</b></div>
+    <div class="ff-row"><span>CHAMAS</span><b>${blazePct}%</b></div>
     <div class="ff-meter ff-blaze"><i style="width:${blazePct}%"></i></div>`;
 }
 
@@ -396,13 +396,13 @@ export function updateFirefighter(dt: number){
   // caminhão destruído: sai da cena e do idleCars; reaparece na esquina (igual
   // à viatura do vigilante). Se foi destruído em serviço, encerra o plantão.
   if(!truck.g.parent&&cur!==truck){
-    if(phase==='duty')endDuty('FIRE TRUCK DESTROYED','var(--pink)');
+    if(phase==='duty')endDuty('CAMINHÃO DE BOMBEIROS DESTRUÍDO','var(--pink)');
     wreckT+=dt;
     if(wreckT>=WRECK_RESPAWN){
       wreckT=0;resetTruck();
       scene.add(truck.g);
       if(!idleCars.includes(truck))idleCars.push(truck);
-      message('A NEW FIRE TRUCK IS WAITING AT THE STATION','var(--cyan)');
+      message('UM NOVO CAMINHÃO DE BOMBEIROS ESPERA NO QUARTEL','var(--cyan)');
     }
     return;
   }
@@ -416,7 +416,7 @@ export function updateFirefighter(dt: number){
   if(!driving){endDuty();return;} // saiu do caminhão (ou WASTED/BUSTED): encerra
 
   timeLeft-=dt;
-  if(timeLeft<=0){endDuty('FIRE BRIGADE OVER','var(--pink)');return;}
+  if(timeLeft<=0){endDuty('PLANTÃO DE BOMBEIRO ENCERRADO','var(--pink)');return;}
   // tempo acabando: bipa uma vez por segundo (aviso de pressão, estilo open-world)
   if(timeLeft<LOW_TIME){
     const s=Math.ceil(timeLeft);

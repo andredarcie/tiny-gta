@@ -35,4 +35,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Characters',label:'Priest',build};
+export default {category:'Personagens',label:'Padre',build};

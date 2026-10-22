@@ -53,7 +53,7 @@ export function makeFlowerBud(dried=true): THREE.Mesh{
   return m;
 }
 
-export default {category:'Rural',label:'Harvested weed plant',build:()=>makeHarvestedPlant(),zoom:1.1};
+export default {category:'Rural',label:'Pé de erva colhido',build:()=>makeHarvestedPlant(),zoom:1.1};
 
 // A clod of soil flung up when a plant is pulled or seeds are patted in (particles).
 const clodGeo=new THREE.IcosahedronGeometry(.03,0);

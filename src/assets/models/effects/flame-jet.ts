@@ -22,4 +22,4 @@ export function makeFlameJetModel(): THREE.Group{
   return g;
 }
 
-export default {category:'Effects',label:'Flame Jet',build:()=>makeFlameJetModel()};
+export default {category:'Efeitos',label:'Jato de fogo',build:()=>makeFlameJetModel()};

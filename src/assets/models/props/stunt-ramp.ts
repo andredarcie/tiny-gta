@@ -104,4 +104,4 @@ export function makeStuntRamp(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'Stunt ramp',build(){return makeStuntRamp();}};
+export default {category:'Objetos',label:'Rampa de salto',build(){return makeStuntRamp();}};

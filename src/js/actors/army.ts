@@ -74,13 +74,13 @@ class Soldier extends Npc{
   restT:number;
   respawnT:number; // >0 = counting down to return from afar after being killed
   constructor(g:THREE.Object3D,seat:Seat,wpn:SquadWpn,flank:number,stop:number,name?:string,gender?:'M'|'F'){
-    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,showLabel:true,area:'Army squad',name,gender});
+    super(g,{kind:'soldier',hp:1,drop:null,wanted:0,register:false,showLabel:true,area:'Pelotão do Exército',name,gender});
     this.seat=seat;this.wpn=wpn;this.flank=flank;this.stop=stop;
     this.mode='stationed';this.bob=rand(0,6);this.shootT=0;this.burstLeft=0;this.restT=rand(.2,1);this.respawnT=0;
   }
   override aliveState():string{
-    return this.mode==='stationed'?'On standby':this.mode==='ride'?'In the truck':
-      this.mode==='return'?'Re-boarding':'Open fire';
+    return this.mode==='stationed'?'De prontidão':this.mode==='ride'?'No caminhão':
+      this.mode==='return'?'Reembarcando':'Abrindo fogo';
   }
 }
 // A bullet-trail line that fades out over a fraction of a second.
@@ -190,7 +190,7 @@ function spawnArmy(){
     seatInBed(o);
   });
   if(state.time-lastMsg>4){lastMsg=state.time;
-    message('★6 — THE ARMY IS HERE! RUN!','var(--pink)');}
+    message('★6 — O EXÉRCITO CHEGOU! CORRE!','var(--pink)');}
 }
 
 // dismount the whole living squad (truck stopped near the stationary target)
@@ -205,7 +205,7 @@ function deploy(){
     o.mode='hunt';o.bob=rand(0,6);o.shootT=0;o.burstLeft=0;o.restT=rand(.3,1.2);
   }
   if(state.time-lastMsg>4){lastMsg=state.time;
-    message('SOLDIERS ON FOOT — OPEN FIRE!','var(--pink)');}
+    message('SOLDADOS A PÉ — FOGO À VONTADE!','var(--pink)');}
 }
 
 // no pathfinding: when the truck gets STUCK far away (behind a house, making no
@@ -295,7 +295,7 @@ refs.armyDist=()=>{if(!truck)return 1e9;const p=playerPos();
 // the player couldn't see the squad approaching and thought "nothing showed up").
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>
   truck?[{x:truck.g.position.x,z:truck.g.position.z,icon:'skull',color:'#ff3b3b',
-    label:'ARMY',current:true,reveal:false}]:[]);
+    label:'EXÉRCITO',current:true,reveal:false}]:[]);
 
 // debug
 refs.getArmyState=()=>({active:!!truck,deployed:!!truck?.deployed,

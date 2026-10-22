@@ -40,4 +40,4 @@ export function makeRaceGate(color=0xff8a1e): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Race gate',build:(o:{color?:number})=>makeRaceGate(o.color??0xff8a1e)};
+export default {category:'Missões',label:'Pórtico de corrida',build:(o:{color?:number})=>makeRaceGate(o.color??0xff8a1e)};

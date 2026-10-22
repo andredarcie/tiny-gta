@@ -52,4 +52,4 @@ export function makeUziModel({pickup=false}:{pickup?:boolean}={}): THREE.Group{
   return merged;
 }
 
-export default {category:'Weapons',label:'Uzi',build:()=>makeUziModel()};
+export default {category:'Armas',label:'Uzi',build:()=>makeUziModel()};

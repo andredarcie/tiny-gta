@@ -31,15 +31,15 @@ export interface Strain {
   blurb: string;
 }
 export const STRAINS: Strain[]=[
-  { id:'indica', name:'INDICA', full:'Northern Indica', pack:3,
+  { id:'indica', name:'INDICA', full:'Índica do Norte', pack:3,
     grow:0.78, drain:0.85, hardy:1.7, yieldMul:0.85, color:0x6f8f46,
-    blurb:'HARDY-FAST-FORGIVING' },
-  { id:'hybrid', name:'HYBRID', full:'Blue Dream Hybrid', pack:3,
+    blurb:'RESISTENTE-RÁPIDA-FÁCIL' },
+  { id:'hybrid', name:'HÍBRIDA', full:'Híbrida Sonho Azul', pack:3,
     grow:1.0,  drain:1.0,  hardy:1.0, yieldMul:1.05, color:0x4f9a6d,
-    blurb:'BALANCED ALL-ROUNDER' },
-  { id:'sativa', name:'SATIVA', full:'Sour Diesel Sativa', pack:3,
+    blurb:'EQUILIBRADA PRA TUDO' },
+  { id:'sativa', name:'SATIVA', full:'Sativa Diesel Azeda', pack:3,
     grow:1.35, drain:1.25, hardy:0.7, yieldMul:1.25, color:0xa6d36a,
-    blurb:'SLOW-THIRSTY-TOP DOLLAR' },
+    blurb:'LENTA-SEDENTA-VALE MUITO' },
 ];
 export const STRAIN_BY_ID: Record<string, Strain>=Object.fromEntries(STRAINS.map(s=>[s.id,s]));
 export const DEFAULT_STRAIN='hybrid';
@@ -47,5 +47,5 @@ export const DEFAULT_STRAIN='hybrid';
 // Plant food sold at the store (the corner feed-sacks), fed to a growing plant once
 // to boost its harvest. yieldMul stacks on the strain; qualBoost speeds quality gain.
 // (Its price lives in the central config — weedFarm.fertilizerPrice.)
-export const FERTILIZER={ id:'fertilizer', name:'PLANT FOOD', pack:2,
-  yieldMul:1.3, qualBoost:1.8, blurb:'BIGGER, BETTER BUDS' };
+export const FERTILIZER={ id:'fertilizer', name:'ADUBO', pack:2,
+  yieldMul:1.3, qualBoost:1.8, blurb:'BUDS MAIORES E MELHORES' };

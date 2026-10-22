@@ -57,4 +57,4 @@ export function makeOffroadGate(color=0xff8a1e): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Off-road gate',build:(o:{color?:number})=>makeOffroadGate(o.color??0xff8a1e)};
+export default {category:'Missões',label:'Pórtico off-road',build:(o:{color?:number})=>makeOffroadGate(o.color??0xff8a1e)};

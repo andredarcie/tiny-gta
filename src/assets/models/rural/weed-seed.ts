@@ -27,4 +27,4 @@ export function makeSeedPinch(food=false,n=3): THREE.Group{
   return g;
 }
 
-export default {category:'Rural',label:'Weed seeds',build:()=>makeSeedPinch(false,3),zoom:6};
+export default {category:'Rural',label:'Sementes de erva',build:()=>makeSeedPinch(false,3),zoom:6};

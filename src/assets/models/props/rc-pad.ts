@@ -51,7 +51,7 @@ function buildRcPad(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'RC pad',build:buildRcPad};
+export default {category:'Objetos',label:'Base do RC',build:buildRcPad};
 
 // Compat: factory direta.
 export function makeRcPad(): THREE.Group{return buildRcPad();}

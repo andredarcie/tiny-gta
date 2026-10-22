@@ -34,7 +34,7 @@ import type {ZoneAction} from '@/core/types.ts';
 // Each detonation SPENDS the RC, so a fresh one instantly respawns on the pad.
 // Leaving the RC ends the session; it returns to the pad to replay.
 
-const RC_BUILD=' ◆ RC SMASH';
+const RC_BUILD=' ◆ DESTRUIÇÃO RC';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',RC_BUILD);
 
 const GREEN=0x5eff8a;
@@ -60,11 +60,11 @@ const COMBO_WINDOW=REWARDS.rcToyz.comboWindowSec;
 function comboMult(c: number){ for(const t of REWARDS.rcToyz.comboTiers)if(c>=t.minCombo)return t.mult; return 1; }
 interface Callout{c:number;txt:string;col:string;}
 const CALLOUTS: Callout[]=[
-  {c:12,txt:'UNSTOPPABLE!',col:'#ff3bd0'},
-  {c:8, txt:'RAMPAGE!',    col:'#ff5a2e'},
-  {c:5, txt:'MULTI KILL!', col:'#ffb02e'},
-  {c:3, txt:'TRIPLE!',     col:'#ffd23a'},
-  {c:2, txt:'DOUBLE!',     col:'#5eff8a'},
+  {c:12,txt:'IMPARÁVEL!',col:'#ff3bd0'},
+  {c:8, txt:'FÚRIA!', col:'#ff5a2e'},
+  {c:5, txt:'MULTIDESTRUIÇÃO!', col:'#ffb02e'},
+  {c:3, txt:'TRIPLO!', col:'#ffd23a'},
+  {c:2, txt:'DUPLO!', col:'#5eff8a'},
 ];
 function callout(c: number): Callout|null{ for(const m of CALLOUTS)if(c>=m.c)return m; return null; }
 
@@ -82,8 +82,8 @@ const MEGA_TIME=REWARDS.rcToyz.megaTimeSec;                  // duration of MEGA
 interface CrateType{id:string;color:number;label:string;}
 const CRATE_TYPES: CrateType[]=[
   {id:'nitro',color:0x19e3ff,label:'NITRO!'},
-  {id:'time', color:0x5eff8a,label:'+TIME'},
-  {id:'mega', color:0xff3bd0,label:'MEGA BLAST!'},
+  {id:'time', color:0x5eff8a,label:'+TEMPO'},
+  {id:'mega', color:0xff3bd0,label:'MEGAEXPLOSÃO!'},
 ];
 const cssHex=(n: number)=>'#'+n.toString(16).padStart(6,'0');
 
@@ -160,9 +160,9 @@ let timeFlash=0;        // brief green flash on the clock when time is earned
 let nitroT=0,megaT=0;   // active power-up timers
 
 // mini game (session): locks the world during the round; targets are the live cars
-const game=new MiniGame({id:MiniGameId.RC_TOYZ,name:'RC Smash',
+const game=new MiniGame({id:MiniGameId.RC_TOYZ,name:'Destruição RC',
   blips:()=>targets.filter(t=>t.alive).map(t=>({x:t.g.position.x,z:t.g.position.z,
-    icon:'target',color:t.gold?'#ffd23a':'#5eff8a',label:t.gold?'GOLD':'TARGET',current:true,reveal:false}))});
+    icon:'target',color:t.gold?'#ffd23a':'#5eff8a',label:t.gold?'OURO':'ALVO',current:true,reveal:false}))});
 
 // reused scratch (zero allocation in the loop)
 const _hit=new THREE.Vector3();
@@ -171,7 +171,7 @@ const _off=new THREE.Vector3();
 // ---------- registries (auto-register at the top of the module) ----------
 // E prompt next to the parked RC
 (refs.carEnterLabels||(refs.carEnterLabels=[])).push((c: any)=>
-  c===rcObj?{label:'RC',prompt:'START RC SMASH',enabled:true} as ZoneAction:null);
+  c===rcObj?{label:'RC',prompt:'COMEÇAR DESTRUIÇÃO RC',enabled:true} as ZoneAction:null);
 
 // radar/map blips: during the round, the live targets + power-up crates (always
 // visible); outside the round, the fixed point of the RC
@@ -179,11 +179,11 @@ const _off=new THREE.Vector3();
   active
     ?[
       ...targets.filter(t=>t.alive).map(t=>({x:t.g.position.x,z:t.g.position.z,
-        icon:'target',color:t.gold?'#ffd23a':'#5eff8a',label:t.gold?'GOLD':'TARGET',current:true,reveal:false})),
+        icon:'target',color:t.gold?'#ffd23a':'#5eff8a',label:t.gold?'OURO':'ALVO',current:true,reveal:false})),
       ...crates.filter(c=>c.alive).map(c=>({x:c.g.position.x,z:c.g.position.z,
-        icon:'taxi',color:cssHex(c.type.color),label:'POWER-UP',reveal:false})),
+        icon:'taxi',color:cssHex(c.type.color),label:'BÔNUS',reveal:false})),
      ]
-    :[{x:rc.position.x,z:rc.position.z,icon:'taxi',color:'#ffb02e',label:'RC SMASH'}]);
+    :[{x:rc.position.x,z:rc.position.z,icon:'taxi',color:'#ffb02e',label:'DESTRUIÇÃO RC'}]);
 
 // debug
 refs.getRcToyzState=()=>({active,timeLeft,destroyed,combo,bestCombo,
@@ -311,7 +311,7 @@ function hudRound(){
   const left=Math.max(0,Math.ceil(timeLeft));
   // clock flashes green when time was just earned, red in the final 10 s
   const col=timeFlash>0?'#5eff8a':(left<=10?'var(--pink)':'var(--cyan)');
-  let line=`RC SMASH   ${destroyed} WRECKED`;
+  let line=`DESTRUIÇÃO RC   ${destroyed} DETONADOS`;
   if(combo>=2)line+=`   COMBO x${comboMult(combo)} (${combo})`;
   const buffs=[];
   if(nitroT>0)buffs.push('NITRO');
@@ -337,7 +337,7 @@ function startRound(){
   // Clear, short instructions on the FIRST round only (don't spam on restarts and
   // don't fight the per-frame hudRound, which owns message() during the round).
   if(firstRound){
-    bigText('RAM CARS OR FIRE TO BLAST - CHAIN WRECKS, GRAB CRATES','var(--cyan)');
+    bigText('BATA NOS CARROS OU ATIRE PRA EXPLODIR - FAÇA COMBOS, PEGUE AS CAIXAS','var(--cyan)');
     setTimeout(hideBig,3600);
   }
 }
@@ -407,7 +407,7 @@ function detonate(){
   refill();                                         // keep targets coming
   if(kills){
     const co=callout(combo);
-    const banner=gold?`GOLD!  +$${cash}`:(co?`${co.txt}  +$${cash}`:`+$${cash}`);
+    const banner=gold?`OURO!  +R$${cash}`:(co?`${co.txt}  +R$${cash}`:`+R$${cash}`);
     const col=gold?'#ffd23a':(co?co.col:'var(--gold)');
     if(timeLeft>.8){bigText(banner,col);setTimeout(hideBig,720);}
     const k=1+Math.min(combo,12)*.03; // pitch climbs with the chain
@@ -421,12 +421,12 @@ function finishRound(){
   const won=destroyed>=1; // a single kill already passes
   markMiniGamePlayed(game.id);
   if(won){
-    bigText(`RC SMASH: ${destroyed} WRECKED`,'var(--gold)');
-    message(`RC SMASH DONE - ${destroyed} WRECKED - BEST COMBO ${bestCombo}`,'var(--gold)');
+    bigText(`DESTRUIÇÃO RC: ${destroyed} DETONADOS`,'var(--gold)');
+    message(`DESTRUIÇÃO RC FEITA - ${destroyed} DETONADOS - MELHOR COMBO ${bestCombo}`,'var(--gold)');
     blip([523,659,784,1047],.09,'square',.2);
   }else{
-    bigText('RC SMASH FAILED','var(--pink)');
-    message('RC SMASH FAILED - NO CARS WRECKED','var(--pink)');
+    bigText('DESTRUIÇÃO RC FALHOU','var(--pink)');
+    message('DESTRUIÇÃO RC FALHOU - NENHUM CARRO DETONADO','var(--pink)');
     blip([330,247,180],.12,'sawtooth',.18);
   }
   setTimeout(hideBig,1200);

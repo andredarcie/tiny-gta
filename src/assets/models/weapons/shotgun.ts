@@ -52,4 +52,4 @@ export function makeShotgunModel({pickup=false}:{pickup?:boolean}={}): THREE.Gro
   return merged;
 }
 
-export default {category:'Weapons',label:'Shotgun',build:()=>makeShotgunModel()};
+export default {category:'Armas',label:'Espingarda',build:()=>makeShotgunModel()};

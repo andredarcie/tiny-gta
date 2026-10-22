@@ -60,4 +60,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Characters',label:'Zombie',build};
+export default {category:'Personagens',label:'Zumbi',build};

@@ -45,7 +45,7 @@ function buildRcCrate(color: number=0x19e3ff): THREE.Group{
 }
 
 // Model pattern: descriptor for the model-viewer (auto-discovery).
-export default {category:'Props',label:'RC crate',build:(o: {color?: number})=>buildRcCrate(o.color??0x19e3ff)};
+export default {category:'Objetos',label:'Caixa do RC',build:(o: {color?: number})=>buildRcCrate(o.color??0x19e3ff)};
 
 // Direct factory (matches the other props).
 export function makeRcCrate(color?: number): THREE.Group{return buildRcCrate(color);}

@@ -38,9 +38,9 @@ export class Ped extends Npc{
   wantBuds!:number;   // how many buds this ped buys in one deal
   weedCdT!:number;    // cooldown after a deal before they will flag you down again
   override aliveState():string{
-    if(this.aiState==='weed')return 'Wants to buy weed';
-    if(this.aiState==='idle')return 'Standing';
-    return this.aiState==='panic'?'Panicking':this.aiState==='flee'?'Fleeing':'Walking';
+    if(this.aiState==='weed')return 'Quer comprar erva';
+    if(this.aiState==='idle')return 'Parado';
+    return this.aiState==='panic'?'Em pânico':this.aiState==='flee'?'Fugindo':'Andando';
   }
   override pathTarget():{x:number;z:number}|null{
     if(this.aiState==='weed')return null; // standing still, flagging you down
@@ -135,7 +135,7 @@ for(const def of npcDefsByKind('civilian')){
   const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
   g.position.set(c.x,groundHeight(c.x,c.z),c.z);
   const p=new Ped(g,{
-    kind:'ped',hp:NPC_HP_CIVILIAN,drop:[15,55],wanted:1,wantedMsg:'SHOT FIRED!',crime:'ped_shot',
+    kind:'ped',hp:NPC_HP_CIVILIAN,drop:[15,55],wanted:1,wantedMsg:'TIRO DISPARADO!',crime:'ped_shot',
     punchToDown:3,showLabel:true,area:nh.name,
     gender:def.sex,name:def.name,likes:def.likes,personality:def.personality,dialogues:def.dialogues,
   });
@@ -215,7 +215,7 @@ export function updatePeds(dt:number){
       state.comboN=state.time-state.lastHit<4?state.comboN+1:1;
       state.lastHit=state.time;state.kills++;
       spawnDrop(p.g.position.x,p.g.position.z,irand(20,80)*state.comboN);
-      addWanted(1,'HIT AND RUN! ★'+Math.min(6,Math.floor(state.wanted+1)),'hit_run');
+      addWanted(1,'ATROPELAMENTO E FUGA! ★'+Math.min(6,Math.floor(state.wanted+1)),'hit_run');
       if(state.comboN>1)message('COMBO x'+state.comboN+'!','var(--pink)');
       thud(Math.abs(activeCur.speed));state.shake=.35;
       continue;

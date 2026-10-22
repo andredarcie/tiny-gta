@@ -20,4 +20,4 @@ export function makeSunSprite(): {sprite: THREE.Sprite; material: THREE.SpriteMa
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Daynight',label:'Sun',build:()=>makeSunSprite()};
+export default {category:'Céu',label:'Sol',build:()=>makeSunSprite()};

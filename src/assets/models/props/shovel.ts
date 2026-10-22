@@ -44,4 +44,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Shovel',build};
+export default {category:'Objetos',label:'Pá',build};

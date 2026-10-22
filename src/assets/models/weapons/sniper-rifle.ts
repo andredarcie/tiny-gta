@@ -62,4 +62,4 @@ export function makeSniperRifleModel({pickup=false}:{pickup?:boolean}={}): THREE
   return merged;
 }
 
-export default {category:'Weapons',label:'Sniper Rifle',build:()=>makeSniperRifleModel()};
+export default {category:'Armas',label:'Fuzil de precisão',build:()=>makeSniperRifleModel()};

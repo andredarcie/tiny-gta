@@ -1,4 +1,3 @@
-import {tr} from '@/core/i18n.ts';
 import {state,input,refs} from '@/core/state.ts';
 import {getTod} from '@/world/daynight.ts';
 import {paintWeaponGlyph} from '@/combat/weapon-icon.ts';
@@ -68,12 +67,12 @@ export function tickFps(): void {
 }
 
 export function message(t: string,col?: string): void {
-  hudMsg.textContent=tr(t);hudMsg.style.color=col||'var(--cream)';
+  hudMsg.textContent=t;hudMsg.style.color=col||'var(--cream)';
   hudMsg.style.opacity='1';msgT=2.6;
 }
 refs.message=message; // exposto p/ módulos que não podem importar hud sem ciclo (ex.: minigame.js)
 export function bigText(t: string,col: string): void {
-  hudBig.textContent=tr(t);hudBig.style.color=col;
+  hudBig.textContent=t;hudBig.style.color=col;
   hudBig.style.textShadow=`4px 4px 0 #000,0 0 40px ${col}`;
   hudBig.classList.add('show');
 }
@@ -112,7 +111,7 @@ function computeInteractAction(): InteractAction {
   if(tv)return tv;
   if(state.cine||state.dlgActive)return{label:'...',prompt:'',enabled:false}; // cut-scene: sem ações
   if(state.paused||state.mode==='cut'||state.orientationBlocked)return{label:'...',prompt:'',enabled:false};
-  if(refs.canPickWeapon?.())return{label:'PICK',prompt:'PICK UP WEAPON',enabled:true};
+  if(refs.canPickWeapon?.())return{label:'PEGAR',prompt:'PEGAR ARMA',enabled:true};
   if(state.mode==='foot'){
     const eat=refs.houseEatState?.(); // perto da geladeira dentro de casa
     if(eat)return eat;
@@ -136,7 +135,7 @@ function computeInteractAction(): InteractAction {
   }
   if(state.mode==='foot'){
     const rk=refs.rickNear?.(); // acampamento secreto do Rick (sem blip no mapa)
-    if(rk)return{label:'TALK',prompt:'TALK TO '+rk,enabled:true};
+    if(rk)return{label:'FALAR',prompt:'FALAR COM '+rk,enabled:true};
     const st=refs.storyAction?.(); // story: answer the pay phone / take the shovel / bury a body
     if(st)return st;
     // ações de zona (car-crusher/export/bomba): bloqueadas durante outra sessão
@@ -148,23 +147,23 @@ function computeInteractAction(): InteractAction {
       const c=near.c;
       // entrar em veículo de mini game só fora de outra sessão (um por vez)
       if(!MiniGame.busy){
-        if(refs.isTaxiCar?.(c))return{label:'CAB',prompt:'START CAB SHIFT',enabled:true};
-        if(refs.isVigilanteCar?.(c))return{label:'JUSTICE',prompt:'START STREET JUSTICE',enabled:true};
-        if(refs.isAmbulanceCar?.(c))return{label:'MEDIC',prompt:'START AMBULANCE RUSH',enabled:true};
+        if(refs.isTaxiCar?.(c))return{label:'TÁXI',prompt:'COMEÇAR TURNO DE TÁXI',enabled:true};
+        if(refs.isVigilanteCar?.(c))return{label:'JUSTIÇA',prompt:'COMEÇAR JUSTIÇA NAS RUAS',enabled:true};
+        if(refs.isAmbulanceCar?.(c))return{label:'RESGATE',prompt:'COMEÇAR PLANTÃO DE AMBULÂNCIA',enabled:true};
         for(const f of refs.carEnterLabels||[]){const a=f(c);if(a)return a;} // veículo especial de minigame
       }
       return c.boat
-        ?{label:'BOAT',prompt:'RIDE THE BOAT',enabled:true}
+        ?{label:'LANCHA',prompt:'PILOTAR A LANCHA',enabled:true}
         :c.bike
-          ?{label:'BIKE',prompt:'RIDE THE BIKE',enabled:true}
-          :{label:'CAR',prompt:'TAKE THE CAR',enabled:true};
+          ?{label:'MOTO',prompt:'SUBIR NA MOTO',enabled:true}
+          :{label:'CARRO',prompt:'PEGAR O CARRO',enabled:true};
     }
   }
   if(state.mode==='car'){
     if(!MiniGame.busy){ // largar uma corrida só fora de outra sessão (um por vez)
-      if(refs.raceNear?.())return{label:'RACE',prompt:'START THE RACE',enabled:true};
-      if(refs.boatRaceNear?.())return{label:'RACE',prompt:'START THE BOAT RACE',enabled:true};
-      if(refs.offroadNear?.())return{label:'RACE',prompt:'START OFF-ROAD',enabled:true};
+      if(refs.raceNear?.())return{label:'CORRIDA',prompt:'COMEÇAR A CORRIDA',enabled:true};
+      if(refs.boatRaceNear?.())return{label:'CORRIDA',prompt:'COMEÇAR A CORRIDA DE LANCHAS',enabled:true};
+      if(refs.offroadNear?.())return{label:'CORRIDA',prompt:'COMEÇAR O OFF-ROAD',enabled:true};
     }
     const mod=refs.modShopState?.(); // carro parado na plataforma da oficina de custom
     if(mod)return mod;
@@ -175,7 +174,7 @@ function computeInteractAction(): InteractAction {
     const c=refs.getCur?.();
     const speed=Math.abs(c?.speed||0);
     return speed<6
-      ?{label:'EXIT',prompt:c?.boat?'GET OFF THE BOAT':c?.bike?'GET OFF THE BIKE':'EXIT THE CAR',enabled:true}
+      ?{label:'SAIR',prompt:c?.boat?'SAIR DA LANCHA':c?.bike?'DESCER DA MOTO':'SAIR DO CARRO',enabled:true}
       :{label:'...',prompt:'',enabled:false};
   }
   return{label:'...',prompt:'',enabled:false};
@@ -665,19 +664,19 @@ export function drawFullMap(): void {
       const ws=refs.workshopBlip?.();if(ws)marks.push({...ws});      // oficina de custom
       // minigames de ponto fixo (nunca em território de gangue)
       pushMG(refs.overkillBlip?.(),'skull','#ff2e88','OVERKILL');
-      pushMG(refs.vigilanteStart?.(),'cop','#3e7bff','JUSTICE');
-      pushMG(refs.paramedicStart?.(),'cross','#19e3ff','MEDIC');
+      pushMG(refs.vigilanteStart?.(),'cop','#3e7bff','JUSTIÇA');
+      pushMG(refs.paramedicStart?.(),'cross','#19e3ff','RESGATE');
       // táxi: livre / passageiro / destino
       const tx=refs.taxiTarget?.();
       if(tx)pushMG(tx,tx.kind==='taxi'?'taxi':tx.kind==='pickup'?'person':'flag',
                   tx.kind==='taxi'?'#f5c518':'#5eff8a',
-                  tx.kind==='taxi'?'CAB':tx.kind==='pickup'?'PASSENGER':'DROP OFF');
+                  tx.kind==='taxi'?'TÁXI':tx.kind==='pickup'?'PASSAGEIRO':'DESEMBARQUE');
       // entrega
-      pushMG(refs.getDelivery?.(),'package','#ffd24a','DELIVERY');
+      pushMG(refs.getDelivery?.(),'package','#ffd24a','ENTREGA');
       // plantões ativos
-      for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPECT');
+      for(const b of refs.vigilanteBlips?.()||[])push(b,'target',b.col||'#ff3b56','SUSPEITO');
       for(const b of refs.paramedicBlips?.()||[])
-        push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PATIENT');
+        push(b,'cross',b.col||'#5eff8a',b.col==='#19e3ff'?'HOSPITAL':'PACIENTE');
       // story objective (drawn big, see below)
       for(const b of refs.storyBlips?.()||[])marks.push({...b});
       // minigames registrados: o mapa completo mostra TODOS (longe ou perto), menos
@@ -689,9 +688,9 @@ export function drawFullMap(): void {
     // boias seguintes (anel apagado, sem rótulo). Durante UMA corrida a largada da
     // OUTRA some (rua x lanchas não vazam uma na outra).
     if(!bOn)for(const b of refs.raceBlips?.()||[])
-      push(b,'flag','#ff8a1e',rOn?(b.current?'CHECKPOINT':null):'STREET RACE',rOn&&!b.current);
+      push(b,'flag','#ff8a1e',rOn?(b.current?'CHECKPOINT':null):'RACHA DE RUA',rOn&&!b.current);
     if(!rOn)for(const b of refs.boatRaceBlips?.()||[])
-      push(b,'flag','#1ec8ff',bOn?(b.current?'NEXT BUOY':null):'BOAT RACE',bOn&&!b.current);
+      push(b,'flag','#1ec8ff',bOn?(b.current?'PRÓXIMA BOIA':null):'CORRIDA DE LANCHAS',bOn&&!b.current);
   }
 
   // Nomes das regiões (bairros + localidades): roxo temático, fonte nítida (opaca,
@@ -769,15 +768,15 @@ function drawFmPlayer(P:(wx:number,wz:number)=>Pt):void{
     fm.beginPath();fm.moveTo(0,-11);fm.lineTo(-8,9);fm.lineTo(0,4.5);fm.lineTo(8,9);
     fm.closePath();fm.fill();fm.stroke();fm.restore();
     fm.font='700 11px "Barlow Condensed",monospace';fm.textAlign='center';fm.textBaseline='top';
-    fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('YOU',px,py+13);
-    fm.fillStyle='#9bf0ff';fm.fillText('YOU',px,py+13);
+    fm.lineWidth=3;fm.strokeStyle='rgba(5,3,8,.92)';fm.strokeText('VOCÊ',px,py+13);
+    fm.fillStyle='#9bf0ff';fm.fillText('VOCÊ',px,py+13);
   }
 }
 
 export function updateHUD(dt: number): void {
   shownMoney+=(state.money-shownMoney)*Math.min(1,8*dt);
   if(Math.abs(shownMoney-state.money)<1)shownMoney=state.money;
-  const moneyS='$'+String(Math.max(0,Math.round(shownMoney))).padStart(8,'0');
+  const moneyS='R$'+String(Math.max(0,Math.round(shownMoney))).padStart(8,'0');
   if(moneyS!==_money){hudMoney.textContent=moneyS;_money=moneyS;}
   const min=Math.floor(getTod()*1440);              // clock follows the day/night cycle
   const clockS=String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0');
@@ -819,7 +818,7 @@ export function updateHUD(dt: number): void {
     const reg=pp?(dvPlace?dvPlace(pp.x,pp.z):regionAt(pp.x,pp.z)):null;
     if(reg!==_region){
       _region=reg;
-      if(reg){hudLocation.textContent=tr(reg);hudLocation.classList.add('show');_regionT=5;}
+      if(reg){hudLocation.textContent=reg;hudLocation.classList.add('show');_regionT=5;}
       else{hudLocation.classList.remove('show');_regionT=0;}
     }
     if(_regionT>0){_regionT-=dt;if(_regionT<=0)hudLocation.classList.remove('show');}
@@ -829,7 +828,7 @@ export function updateHUD(dt: number): void {
   const wh=refs.getWeaponHud?.() as WeaponHud | undefined;
   if(wh){
     drawHudWeaponIcon(wh);
-    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=tr(wh.name);hudWeaponName.style.display='block';_wname=wh.name;}
+    if(hudWeaponName&&wh.name!==_wname){hudWeaponName.textContent=wh.name;hudWeaponName.style.display='block';_wname=wh.name;}
     if(wh.infinite){hudWeaponAmmo.style.display='none';}
     else{
       hudWeaponAmmo.style.display='block';
@@ -858,7 +857,7 @@ export function updateHUD(dt: number): void {
   const action=getInteractAction();
   const showPrompt=action.enabled&&!input.touchActive;
   if(showPrompt){
-    const html=`<b>E</b> - ${tr(action.prompt??"")}`;
+    const html=`<b>E</b> - ${action.prompt??""}`;
     if(html!==_prompt){hudPrompt.innerHTML=html;_prompt=html;}
   }
   if(showPrompt!==_promptShown){hudPrompt.style.display=showPrompt?'block':'none';_promptShown=showPrompt as boolean;}

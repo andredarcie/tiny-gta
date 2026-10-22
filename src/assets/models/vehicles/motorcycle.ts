@@ -131,10 +131,10 @@ function buildMotorcycle({color=0xd11f3a}: {color?: number}={}): THREE.Group{
 }
 
 // Padrão de modelo: build() puro; descriptor com variações pro model-viewer.
-export default {category:'Vehicles',label:'Motorcycle',build:buildMotorcycle,
-  variants:[{label:'Motorcycle — red',opts:{color:0xd11f3a}},
-            {label:'Motorcycle — teal',opts:{color:0x18b0a6}},
-            {label:'Motorcycle — gold',opts:{color:0xe0a52a}}]};
+export default {category:'Veículos',label:'Moto',build:buildMotorcycle,
+  variants:[{label:'Moto — vermelha',opts:{color:0xd11f3a}},
+            {label:'Moto — verde-água',opts:{color:0x18b0a6}},
+            {label:'Moto — dourada',opts:{color:0xe0a52a}}]};
 
 // Compat: gameplay usa makeMotorcycle(color) e espera a moto já na cena.
 export function makeMotorcycle(color: number): THREE.Group{const g=buildMotorcycle({color});addVehicleLod(g,'bike:'+color);scene.add(g);return g;}

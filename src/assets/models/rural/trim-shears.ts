@@ -43,4 +43,4 @@ export function makeTrimShears(): THREE.Group{
   return g;
 }
 
-export default {category:'Rural',label:'Trimming shears',build:()=>{const s=makeTrimShears();s.userData.setOpen(.6);return s;},zoom:5};
+export default {category:'Rural',label:'Tesoura de poda',build:()=>{const s=makeTrimShears();s.userData.setOpen(.6);return s;},zoom:5};

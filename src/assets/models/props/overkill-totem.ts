@@ -43,4 +43,4 @@ export function makeOverkillTotem(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'Overkill skull',build:()=>makeOverkillTotem()};
+export default {category:'Objetos',label:'Caveira do overkill',build:()=>makeOverkillTotem()};

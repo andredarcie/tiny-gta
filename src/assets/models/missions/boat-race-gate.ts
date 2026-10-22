@@ -59,7 +59,7 @@ function buildGate({color=0xff8a1e,finish=false}: {color?:number;finish?:boolean
       const x=c.getContext('2d')!;
       x.fillStyle='#14161a';x.fillRect(0,0,256,64);
       x.fillStyle='#ffce5a';x.font='bold 44px monospace';x.textAlign='center';x.textBaseline='middle';
-      x.fillText('FINISH',128,36);
+      x.fillText('CHEGADA',128,36);
       const label=new THREE.Mesh(new THREE.PlaneGeometry(W*.9,.9),
         new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,side:THREE.DoubleSide}));
       label.position.set(0,4.6,.1);g.add(label);
@@ -93,7 +93,7 @@ function buildGate({color=0xff8a1e,finish=false}: {color?:number;finish?:boolean
 export function makeBoatRaceGate(opts: {color?:number;finish?:boolean}): THREE.Group{return buildGate(opts);}
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Boat race gate',
+export default {category:'Missões',label:'Pórtico da corrida de lanchas',
   build:(o?:{color?:number;finish?:boolean})=>buildGate({color:o?.color??0xff8a1e,finish:!!o?.finish}),
-  variants:[{label:'Boat race — start gate',opts:{}},
-            {label:'Boat race — finish line',opts:{finish:true}}]};
+  variants:[{label:'Corrida de lanchas — largada',opts:{}},
+            {label:'Corrida de lanchas — chegada',opts:{finish:true}}]};

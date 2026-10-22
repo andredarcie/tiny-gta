@@ -12,4 +12,4 @@ export function makeSmokePuff(color: THREE.ColorRepresentation=0x2c2a28): THREE.
       depthWrite:false,fog:true}));
 }
 
-export default {category:'Effects',label:'Smoke puff',build:()=>makeSmokePuff()};
+export default {category:'Efeitos',label:'Fumaça',build:()=>makeSmokePuff()};

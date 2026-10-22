@@ -45,12 +45,12 @@ test('NPC roster filter is collapsed behind a SHOW/HIDE toggle', async ({page}) 
   const body = page.locator('#pause-body');
   const toggle = body.locator('.npc-filter-toggle');
   // collapsed by default: a SHOW FILTERS button, and NO chip rows on screen
-  await expect(toggle).toHaveText('SHOW FILTERS');
+  await expect(toggle).toHaveText('MOSTRAR FILTROS');
   await expect(body.locator('.pause-filter')).toHaveCount(0);
 
   // expand: button flips to HIDE FILTERS and the two chip rows (AREA + STATUS) appear
   await toggle.click();
-  await expect(body.locator('.npc-filter-toggle')).toHaveText('HIDE FILTERS');
+  await expect(body.locator('.npc-filter-toggle')).toHaveText('OCULTAR FILTROS');
   await expect(body.locator('.pause-filter')).toHaveCount(2);
 
   // collapse again

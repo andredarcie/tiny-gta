@@ -12,24 +12,24 @@ import {state, refs} from '@/core/state.ts';
 // (= MiniGameId values) on purpose: avoids importing MiniGameId here and creating a
 // cycle with minigame.ts (which imports this module). Unknown ids show no goal line.
 const MG_GOAL: Record<string, string> = {
-  taxi: 'fare money',
-  race: 'prize money',
-  'boat-race': 'prize money',
-  offroad: 'prize money',
-  vigilante: 'arrests',
-  paramedic: 'rescues',
-  firefighter: 'fires put out',
-  rampage: 'kills',
-  'rocket-rampage': 'cars wrecked',
-  'rc-toyz': 'cars wrecked',
-  gym: 'lift points',
-  dance: 'dance points',
-  'weed-farm': 'buds sold',
+  taxi: 'dinheiro de corridas',
+  race: 'dinheiro de prêmio',
+  'boat-race': 'dinheiro de prêmio',
+  offroad: 'dinheiro de prêmio',
+  vigilante: 'prisões',
+  paramedic: 'resgates',
+  firefighter: 'incêndios apagados',
+  rampage: 'abates',
+  'rocket-rampage': 'carros destruídos',
+  'rc-toyz': 'carros destruídos',
+  gym: 'pontos de supino',
+  dance: 'pontos de dança',
+  'weed-farm': 'buds vendidos',
 };
 
 function goalHtml(id: string) {
   const m = MG_GOAL[id];
-  return m ? `Goal: rack up as many <b>${m}</b> as you can.` : '';
+  return m ? `Objetivo: junte o máximo de <b>${m}</b> que conseguir.` : '';
 }
 
 // ---- INTRO (briefing overlay before each mini game) -------------------------

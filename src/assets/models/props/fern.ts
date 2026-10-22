@@ -25,7 +25,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Fern',build};
+export default {category:'Objetos',label:'Samambaia',build};
 
 // Fern → a code-built frond rosette (nature/kit.ts), scaled to ankle/knee height.
 export function addFern(px: number,pz: number): void{

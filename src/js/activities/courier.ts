@@ -50,22 +50,22 @@ export function spawnDrop(x: number,z: number,val: number){
 }
 
 const MISSIONS: Mission[]=[
-  {title:'COMMITTEE FEE',desc:'The inquiry chair got an "institutional thank-you" from the people he was supposed to investigate. He calls it consulting. The penal code calls it something else. Quiet drop: ring the bell, leave it, vanish.',reward:210},
-  {title:'SHADOW CAMPAIGN CASH',desc:"A campaign donation that legally does not exist for a candidate who officially never asked. The money came from a shell company owned by the treasurer's brother-in-law. Democracy is expensive.",reward:195},
-  {title:'OFFSHORE PARADISE',desc:'Holding-company papers from the Cayman Islands, through Panama, into a Miami apartment the senator says he has never visited. Deliver them to a man who does not exist.',reward:230},
-  {title:'SCHOOL LUNCH SKIM',desc:"A four-million-dollar food contract for meals that never reached the schools. The supplier is the secretary's wife. The kids eat crackers. The aide eats sushi. Drop off the change.",reward:175},
-  {title:'PORK BARREL PACKAGE',desc:'Federal money for a nonprofit at an empty address in a neighborhood the congressman has never entered. The beneficiary is thankful. The taxpayer has no idea. Take this envelope there.',reward:185},
-  {title:'FIXED BID',desc:'Five different companies, one address, one accountant, one handwriting style on every proposal. The winner was picked before the envelopes opened. Deliver the congratulations.',reward:200},
-  {title:'PUBLIC TRAVEL RECEIPT',desc:"A state employee on official business stayed at the only hotel in town owned by the mayor's brother, billed at $1,200 a night. Get the receipt signed before the audit.",reward:165},
-  {title:'JUDGE DOSSIER',desc:'The magistrate requested "research material" on the defendant. It came from a private investigator hired by the other side. The ruling is due soon. Do not read it, just deliver it.',reward:220},
-  {title:'STATE FUEL',desc:`Two hundred liters of public gasoline went into the deputy secretary's private car, his wife's car, and the family ranch generator. Bring the voucher for signature. "Official travel."`,reward:170},
-  {title:'GHOST CONTRACT',desc:"A company opened three weeks ago, with no staff, no office, no history, and an eight-million-dollar city contract. The owner is 22 and the councilman's godson. Deliver the first installment.",reward:240},
-  {title:'UNFINISHED BRIDGE',desc:'The same governor inaugurated the bridge twice, in two different terms, and it still is not finished. The budget tripled. The contractor donated to the campaign. Bring the third bid invoice.',reward:190},
-  {title:'VIP CONFERENCE',desc:'First-class flight, five-star hotel, "representation" allowances, all for an international conference the deputy attended for three hours before flying home. Deliver the receipt.',reward:180},
-  {title:'DECLARED SHACK',desc:'A $3.2 million mansion was declared as a two-room wooden house on the official asset form. Property tax was paid with a corporate card. Get the deeds to the lawyer before filing time.',reward:215},
-  {title:'SOCIAL PROJECT',desc:'A nonprofit with no office, staff, or activity got $600,000 to "train young people." The only person trained was its president, who bought a new pickup. Deliver the activity report.',reward:185},
-  {title:'COURT DEAL',desc:`Three justices, two deciding votes, and a ruling nobody understands but everybody recognizes. The lawyer needs the "support material" before tomorrow's session. Do not ask what it is.`,reward:225},
-  {title:'HEALTH BUDGET',desc:'Ventilators bought for $40,000 each when they cost $8,000 on the market. The manufacturer registered the day before the bid. Approved during a pandemic. Deliver the "technical" manuals.',reward:210},
+  {title:'TAXA DA CPI',desc:'O presidente da CPI ganhou um "agradecimento institucional" de quem ele devia investigar. Ele chama de consultoria. O Código Penal chama de outra coisa. Entrega discreta: toque a campainha, deixe o pacote e suma.',reward:210},
+  {title:'CAIXA DOIS',desc:'Uma doação de campanha que legalmente não existe, para um candidato que oficialmente nunca pediu. O dinheiro veio de uma empresa de fachada do cunhado do tesoureiro. Democracia sai caro.',reward:195},
+  {title:'PARAÍSO FISCAL',desc:'Papéis de uma holding nas Ilhas Cayman, passando pelo Panamá, até um apartamento em Miami que o senador jura que nunca visitou. Entregue para um homem que não existe.',reward:230},
+  {title:'DESVIO DA MERENDA',desc:'Um contrato de quatro milhões de reais para uma merenda que nunca chegou às escolas. A fornecedora é a mulher do secretário. As crianças comem bolacha. O assessor come sushi. Entregue o troco.',reward:175},
+  {title:'EMENDA PARLAMENTAR',desc:'Verba federal para uma ONG num endereço vazio, num bairro onde o deputado nunca pisou. O beneficiário agradece. O contribuinte nem faz ideia. Leve este envelope até lá.',reward:185},
+  {title:'LICITAÇÃO DE CARTAS MARCADAS',desc:'Cinco empresas diferentes, um endereço, um contador e a mesma letra em todas as propostas. O vencedor foi escolhido antes de abrirem os envelopes. Entregue os parabéns.',reward:200},
+  {title:'DIÁRIA DE VIAGEM',desc:'Um servidor em viagem oficial ficou no único hotel da cidade, que é do irmão do prefeito, a R$ 1.200 a diária. Pegue a nota assinada antes da auditoria.',reward:165},
+  {title:'DOSSIÊ DO JUIZ',desc:'O magistrado pediu "material de pesquisa" sobre o réu. Veio de um detetive particular contratado pela outra parte. A sentença sai logo. Não leia, só entregue.',reward:220},
+  {title:'GASOLINA DO ESTADO',desc:`Duzentos litros de gasolina pública foram para o carro do secretário adjunto, o carro da esposa e o gerador do sítio da família. Leve o vale para assinar. "Viagem oficial."`,reward:170},
+  {title:'CONTRATO FANTASMA',desc:'Uma empresa aberta há três semanas, sem funcionários, sem escritório, sem histórico e com um contrato de oito milhões com a prefeitura. O dono tem 22 anos e é afilhado do vereador. Entregue a primeira parcela.',reward:240},
+  {title:'PONTE INACABADA',desc:'O mesmo governador inaugurou a ponte duas vezes, em dois mandatos diferentes, e ela ainda não ficou pronta. O orçamento triplicou. A empreiteira doou para a campanha. Leve a nota da terceira licitação.',reward:190},
+  {title:'CONGRESSO VIP',desc:'Voo de primeira classe, hotel cinco estrelas e verba de "representação", tudo para um congresso internacional em que o deputado ficou três horas antes de voltar para casa. Entregue o recibo.',reward:180},
+  {title:'BARRACO DECLARADO',desc:'Uma mansão de R$ 3,2 milhões foi declarada como casa de madeira de dois cômodos na declaração de bens. O IPTU foi pago com o cartão corporativo. Leve as escrituras ao advogado antes do prazo.',reward:215},
+  {title:'PROJETO SOCIAL',desc:'Uma ONG sem sede, sem funcionários e sem atividade recebeu R$ 600 mil para "capacitar jovens". O único capacitado foi o presidente, que comprou uma caminhonete nova. Entregue o relatório de atividades.',reward:185},
+  {title:'ACORDÃO',desc:`Três ministros, dois votos decisivos e uma decisão que ninguém entende, mas todo mundo reconhece. O advogado precisa do "material de apoio" antes da sessão de amanhã. Não pergunte o que é.`,reward:225},
+  {title:'VERBA DA SAÚDE',desc:'Respiradores comprados a R$ 40 mil cada, quando custam R$ 8 mil no mercado. O fabricante abriu a empresa na véspera da licitação. Aprovado em plena pandemia. Entregue os manuais "técnicos".',reward:210},
 ];
 
 export let curMission: Mission | null=null;
@@ -120,7 +120,7 @@ export function updatePickups(dt: number){
       const base=curMission?curMission.reward:150;
       const fast=Math.max(0,Math.round(120-(state.time-delivery.t0)*4));
       economy.earn(base+fast,'delivery');state.deliveries++;
-      message(fast>0?`DELIVERY +$${base+fast} - SPEED BONUS!`:`DELIVERY COMPLETE  +$${base}`,'var(--gold)');
+      message(fast>0?`ENTREGA +R$${base+fast} - BÔNUS DE VELOCIDADE!`:`ENTREGA FEITA  +R$${base}`,'var(--gold)');
       blip([523,659,784,1047],0.09,'sine',.18);
       saveBest();spawnDelivery();
     }

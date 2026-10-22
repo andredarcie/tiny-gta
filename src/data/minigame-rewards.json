@@ -1,150 +1,150 @@
 {
   "race": [
-    { "field": "placePrizes", "value": [700, 350, 150, 0], "description": "Prize cash by finishing place [1st, 2nd, 3rd, 4th+]" },
-    { "field": "fastWinBonusMax", "value": 220, "description": "Max speed bonus added to a 1st-place finish" },
-    { "field": "fastWinBonusDecayPerSec", "value": 1.4, "description": "Speed bonus lost per second of race time" },
-    { "field": "repeatWinDecay", "value": 0.55, "description": "Fraction of the prize paid on each back-to-back win (anti-farm). INERT today: the 1x/in-game-day lock blocks a second completion the same day, and the ~8-min in-game day exceeds repeatWinRecoverSec so the streak always resets. Kept tunable for a future same-day-repeatable race." },
-    { "field": "repeatWinRecoverSec", "value": 180, "description": "Seconds away from the race to recover one anti-farm decay step. (Inert under the 1x/day lock — see repeatWinDecay.)" },
-    { "field": "countdownSec", "value": 3, "description": "Start countdown before the race begins" }
+    { "field": "placePrizes", "value": [700, 350, 150, 0], "description": "Prêmio em dinheiro por colocação [1º, 2º, 3º, 4º+]" },
+    { "field": "fastWinBonusMax", "value": 220, "description": "Bônus máximo de velocidade somado a uma vitória em 1º lugar" },
+    { "field": "fastWinBonusDecayPerSec", "value": 1.4, "description": "Bônus de velocidade perdido por segundo de corrida" },
+    { "field": "repeatWinDecay", "value": 0.55, "description": "Fração do prêmio paga em cada vitória seguida (anti-farm). Hoje sem efeito: o limite de 1x por dia do jogo impede uma segunda conclusão no mesmo dia, e o dia do jogo (~8 min) passa de repeatWinRecoverSec, então a sequência sempre zera. Mantido ajustável para uma futura corrida repetível no mesmo dia." },
+    { "field": "repeatWinRecoverSec", "value": 180, "description": "Segundos longe da corrida para recuperar um passo do desconto anti-farm. (Sem efeito com o limite de 1x por dia — veja repeatWinDecay.)" },
+    { "field": "countdownSec", "value": 3, "description": "Contagem regressiva antes da largada" }
   ],
   "boatRace": [
-    { "field": "placePrizes", "value": [700, 350, 150, 0], "description": "Prize cash by finishing place [1st, 2nd, 3rd, 4th+]" },
-    { "field": "fastWinBonusMax", "value": 280, "description": "Max speed bonus added to a 1st-place finish (higher than the land races to pay for the mine hazards)" },
-    { "field": "fastWinBonusDecayPerSec", "value": 1.4, "description": "Speed bonus lost per second of race time" },
-    { "field": "repeatWinDecay", "value": 0.55, "description": "Fraction of the prize paid on each back-to-back win (anti-farm). INERT today: the 1x/in-game-day lock blocks a second completion the same day, and the ~8-min in-game day exceeds repeatWinRecoverSec so the streak always resets. Kept tunable for a future same-day-repeatable race." },
-    { "field": "repeatWinRecoverSec", "value": 180, "description": "Seconds away from the race to recover one anti-farm decay step. (Inert under the 1x/day lock — see repeatWinDecay.)" },
-    { "field": "countdownSec", "value": 3, "description": "Start countdown before the race begins" }
+    { "field": "placePrizes", "value": [700, 350, 150, 0], "description": "Prêmio em dinheiro por colocação [1º, 2º, 3º, 4º+]" },
+    { "field": "fastWinBonusMax", "value": 280, "description": "Bônus máximo de velocidade somado a uma vitória em 1º lugar (maior que nas corridas em terra, pelo risco das minas)" },
+    { "field": "fastWinBonusDecayPerSec", "value": 1.4, "description": "Bônus de velocidade perdido por segundo de corrida" },
+    { "field": "repeatWinDecay", "value": 0.55, "description": "Fração do prêmio paga em cada vitória seguida (anti-farm). Hoje sem efeito: o limite de 1x por dia do jogo impede uma segunda conclusão no mesmo dia, e o dia do jogo (~8 min) passa de repeatWinRecoverSec, então a sequência sempre zera. Mantido ajustável para uma futura corrida repetível no mesmo dia." },
+    { "field": "repeatWinRecoverSec", "value": 180, "description": "Segundos longe da corrida para recuperar um passo do desconto anti-farm. (Sem efeito com o limite de 1x por dia — veja repeatWinDecay.)" },
+    { "field": "countdownSec", "value": 3, "description": "Contagem regressiva antes da largada" }
   ],
   "offroad": [
-    { "field": "placePrizes", "value": [700, 350, 150, 0], "description": "Prize cash by finishing place [1st, 2nd, 3rd, 4th+]" },
-    { "field": "fastWinBonusMax", "value": 220, "description": "Max speed bonus added to a 1st-place finish" },
-    { "field": "fastWinBonusDecayPerSec", "value": 1.4, "description": "Speed bonus lost per second of race time" },
-    { "field": "repeatWinDecay", "value": 0.55, "description": "Fraction of the prize paid on each back-to-back win (anti-farm). INERT today: the 1x/in-game-day lock blocks a second completion the same day, and the ~8-min in-game day exceeds repeatWinRecoverSec so the streak always resets. Kept tunable for a future same-day-repeatable race." },
-    { "field": "repeatWinRecoverSec", "value": 180, "description": "Seconds away from the race to recover one anti-farm decay step. (Inert under the 1x/day lock — see repeatWinDecay.)" },
-    { "field": "countdownSec", "value": 3, "description": "Start countdown before the race begins" }
+    { "field": "placePrizes", "value": [700, 350, 150, 0], "description": "Prêmio em dinheiro por colocação [1º, 2º, 3º, 4º+]" },
+    { "field": "fastWinBonusMax", "value": 220, "description": "Bônus máximo de velocidade somado a uma vitória em 1º lugar" },
+    { "field": "fastWinBonusDecayPerSec", "value": 1.4, "description": "Bônus de velocidade perdido por segundo de corrida" },
+    { "field": "repeatWinDecay", "value": 0.55, "description": "Fração do prêmio paga em cada vitória seguida (anti-farm). Hoje sem efeito: o limite de 1x por dia do jogo impede uma segunda conclusão no mesmo dia, e o dia do jogo (~8 min) passa de repeatWinRecoverSec, então a sequência sempre zera. Mantido ajustável para uma futura corrida repetível no mesmo dia." },
+    { "field": "repeatWinRecoverSec", "value": 180, "description": "Segundos longe da corrida para recuperar um passo do desconto anti-farm. (Sem efeito com o limite de 1x por dia — veja repeatWinDecay.)" },
+    { "field": "countdownSec", "value": 3, "description": "Contagem regressiva antes da largada" }
   ],
   "taxi": [
-    { "field": "baseFare", "value": 6, "description": "Flat base fare per ride" },
-    { "field": "farePerMeter", "value": 0.42, "description": "Fare added per meter of pickup-to-dropoff distance" },
-    { "field": "baseTip", "value": 8, "description": "Flat base speed-tip per ride" },
-    { "field": "tipPerMeter", "value": 0.18, "description": "Tip added per meter of trip distance" },
-    { "field": "maxFare", "value": 400, "description": "Hard cap on a single ride's total payout (fare + tip)" },
-    { "field": "deadlineBaseSec", "value": 24, "description": "Base time allowed to reach the drop-off" },
-    { "field": "deadlinePerMeterDiv", "value": 8, "description": "Extra drop-off time = trip distance divided by this (Divinolândia streets wind up and down the hills)" },
-    { "field": "deadlineMinSec", "value": 38, "description": "Minimum drop-off time" },
-    { "field": "deadlineMaxSec", "value": 160, "description": "Maximum drop-off time" },
-    { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked cab returns to the stand" }
+    { "field": "baseFare", "value": 6, "description": "Tarifa fixa por corrida" },
+    { "field": "farePerMeter", "value": 0.42, "description": "Valor somado por metro entre o embarque e o desembarque" },
+    { "field": "baseTip", "value": 8, "description": "Gorjeta fixa por rapidez em cada corrida" },
+    { "field": "tipPerMeter", "value": 0.18, "description": "Gorjeta somada por metro de viagem" },
+    { "field": "maxFare", "value": 400, "description": "Teto do pagamento de uma corrida (tarifa + gorjeta)" },
+    { "field": "deadlineBaseSec", "value": 24, "description": "Tempo base para chegar ao desembarque" },
+    { "field": "deadlinePerMeterDiv", "value": 8, "description": "Tempo extra para o desembarque = distância da viagem dividida por este valor (as ruas de Divinolândia sobem e descem os morros)" },
+    { "field": "deadlineMinSec", "value": 38, "description": "Tempo mínimo para o desembarque" },
+    { "field": "deadlineMaxSec", "value": 160, "description": "Tempo máximo para o desembarque" },
+    { "field": "wreckRespawnSec", "value": 20, "description": "Segundos até um táxi destruído voltar ao ponto" }
   ],
   "carCrusher": [
-    { "field": "minScrap", "value": 150, "description": "Minimum scrap payout per crushed car" },
-    { "field": "maxScrap", "value": 400, "description": "Maximum scrap payout per crushed car" }
+    { "field": "minScrap", "value": 150, "description": "Pagamento mínimo de sucata por carro prensado" },
+    { "field": "maxScrap", "value": 400, "description": "Pagamento máximo de sucata por carro prensado" }
   ],
   "vigilante": [
-    { "field": "perBust", "value": 50, "description": "Cash per suspect busted, multiplied by patrol level" },
-    { "field": "maxReward", "value": 500, "description": "Hard cap on a single bust payout (perBust * level)" },
-    { "field": "dutyTimeSec", "value": 75, "description": "Starting patrol time" },
-    { "field": "bustBonusSec", "value": 20, "description": "Seconds added to the clock per capture" },
-    { "field": "ramCooldownSec", "value": 0.6, "description": "Minimum interval between two ram hits" },
-    { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked cruiser returns" }
+    { "field": "perBust", "value": 50, "description": "Dinheiro por suspeito preso, multiplicado pelo nível da patrulha" },
+    { "field": "maxReward", "value": 500, "description": "Teto do pagamento de uma prisão (perBust × nível)" },
+    { "field": "dutyTimeSec", "value": 75, "description": "Tempo inicial de patrulha" },
+    { "field": "bustBonusSec", "value": 20, "description": "Segundos somados ao relógio a cada captura" },
+    { "field": "ramCooldownSec", "value": 0.6, "description": "Intervalo mínimo entre duas batidas" },
+    { "field": "wreckRespawnSec", "value": 20, "description": "Segundos até uma viatura destruída voltar" }
   ],
   "paramedic": [
-    { "field": "perPatient", "value": 30, "description": "Cash per patient delivered" },
-    { "field": "perLevel", "value": 40, "description": "Cash bonus multiplied by the level on delivery" },
-    { "field": "maxReward", "value": 600, "description": "Hard cap on a single delivery payout (perPatient*onboard + perLevel*level)" },
-    { "field": "levelTimeBaseSec", "value": 75, "description": "Base time per level (the hospital is up on the hill)" },
-    { "field": "levelTimePerLevelSec", "value": 15, "description": "Extra time added per level number" },
-    { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked ambulance returns" }
+    { "field": "perPatient", "value": 30, "description": "Dinheiro por paciente entregue" },
+    { "field": "perLevel", "value": 40, "description": "Bônus em dinheiro multiplicado pelo nível na entrega" },
+    { "field": "maxReward", "value": 600, "description": "Teto do pagamento de uma entrega (perPatient × a bordo + perLevel × nível)" },
+    { "field": "levelTimeBaseSec", "value": 75, "description": "Tempo base por nível (o hospital fica no alto do morro)" },
+    { "field": "levelTimePerLevelSec", "value": 15, "description": "Tempo extra somado por número do nível" },
+    { "field": "wreckRespawnSec", "value": 20, "description": "Segundos até uma ambulância destruída voltar" }
   ],
   "firefighter": [
-    { "field": "perLevel", "value": 60, "description": "Cash per fire put out, multiplied by level" },
-    { "field": "speedBonusMax", "value": 90, "description": "Max quick-extinguish bonus" },
-    { "field": "speedBonusDecayPerSec", "value": 7, "description": "Quick-extinguish bonus lost per second on the fire" },
-    { "field": "maxReward", "value": 700, "description": "Hard cap on a single fire payout (perLevel*level + speed bonus)" },
-    { "field": "fireBaseSec", "value": 8, "description": "Base time granted per fire" },
-    { "field": "timePerMeterSec", "value": 0.12, "description": "Extra time granted per meter to the fire" },
-    { "field": "timeMinSec", "value": 12, "description": "Floor on the time granted per fire" },
-    { "field": "timeMaxSec", "value": 45, "description": "Ceiling on the time granted per fire" },
-    { "field": "startBufferSec", "value": 6, "description": "Extra grace time on the very first fire" },
-    { "field": "lowTimeSec", "value": 8, "description": "Below this the HUD clock flashes red and beeps" },
-    { "field": "wreckRespawnSec", "value": 20, "description": "Seconds before a wrecked fire truck returns" }
+    { "field": "perLevel", "value": 60, "description": "Dinheiro por incêndio apagado, multiplicado pelo nível" },
+    { "field": "speedBonusMax", "value": 90, "description": "Bônus máximo por apagar rápido" },
+    { "field": "speedBonusDecayPerSec", "value": 7, "description": "Bônus de rapidez perdido por segundo no incêndio" },
+    { "field": "maxReward", "value": 700, "description": "Teto do pagamento de um incêndio (perLevel × nível + bônus de rapidez)" },
+    { "field": "fireBaseSec", "value": 8, "description": "Tempo base dado por incêndio" },
+    { "field": "timePerMeterSec", "value": 0.12, "description": "Tempo extra dado por metro até o incêndio" },
+    { "field": "timeMinSec", "value": 12, "description": "Tempo mínimo dado por incêndio" },
+    { "field": "timeMaxSec", "value": 45, "description": "Tempo máximo dado por incêndio" },
+    { "field": "startBufferSec", "value": 6, "description": "Tempo de folga extra no primeiro incêndio" },
+    { "field": "lowTimeSec", "value": 8, "description": "Abaixo disso o relógio do HUD pisca em vermelho e apita" },
+    { "field": "wreckRespawnSec", "value": 20, "description": "Segundos até um caminhão de bombeiros destruído voltar" }
   ],
   "stuntJump": [
-    { "field": "speedMultiplier", "value": 8, "description": "Cash per jump = jump speed times this" },
-    { "field": "maxValue", "value": 300, "description": "Cap on a single stunt's speed value" },
-    { "field": "firstTimeBonus", "value": 400, "description": "Discovery bonus the first time a ramp is cleared" },
-    { "field": "jumpDurSec", "value": 0.9, "description": "Length of the jump arc" },
-    { "field": "landCooldownSec", "value": 0.6, "description": "Lockout after landing before another takeoff" },
-    { "field": "repeatPayCooldownSec", "value": 30, "description": "Seconds between repeat payouts on the same ramp (anti-farm)" }
+    { "field": "speedMultiplier", "value": 8, "description": "Dinheiro por salto = velocidade do salto × este valor" },
+    { "field": "maxValue", "value": 300, "description": "Teto do valor de velocidade de uma manobra" },
+    { "field": "firstTimeBonus", "value": 400, "description": "Bônus de descoberta na primeira vez que a rampa é saltada" },
+    { "field": "jumpDurSec", "value": 0.9, "description": "Duração do arco do salto" },
+    { "field": "landCooldownSec", "value": 0.6, "description": "Espera depois de pousar antes de outro salto" },
+    { "field": "repeatPayCooldownSec", "value": 30, "description": "Segundos entre pagamentos repetidos na mesma rampa (anti-farm)" }
   ],
   "hiddenPackages": [
-    { "field": "perPackage", "value": 50, "description": "Cash per hidden package collected" },
-    { "field": "bonusPer10", "value": 500, "description": "Bonus every 10 packages collected" },
-    { "field": "bonusAll", "value": 5000, "description": "Bonus for collecting all packages" }
+    { "field": "perPackage", "value": 50, "description": "Dinheiro por pacote escondido achado" },
+    { "field": "bonusPer10", "value": 500, "description": "Bônus a cada 10 pacotes achados" },
+    { "field": "bonusAll", "value": 5000, "description": "Bônus por achar todos os pacotes" }
   ],
   "importExport": [
-    { "field": "baseMin", "value": 200, "description": "Minimum base payout for an exported car" },
-    { "field": "baseRandomSpan", "value": 250, "description": "Random amount (0..this) added to the base payout" },
-    { "field": "matchBonus", "value": 400, "description": "Bonus when the car matches the requested model" }
+    { "field": "baseMin", "value": 200, "description": "Pagamento base mínimo por carro exportado" },
+    { "field": "baseRandomSpan", "value": 250, "description": "Valor aleatório (0 até este) somado ao pagamento base" },
+    { "field": "matchBonus", "value": 400, "description": "Bônus quando o carro é o modelo encomendado" }
   ],
   "rcToyz": [
-    { "field": "perKill", "value": 100, "description": "Base cash per wrecked car" },
-    { "field": "goldCarMultiplier", "value": 3, "description": "The gold car pays perKill times this" },
-    { "field": "comboTiers", "value": [ { "minCombo": 7, "mult": 3 }, { "minCombo": 4, "mult": 2 } ], "description": "Wreck-chain cash multipliers, scanned top-down; below the lowest minCombo pays x1" },
-    { "field": "maxCashPerKill", "value": 300, "description": "Hard cap on a single wreck's cash after combo/gold multipliers" },
-    { "field": "roundTimeSec", "value": 70, "description": "Starting clock for a round" },
-    { "field": "timeCapSec", "value": 99, "description": "Clock ceiling" },
-    { "field": "timePerKillSec", "value": 1.8, "description": "Seconds added per normal wreck" },
-    { "field": "goldTimeSec", "value": 5, "description": "Seconds added when wrecking the gold car" },
-    { "field": "comboWindowSec", "value": 3.5, "description": "Time window in which wrecks chain into a combo" },
-    { "field": "crateRespawnSec", "value": 5, "description": "Seconds before a used crate respawns" },
-    { "field": "crateTimeSec", "value": 8, "description": "Seconds a TIME crate adds to the clock" },
-    { "field": "nitroTimeSec", "value": 6, "description": "Duration of the NITRO buff" },
-    { "field": "megaTimeSec", "value": 8, "description": "Duration of the MEGA BLAST buff" },
-    { "field": "panicTimeSec", "value": 2.2, "description": "How long a car scatters when the RC gets close" }
+    { "field": "perKill", "value": 100, "description": "Dinheiro base por carro destruído" },
+    { "field": "goldCarMultiplier", "value": 3, "description": "O carro dourado paga perKill × este valor" },
+    { "field": "comboTiers", "value": [ { "minCombo": 7, "mult": 3 }, { "minCombo": 4, "mult": 2 } ], "description": "Multiplicadores de dinheiro por sequência de destruições, lidos de cima para baixo; abaixo do menor minCombo paga x1" },
+    { "field": "maxCashPerKill", "value": 300, "description": "Teto do dinheiro de uma destruição depois dos multiplicadores de combo e de ouro" },
+    { "field": "roundTimeSec", "value": 70, "description": "Relógio inicial de uma rodada" },
+    { "field": "timeCapSec", "value": 99, "description": "Teto do relógio" },
+    { "field": "timePerKillSec", "value": 1.8, "description": "Segundos somados por destruição normal" },
+    { "field": "goldTimeSec", "value": 5, "description": "Segundos somados ao destruir o carro dourado" },
+    { "field": "comboWindowSec", "value": 3.5, "description": "Janela de tempo em que as destruições viram combo" },
+    { "field": "crateRespawnSec", "value": 5, "description": "Segundos até uma caixa usada reaparecer" },
+    { "field": "crateTimeSec", "value": 8, "description": "Segundos que a caixa de TEMPO soma ao relógio" },
+    { "field": "nitroTimeSec", "value": 6, "description": "Duração do bônus NITRO" },
+    { "field": "megaTimeSec", "value": 8, "description": "Duração do bônus MEGAEXPLOSÃO" },
+    { "field": "panicTimeSec", "value": 2.2, "description": "Quanto tempo um carro foge quando o RC chega perto" }
   ],
   "weedFarm": [
-    { "field": "pricePerBud", "value": 10, "description": "Base cash per bud, before strain value and market" },
-    { "field": "strainValues", "value": { "indica": 0.9, "hybrid": 1.15, "sativa": 1.5 }, "description": "Per-strain cash-per-bud multiplier on pricePerBud" },
-    { "field": "cityPriceMultiplier", "value": 1.3, "description": "City/street buyers pay this times the rural price" },
-    { "field": "marketFactorMin", "value": 0.8, "description": "Lowest daily market multiplier on a deal" },
-    { "field": "marketFactorSpan", "value": 0.65, "description": "Daily market multiplier spans [min, min+span]" },
-    { "field": "cureBonus", "value": 1.45, "description": "Cash multiplier a dried plant carries (drying on the rack is mandatory before the crate)" },
-    { "field": "maxPayPerDeal", "value": 500, "description": "Hard cap on a single street deal's payout after all multipliers" },
-    { "field": "seedPrices", "value": { "indica": 20, "hybrid": 35, "sativa": 55 }, "description": "Cost of a seed pack at the General Store, per strain" },
-    { "field": "fertilizerPrice", "value": 25, "description": "Cost of a plant-food pack at the General Store" },
-    { "field": "upgradePrices", "value": [60, 140, 300], "description": "Cost of the watering upgrades [Bigger Can, Garden Hose, Drip Sprinklers]" },
-    { "field": "growTimeSec", "value": 36, "description": "Seconds of hydrated growth from seedling to ripe" },
-    { "field": "cureTimeSec", "value": 8, "description": "Seconds on the drying rack to dry (a quick, mandatory step)" },
-    { "field": "dryDeathSec", "value": 16, "description": "Seconds bone-dry before a plant wilts and dies" },
-    { "field": "pourTimeSec", "value": 1.1, "description": "Length of the watering pour animation" },
-    { "field": "hydrationDrainPerSec", "value": 4, "description": "Hydration lost per second by a growing plant" }
+    { "field": "pricePerBud", "value": 10, "description": "Dinheiro base por bud, antes do valor da variedade e do mercado" },
+    { "field": "strainValues", "value": { "indica": 0.9, "hybrid": 1.15, "sativa": 1.5 }, "description": "Multiplicador por variedade sobre pricePerBud" },
+    { "field": "cityPriceMultiplier", "value": 1.3, "description": "Compradores da cidade pagam este valor × o preço da roça" },
+    { "field": "marketFactorMin", "value": 0.8, "description": "Menor multiplicador diário do mercado numa venda" },
+    { "field": "marketFactorSpan", "value": 0.65, "description": "O multiplicador diário do mercado vai de [mín, mín+faixa]" },
+    { "field": "cureBonus", "value": 1.45, "description": "Multiplicador de dinheiro de uma planta seca (secar no varal é obrigatório antes do caixote)" },
+    { "field": "maxPayPerDeal", "value": 500, "description": "Teto do pagamento de uma venda na rua depois de todos os multiplicadores" },
+    { "field": "seedPrices", "value": { "indica": 20, "hybrid": 35, "sativa": 55 }, "description": "Preço de um pacote de sementes no Armazém, por variedade" },
+    { "field": "fertilizerPrice", "value": 25, "description": "Preço de um pacote de adubo no Armazém" },
+    { "field": "upgradePrices", "value": [60, 140, 300], "description": "Preço das melhorias de rega [Balde Maior, Mangueira, Irrigação por Gotejo]" },
+    { "field": "growTimeSec", "value": 36, "description": "Segundos de crescimento regado da muda até ficar madura" },
+    { "field": "cureTimeSec", "value": 8, "description": "Segundos no varal para secar (etapa rápida e obrigatória)" },
+    { "field": "dryDeathSec", "value": 16, "description": "Segundos totalmente seca antes de a planta murchar e morrer" },
+    { "field": "pourTimeSec", "value": 1.1, "description": "Duração da animação de regar" },
+    { "field": "hydrationDrainPerSec", "value": 4, "description": "Água perdida por segundo por uma planta crescendo" }
   ],
   "rampage": [
-    { "field": "rewardBase", "value": 250, "description": "Base cash for completing a melee frenzy" },
-    { "field": "rewardPerGoalKill", "value": 30, "description": "Extra cash per kill in the goal" },
-    { "field": "rewardCap", "value": 700, "description": "Hard cap on the frenzy payout" },
-    { "field": "durationSec", "value": 30, "description": "Seconds you have per frenzy" },
-    { "field": "cooldownSec", "value": 90, "description": "Seconds before a used skull pickup reappears" }
+    { "field": "rewardBase", "value": 250, "description": "Dinheiro base por completar uma fúria no braço" },
+    { "field": "rewardPerGoalKill", "value": 30, "description": "Dinheiro extra por abate da meta" },
+    { "field": "rewardCap", "value": 700, "description": "Teto do pagamento da fúria" },
+    { "field": "durationSec", "value": 30, "description": "Segundos que você tem em cada fúria" },
+    { "field": "cooldownSec", "value": 90, "description": "Segundos até uma caveira usada reaparecer" }
   ],
   "rocketRampage": [
-    { "field": "reward", "value": 600, "description": "Flat cash for passing the rocket frenzy" },
-    { "field": "timeSec", "value": 80, "description": "Seconds you have to destroy the goal cars" }
+    { "field": "reward", "value": 600, "description": "Dinheiro fixo por concluir a fúria de bazuca" },
+    { "field": "timeSec", "value": 80, "description": "Segundos que você tem para destruir os carros da meta" }
   ],
   "overkill": [
-    { "field": "maxPerSecond", "value": 75, "description": "Hard cap on overkill income per second" },
-    { "field": "rateFactor", "value": 2, "description": "Income/sec = weaponDamage * multiplier * this (capped)" },
-    { "field": "maxMultiplier", "value": 8, "description": "Cap on the streak multiplier" },
-    { "field": "climbPerSec", "value": 0.5, "description": "How fast the multiplier climbs while killing" },
-    { "field": "decayPerSec", "value": 1.2, "description": "How fast the multiplier decays when idle" }
+    { "field": "maxPerSecond", "value": 75, "description": "Teto da renda do overkill por segundo" },
+    { "field": "rateFactor", "value": 2, "description": "Renda por segundo = dano da arma × multiplicador × este valor (com teto)" },
+    { "field": "maxMultiplier", "value": 8, "description": "Teto do multiplicador de sequência" },
+    { "field": "climbPerSec", "value": 0.5, "description": "Quão rápido o multiplicador sobe enquanto você abate" },
+    { "field": "decayPerSec", "value": 1.2, "description": "Quão rápido o multiplicador cai quando você para" }
   ],
   "dance": [
-    { "field": "gradePayouts", "value": { "S": 700, "A": 500, "B": 200, "C": 100, "D": 50, "F": 0 }, "description": "Crowd tip by letter grade earned" }
+    { "field": "gradePayouts", "value": { "S": 700, "A": 500, "B": 200, "C": 100, "D": 50, "F": 0 }, "description": "Gorjeta da galera por nota obtida" }
   ],
   "bombShop": [
-    { "field": "armPrice", "value": 100, "description": "Cost to arm a car bomb" }
+    { "field": "armPrice", "value": 100, "description": "Preço para armar um carro-bomba" }
   ],
   "drugBust": [
-    { "field": "bribeMin", "value": 300, "description": "Minimum bribe the crooked cop demands when busted dealing weed" },
-    { "field": "bribeStashFraction", "value": 0.8, "description": "Bribe = max(bribeMin, this fraction of the seized stash value), capped at the player's cash" }
+    { "field": "bribeMin", "value": 300, "description": "Propina mínima que o policial corrupto pede quando te pega vendendo erva" },
+    { "field": "bribeStashFraction", "value": 0.8, "description": "Propina = máx(bribeMin, esta fração do valor da erva apreendida), limitada ao seu dinheiro" }
   ]
 }

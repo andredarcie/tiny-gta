@@ -169,4 +169,4 @@ export function makeKombi(): THREE.Group{const g=buildKombi();addVehicleLod(g,'k
 
 // Model-viewer descriptor (auto-discovered). zoom<1 frames the tall van; yaw shows a
 // front 3/4 so the grille, headlights and roundel read straight away.
-export default {category:'Vehicles',label:'Kombi (Bus)',build:buildKombi,zoom:.82,yaw:.6};
+export default {category:'Veículos',label:'Kombi',build:buildKombi,zoom:.82,yaw:.6};

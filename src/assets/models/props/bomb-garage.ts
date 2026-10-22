@@ -137,4 +137,4 @@ export function makeBombGarage(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'Bomb garage',build(){return makeBombGarage();}};
+export default {category:'Objetos',label:'Oficina de bombas',build(){return makeBombGarage();}};

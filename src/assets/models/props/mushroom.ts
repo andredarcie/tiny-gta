@@ -21,7 +21,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Mushrooms',build};
+export default {category:'Objetos',label:'Cogumelos',build};
 
 // Mushroom → a random code-built mushroom (spotted toadstools / shelf fungus), see nature/kit.ts.
 export function addMushroom(px: number,pz: number): void{

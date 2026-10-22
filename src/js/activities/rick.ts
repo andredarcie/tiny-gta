@@ -34,16 +34,16 @@ const CATCH_R=2.0;            // distância pra abater um doente a pé
 const RICK_VOICE={freq:150,type:'sine' as OscillatorType}; // voz calma de hippie
 
 const INTRO=[
-  "Whoa, easy there, city slicker. Didn't expect anyone to wander this far from the concrete jungle.",
-  "Name's Rick. I left all that noise behind, man — out here it's just me, the mountain, and the great green hush.",
-  "But something's been creeping through my woods. The sickos. Little green wretches, rotting from the inside, spreading their plague tree to tree.",
-  "I need you to hunt them down. All five. Comb the whole countryside — the fields, the farms, the mountainside, all of it.",
-  "And listen — I won't put them on any map. The land doesn't hand you a map, brother. You hunt with your own two eyes. Now go.",
+  "Opa, calma aí, rapaz da cidade. Não esperava ninguém andando tão longe da selva de pedra.",
+  "Meu nome é Rick. Larguei toda aquela barulheira, cara — aqui é só eu, a serra e o grande silêncio verde.",
+  "Mas tem alguma coisa rondando o meu mato. Os doentes. Uns coitados verdes, apodrecendo por dentro, espalhando a praga de árvore em árvore.",
+  "Preciso que você cace eles. Todos os cinco. Vasculha a zona rural inteira — os pastos, os sítios, a serra, tudo.",
+  "E escuta — não vou marcar nada em mapa nenhum. A terra não te dá mapa, irmão. Você caça com os próprios olhos. Agora vai.",
 ];
 const OUTRO=[
-  "You did it. Five sickos, back to the soil where they belong. The forest can breathe again.",
-  "You've got the eyes of a true hunter, friend. The wild remembers the ones who protect it.",
-  "Take this for your trouble. And hey... this stays between us and the trees.",
+  "Você conseguiu. Cinco doentes de volta pra terra, que é o lugar deles. O mato pode respirar de novo.",
+  "Você tem olho de caçador de verdade, amigo. A natureza não esquece quem cuida dela.",
+  "Toma isso pelo trabalho. E olha... isso fica entre a gente e as árvores.",
 ];
 
 // Hiding places across the countryside round the town (town-local metres): among the
@@ -69,8 +69,8 @@ rick.rotation.y=Math.atan2(CAMP.x-rick.position.x,CAMP.z-rick.position.z); // fa
 // never a weapon target (he can't be shot), but he carries an identity + name tag +
 // roster entry like everyone else, so 100% of the game's characters inherit Npc.
 new Npc(rick,{kind:'rick',register:false,showLabel:true,name:'Rick',gender:'M',femaleLook:false,
-  area:"Rick's Camp",personality:'chill',
-  dialogues:["The land doesn't hand you a map, brother.","Hunt with your own two eyes."]});
+  area:'Acampamento do Rick',personality:'chill',
+  dialogues:['A terra não te dá mapa, irmão.','Caça com os próprios olhos.']});
 
 const fire=campfire.build();
 place(fire,CAMP.x,CAMP.z);
@@ -93,10 +93,10 @@ class Sicko extends Npc{
   baseY:number;
   phase:number;
   constructor(g:THREE.Object3D,baseY:number,gender:'M'|'F'){
-    super(g,{kind:'sicko',hp:1,register:false,name:'Forest Sicko',area:'Wilderness',gender,femaleLook:false});
+    super(g,{kind:'sicko',hp:1,register:false,name:'Doente do Mato',area:'Mata',gender,femaleLook:false});
     this.baseY=baseY;this.phase=rand(0,6);
   }
-  override aliveState():string{return 'Hiding';}
+  override aliveState():string{return 'Escondido';}
 }
 const sickos: Sicko[]=[];
 let phase='idle'; // idle -> hunting -> returning -> done
@@ -120,8 +120,8 @@ function huntOne(s: Sicko){
   thud(6);blip([300,180,90],.12,'sawtooth',.18);
   if(caught>=TOTAL){
     phase='returning';
-    message('ALL FOREST SICKOS HUNTED! RETURN TO RICK','var(--gold)');
-  }else message('FOREST SICKO HUNTED  '+caught+'/'+TOTAL,'#9dff2e');
+    message('TODOS OS DOENTES DO MATO CAÇADOS! VOLTE AO RICK','var(--gold)');
+  }else message('DOENTE DO MATO CAÇADO  '+caught+'/'+TOTAL,'#9dff2e');
 }
 
 // ---- API exposta via refs (main.js) ----
@@ -139,7 +139,7 @@ export function rickInteract(){
     playCutscene(rick,RICK_VOICE,INTRO,()=>{
       spawnSickos();
       phase='hunting';
-      message('HUNT THE '+TOTAL+' FOREST SICKOS - NO MAP. SEARCH THE WILDERNESS.','#9dff2e');
+      message('CACE OS '+TOTAL+' DOENTES DO MATO - SEM MAPA. PROCURE NA MATA.','#9dff2e');
     });
     return true;
   }
@@ -147,7 +147,7 @@ export function rickInteract(){
     phase='done';
     playCutscene(rick,RICK_VOICE,OUTRO,()=>{
       economy.earn(REWARD,'rick');
-      message('SECRET MISSION COMPLETE  +$'+REWARD,'var(--gold)');
+      message('MISSÃO SECRETA CONCLUÍDA  +R$'+REWARD,'var(--gold)');
       blip([523,659,784,1047],.1,'sine',.18);
     });
     return true;

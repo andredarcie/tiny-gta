@@ -51,6 +51,6 @@ export function makeMissileModel(): THREE.Group{
 }
 
 // Padrão de modelo: 2 looks no mesmo arquivo via variants.
-export default {category:'Weapons',label:'Rocket Launcher',build:()=>makeRocketLauncherModel(),
-  variants:[{label:'Rocket Launcher',build:()=>makeRocketLauncherModel()},
-    {label:'Missile',build:()=>makeMissileModel()}]};
+export default {category:'Armas',label:'Bazuca',build:()=>makeRocketLauncherModel(),
+  variants:[{label:'Bazuca',build:()=>makeRocketLauncherModel()},
+    {label:'Míssil',build:()=>makeMissileModel()}]};

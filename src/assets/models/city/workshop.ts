@@ -36,9 +36,9 @@ function signTexture():THREE.CanvasTexture{
   x.font="900 52px 'Arial Black',monospace";
   x.shadowColor='#19e3ff';x.shadowBlur=24;
   x.fillStyle='#e8fbff';
-  for(let k=0;k<3;k++)x.fillText('MOD GARAGE',256,60);
+  for(let k=0;k<3;k++)x.fillText('TUNAGEM',256,60);
   x.shadowBlur=0;x.font="700 20px monospace";x.fillStyle='#ffd24a';
-  x.fillText('CUSTOM • PAINT • TUNE',256,104);
+  x.fillText('CUSTOM • PINTURA • MOTOR',256,104);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }

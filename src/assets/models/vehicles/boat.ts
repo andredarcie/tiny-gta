@@ -290,11 +290,11 @@ function buildBoat({color=0xff5a3c,police=false}: {color?: number; police?: bool
 }
 
 // Padrão de modelo: build() puro; descriptor com variações pro model-viewer.
-export default {category:'Vehicles',label:'Speedboat',build:buildBoat,
-  variants:[{label:'Speedboat — coral',opts:{color:0xff5a3c}},
-            {label:'Speedboat — aqua',opts:{color:0x1fc4c4}},
-            {label:'Speedboat — magenta',opts:{color:0xff2e88}},
-            {label:'Speedboat — police',opts:{color:0xf2f4f8,police:true}}]};
+export default {category:'Veículos',label:'Lancha',build:buildBoat,
+  variants:[{label:'Lancha — coral',opts:{color:0xff5a3c}},
+            {label:'Lancha — água',opts:{color:0x1fc4c4}},
+            {label:'Lancha — magenta',opts:{color:0xff2e88}},
+            {label:'Lancha — polícia',opts:{color:0xf2f4f8,police:true}}]};
 
 // Compat: gameplay usa makeBoat(color,police) e espera a lancha já na cena.
 export function makeBoat(color: number,police: boolean): THREE.Group{const g=buildBoat({color,police});scene.add(g);return g;}

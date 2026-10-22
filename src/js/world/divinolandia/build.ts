@@ -404,7 +404,7 @@ export function buildDivinolandia():void{
     const s=spots[i+1];if(!s)return;
     const g=p.k==='uno'?makeFiatUno(p.c):makeKombi();
     g.position.set(s.x,H(s.x,s.z),s.z);g.rotation.y=s.h;
-    idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'FIAT UNO':'KOMBI',police:false});
+    idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':'KOMBI',police:false});
   });
 
   // ---------- the player: in the Praça, facing the Matriz ----------

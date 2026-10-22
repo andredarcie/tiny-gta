@@ -21,8 +21,8 @@
       <div id="breath" aria-hidden="true"><div id="breath-fill"></div></div>
     </div>
     <div id="weaponhud">
-      <canvas id="weapon-icon" width="64" height="64" aria-label="Weapon icon"></canvas>
-      <div id="weapon-name">FIST</div>
+      <canvas id="weapon-icon" width="64" height="64" aria-label="Ícone da arma"></canvas>
+      <div id="weapon-name">SOCO</div>
       <div id="weapon-ammo"><span id="ammo-now">0</span><span id="ammo-max">/0</span></div>
     </div>
   </div>
@@ -55,35 +55,35 @@
 <div id="npc-labels" aria-hidden="true"></div>
 <div id="police-radio" aria-live="polite"></div>
 <div id="touch-controls" aria-hidden="true">
-  <div id="stick-move" class="touch-stick" aria-label="Move"><div class="stick-knob"></div></div>
-  <div id="stick-look" class="touch-stick" aria-label="Camera"><div class="stick-knob"></div></div>
-  <button id="btn-interact" class="touch-btn touch-btn-primary" type="button" aria-label="Interact">...</button>
-  <button id="btn-shoot" class="touch-btn touch-btn-danger" type="button" aria-label="Shoot">FIRE</button>
-  <button id="btn-aim" class="touch-btn" type="button" aria-label="Aim">AIM</button>
-  <button id="btn-wpn" class="touch-btn touch-btn-small" type="button" aria-label="Switch weapon">WPN</button>
-  <button id="btn-steer-left" class="touch-btn touch-drive" type="button" aria-label="Steer left">&#9664;</button>
-  <button id="btn-steer-right" class="touch-btn touch-drive" type="button" aria-label="Steer right">&#9654;</button>
-  <button id="btn-gas" class="touch-btn touch-drive" type="button" aria-label="Accelerate">GAS</button>
-  <button id="btn-brake" class="touch-btn touch-drive" type="button" aria-label="Brake / reverse">BRAKE</button>
-  <button id="btn-radio" class="touch-btn touch-btn-small" type="button" aria-label="Change radio">RAD</button>
-  <button id="btn-pause" class="touch-btn touch-btn-small" type="button" aria-label="Pause">II</button>
+  <div id="stick-move" class="touch-stick" aria-label="Andar"><div class="stick-knob"></div></div>
+  <div id="stick-look" class="touch-stick" aria-label="Câmera"><div class="stick-knob"></div></div>
+  <button id="btn-interact" class="touch-btn touch-btn-primary" type="button" aria-label="Interagir">...</button>
+  <button id="btn-shoot" class="touch-btn touch-btn-danger" type="button" aria-label="Atirar">TIRO</button>
+  <button id="btn-aim" class="touch-btn" type="button" aria-label="Mirar">MIRA</button>
+  <button id="btn-wpn" class="touch-btn touch-btn-small" type="button" aria-label="Trocar arma">ARMA</button>
+  <button id="btn-steer-left" class="touch-btn touch-drive" type="button" aria-label="Virar à esquerda">&#9664;</button>
+  <button id="btn-steer-right" class="touch-btn touch-drive" type="button" aria-label="Virar à direita">&#9654;</button>
+  <button id="btn-gas" class="touch-btn touch-drive" type="button" aria-label="Acelerar">ACEL</button>
+  <button id="btn-brake" class="touch-btn touch-drive" type="button" aria-label="Frear / ré">FREIO</button>
+  <button id="btn-radio" class="touch-btn touch-btn-small" type="button" aria-label="Trocar rádio">RÁDIO</button>
+  <button id="btn-pause" class="touch-btn touch-btn-small" type="button" aria-label="Pausar">II</button>
 </div>
 <div id="weapon-wheel" aria-hidden="true"><canvas id="ww-canvas"></canvas></div>
-<div id="rotate-device" role="status" aria-live="polite">ROTATE YOUR PHONE</div>
+<div id="rotate-device" role="status" aria-live="polite">GIRE O CELULAR</div>
 <div id="pauseov">
   <div class="pause-shell">
-    <div id="pause-title">PAUSED</div>
+    <div id="pause-title">PAUSADO</div>
     <div id="pause-body"></div>
   </div>
 </div>
 
 <div id="mg-intro" aria-hidden="true">
   <div class="mgi-box">
-    <div class="mgi-sub">MINI GAME</div>
-    <div id="mgi-title">MINI GAME</div>
+    <div class="mgi-sub">MINIGAME</div>
+    <div id="mgi-title">MINIGAME</div>
     <div id="mgi-desc" class="mgi-desc"></div>
-    <button id="mgi-go" type="button">PLAY ▶</button>
-    <div class="mgi-hint">Press any key or tap to play</div>
+    <button id="mgi-go" type="button">JOGAR ▶</button>
+    <div class="mgi-hint">Aperte qualquer tecla ou toque para jogar</div>
   </div>
 </div>
 
@@ -92,38 +92,38 @@
     <iframe id="house-tv-frame" title="Andre OS" loading="lazy" tabindex="0"
       allow="clipboard-read; clipboard-write; fullscreen; gamepad"></iframe>
   </div>
-  <button id="house-tv-exit" type="button" tabindex="-1" aria-label="Exit TV">EXIT</button>
-  <div id="house-tv-hint">ESC - EXIT TV  ·  TYPE INTO THE TV</div>
+  <button id="house-tv-exit" type="button" tabindex="-1" aria-label="Sair da TV">SAIR</button>
+  <div id="house-tv-hint">ESC - SAIR DA TV  ·  DIGITE NA TV</div>
 </div>
 
 <div id="gym-game" aria-hidden="true">
   <canvas id="gym-game-canvas"></canvas>
-  <button id="gym-game-exit" type="button" aria-label="Quit set">QUIT</button>
+  <button id="gym-game-exit" type="button" aria-label="Desistir da série">SAIR</button>
 </div>
 
 <div id="dance-game" aria-hidden="true">
   <canvas id="dance-game-canvas"></canvas>
   <div id="dance-lanes">
-    <button id="dance-lane-0" class="dance-lane" type="button" aria-label="Left">&#8592;</button>
-    <button id="dance-lane-1" class="dance-lane" type="button" aria-label="Down">&#8595;</button>
-    <button id="dance-lane-2" class="dance-lane" type="button" aria-label="Up">&#8593;</button>
-    <button id="dance-lane-3" class="dance-lane" type="button" aria-label="Right">&#8594;</button>
+    <button id="dance-lane-0" class="dance-lane" type="button" aria-label="Esquerda">&#8592;</button>
+    <button id="dance-lane-1" class="dance-lane" type="button" aria-label="Baixo">&#8595;</button>
+    <button id="dance-lane-2" class="dance-lane" type="button" aria-label="Cima">&#8593;</button>
+    <button id="dance-lane-3" class="dance-lane" type="button" aria-label="Direita">&#8594;</button>
   </div>
-  <button id="dance-game-exit" type="button" aria-label="Quit dance">QUIT</button>
+  <button id="dance-game-exit" type="button" aria-label="Sair da dança">SAIR</button>
 </div>
 
 <div id="modshop" aria-hidden="true">
   <div id="modshop-top">
-    <div id="modshop-title">MOD GARAGE</div>
+    <div id="modshop-title">OFICINA DE TUNAGEM</div>
     <div id="modshop-money">$0</div>
-    <button id="modshop-exit" type="button" aria-label="Done">DONE</button>
+    <button id="modshop-exit" type="button" aria-label="Pronto">PRONTO</button>
   </div>
   <div id="modshop-panel">
     <div id="modshop-cats"></div>
     <div id="modshop-opts"></div>
     <div id="modshop-cart">
-      <span id="modshop-total">CART EMPTY</span>
-      <button id="modshop-buy" type="button" aria-label="Finalize and buy" disabled>FINALIZE &amp; BUY</button>
+      <span id="modshop-total">CARRINHO VAZIO</span>
+      <button id="modshop-buy" type="button" aria-label="Fechar compra" disabled>FECHAR COMPRA</button>
     </div>
   </div>
   <div id="modshop-toast"></div>
@@ -131,16 +131,16 @@
 
 <div id="clothesshop" aria-hidden="true">
   <div id="clothesshop-top">
-    <div id="clothesshop-title">THREADS</div>
+    <div id="clothesshop-title">LOJA DE ROUPAS</div>
     <div id="clothesshop-money">$0</div>
-    <button id="clothesshop-exit" type="button" aria-label="Done">DONE</button>
+    <button id="clothesshop-exit" type="button" aria-label="Pronto">PRONTO</button>
   </div>
   <div id="clothesshop-panel">
     <div id="clothesshop-cats"></div>
     <div id="clothesshop-opts"></div>
     <div id="clothesshop-cart">
-      <span id="clothesshop-total">CART EMPTY</span>
-      <button id="clothesshop-buy" type="button" aria-label="Finalize and buy" disabled>FINALIZE &amp; BUY</button>
+      <span id="clothesshop-total">CARRINHO VAZIO</span>
+      <button id="clothesshop-buy" type="button" aria-label="Fechar compra" disabled>FECHAR COMPRA</button>
     </div>
   </div>
   <div id="clothesshop-toast"></div>
@@ -169,27 +169,27 @@
 <div id="modelviewer" aria-hidden="true">
   <div class="mv-box">
     <div class="mv-head">
-      <div class="mv-title">Game Objects</div>
-      <button id="mv-close" type="button" aria-label="Close">&#10005;</button>
+      <div class="mv-title">Objetos do Jogo</div>
+      <button id="mv-close" type="button" aria-label="Fechar">&#10005;</button>
     </div>
     <div class="mv-selects">
-      <select id="mv-cat" aria-label="Select a category"></select>
-      <select id="mv-select" aria-label="Select a model"></select>
+      <select id="mv-cat" aria-label="Escolha uma categoria"></select>
+      <select id="mv-select" aria-label="Escolha um modelo"></select>
     </div>
     <div id="mv-stage" class="mv-stage"><canvas id="mv-canvas"></canvas></div>
-    <div class="mv-hint">Drag to rotate &middot; press <b>I</b> or <b>ESC</b> to close</div>
+    <div class="mv-hint">Arraste para girar &middot; aperte <b>I</b> ou <b>ESC</b> para fechar</div>
   </div>
 </div>
 
 <div id="fullmap" aria-hidden="true">
   <div class="fm-box">
     <div class="fm-head">
-      <div class="fm-title">TOWN MAP</div>
-      <button id="fm-npcs" type="button" aria-pressed="false">SHOW NPCS</button>
-      <button id="fm-close" type="button" aria-label="Close map">&#10005;</button>
+      <div class="fm-title">MAPA DA CIDADE</div>
+      <button id="fm-npcs" type="button" aria-pressed="false">MOSTRAR MORADORES</button>
+      <button id="fm-close" type="button" aria-label="Fechar mapa">&#10005;</button>
     </div>
     <div class="fm-stage"><canvas id="fullmap-canvas" width="1000" height="556"></canvas></div>
-    <div class="fm-hint">Press <b>M</b> or <b>ESC</b> to close</div>
+    <div class="fm-hint">Aperte <b>M</b> ou <b>ESC</b> para fechar</div>
   </div>
 </div>
 
@@ -230,7 +230,7 @@
     </g>
   </svg>
   <div id="logo"><span class="lg-name">DIVINO</span><span class="lg-city">CITY</span></div>
-  <button id="play" type="button">PLAY</button>
+  <button id="play" type="button">JOGAR</button>
 </div>
 
 <script type="module" src="src/js/core/boot.ts"></script>

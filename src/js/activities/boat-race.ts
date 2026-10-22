@@ -42,7 +42,7 @@ interface HopHolder{mineHopV?: number; mineHopY?: number; [k: string]: any;}
 // mini game (sessão): trava o mundo durante a prova de lanchas. A corrida desenha
 // suas próprias boias no radar (ver raceOn no hud.js), então não expõe blips de
 // alvo aqui — a trava garante o "um por vez" e o mapa sem outras atividades.
-const game=new MiniGame({id:MiniGameId.BOAT_RACE,name:'Boat Race'});
+const game=new MiniGame({id:MiniGameId.BOAT_RACE,name:'Corrida de Lanchas'});
 
 // BOAT RACE down the Rio do Peixe: same scheme as the street race (race.ts), on the
 // water. A floating start gate sits on the river; arrive by boat, stop under it and the
@@ -55,7 +55,7 @@ const game=new MiniGame({id:MiniGameId.BOAT_RACE,name:'Boat Race'});
 // race and come back after. Music/radio belong to the race; if every rival finishes
 // first you lose. Each finished race starts the next one on another stretch.
 
-const RACE_BUILD=' ◆ SEA';
+const RACE_BUILD=' ◆ RIO';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',RACE_BUILD);
 
 const CP_COUNT=7;       // boias do percurso (a última é a chegada)
@@ -393,7 +393,7 @@ function finishRace(){
   hideRaceHud();
 }
 
-function abortRace(text='RACE ABANDONED',col='var(--pink)'){
+function abortRace(text='CORRIDA ABANDONADA',col='var(--pink)'){
   finishRace();
   // morte/prisão no meio da prova: o cut de WASTED/BUSTED já assumiu o banner;
   // não apaga nem sobrescreve com "RACE ABANDONED".
@@ -405,9 +405,9 @@ function abortRace(text='RACE ABANDONED',col='var(--pink)'){
 function loseRace(){
   markMiniGamePlayed(game.id);
   finishRace();
-  bigText('YOU LOST','var(--pink)');
+  bigText('VOCÊ PERDEU','var(--pink)');
   setTimeout(hideBig,2200);
-  message('THE RIVALS FINISHED FIRST - NO PRIZE','var(--pink)');
+  message('OS RIVAIS CHEGARAM PRIMEIRO - SEM PRÊMIO','var(--pink)');
   blip([330,247,196],.12,'sawtooth',.18);
 }
 
@@ -422,12 +422,12 @@ function completeRace(){
   economy.earn(paid,'boat-race');
   // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
-  const ord=['1ST','2ND','3RD','4TH','5TH'][place-1]||place+'TH';
+  const ord=place+'º';
   finishRace();
-  bigText(place===1?'YOU WIN!':`${ord} PLACE`,place===1?'var(--gold)':'var(--cyan)');
+  bigText(place===1?'VOCÊ VENCEU!':`${ord} LUGAR`,place===1?'var(--gold)':'var(--cyan)');
   setTimeout(hideBig,2200);
-  message(paid>0?`${ord} OF ${total} - +$${paid}${bonus>0?' SPEED BONUS!':''}`
-    :`${ord} OF ${total} - NO PRIZE`,paid>0?'var(--gold)':'var(--pink)');
+  message(paid>0?`${ord} DE ${total} - +R$${paid}${bonus>0?' BÔNUS DE VELOCIDADE!':''}`
+    :`${ord} DE ${total} - SEM PRÊMIO`,paid>0?'var(--gold)':'var(--pink)');
   blip(place===1?[523,659,784,1047]:[440,330],.09,'sine',.18);
 }
 
@@ -440,17 +440,17 @@ function updateRaceHud(){
   raceHud.classList.add('show');
   if(phase==='countdown'){
     raceHud.innerHTML=`
-      <div class="race-label">BOAT RACE</div>
-      <div class="race-main"><span>GET READY</span><b>${Math.max(1,Math.ceil(cdT))}</b></div>`;
+      <div class="race-label">CORRIDA DE LANCHAS</div>
+      <div class="race-main"><span>PREPARE-SE</span><b>${Math.max(1,Math.ceil(cdT))}</b></div>`;
     return;
   }
   const t=raceT,mm=Math.floor(t/60),ss=Math.floor(t%60);
   const clock=`${mm}:${String(ss).padStart(2,'0')}`;
   raceHud.innerHTML=`
-    <div class="race-label">BOAT RACE</div>
-    <div class="race-main"><span>POS</span><b>${playerPlace()}/${racers.length+1}</b></div>
-    <div class="race-row"><span>BUOY</span><b>${Math.min(playerCp+1,route.length)}/${route.length}</b></div>
-    <div class="race-row"><span>TIME</span><b>${clock}</b></div>`;
+    <div class="race-label">CORRIDA DE LANCHAS</div>
+    <div class="race-main"><span>POSIÇÃO</span><b>${playerPlace()}/${racers.length+1}</b></div>
+    <div class="race-row"><span>BOIA</span><b>${Math.min(playerCp+1,route.length)}/${route.length}</b></div>
+    <div class="race-row"><span>TEMPO</span><b>${clock}</b></div>`;
 }
 
 // marcadores: mostra SÓ a boia atual (a próxima que o jogador tem que pegar);
@@ -619,7 +619,7 @@ export function updateBoatRace(dt: number){
       if(n!==lastCdShown){lastCdShown=n;blip([523],.12,'square',.18);}
     }else{
       phase='racing';freezePos=null;state.controlsLocked=false;
-      bigText('GO!','var(--gold)');setTimeout(hideBig,700);
+      bigText('VAI!','var(--gold)');setTimeout(hideBig,700);
       blip([784,1047],.14,'square',.22);
       raceMusicOn();
     }

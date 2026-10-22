@@ -103,7 +103,7 @@ function signTexture(): THREE.CanvasTexture {
   x.fillStyle='#2a1d12';x.fillRect(0,0,256,160);
   x.fillStyle='#d7c9a8';x.fillRect(8,8,240,144);
   x.fillStyle='#b22a2a';x.textAlign='center';x.textBaseline='middle';
-  x.font='900 44px monospace';x.fillText('KEEP',128,54);x.fillText('OUT',128,104);
+  x.font='900 44px monospace';x.fillText('NÃO',128,54);x.fillText('ENTRE',128,104);
   signTex=new THREE.CanvasTexture(c);signTex.colorSpace=THREE.SRGBColorSpace;return signTex;
 }
 let priceTex: THREE.CanvasTexture|null=null;
@@ -113,8 +113,8 @@ function priceTexture(): THREE.CanvasTexture {
   const x=c.getContext('2d')!;
   x.fillStyle='#14201a';x.fillRect(0,0,128,96);
   x.fillStyle='#9dff2e';x.textAlign='center';x.textBaseline='middle';
-  x.font='900 24px monospace';x.fillText('STASH',64,28);
-  x.font='900 26px monospace';x.fillText('BOX',64,64);
+  x.font='900 24px monospace';x.fillText('CAIXA',64,28);
+  x.font='900 26px monospace';x.fillText('DA ERVA',64,64);
   priceTex=new THREE.CanvasTexture(c);priceTex.colorSpace=THREE.SRGBColorSpace;return priceTex;
 }
 
@@ -558,13 +558,13 @@ function build(): THREE.Group {
   return g;
 }
 
-export default {category:'Rural',label:'Weed farm',build,
+export default {category:'Rural',label:'Plantação',build,
   variants:[
-    {label:'Weed farm - compound',build,zoom:.42},
-    {label:'Weed plant',build:()=>makeWeedPlant(2.4,true),zoom:1.1},
-    {label:'Sale crate',build:()=>makeCrate(1.2),zoom:1.4},
-    {label:'Water standpipe',build:makeStandpipe,zoom:.9},
-    {label:'Water bucket',build:()=>makeBucket(true),zoom:1.8},
+    {label:'Plantação - complexo',build,zoom:.42},
+    {label:'Pé de erva',build:()=>makeWeedPlant(2.4,true),zoom:1.1},
+    {label:'Caixote de venda',build:()=>makeCrate(1.2),zoom:1.4},
+    {label:'Torneira',build:makeStandpipe,zoom:.9},
+    {label:'Balde com água',build:()=>makeBucket(true),zoom:1.8},
   ]};
 
 // Place the compound at WEED_CX/CZ, bake it, and register collision for the

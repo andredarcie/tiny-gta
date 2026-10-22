@@ -187,4 +187,4 @@ function buildFireTruck(): THREE.Group{
 export function makeFireTruck(): THREE.Group{const g=buildFireTruck();return g;}
 
 // Padrão de modelo: build() puro; descriptor pro model-viewer (descoberta automática).
-export default {category:'Vehicles',label:'Fire truck',build:buildFireTruck,zoom:.55,yaw:-.6};
+export default {category:'Veículos',label:'Caminhão de bombeiros',build:buildFireTruck,zoom:.55,yaw:-.6};

@@ -54,7 +54,7 @@ scene.add(totem);
 export function overkillNear(): string|null{
   if(ok.active||!state.started||state.mode!=='foot'||state.interior)return null;
   const pp=playerPos();
-  return Math.hypot(pp.x-TOTEM.x,pp.z-TOTEM.z)<RANGE?'START OVERKILL MODE':null;
+  return Math.hypot(pp.x-TOTEM.x,pp.z-TOTEM.z)<RANGE?'COMEÇAR MODO OVERKILL':null;
 }
 
 // blip do totem no mapa (some enquanto o modo já está ligado)
@@ -64,7 +64,7 @@ refs.overkillBlip=()=>ok.active?null:{x:TOTEM.x,z:TOTEM.z};
 export function startOverkill(): boolean{
   if(!overkillNear())return false;
   ok.active=true;ok.mult=1;ok.peak=1;ok.rate=0;ok.acc=0;ok.earned=0;
-  message('OVERKILL ON! GO LOUD - THE WILDER, THE RICHER','var(--pink)');
+  message('OVERKILL LIGADO! FAÇA BARULHO - QUANTO MAIS CAOS, MAIS DINHEIRO','var(--pink)');
   blip([220,330,440,660,880],.12,'square',.2);
   overkillMusicOn();
   return true;
@@ -75,7 +75,7 @@ export function endOverkill(): void{
   if(!ok.active)return;
   ok.active=false;
   overkillMusicOff();
-  message(`OVERKILL OVER - BANKED $${Math.round(ok.earned).toLocaleString('en-US')} (peak x${ok.peak.toFixed(1)})`,'var(--gold)');
+  message(`OVERKILL ENCERRADO - FATUROU R$${Math.round(ok.earned).toLocaleString('pt-BR')} (pico x${ok.peak.toFixed(1)})`,'var(--gold)');
   ok.mult=1;ok.peak=1;ok.rate=0;
   hudEl?.classList.remove('show');
 }
@@ -130,6 +130,6 @@ export function updateOverkill(dt: number): void{
 
   if(hudEl){
     hudEl.classList.add('show');
-    hudEl.textContent=`💀 OVERKILL  ×${ok.mult.toFixed(1)}   +$${Math.round(rate)}/s`;
+    hudEl.textContent=`💀 OVERKILL  ×${ok.mult.toFixed(1)}   +R$${Math.round(rate)}/s`;
   }
 }

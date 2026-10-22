@@ -175,7 +175,7 @@ const RAMPAGE_GOAL=3,RAMPAGE_TIME=REWARDS.rocketRampage.timeSec,RAMPAGE_REWARD=R
 const rampage={active:false,end:0,kills:0};
 // mini game (sessão): igual à chacina das caveiras (js/combat/rampage.ts), trava o mundo
 // (state.activeMiniGame) enquanto roda, pra que outras atividades não rodem junto.
-const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Rocket Frenzy'});
+const rampageGame=new MiniGame({id:MiniGameId.ROCKET_RAMPAGE,name:'Fúria de Bazuca'});
 const missiles: MissileFx[]=[];
 // the rocket launcher lies by the Estádio Municipal, on the east edge of town
 const {x:ROCKET_X,z:ROCKET_Z}=roadside(divData.landmarks.estadio[0]-40,divData.landmarks.estadio[1]+30,3);
@@ -201,7 +201,7 @@ function beginRampage(){
   // independent of the weapon inventory — so no weapon is granted/altered here.
   rampage.active=true;rampage.end=state.time+RAMPAGE_TIME;rampage.kills=0;
   rocketPickup.visible=false;
-  message(`ROCKET FRENZY! DESTROY ${RAMPAGE_GOAL} CARS WITH THE ROCKET LAUNCHER`,'var(--pink)');
+  message(`FÚRIA DE BAZUCA! DESTRUA ${RAMPAGE_GOAL} CARROS COM A BAZUCA`,'var(--pink)');
   blip([220,330,440,660],.09,'square',.2);
 }
 
@@ -219,10 +219,10 @@ function endRampage(won: boolean){
   rampageGame.end();                   // libera a trava do mundo (idempotente)
   if(won){
     economy.earn(RAMPAGE_REWARD,'rocket-rampage');
-    message(`ROCKET FRENZY PASSED! +$${RAMPAGE_REWARD}`,'var(--gold)');
+    message(`FÚRIA DE BAZUCA CONCLUÍDA! +R$${RAMPAGE_REWARD}`,'var(--gold)');
     blip([523,659,784,1047],.09,'sine',.18);
   }else{
-    message('ROCKET FRENZY FAILED','var(--pink)');
+    message('FÚRIA DE BAZUCA FRACASSOU','var(--pink)');
     blip([220,170,120],.1,'sawtooth',.16);
   }
 }
@@ -459,7 +459,7 @@ export function pickupWeapon(){
   const pickup=nearestWeaponPickup(3);
   if(!pickup)return;
   grantStarterWeapon(); // só a pistola — o resto vem da loja / dos pickups escondidos
-  message('PISTOL PICKED UP - LEFT CLICK TO SHOOT','var(--gold)');
+  message('PEGOU A PISTOLA - CLIQUE ESQUERDO PARA ATIRAR','var(--gold)');
 }
 
 export function confiscateWeapon(){
@@ -834,7 +834,7 @@ function resolveMeleeImpact(a: MeleeAnim){
   }
   else if(hit.kind==='rangeTarget')hit.target.hit?.();
   else if(hit.kind==='army')hit.target.hit?.();
-  else if(hit.kind==='car'){dentCar(hit.target.g,pos,dir,a.kind==='bat' ? .18 : .1);addWanted(.4,'MELEE ATTACK','melee');}
+  else if(hit.kind==='car'){dentCar(hit.target.g,pos,dir,a.kind==='bat' ? .18 : .1);addWanted(.4,'AGRESSÃO','melee');}
 }
 
 function applyPunchPose(a: MeleeAnim,p: number){
@@ -1012,7 +1012,7 @@ function explodeCar(car: any,arr: any[]){
   if(idx>=0)arr.splice(idx,1);
   makeExplosion(pos);
   blastDamage(pos);
-  addWanted(1.5,'VEHICLE DESTROYED!','vehicle_destroyed');
+  addWanted(1.5,'VEÍCULO DESTRUÍDO!','vehicle_destroyed');
   // sheriff calls the explosion in over the radio — a destroyed cruiser names the
   // officer who was inside (hurt); other vehicles report as a generic explosion.
   refs.radioCarExplosion?.(pos.x,pos.z,arr===cops?(car.name as string|undefined):undefined);
@@ -1031,7 +1031,7 @@ function damageCar(car: any,arr: any[],pos: THREE.Vector3|null,dir: THREE.Vector
   const ud=car.g.userData;
   ud.bulletHits=(ud.bulletHits||0)+dmg;
   state.shake=Math.max(state.shake,.04);
-  addWanted(.35,'SHOT FIRED!','vehicle_shot');
+  addWanted(.35,'TIRO DISPARADO!','vehicle_shot');
   if(ud.bulletHits>=4)explodeCar(car,arr);
 }
 
@@ -1131,7 +1131,7 @@ function missileBlast(pos: THREE.Vector3,hit: WeaponHit|null){
     if(hit&&hit.kind==='rangeTarget')hit.target.hit?.();
     makeExplosion(pos.clone());
     blastDamage(pos);
-    if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSION!','explosion');
+    if(!refs.inGunShopRange?.())addWanted(1,'EXPLOSÃO!','explosion');
   }
   state.shake=Math.max(state.shake,.4);
 }
@@ -1195,7 +1195,7 @@ function grenadeExplode(pos: THREE.Vector3){
   makeExplosion(pos.clone());
   blastDamage(pos);
   if(!refs.inGunShopRange?.()){
-    addWanted(1,'EXPLOSION!','explosion');
+    addWanted(1,'EXPLOSÃO!','explosion');
   }
   state.shake=Math.max(state.shake,.4);
 }
@@ -1204,7 +1204,7 @@ function molotovImpact(pos: THREE.Vector3){
   addFirePool(pos);
   blastDamage(pos);            // estouro inicial pega quem está bem perto
   if(!refs.inGunShopRange?.()){
-    addWanted(1,'EXPLOSION!','explosion');
+    addWanted(1,'EXPLOSÃO!','explosion');
   }
   thud(10);blip([120,80],.18,'sawtooth',.22);
   state.shake=Math.max(state.shake,.25);
@@ -1224,13 +1224,13 @@ function detonatorAction(){
     const g=makeGrenadeModel();g.scale.setScalar(1.3);
     g.position.set(pp.x,groundHeight(pp.x,pp.z)+.12,pp.z);
     scene.add(g);plantedBomb={g};
-    message('BOMB PLANTED - FIRE AGAIN TO DETONATE','var(--gold)');
+    message('BOMBA PLANTADA - ATIRE DE NOVO PARA DETONAR','var(--gold)');
     blip([440,520],.08,'square',.14);
   }else{
     const pos=plantedBomb.g.position.clone();
     scene.remove(plantedBomb.g);plantedBomb=null;
     grenadeExplode(pos);
-    message('DETONATED','var(--pink)');
+    message('DETONADA','var(--pink)');
   }
 }
 
@@ -1254,7 +1254,7 @@ const api: WeaponApi={
     state.crosshairKick=r.crosshair??1;
     if(r.shake)state.shake=Math.max(state.shake,r.shake);
   },
-  outOfAmmo(){message('OUT OF AMMO','var(--pink)');},
+  outOfAmmo(){message('SEM MUNIÇÃO','var(--pink)');},
   gunshot(v: number){
     // The player's PISTOL fires the recorded pistol-shot sample; every other
     // firearm keeps the synthesized shot. pistolShot() returns false until the
@@ -1265,7 +1265,7 @@ const api: WeaponApi={
     // Only hitting someone or a vehicle there brings the police (those crimes add heat
     // on their own: ped kills, vehicle shots, explosions…).
     if(!refs.inGunShopRange?.()&&!isRuralAt(pp.x,pp.z)){
-      addWanted(.4,'SHOT FIRED!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
+      addWanted(.4,'TIRO DISPARADO!','gunfire');  // firing a gun in public raises heat per shot (not only on a wall hit)
       refs.policeOnShot?.(pp.x,pp.z);
     }},
   bullet(opts: {range: number;speed: number;damage: number;spread: number}){fireOneBullet(opts);},
@@ -1421,7 +1421,7 @@ export function updateWeapons(dt: number){
     else if(rampageEl){
       rampageEl.style.display='block';
       rampageEl.textContent=
-        `ROCKET FRENZY ${rampage.kills}/${RAMPAGE_GOAL} CARS - ${Math.ceil(rampage.end-state.time)}s`;
+        `FÚRIA DE BAZUCA ${rampage.kills}/${RAMPAGE_GOAL} CARROS - ${Math.ceil(rampage.end-state.time)}s`;
     }
   }else{
     if(!rocketPickup.visible&&rocketRespawnAt>=0&&state.time>rocketRespawnAt)

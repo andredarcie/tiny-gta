@@ -203,8 +203,8 @@ function draw(){
   ctx.fillStyle='rgba(255,233,201,.72)';
   ctx.font='700 12px "Barlow Condensed",monospace';
   ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.fillText(state.mobile?'TAP A WEAPON  •  TAP CENTER TO CLOSE'
-                          :'AIM TO SELECT  •  RELEASE TO EQUIP',cx,cy+R+30);
+  ctx.fillText(state.mobile?'TOQUE NUMA ARMA  •  TOQUE NO CENTRO PARA FECHAR'
+                          :'MIRE PARA ESCOLHER  •  SOLTE PARA EQUIPAR',cx,cy+R+30);
   ctx.globalAlpha=1;
 }
 

@@ -166,7 +166,7 @@ export function setupTouchControls(): void {
   input.touchActive=true;
   input.lastInput='touch';
   const play=$('play');
-  if(play)play.textContent='TAP TO PLAY';
+  if(play)play.textContent='TOQUE PARA JOGAR';
   updateOrientationState();
 
   bindStick($('stick-move'),v=>{

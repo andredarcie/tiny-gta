@@ -24,4 +24,4 @@ export function makeBloodPuddle(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Effects',label:'Blood puddle',build:()=>makeBloodPuddle()};
+export default {category:'Efeitos',label:'Poça de sangue',build:()=>makeBloodPuddle()};

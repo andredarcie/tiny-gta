@@ -34,4 +34,4 @@ export function makeBaseballBatModel({pickup=false}:{pickup?:boolean}={}): THREE
   return g;
 }
 
-export default {category:'Weapons',label:'Baseball Bat',build:()=>makeBaseballBatModel()};
+export default {category:'Armas',label:'Taco de beisebol',build:()=>makeBaseballBatModel()};

@@ -188,7 +188,7 @@ export function startGameFromUserGesture(opts: {mobile?: boolean}={}): void {
     orient?.catch?.(()=>{});
   }else lockPointer();
   setMissionHUD();
-  message(mobile?'TAKE THE PINK CAR':'TAKE THE PINK CAR - PRESS E','var(--gold)');
+  message(mobile?'PEGUE O OPALA ROSA':'PEGUE O OPALA ROSA - APERTE E','var(--gold)');
 }
 
 const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').matches;
@@ -204,7 +204,7 @@ function beginRun(): void {
   const save=loadLocalSave();
   if(save){
     applySave(save);
-    if((save.money as number)>0)message('WELCOME BACK - $'+Math.floor(save.money as number).toLocaleString('en-US'),'var(--gold)');
+    if((save.money as number)>0)message('BEM-VINDO DE VOLTA - R$ '+Math.floor(save.money as number).toLocaleString('pt-BR'),'var(--gold)');
   }
   startLocalSave();
   (refs.divinoWelcome as (()=>void)|undefined)?.();
@@ -370,7 +370,7 @@ export function setupInput(): void {
     const btn=e.currentTarget as HTMLButtonElement;
     btn.classList.toggle('on',on);
     btn.setAttribute('aria-pressed',String(on));
-    btn.textContent=on?'HIDE NPCS':'SHOW NPCS';
+    btn.textContent=on?'OCULTAR MORADORES':'MOSTRAR MORADORES';
     drawFullMap();
   });
   document.getElementById('mapwrap')?.addEventListener('pointerdown',(e: PointerEvent)=>{

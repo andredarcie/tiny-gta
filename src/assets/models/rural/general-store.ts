@@ -80,8 +80,8 @@ function signTexture(): THREE.CanvasTexture{
     x.strokeStyle='rgba(18,10,4,.5)';x.lineWidth=2;                  // plank seams
     for(let i=1;i<4;i++){x.beginPath();x.moveTo(0,i*24);x.lineTo(512,i*24);x.stroke();}
     x.textAlign='center';x.textBaseline='middle';x.font='900 46px Georgia, serif';
-    x.lineWidth=5;x.strokeStyle='#150c05';x.strokeText('GENERAL STORE',256,52);
-    x.fillStyle='#f2e3c0';x.fillText('GENERAL STORE',256,49);
+    x.lineWidth=5;x.strokeStyle='#150c05';x.strokeText('ARMAZÉM',256,52);
+    x.fillStyle='#f2e3c0';x.fillText('ARMAZÉM',256,49);
   });
   return signTex;
 }
@@ -92,8 +92,8 @@ function chalkTexture(): THREE.CanvasTexture{
     x.fillStyle='#23302a';x.fillRect(0,0,128,176);
     x.textAlign='center';x.textBaseline='middle';x.fillStyle='#e8f0d8';
     x.font='900 20px monospace';
-    x.fillText('SEEDS',64,38);x.fillText('FEED',64,74);
-    x.fillText('DRY',64,116);x.fillText('GOODS',64,144);
+    x.fillText('SEMENTES',64,38);x.fillText('RAÇÃO',64,74);
+    x.fillText('SECOS E',64,116);x.fillText('MOLHADOS',64,144);
   });
   return chalkTex;
 }
@@ -104,7 +104,7 @@ function hangTexture(): THREE.CanvasTexture{
     x.fillStyle='#e6d3a8';x.fillRect(0,0,128,96);
     x.strokeStyle='#5e3c24';x.lineWidth=6;x.strokeRect(5,5,118,86);
     x.fillStyle='#5e3c24';x.textAlign='center';x.textBaseline='middle';
-    x.font='900 30px Georgia, serif';x.fillText('STORE',64,50);
+    x.font='900 30px Georgia, serif';x.fillText('LOJA',64,50);
   });
   return hangTex;
 }
@@ -287,7 +287,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Rural',label:'General store',build};
+export default {category:'Rural',label:'Armazém',build};
 
 // ---- interior helpers -------------------------------------------------------
 function canvasTexture(w: number,h: number,draw: (x: CanvasRenderingContext2D, w: number, h: number) => void): THREE.CanvasTexture{
@@ -415,7 +415,7 @@ function makeSeedDisplay(s: typeof STRAINS[number]): THREE.Group{
     const b=new THREE.Mesh(new THREE.IcosahedronGeometry(.05,0),headM);
     b.position.set(.05+Math.random()*.18,.34+Math.random()*.04,-.18+Math.random()*.36);g.add(b);
   }
-  const tag=labelPanel(`${s.name}\n$${REWARDS.weedFarm.seedPrices[s.id]}`,.95,.52,{bg:'#241a0e',fg:'#f0e2c0',sub:'#cdab63'});
+  const tag=labelPanel(`${s.name}\nR$${REWARDS.weedFarm.seedPrices[s.id]}`,.95,.52,{bg:'#241a0e',fg:'#f0e2c0',sub:'#cdab63'});
   tag.position.set(0,.78,0);tag.rotation.y=-Math.PI/2;g.add(tag);
   return g;
 }
@@ -507,7 +507,7 @@ function buildInterior(): void{
   addBox(cx,WALL_H/2,Z1-.1,HW*2+.4,WALL_H,.4,intWallM); // south
 
   // store sign on the far (east) wall, behind the counter (just clear of the wall face)
-  const sign=labelPanel('GENERAL STORE\nSEEDS & SUPPLIES',5.2,1.5,{});
+  const sign=labelPanel('ARMAZÉM\nSEMENTES E SUPRIMENTOS',5.2,1.5,{});
   sign.position.set(X1-.55,3.2,cz);sign.rotation.y=-Math.PI/2;
   generalStoreInterior.add(sign);
 
@@ -516,7 +516,7 @@ function buildInterior(): void{
   addShelfUnit(cx+3,Z1-.35,Math.PI,6.4);
   addSacks(X0+1.2,Z1-1.3);
   // the feed-sacks double as the PLANT FOOD counter (buy point — see js/places/general-store.ts)
-  const fertTag=labelPanel(`${FERTILIZER.name}\n$${REWARDS.weedFarm.fertilizerPrice}`,1.05,.6,{bg:'#1e2a16',fg:'#e6dcc0',sub:'#9caa82'});
+  const fertTag=labelPanel(`${FERTILIZER.name}\nR$${REWARDS.weedFarm.fertilizerPrice}`,1.05,.6,{bg:'#1e2a16',fg:'#e6dcc0',sub:'#9caa82'});
   fertTag.position.set(FERT_DISPLAY.x+.55,1.25,FERT_DISPLAY.z);fertTag.rotation.y=Math.PI/2; // faces the room (east)
   generalStoreInterior.add(fertTag);
 
@@ -543,7 +543,7 @@ function buildInterior(): void{
     const disp=makeSeedDisplay(s!);disp.position.set(d.x,1.11,d.z);
     generalStoreInterior.add(disp);return disp;
   });
-  const seedSign=labelPanel('SEEDS - PICK A STRAIN',3.0,.6,{bg:'#2a3326',fg:'#e6dcc0',sub:'#9caa82'});
+  const seedSign=labelPanel('SEMENTES - ESCOLHA UMA VARIEDADE',3.0,.6,{bg:'#2a3326',fg:'#e6dcc0',sub:'#9caa82'});
   seedSign.position.set(counterX-.85,2.4,counterZ);seedSign.rotation.y=-Math.PI/2; // faces the customer (west)
   generalStoreInterior.add(seedSign);
 
@@ -572,7 +572,7 @@ function buildInterior(): void{
   // inner exit door (west wall) + bouncing arrow
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.14,2.6,1.7),doorM);
   exitDoor.position.set(X0+.28,1.3,cz);generalStoreInterior.add(exitDoor);
-  const exitSign=labelPanel('EXIT',1.1,.42,{bg:'#2a1a0e',fg:'#ffe7b0',sub:'#f4c542'});
+  const exitSign=labelPanel('SAÍDA',1.1,.42,{bg:'#2a1a0e',fg:'#ffe7b0',sub:'#f4c542'});
   exitSign.position.set(X0+.42,2.85,cz);exitSign.rotation.y=Math.PI/2;
   generalStoreInterior.add(exitSign);
   genStoreFx.exitArrow=makeDoorArrow();

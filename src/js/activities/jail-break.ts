@@ -74,7 +74,7 @@ export function updateJailBreak(dt: number): void{
   // 1) prison open-cell hole -> drop into the tunnel
   if(state.interior===prison&&near(pp,TUNNEL_HOLE,1.5)){
     arrive(()=>tunnel.enterAt(DROP_FROM_HOLE,Math.PI/2),
-      'YOU SLIP INTO A DUG TUNNEL',[180,140,110]);
+      'VOCÊ ENTRA NUM TÚNEL CAVADO',[180,140,110]);
     return;
   }
   if(state.interior===tunnel){
@@ -82,20 +82,20 @@ export function updateJailBreak(dt: number): void{
     // corridor width so you can't squeeze past it.
     if(pp.x<TUNNEL_START.x+1.7){
       arrive(()=>prison.enterAt(CLIMB_TO_CELL,-Math.PI/2),
-        'YOU CLIMB BACK INTO THE CELL',[110,140,180]);
+        'VOCÊ VOLTA PRA CELA',[110,140,180]);
       return;
     }
     // 3) reach the EAST end (metal gate) -> surface at the fort
     if(pp.x>TUNNEL_GATE.x-1.7){
       arrive(()=>{tunnel.leave();teleportWorld(FORT_EXIT.x,FORT_EXIT.z,0);},
-        'THE GATE OPENS — YOU SURFACE AT THE FORT','var(--gold)',[330,440,587]);
+        'O PORTÃO ABRE — VOCÊ SAI NO FORTE','var(--gold)',[330,440,587]);
       return;
     }
   }
   // 4) fort floor button -> drop into the tunnel (at the gate end)
   if(!state.interior&&near(pp,FORT_BUTTON,1.7)){
     arrive(()=>tunnel.enterAt(DROP_FROM_FORT,-Math.PI/2),
-      'A HATCH OPENS — DOWN INTO THE TUNNEL',[180,140,110]);
+      'UM ALÇAPÃO ABRE — DESCE PRO TÚNEL',[180,140,110]);
   }
 }
 

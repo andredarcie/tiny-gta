@@ -30,4 +30,4 @@ export function makeFireModel(): THREE.Group{
   return g;
 }
 
-export default {category:'Effects',label:'Fire',build:()=>makeFireModel()};
+export default {category:'Efeitos',label:'Fogo',build:()=>makeFireModel()};

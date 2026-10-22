@@ -20,7 +20,7 @@ function build(): THREE.Group {
   return g;
 }
 
-const model: ModelDescriptor = {category:'Props',label:'Palm tree',build};
+const model: ModelDescriptor = {category:'Objetos',label:'Coqueiro',build};
 export default model;
 
 // Street palms: a code-built curved coconut palm (nature/kit.ts), planted on the ground

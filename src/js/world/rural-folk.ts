@@ -41,7 +41,7 @@ class RuralFolk extends Npc{
 
   constructor(g:THREE.Object3D,role:string,gender?:'M'|'F',name?:string,likes?:string[],dialogues?:string[]){
     // civilian: one shot kills, drops a little cash, +1 wanted (like a pedestrian)
-    super(g,{kind:'rural',hp:NPC_HP_CIVILIAN,drop:[20,60],wanted:1,wantedMsg:'SHOT FIRED!',crime:'rural_shot',
+    super(g,{kind:'rural',hp:NPC_HP_CIVILIAN,drop:[20,60],wanted:1,wantedMsg:'TIRO DISPARADO!',crime:'rural_shot',
       area:role==='town'?'Sítios':'Zona Rural',gender,name,likes,dialogues});
     this.role=role;
     this.home={x:g.position.x,z:g.position.z};
@@ -52,11 +52,11 @@ class RuralFolk extends Npc{
   }
   override aliveState():string{
     switch(this.state){
-      case 'walk':return 'Strolling';
-      case 'work':return 'Working the field';
-      case 'wave':return 'Greeting';
-      case 'flee':return 'Fleeing';
-      default:return 'Idle';
+      case 'walk':return 'Passeando';
+      case 'work':return 'Trabalhando na roça';
+      case 'wave':return 'Cumprimentando';
+      case 'flee':return 'Fugindo';
+      default:return 'À toa';
     }
   }
   override pathTarget():{x:number;z:number}|null{

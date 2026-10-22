@@ -43,7 +43,7 @@ function buildRcController(): THREE.Group{
 }
 
 // Model pattern: descriptor for the model viewer (auto-discovery).
-export default {category:'Props',label:'RC controller',build:buildRcController};
+export default {category:'Objetos',label:'Controle do RC',build:buildRcController};
 
 // Compat: direct factory (pure, like makeRcPad — caller adds it to the scene/parent).
 export function makeRcController(): THREE.Group{return buildRcController();}

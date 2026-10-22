@@ -56,4 +56,4 @@ export function makeAk47Model({pickup=false}:{pickup?:boolean}={}): THREE.Group{
   return merged;
 }
 
-export default {category:'Weapons',label:'AK47',build:()=>makeAk47Model()};
+export default {category:'Armas',label:'AK47',build:()=>makeAk47Model()};

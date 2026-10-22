@@ -25,4 +25,4 @@ function build(): THREE.Group {
 }
 
 // Padrão de modelo: descriptor pro model-viewer (descoberta automática).
-export default {category:'Rural',label:'Wood pile',build};
+export default {category:'Rural',label:'Pilha de lenha',build};

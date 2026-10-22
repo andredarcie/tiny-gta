@@ -73,5 +73,5 @@ export function makeSpeechBubble(text: string,{worldWidth=3,font=30,pad=26,maxTe
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Characters',label:'Speech bubble',
-  build:()=>makeSpeechBubble('Hey, you! Over here.')};
+export default {category:'Personagens',label:'Balão de fala',
+  build:()=>makeSpeechBubble('Ei, você! Aqui!')};

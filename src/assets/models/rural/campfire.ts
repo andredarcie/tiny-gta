@@ -81,4 +81,4 @@ function build(): THREE.Group {
 }
 
 // Padrão de modelo: descriptor pro model-viewer (descoberta automática).
-export default {category:'Rural',label:'Campfire',build};
+export default {category:'Rural',label:'Fogueira',build};

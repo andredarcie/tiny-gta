@@ -114,4 +114,4 @@ export function makePistolModel({pickup=false}:{pickup?:boolean}={}): THREE.Grou
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Weapons',label:'Pistol',build:()=>makePistolModel()};
+export default {category:'Armas',label:'Pistola',build:()=>makePistolModel()};

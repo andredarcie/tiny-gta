@@ -20,7 +20,7 @@ Output: `output/video/<scene>/<scene>.mp4` + `output/video/<scene>/cover.jpg` (g
 
 ## The spec every video must meet
 - **With sound**: the game's own mix (gunshots, explosions, engines, UI blips) is recorded from the master audio bus for the whole shoot and sliced per clip. Put the game's music under it with `music:` (radio station 0 funk, 1 pagode, 2 forró, 3 sertanejo) — pick one that fits the mood. The final track is loudness-normalised (-14 LUFS).
-- **In Brazilian Portuguese (pt-BR)**: title, subtitle, captions and end card in PT-BR, and the game itself runs with `?lang=pt-BR` (the director's default). Tone: **sarcastic, funny, scroll-stopping** — short punchlines, dark humour that fits the scene (e.g. *"Ele perdeu a cabeça. Literalmente."*, *"Resolvendo conflitos com diálogo"*).
+- **In Brazilian Portuguese (pt-BR)**: title, subtitle, captions and end card in PT-BR, and the game itself is entirely in pt-BR. Tone: **sarcastic, funny, scroll-stopping** — short punchlines, dark humour that fits the scene (e.g. *"Ele perdeu a cabeça. Literalmente."*, *"Resolvendo conflitos com diálogo"*).
 - **Vertical 9:16, 720×1280, 30 fps** — watched on a phone held upright.
 - **Short: 12–30 s total** (TikTok/Reels sweet spot ~15–25 s). Only the key actions; **cut** all walking/setup (just don't wrap it in `clip()`).
 - **Light: ~1–3 MB** (WhatsApp-friendly), still sharp (CRF 24 — don't go above ~27 or it gets mushy).
@@ -41,14 +41,7 @@ Output: `output/video/<scene>/<scene>.mp4` + `output/video/<scene>/cover.jpg` (g
    Helpers: `teleport(p, lookAt)`, `turnTo(p, ms)` (smooth pan), `walkTo(p)` (real input, DOOM speed), `hold(code, ms)`, `interact()` (E), `attack()`, `giveGun()`, `equip(id)`, `aimAtNpc(dist, 'head'|'body'|'legs')`, `farm(cmd)` / `farmAct()`, `snap()`, `wait(ms)`. Anything else the scene needs goes through `window.__test` (add a dev-only hook in `src/js/core/main.ts` if missing — never a game-side cheat).
    Film **close** to the subject (the phone screen is small): ~3 m for people, frame the action in the centre.
 3. **Run `npm run video -- <name>`** (headed; the dev server is reused or started).
-   **Translate what the video shows**: the game is English; HUD text goes through
-   `tr()` (`src/js/core/i18n.ts`) with the table `src/data/i18n/pt-BR.json`. After a run,
-   `output/video/<name>/untranslated.txt` lists every HUD string that appeared without a
-   translation — add them to the table (`exact`, or a `patterns` regex for strings with
-   numbers/names) and re-film. Translate ONLY what the video needs (the user's rule: no
-   full-game rewrite; localise pointedly, per video). New player-visible text that isn't
-   routed through the HUD output points (hud.ts `message`/`bigText`/prompt/weapon/place)
-   needs a `tr()` call where it's displayed.
+   The game is already 100% pt-BR, so everything the HUD shows needs no extra work.
 4. **Review before sending**: open `cover.jpg`, and pull a contact strip of frames
    (`ffmpeg -ss <t> -i <mp4> -frames:v 1 …` at 6–9 times, `hstack`) — check the subject is visible and big, captions readable, nothing broken. Re-film or fix the scene if not (move `d.cover()`, get closer, tighten clips). To change only the cover/captions, edit `capture.json` and run with `--edit-only`.
 5. **Send it** with `SendUserFile` (the MP4, and the cover if useful), and report length/size in one line. Commit the scene script (not the output).

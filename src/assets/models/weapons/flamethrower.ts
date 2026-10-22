@@ -54,4 +54,4 @@ export function makeFlamethrowerModel({pickup=false}:{pickup?:boolean}={}): THRE
   return g;
 }
 
-export default {category:'Weapons',label:'Flamethrower',build:()=>makeFlamethrowerModel()};
+export default {category:'Armas',label:'Lança-chamas',build:()=>makeFlamethrowerModel()};

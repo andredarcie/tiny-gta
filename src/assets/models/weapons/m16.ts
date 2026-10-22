@@ -55,4 +55,4 @@ export function makeM16Model({pickup=false}:{pickup?:boolean}={}): THREE.Group{
   return merged;
 }
 
-export default {category:'Weapons',label:'M16',build:()=>makeM16Model()};
+export default {category:'Armas',label:'M16',build:()=>makeM16Model()};

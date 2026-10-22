@@ -20,4 +20,4 @@ export function makeHorizonGlow(): {sprite: THREE.Sprite; material: THREE.Sprite
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Daynight',label:'Horizon glow',build:()=>makeHorizonGlow()};
+export default {category:'Céu',label:'Brilho do horizonte',build:()=>makeHorizonGlow()};

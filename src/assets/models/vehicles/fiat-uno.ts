@@ -596,7 +596,7 @@ function buildUno({color=0x3b7ac2}: {color?: number}={}): THREE.Group{
 export function makeFiatUno(color: number): THREE.Group{const g=buildUno({color});addVehicleLod(g,'uno:'+color);scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered) with the Mille's common colours.
-export default {category:'Vehicles',label:'Fiat Uno Mille Fire',build:buildUno,zoom:.7,yaw:.6,
+export default {category:'Veículos',label:'Fiat Uno Mille Fire',build:buildUno,zoom:.7,yaw:.6,
   variants:[{label:'Uno Mille Fire — prata',opts:{color:0xb9bcbf}},
             {label:'Uno Mille Fire — vermelho',opts:{color:0xa3202a}},
             {label:'Uno Mille Fire — branco',opts:{color:0xeceae4}}]};

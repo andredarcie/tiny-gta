@@ -171,4 +171,4 @@ function buildDemo(): THREE.Group{
   const hood=buildHood('scoop');hood.position.set(0,-.9,-1.2);g.add(hood);
   return g;
 }
-export default {category:'Vehicles',label:'Car Customs',build:buildDemo};
+export default {category:'Veículos',label:'Carro tunado',build:buildDemo};

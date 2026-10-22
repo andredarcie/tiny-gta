@@ -123,10 +123,10 @@ function poster(title:string,sub:string,bg:string,fg:string,W=256,H=160):THREE.M
     if(sub){x.font=`700 ${Math.floor(h*.16)}px sans-serif`;x.fillText(sub,w/2,h*.72,w-40);}
   })});
 }
-const emergM=poster('EMERGENCY','THIS WAY','#d23b3b','#ffffff',256,160);
-const pharmM=poster('PHARMACY','','#1f7a76','#eafcf6',256,160);
-const recepM=poster('RECEPTION','','#0e2b2a','#7fe9df',512,160);
-const exitSignM=poster('EXIT','','#0d1a10','#35d47a',384,128);
+const emergM=poster('EMERGÊNCIA','POR AQUI','#d23b3b','#ffffff',256,160);
+const pharmM=poster('FARMÁCIA','','#1f7a76','#eafcf6',256,160);
+const recepM=poster('RECEPÇÃO','','#0e2b2a','#7fe9df',512,160);
+const exitSignM=poster('SAÍDA','','#0d1a10','#35d47a',384,128);
 
 // Snellen eye chart for the wall.
 const eyeChartM=new THREE.MeshBasicMaterial({map:tex(180,256,(x,w,h)=>{

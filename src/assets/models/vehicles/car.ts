@@ -229,9 +229,9 @@ function buildCar({color=0xff2e88,police=false}: {color?: number; police?: boole
 }
 
 // Padrão de modelo: build() puro; descriptor com 2 variações pro model-viewer.
-export default {category:'Vehicles',label:'Car',build:buildCar,
-  variants:[{label:'Car — player',opts:{color:0xff2e88}},
-            {label:'Car — police',opts:{color:0x1b2b4a,police:true}}]};
+export default {category:'Veículos',label:'Carro',build:buildCar,
+  variants:[{label:'Carro — jogador',opts:{color:0xff2e88}},
+            {label:'Carro — viatura',opts:{color:0x1b2b4a,police:true}}]};
 
 // Compat: gameplay usa makeCar(color,police) e espera o carro já na cena.
 export function makeCar(color: number,police: boolean): THREE.Group{

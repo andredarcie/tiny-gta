@@ -3,7 +3,6 @@ import {groundHeight} from '@/core/constants.ts';
 import {state} from '@/core/state.ts';
 import {camera} from '@/core/engine.ts';
 import {AC,master,blip} from '@/audio/audio.ts';
-import {tr} from '@/core/i18n.ts';
 import {player,playerPos} from '@/actors/player.ts';
 import {setTod} from '@/world/daynight.ts';
 import {hasVoice,playVoice,stopVoice,preloadVoices} from '@/story/voices.ts';
@@ -57,7 +56,7 @@ export const cineActive=()=>cine.on;
 // "Continue" hint: only once the line has finished typing and the game waits for input.
 function showHint(){
   if(!hintEl)return;
-  hintEl.textContent=state.mobile?'TAP TO CONTINUE ▸':'SPACE / E ▸';
+  hintEl.textContent=state.mobile?'TOQUE PARA CONTINUAR ▸':'ESPAÇO / E ▸';
   hintEl.classList.add('show');
 }
 function hideHint(){hintEl?.classList.remove('show');}
@@ -159,7 +158,7 @@ function nextLine(){
     return endCutscene();
   }
   const line=cine.lines[cine.li];
-  cine.txt=tr(line.text);cine.shown=0;cine.charT=0;cine.phase='type';
+  cine.txt=line.text;cine.shown=0;cine.charT=0;cine.phase='type';
   // a dubbed line plays its recorded voice, and the subtitle types along with it
   stopVoice();
   cine.step=.034;
@@ -173,7 +172,7 @@ function nextLine(){
   cine.shot=cycleShot();
   cine.shotT=0;cine.midCut=false;
   subEl.textContent='';
-  if(whoEl)whoEl.textContent=line.who?tr(line.who):'';
+  if(whoEl)whoEl.textContent=line.who?line.who:'';
   hideHint();
 }
 
@@ -334,7 +333,7 @@ export function fadeThrough(caption: string,onBlack: () => void,onDone?: () => v
   const el=document.getElementById('story-fade') as HTMLElement|null;
   const txt=el?.querySelector('.txt') as HTMLElement|null;
   if(!el){onBlack();onDone?.();return;}
-  if(txt)txt.textContent=tr(caption);
+  if(txt)txt.textContent=caption;
   el.classList.add('on');
   setTimeout(()=>{
     onBlack();
@@ -425,8 +424,8 @@ export function reachHand(ped: THREE.Object3D,side: 'right'|'left',target: THREE
 // ---------------------------------------------------------------------------
 export function showMissionPass(title: string,sub: string,after?: () => void){
   const el=document.getElementById('missionpass') as HTMLElement;
-  (document.getElementById('mp-mission') as HTMLElement).textContent=tr(title);
-  (document.getElementById('mp-respect') as HTMLElement).textContent=tr(sub);
+  (document.getElementById('mp-mission') as HTMLElement).textContent=title;
+  (document.getElementById('mp-respect') as HTMLElement).textContent=sub;
   el.style.display='flex';
   setTimeout(()=>(document.getElementById('mp-bar-fill') as HTMLElement).style.width='78%',60);
   blip([392,523,659,784,1047,1319],.10,'sine',.20);

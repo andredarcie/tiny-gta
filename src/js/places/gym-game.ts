@@ -163,7 +163,7 @@ function beginReady(){
 // começa a série de verdade (descansou: fôlego cheio)
 function startSet(){
   phase='active';stamina=STAM_START;
-  flash(`SET ${setNum} — GO!`,'#ffd24a');
+  flash(`SÉRIE ${setNum} — VAI!`,'#ffd24a');
   blip([392,523,659],.07,'square',.16);
 }
 
@@ -178,7 +178,7 @@ export function gymGamePress(){
     reps++;
     const perfect=d<=zoneHalf*PERFECT_FRAC;
     stamina=Math.min(STAM_MAX,stamina+(perfect?PERFECT_GAIN:HIT_GAIN));
-    flash(perfect?'PERFECT!':'REP!',perfect?'#ffd24a':'#ffe9c9');
+    flash(perfect?'PERFEITO!':'REPETIÇÃO!',perfect?'#ffd24a':'#ffe9c9');
     repAnimT=REP_ANIM;repFail=false; // dispara o levante completo
     speed+=SPEED_PER_REP;
     zoneHalf=Math.max(MIN_HALF,zoneHalf-HALF_PER_REP);
@@ -191,7 +191,7 @@ export function gymGamePress(){
     }
   }else{
     stamina-=MISS_PEN;
-    flash('MISS!','#ff2e88');
+    flash('ERROU!','#ff2e88');
     shakeT=.32;repAnimT=REP_ANIM*0.7;repFail=true; // levante que não trava
     blip([180,130],.13,'sawtooth',.2);
     if(stamina<=0){stamina=0;lose();}
@@ -301,13 +301,13 @@ function draw(){
   // título + indicador de série
   ctx.fillStyle='#ff8a1e';
   ctx.font="700 14px 'Barlow Condensed',monospace";
-  ctx.fillText('IRON TEMPLE',cw/2,ch*0.075);
+  ctx.fillText('ACADEMIA',cw/2,ch*0.075);
   ctx.fillStyle='#ffe9c9';
   ctx.font="800 30px 'Alfa Slab One','Barlow Condensed',monospace";
-  ctx.fillText('BENCH PRESS',cw/2,ch*0.125);
+  ctx.fillText('SUPINO',cw/2,ch*0.125);
   ctx.fillStyle='#ff8a1e';
   ctx.font="700 13px 'Barlow Condensed',monospace";
-  ctx.fillText(`SET ${setNum} OF ${TOTAL_SETS}`,cw/2,ch*0.165);
+  ctx.fillText(`SÉRIE ${setNum} DE ${TOTAL_SETS}`,cw/2,ch*0.165);
 
   // bolinhas de repetição da série atual
   const dotY=ch*0.215,gap=Math.min(34,(panelW-40)/REPS_PER_SET),dotR=7;
@@ -324,16 +324,16 @@ function draw(){
     // tela de "pronto pra iniciar?"
     ctx.fillStyle='#ffe9c9';ctx.shadowColor='#ffd24a';ctx.shadowBlur=24;
     ctx.font="800 44px 'Alfa Slab One','Barlow Condensed',monospace";
-    ctx.fillText('READY TO START?',cw/2,ch*0.45);
+    ctx.fillText('PRONTO PRA COMEÇAR?',cw/2,ch*0.45);
     ctx.shadowBlur=0;
     ctx.fillStyle='#ff8a1e';
     ctx.font="700 16px 'Barlow Condensed',monospace";
-    ctx.fillText(setNum===1?'SERIES 1 OF 2 — GET SET ON THE BENCH'
-                           :'NICE SET! CATCH YOUR BREATH — SERIES 2 OF 2',cw/2,ch*0.52);
+    ctx.fillText(setNum===1?'SÉRIE 1 DE 2 — SE AJEITE NO BANCO'
+                           :'BOA SÉRIE! RECUPERE O FÔLEGO — SÉRIE 2 DE 2',cw/2,ch*0.52);
     ctx.fillStyle='rgba(255,233,201,.85)';
     ctx.font="700 14px 'Barlow Condensed',monospace";
-    ctx.fillText(state.mobile?'TAP TO START THE SET'
-                             :'SPACE / CLICK TO START THE SET',cw/2,ch*0.86);
+    ctx.fillText(state.mobile?'TOQUE PARA COMEÇAR A SÉRIE'
+                             :'ESPAÇO / CLIQUE PARA COMEÇAR A SÉRIE',cw/2,ch*0.86);
   }else if(phase==='active'){
     drawActive(panelX,panelW);
   }
@@ -357,11 +357,11 @@ function draw(){
     const won=result==='win',c=won?'#ffd24a':'#ff2e88';
     ctx.fillStyle=c;ctx.shadowColor=c;ctx.shadowBlur=30;
     ctx.font="800 46px 'Alfa Slab One','Barlow Condensed',monospace";
-    ctx.fillText(won?'WORKOUT COMPLETE!':'FORM BROKE!',cw/2,ch*0.44);
+    ctx.fillText(won?'TREINO CONCLUÍDO!':'PERDEU A POSTURA!',cw/2,ch*0.44);
     ctx.shadowBlur=0;
     ctx.fillStyle='#ffe9c9';
     ctx.font="700 18px 'Barlow Condensed',monospace";
-    ctx.fillText(won?'TWO SOLID SETS — YOUR ARMS GREW':'NO GAINS THIS TIME',cw/2,ch*0.52);
+    ctx.fillText(won?'DUAS SÉRIES FIRMES — SEUS BRAÇOS CRESCERAM':'SEM GANHOS DESTA VEZ',cw/2,ch*0.52);
   }
   ctx.restore();
 }
@@ -404,12 +404,12 @@ function drawActive(panelX:number,panelW:number){
   ctx!.lineWidth=2;ctx!.strokeStyle='rgba(255,233,201,.5)';rr(stX,stY,stW,stH,9);ctx!.stroke();
   ctx!.fillStyle='#ffe9c9';
   ctx!.font="700 11px 'Barlow Condensed',monospace";
-  ctx!.fillText('STAMINA',cw/2,stY+stH/2);
+  ctx!.fillText('FÔLEGO',cw/2,stY+stH/2);
 
   ctx!.fillStyle='rgba(255,233,201,.8)';
   ctx!.font="700 13px 'Barlow Condensed',monospace";
-  ctx!.fillText(state.mobile?'TAP IN THE GREEN TO PRESS'
-                           :'SPACE / CLICK IN THE GREEN TO PRESS',cw/2,ch*0.84);
+  ctx!.fillText(state.mobile?'TOQUE NO VERDE PARA EMPURRAR'
+                           :'ESPAÇO / CLIQUE NO VERDE PARA EMPURRAR',cw/2,ch*0.84);
 }
 
 // botão QUIT (desistir do treino)

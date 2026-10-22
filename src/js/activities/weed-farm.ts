@@ -58,7 +58,7 @@ import {peds,type Ped} from '@/world/pedestrians.ts'; // street peds that like w
 // Open-world activity: zone actions + a per-frame update, no world lock.
 // ============================================================================
 
-const WEED_BUILD=' ◆ GREEN ACRES';
+const WEED_BUILD=' ◆ PLANTAÇÃO';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',WEED_BUILD);
 
 // ---------- tuning ----------
@@ -104,9 +104,9 @@ let waterCharges=0;       // pours left in the carried bucket (filled at the tap
 // ---------- farm upgrades (bought at the grow shack; persisted via the save) ----------
 // Tiers of watering gear cut the tap-trip tedium; the top tier waters the beds for you.
 const UPGRADES=[
-  {name:'BIGGER CAN',     price:REWARDS.weedFarm.upgradePrices[0],  desc:'WATER 3 PLANTS PER FILL'},
-  {name:'GARDEN HOSE',    price:REWARDS.weedFarm.upgradePrices[1], desc:'WATER 8 PLANTS PER FILL'},
-  {name:'DRIP SPRINKLERS',price:REWARDS.weedFarm.upgradePrices[2], desc:'THE BEDS WATER THEMSELVES'},
+  {name:'BALDE MAIOR',    price:REWARDS.weedFarm.upgradePrices[0],  desc:'REGA 3 PLANTAS POR ENCHIDA'},
+  {name:'MANGUEIRA',      price:REWARDS.weedFarm.upgradePrices[1], desc:'REGA 8 PLANTAS POR ENCHIDA'},
+  {name:'IRRIGAÇÃO POR GOTEJO',price:REWARDS.weedFarm.upgradePrices[2], desc:'OS CANTEIROS SE REGAM SOZINHOS'},
 ];
 const WATER_CAP=[1,3,8,8];   // bucket capacity by upgrade level
 let upLevel=0;               // 0 = bare bucket … 3 = sprinklers installed
@@ -147,11 +147,11 @@ const DELIV_POINTS: {x:number;z:number;city:boolean;gated?:boolean}[]=[
 class Buyer extends Npc{
   x:number;z:number;city:boolean;gated:boolean;served:boolean;want:number;t:number;
   constructor(g:THREE.Object3D,x:number,z:number,city:boolean,gated:boolean,want:number){
-    super(g,{kind:'buyer',hp:1,register:false,area:city?'City buyer':'Country buyer'});
+    super(g,{kind:'buyer',hp:1,register:false,area:city?'Comprador da cidade':'Comprador da roça'});
     this.x=x;this.z=z;this.city=city;this.gated=gated;this.served=false;this.want=want;this.t=0;
   }
   get ped():THREE.Object3D{return this.g;}
-  override aliveState():string{return this.served?'Deal done':'Waiting for a deal';}
+  override aliveState():string{return this.served?'Negócio fechado':'Esperando o negócio';}
 }
 let buyers: Buyer[]=[];
 
@@ -181,44 +181,44 @@ const nearFarm=()=>{const p=playerPos();return Math.hypot(p.x-WEED_CX,p.z-WEED_C
 // out when you deal to them (shown as a floating speech bubble during the deal). ----
 const pick=<T>(a: T[]): T=>a[(Math.random()*a.length)|0];
 const WEED_BUYER_LINES=[
-  "Thanks for the stash, partner!",
-  "This bud's gonna save my whole week.",
-  "Munchies are calling — gotta run!",
-  "You're a lifesaver, my guy.",
-  "Top shelf, just like you promised.",
-  "My couch and I thank you deeply.",
-  "Finally, the GOOD stuff!",
-  "Pleasure doing business, friend.",
-  "Smells like a great weekend already.",
-  "Keep it green, keep it clean.",
-  "I was THIS close to going sober. Phew.",
-  "Bless you and your little garden.",
-  "Tell the plants I said thanks.",
-  "It's medicinal. For my vibes.",
-  "Right on time, the snacks are waiting.",
-  "You grow it, I blow it!",
-  "Quality control approves.",
-  "My doctor won't, but my soul will.",
-  "Catch you next harvest, legend.",
-  "Discreet as always. Love that.",
-  "Gonna watch cartoons all night now.",
-  "Best dealer on the whole coast.",
-  "Smooth, green, and oh so serene.",
-  "Don't tell my landlord, alright?",
-  "I'll name my next houseplant after you.",
-  "Pizza's on the way — perfect timing.",
-  "You just made my whole Tuesday.",
-  "Worth the drive out here, every time.",
-  "Shhh — you didn't see me, I didn't see you.",
-  "Pairs great with absolutely nothing to do.",
-  "Couch mode: activated.",
-  "Sweet, sweet relief. Thank you, chief.",
-  "My cat's gonna love how chill I get.",
-  "Five stars. Would deal again.",
-  "Keep the change, keep the secret.",
-  "Dankest in the whole county, hands down.",
-  "Ahh, the cure for a long week.",
-  "Smells like home. Appreciate ya.",
+  "Valeu pela erva, parceiro!",
+  "Esse bud vai salvar minha semana inteira.",
+  "A larica tá chamando — fui!",
+  "Você salvou minha vida, mano.",
+  "Da melhor, do jeito que você prometeu.",
+  "Eu e meu sofá agradecemos do fundo do coração.",
+  "Finalmente, da BOA!",
+  "Prazer fazer negócio, amigo.",
+  "Já tá com cheiro de fim de semana bom.",
+  "Mantém verde, mantém limpo.",
+  "Eu tava QUASE ficando careta. Ufa.",
+  "Deus abençoe você e sua hortinha.",
+  "Fala pras plantas que eu agradeci.",
+  "É medicinal. Pra minha vibe.",
+  "Na hora certa, os salgadinhos tão esperando.",
+  "Você planta, eu queimo!",
+  "O controle de qualidade aprova.",
+  "Meu médico não aprova, mas minha alma sim.",
+  "Até a próxima colheita, lenda.",
+  "Discreto como sempre. Adoro.",
+  "Agora é desenho animado a noite toda.",
+  "Melhor fornecedor da região inteira.",
+  "Suave, verdinho e muito sereno.",
+  "Não conta pro dono da casa, beleza?",
+  "Vou dar seu nome pra minha próxima planta.",
+  "A pizza tá chegando — timing perfeito.",
+  "Você ganhou minha terça-feira.",
+  "Sempre vale a viagem até aqui.",
+  "Psiu — você não me viu, eu não te vi.",
+  "Combina demais com não ter nada pra fazer.",
+  "Modo sofá: ativado.",
+  "Que alívio. Valeu, chefe.",
+  "Meu gato vai amar como eu fico tranquilo.",
+  "Cinco estrelas. Compraria de novo.",
+  "Fica com o troco e com o segredo.",
+  "A melhor da região, sem dúvida.",
+  "Ahh, o remédio pra semana puxada.",
+  "Cheirinho de casa. Valeu mesmo.",
 ];
 
 let armPosed=false;       // true while the hero's arm is posed (deal hand-off)
@@ -256,7 +256,7 @@ const dist=(p: {x:number;z:number},o: {x:number;z:number})=>Math.hypot(p.x-o.x,p
 const clamp01=(v: number)=>v<0?0:v>1?1:v;
 const playerLimbs=()=>player?.g?.userData?.limbs||null;
 
-const grade=(q: number)=>q>=85?'FIRE':q>=65?'DANK':q>=40?'MIDS':'SCHWAG';
+const grade=(q: number)=>q>=85?'PREMIUM':q>=65?'DA BOA':q>=40?'MEDIANA':'PRENSADO';
 // ---------- seeds & strains ----------
 const seedCount=(id: string)=>state.seeds[id]|0;
 const totalSeeds=()=>STRAINS.reduce((s,st)=>s+seedCount(st.id),0);
@@ -281,7 +281,7 @@ function sow(slot: Slot): void{
   // seeds are bought at the rural General Store (js/places/general-store.ts); no seed, no planting
   const sid=plantStrain();
   if(!sid){
-    message('NO SEEDS - BUY THEM AT THE GENERAL STORE','var(--pink)');
+    message('SEM SEMENTES - COMPRE NO ARMAZÉM','var(--pink)');
     blip([300,220],.06,'square',.08);
     return;
   }
@@ -302,7 +302,7 @@ function sow(slot: Slot): void{
         quality:QUALITY_START,baseY:y,phase:rand(0,6.28),pop:.9};
       blip([392,523],.06,'sine',.13);
     },
-    onDone:()=>{reserved.delete(slot);message(`PLANTED ${st.name} - GET THE BUCKET AT THE TAP AND WATER IT`,'var(--cyan)');},
+    onDone:()=>{reserved.delete(slot);message(`${st.name} PLANTADA - PEGUE O BALDE NA TORNEIRA E REGUE`,'var(--cyan)');},
   });
 }
 
@@ -313,7 +313,7 @@ function fillBucket(): void{
   const cap=canCapacity();
   fpFill(spoutW,waterCharges/cap,1,{onDone:()=>{
     waterCharges=cap;
-    message(cap>1?`BUCKET FULL - ${cap} POURS`:'BUCKET FULL - CARRY IT TO A PLANT AND POUR','var(--cyan)');
+    message(cap>1?`BALDE CHEIO - ${cap} REGADAS`:'BALDE CHEIO - LEVE ATÉ UMA PLANTA E REGUE','var(--cyan)');
     blip([392,523,659],.06,'sine',.13);
   }});
 }
@@ -347,7 +347,7 @@ function water(slot: Slot): void{
     onDone:()=>{
       reserved.delete(slot);
       const p=slot.plant;if(p&&p.stage!=='dead'){p.hyd=100;p.pop=.35;}
-      if(waterCharges<=0)message('BUCKET EMPTY - REFILL IT AT THE TAP','var(--cyan)');
+      if(waterCharges<=0)message('BALDE VAZIO - ENCHA DE NOVO NA TORNEIRA','var(--cyan)');
     }});
 }
 
@@ -388,7 +388,7 @@ function clearSlot(slot: Slot): void{
   const obj=pl.g;
   obj.rotation.set(0,obj.rotation.y,0);
   fpUproot(obj,{toss:true,onPull:()=>removePlant(slot,true),
-    onDone:()=>{reserved.delete(slot);message('CLEARED THE BED','var(--cream)');blip([300,220],.05,'square',.08);}});
+    onDone:()=>{reserved.delete(slot);message('CANTEIRO LIMPO','var(--cream)');blip([300,220],.05,'square',.08);}});
 }
 
 // Grip the ripe plant and pull it out — it ends up in your hand (one at a time).
@@ -413,7 +413,7 @@ function harvest(slot: Slot): void{
     onDone:()=>{
       reserved.delete(slot);
       bigText(`${st.name} ${grade(q)} - ${buds} BUDS`,'var(--gold)');setTimeout(hideBig,1100);
-      message('HANG IT ON THE DRYING RACK','var(--gold)');
+      message('PENDURE NO VARAL DE SECAGEM','var(--gold)');
       blip([659,880,1175],.07,'square',.18);
     }});
 }
@@ -453,7 +453,7 @@ function layOnTable(): void{
       const fans=[...(obj.userData.fans as THREE.Object3D[])];
       trimJob={obj,data,fans,buds:[...(obj.userData.buds as THREE.Object3D[])],fanPairs:Math.ceil(fans.length/2)};
     },
-    onDone:()=>message('PICK UP THE SHEARS AND TRIM IT','var(--gold)')});
+    onDone:()=>message('PEGUE A TESOURA E APARE','var(--gold)')});
 }
 function pickUpShears(): void{ fpPickUp(shears,'shears',{onGrab:()=>blip([660,880],.03,'square',.06)}); }
 function putShearsDown(): void{ fpPlace({pos:shearsRest.pos,quat:shearsRest.quat,scale:1},{hover:.08}); }
@@ -470,7 +470,7 @@ function snipFan(): void{
         tossPiece(f,new THREE.Vector3(Math.cos(a)*.9,1.2,Math.sin(a)*.9));
       }
     },
-    onDone:()=>{if(!j.fans.length)message('FAN LEAVES OFF - NOW SNIP THE BUDS INTO THE TRAY','var(--gold)');},
+    onDone:()=>{if(!j.fans.length)message('FOLHAS GRANDES FORA - AGORA CORTE OS BUDS NA BANDEJA','var(--gold)');},
   });
 }
 // snip the next bud off the stem: it arcs into the tray. The last one leaves a bare stem.
@@ -497,7 +497,7 @@ function snipBud(): void{
       tossPiece(j.obj,new THREE.Vector3(-Math.sin(cameraRig.yaw)*1.5,2.2,-Math.cos(cameraRig.yaw)*1.5));
       trayItems.push(j.data);trimJob=null;
       const n=trayItems.reduce((a,t)=>a+t.buds,0);
-      message(`TRIMMED - ${n} BUDS IN THE TRAY - TIP THEM INTO THE CRATE`,'var(--gold)');
+      message(`APARADA - ${n} BUDS NA BANDEJA - DESPEJE NO CAIXOTE`,'var(--gold)');
       blip([659,880,1175],.07,'square',.16);
       putShearsDown();
     },
@@ -536,7 +536,7 @@ function tipTrayIntoCrate(): void{
       trayItems=[];
     },
     onDone:()=>{
-      message(`IN THE CRATE: ${deposit.buds} BUDS - NO CASH HERE; TAKE IT OUT TO RUN DELIVERIES`,'var(--gold)');
+      message(`NO CAIXOTE: ${deposit.buds} BUDS - AQUI NÃO RENDE DINHEIRO; LEVE PRA FAZER ENTREGAS`,'var(--gold)');
       blip([330,392],.06,'sine',.12);
     },
   });
@@ -571,8 +571,8 @@ function withdrawPack(): void{
   packItems=crateItems;crateItems=[];
   runEarned=0;
   attachBackpack();spawnBuyers();delivering=true;
-  bigText('DELIVERY RUN','var(--gold)');setTimeout(hideBig,1100);
-  message(`${pack.buds} BUDS ON YOUR BACK - DEAL THEM TO BUYERS ON THE MAP (CITY PAYS MORE)`,'var(--gold)');
+  bigText('RODADA DE ENTREGAS','var(--gold)');setTimeout(hideBig,1100);
+  message(`${pack.buds} BUDS NAS COSTAS - VENDA PROS COMPRADORES DO MAPA (A CIDADE PAGA MAIS)`,'var(--gold)');
   blip([392,523,659,784],.08,'sine',.14);
 }
 function returnPack(): void{
@@ -581,7 +581,7 @@ function returnPack(): void{
   crateItems=packItems;packItems=[];
   for(let i=0;i<deposit.buds;i++)addPileBud();
   endRunCleanup();
-  message('BACKPACK RETURNED - THE STASH IS BACK IN THE BOX','var(--cream)');
+  message('MOCHILA DEVOLVIDA - A ERVA VOLTOU PRO CAIXOTE','var(--cream)');
   blip([300,240],.05,'square',.1);
 }
 function endRunCleanup(): void{
@@ -594,8 +594,8 @@ function finishRun(): void{
   markMiniGamePlayed(MiniGameId.WEED_FARM);
   boxed+=sold;
   endRunCleanup();
-  bigText('ALL DELIVERED','var(--gold)');setTimeout(hideBig,1100);
-  message(`RUN COMPLETE - DELIVERED ${sold} BUDS`,'var(--gold)');
+  bigText('TUDO ENTREGUE','var(--gold)');setTimeout(hideBig,1100);
+  message(`RODADA CONCLUÍDA - ${sold} BUDS ENTREGUES`,'var(--gold)');
   blip([659,880,1047,1319],.1,'square',.2);
 }
 
@@ -655,7 +655,7 @@ function deliverTo(b: Buyer): void{
     // cop shakedown story cut-scene (js/activities/drug-bust.ts), wherever the deal happened
     // (country / beach / island), since no patrol could ever corner you out here.
     heat=Math.max(0,heat-50);
-    message('SETUP! - THE BUYER WAS AN UNDERCOVER COP!','var(--pink)');
+    message('ARMADILHA! - O COMPRADOR ERA POLICIAL À PAISANA!','var(--pink)');
     blip([400,200,400,160],.13,'square',.2);
     getBusted(); // carrying the pack -> getBusted routes into the drug-bust cut-scene
     return; // the shakedown seizes the stash; nothing paid
@@ -667,7 +667,7 @@ function deliverTo(b: Buyer): void{
   runEarned+=pay;
   heat=Math.min(100,heat+(b.city?14:8)); // dealing draws heat — city corners more so
   pack.buds-=chunk;pack.val=Math.max(0,pack.val-chunk*perBud);
-  message(`DEALT ${chunk} BUDS - +$${pay}${pack.buds>0?` (${pack.buds} LEFT)`:''}`,'var(--gold)');
+  message(`VENDEU ${chunk} BUDS - +R$${pay}${pack.buds>0?` (RESTAM ${pack.buds})`:''}`,'var(--gold)');
   blip([523,659,784,1047],.08,'square',.16);
   // the buyer blurts a random funny line over the hand-off
   if(b.ped)say(b.ped,pick(WEED_BUYER_LINES),{life:3.8,yOff:2.45});
@@ -699,11 +699,11 @@ function installSprinklerVisuals(): void{
 function buyUpgrade(): void{
   if(upLevel>=UPGRADES.length)return;
   const u=UPGRADES[upLevel];
-  if(!economy.spend(u.price,'spend')){message(`NOT ENOUGH MONEY - NEED $${u.price}`,'var(--pink)');return;}
+  if(!economy.spend(u.price,'spend')){message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${u.price}`,'var(--pink)');return;}
   upLevel++;
   if(hasSprinklers())installSprinklerVisuals();
-  bigText('FARM UPGRADED','var(--gold)');setTimeout(hideBig,1000);
-  message(`${u.name} INSTALLED - ${u.desc}`,'var(--gold)');
+  bigText('PLANTAÇÃO MELHORADA','var(--gold)');setTimeout(hideBig,1000);
+  message(`${u.name} INSTALADA - ${u.desc}`,'var(--gold)');
   blip([523,659,784,1047],.09,'square',.16);
 }
 
@@ -711,12 +711,12 @@ function buyUpgrade(): void{
 function fertilize(slot: Slot): void{
   const pl=slot.plant;
   if(!pl||pl.fed||pl.stage==='dead'||pl.stage==='ripe'||reserved.has(slot))return;
-  if((state.fertilizer|0)<=0){message('NO PLANT FOOD - BUY IT AT THE GENERAL STORE','var(--pink)');return;}
+  if((state.fertilizer|0)<=0){message('SEM ADUBO - COMPRE NO ARMAZÉM','var(--pink)');return;}
   state.fertilizer--;
   reserved.add(slot);
   fpSow(soilPoint(slot),true,{
     onLand:()=>{const p=slot.plant;if(p){p.fed=true;p.pop=.4;}blip([523,659,880],.07,'sine',.14);},
-    onDone:()=>{reserved.delete(slot);message(`FED ${STRAIN_BY_ID[pl.strain]?.name||''} - BIGGER, BETTER BUDS`,'var(--gold)');},
+    onDone:()=>{reserved.delete(slot);message(`${STRAIN_BY_ID[pl.strain]?.name||''} ADUBADA - BUDS MAIORES E MELHORES`,'var(--gold)');},
   });
 }
 
@@ -737,18 +737,18 @@ function nearestHook(filter: (h:{obj:THREE.Object3D;data:Harvest;t:number})=>boo
 function hangPlant(): void{
   const data=heldPlant;const i=freeHook();
   if(!data||i<0||!holdingPlant())return;
-  if(data.cured){message('ALREADY DRY - LAY IT IN THE CRATE','var(--cream)');return;}
+  if(data.cured){message('JÁ ESTÁ SECA - DEITE NO CAIXOTE','var(--cream)');return;}
   const hp=hookPos(i);hp.y-=.02;
   hooks[i]={obj:null as unknown as THREE.Object3D,data,t:0};   // reserve the hook
   fpPlace({pos:hp,quat:HANG_QUAT,scale:.6},{focus:hp,hover:.12,stepDist:1.0,
     onRelease:(obj)=>{heldPlant=null;hooks[i]={obj,data,t:0};},
-    onDone:()=>{message(`DRYING - READY IN ${REWARDS.weedFarm.cureTimeSec}s`,'var(--cyan)');blip([392,330],.07,'sine',.12);}});
+    onDone:()=>{message(`SECANDO - PRONTA EM ${REWARDS.weedFarm.cureTimeSec}s`,'var(--cyan)');blip([392,330],.07,'sine',.12);}});
 }
 function takeCured(i: number): void{
   const h=hooks[i];if(!h||!h.data.cured||!h.obj)return;
   hooks[i]=null;
   fpPickUp(h.obj,'plant',{onGrab:()=>{heldPlant=h.data;},
-    onDone:()=>{message(`DRIED ${STRAIN_BY_ID[h.data.strain]?.name||''} - LAY IT IN THE CRATE`,'var(--gold)');blip([659,880,1175],.08,'square',.18);}});
+    onDone:()=>{message(`${STRAIN_BY_ID[h.data.strain]?.name||''} SECA - DEITE NO CAIXOTE`,'var(--gold)');blip([659,880,1175],.08,'square',.18);}});
 }
 function cureHook(i: number): void{
   const h=hooks[i];if(!h||!h.obj)return;
@@ -779,18 +779,18 @@ function nearestSlot(): Slot|null{
     // drying is MANDATORY: only a dried plant goes in the crate; a fresh one goes on the rack
     const dry=heldPlant!.cured;
     if(nearTable(p)&&dry){
-      if(!trimJob)return act('TRIM','LAY IT ON THE TABLE TO TRIM',layOnTable);
-      return act('BUSY','FINISH TRIMMING THE ONE ON THE TABLE FIRST',()=>message('ONE PLANT ON THE TABLE AT A TIME','var(--cream)'));
+      if(!trimJob)return act('APARAR','DEITE NA MESA PRA APARAR',layOnTable);
+      return act('OCUPADO','TERMINE DE APARAR A QUE ESTÁ NA MESA PRIMEIRO',()=>message('UMA PLANTA NA MESA POR VEZ','var(--cream)'));
     }
-    if(nearCrate||nearTable(p))return dry?act('TRIM','TRIM IT AT THE TABLE FIRST',()=>message('BUDS ONLY - TRIM IT AT THE TABLE, THEN TIP THE TRAY IN','var(--cyan)'))
-      :act('WET','STILL WET - DRY IT ON THE RACK FIRST',()=>message('DRY IT ON THE RACK FIRST, THEN TRIM IT AT THE TABLE','var(--cyan)'));
+    if(nearCrate||nearTable(p))return dry?act('APARAR','APARE NA MESA PRIMEIRO',()=>message('SÓ BUDS - APARE NA MESA E DEPOIS DESPEJE A BANDEJA','var(--cyan)'))
+      :act('ÚMIDA','AINDA ÚMIDA - SEQUE NO VARAL PRIMEIRO',()=>message('SEQUE NO VARAL PRIMEIRO E DEPOIS APARE NA MESA','var(--cyan)'));
     if(nearRack&&!dry){
-      if(freeHook()>=0)return act('HANG','HANG IT UPSIDE DOWN TO DRY',hangPlant);
-      return act('FULL','THE RACK IS FULL - WAIT FOR ONE TO DRY',()=>message('THE RACK IS FULL - TAKE A DRIED ONE DOWN FIRST','var(--cream)'));
+      if(freeHook()>=0)return act('PENDURAR','PENDURE DE CABEÇA PRA BAIXO PRA SECAR',hangPlant);
+      return act('CHEIO','O VARAL ESTÁ CHEIO - ESPERE UMA SECAR',()=>message('O VARAL ESTÁ CHEIO - TIRE UMA SECA PRIMEIRO','var(--cream)'));
     }
-    if(slot&&pl?.stage==='ripe')return act('FULL',dry?'HANDS FULL - LAY THIS ONE IN THE CRATE FIRST':'HANDS FULL - HANG THIS ONE TO DRY FIRST',
-      ()=>message(dry?'ONE PLANT AT A TIME - TAKE IT TO THE CRATE':'ONE PLANT AT A TIME - HANG IT ON THE DRYING RACK','var(--cream)'));
-    return act('DROP','PUT THE PLANT DOWN',()=>dropPlantHere(true));
+    if(slot&&pl?.stage==='ripe')return act('MÃOS CHEIAS',dry?'MÃOS CHEIAS - DEITE ESTA NO CAIXOTE PRIMEIRO':'MÃOS CHEIAS - PENDURE ESTA PRA SECAR PRIMEIRO',
+      ()=>message(dry?'UMA PLANTA POR VEZ - LEVE ATÉ O CAIXOTE':'UMA PLANTA POR VEZ - PENDURE NO VARAL','var(--cream)'));
+    return act('LARGAR','LARGAR A PLANTA',()=>dropPlantHere(true));
   }
 
   // ---- the shears in hand: trim the plant on the table ----
@@ -798,74 +798,74 @@ function nearestSlot(): Slot|null{
     const j=trimJob;
     if(j&&j.fans.length){
       const done=j.fanPairs-Math.ceil(j.fans.length/2);
-      return act('SNIP',`CUT OFF THE FAN LEAVES (${done+1}/${j.fanPairs})`,snipFan);
+      return act('CORTAR',`TIRAR AS FOLHAS GRANDES (${done+1}/${j.fanPairs})`,snipFan);
     }
     if(j&&j.buds.length){
       const total=(j.obj.userData.buds as unknown[]).length,done=total-j.buds.length;
-      return act('SNIP',`SNIP THE BUDS INTO THE TRAY (${done+1}/${total})`,snipBud);
+      return act('CORTAR',`CORTAR OS BUDS NA BANDEJA (${done+1}/${total})`,snipBud);
     }
-    return act('SHEARS','PUT THE SHEARS DOWN',putShearsDown);
+    return act('TESOURA','LARGAR A TESOURA',putShearsDown);
   }
 
   // ---- the bucket in hand ----
   if(holdingBucket()){
-    if(nearTap&&waterCharges<canCapacity())return act('FILL','FILL THE BUCKET AT THE FAUCET',fillBucket);
+    if(nearTap&&waterCharges<canCapacity())return act('ENCHER','ENCHER O BALDE NA TORNEIRA',fillBucket);
     if(slot&&pl&&!reserved.has(slot)){
-      if(pl.stage==='ripe')return act('HARVEST',`SET THE BUCKET DOWN AND HARVEST THE ${grade(pl.quality)} PLANT`,()=>harvest(slot));
-      if(pl.stage==='dead')return act('BUCKET','SET THE BUCKET DOWN FIRST',()=>putBucketDown(false));
-      if(waterCharges>0&&pl.hyd<92)return act('WATER',`POUR THE WATER${waterCharges>1?` (${waterCharges} LEFT)`:''}`,()=>water(slot));
-      if(waterCharges<=0)return act('EMPTY','BUCKET EMPTY - FILL IT AT THE TAP',()=>message('FILL THE BUCKET AT THE TAP','var(--cyan)'));
-      if(!pl.fed&&(state.fertilizer|0)>0)return act('FEED',`FEED PLANT FOOD (${state.fertilizer} LEFT)`,()=>fertilize(slot));
+      if(pl.stage==='ripe')return act('COLHER',`LARGUE O BALDE E COLHA A PLANTA ${grade(pl.quality)}`,()=>harvest(slot));
+      if(pl.stage==='dead')return act('BALDE','LARGUE O BALDE PRIMEIRO',()=>putBucketDown(false));
+      if(waterCharges>0&&pl.hyd<92)return act('REGAR',`REGAR${waterCharges>1?` (RESTAM ${waterCharges})`:''}`,()=>water(slot));
+      if(waterCharges<=0)return act('VAZIO','BALDE VAZIO - ENCHA NA TORNEIRA',()=>message('ENCHA O BALDE NA TORNEIRA','var(--cyan)'));
+      if(!pl.fed&&(state.fertilizer|0)>0)return act('ADUBAR',`ADUBAR (RESTAM ${state.fertilizer})`,()=>fertilize(slot));
     }
     if(slot&&!pl&&!reserved.has(slot)&&plantStrain())
-      return act('SOW',`SOW ${STRAIN_BY_ID[plantStrain()].name} (${seedCount(plantStrain())} LEFT)`,()=>sow(slot));
-    if(nearTap)return act('BUCKET','PUT THE BUCKET BACK',()=>putBucketDown(true));
-    return act('BUCKET','SET THE BUCKET DOWN',()=>putBucketDown(false));
+      return act('PLANTAR',`PLANTAR ${STRAIN_BY_ID[plantStrain()].name} (RESTAM ${seedCount(plantStrain())})`,()=>sow(slot));
+    if(nearTap)return act('BALDE','DEVOLVER O BALDE',()=>putBucketDown(true));
+    return act('BALDE','LARGAR O BALDE',()=>putBucketDown(false));
   }
 
   // ---- empty hands ----
   if(nearTable(p)||nearCrate){
-    if(trimJob&&nearTable(p))return act('SHEARS','PICK UP THE SHEARS AND TRIM',pickUpShears);
+    if(trimJob&&nearTable(p))return act('TESOURA','PEGAR A TESOURA E APARAR',pickUpShears);
     if(trayItems.length)
-      return act('CRATE',`TIP ${trayItems.reduce((a,t)=>a+t.buds,0)} BUDS INTO THE CRATE`,tipTrayIntoCrate);
+      return act('CAIXOTE',`DESPEJAR ${trayItems.reduce((a,t)=>a+t.buds,0)} BUDS NO CAIXOTE`,tipTrayIntoCrate);
   }
   if(nearCrate){
-    if(pack.active)return act('RETURN','RETURN THE DELIVERY BACKPACK',returnPack);
-    if(deposit.buds>0)return act('TAKE',`TAKE ${deposit.buds} BUDS FOR DELIVERY`,withdrawPack);
+    if(pack.active)return act('DEVOLVER','DEVOLVER A MOCHILA DE ENTREGA',returnPack);
+    if(deposit.buds>0)return act('PEGAR',`PEGAR ${deposit.buds} BUDS PRA ENTREGA`,withdrawPack);
   }
   for(let i=0;i<groundPlants.length;i++){
     const gp=groundPlants[i].obj.position;
-    if(Math.hypot(p.x-gp.x,p.z-gp.z)<1.6)return act('PICK UP','PICK UP THE PLANT',()=>pickUpPlant(i));
+    if(Math.hypot(p.x-gp.x,p.z-gp.z)<1.6)return act('PEGAR','PEGAR A PLANTA',()=>pickUpPlant(i));
   }
   if(bucketFree()&&Math.hypot(p.x-bucket.position.x,p.z-bucket.position.z)<(nearTap?RANGE:1.8))
-    return act('BUCKET','PICK UP THE BUCKET',pickUpBucket);
+    return act('BALDE','PEGAR O BALDE',pickUpBucket);
   if(nearRack){
     const c=nearestHook(h=>h.data.cured&&!!h.obj);
-    if(c>=0)return act('TAKE','TAKE THE DRIED PLANT',()=>takeCured(c));
+    if(c>=0)return act('PEGAR','PEGAR A PLANTA SECA',()=>takeCured(c));
     const d=nearestHook(h=>!h.data.cured);
-    if(d>=0){const h=hooks[d]!;return act('DRY',`DRYING - ${Math.max(1,Math.ceil(REWARDS.weedFarm.cureTimeSec-h.t))}s LEFT`,()=>message('STILL DRYING - GIVE IT TIME','var(--cyan)'));}
+    if(d>=0){const h=hooks[d]!;return act('SECANDO',`SECANDO - FALTAM ${Math.max(1,Math.ceil(REWARDS.weedFarm.cureTimeSec-h.t))}s`,()=>message('AINDA SECANDO - DÊ TEMPO','var(--cyan)'));}
   }
   // grow-shack: reinvest earnings into farm upgrades (watering gear → sprinklers)
   if(dist(p,shackPos)<RANGE){
     if(upLevel>=UPGRADES.length)
-      return{label:'SHED',prompt:'ALL FARM UPGRADES OWNED',enabled:false,run:()=>{}};
+      return{label:'GALPÃO',prompt:'TODAS AS MELHORIAS JÁ COMPRADAS',enabled:false,run:()=>{}};
     const u=UPGRADES[upLevel];
     if(state.money<u.price)
-      return act('SHED',`NEED $${u.price} FOR ${u.name}`,()=>message(`NOT ENOUGH MONEY - NEED $${u.price}`,'var(--pink)'));
-    return act('UPGRADE',`BUY ${u.name} $${u.price} - ${u.desc}`,buyUpgrade);
+      return act('GALPÃO',`PRECISA DE R$${u.price} PARA ${u.name}`,()=>message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${u.price}`,'var(--pink)'));
+    return act('MELHORIA',`COMPRAR ${u.name} R$${u.price} - ${u.desc}`,buyUpgrade);
   }
   if(!slot||reserved.has(slot))return null;
   if(!pl){
     const sid=plantStrain();
-    if(sid)return act('SOW',`SOW ${STRAIN_BY_ID[sid].name} (${seedCount(sid)} LEFT)`,()=>sow(slot));
-    return act('SOW','NEED SEEDS - BUY AT THE GENERAL STORE',()=>sow(slot)); // sow() shows the "buy seeds" hint
+    if(sid)return act('PLANTAR',`PLANTAR ${STRAIN_BY_ID[sid].name} (RESTAM ${seedCount(sid)})`,()=>sow(slot));
+    return act('PLANTAR','PRECISA DE SEMENTES - COMPRE NO ARMAZÉM',()=>sow(slot)); // sow() shows the "buy seeds" hint
   }
-  if(pl.stage==='dead')return act('CLEAR','PULL OUT THE DEAD PLANT',()=>clearSlot(slot));
-  if(pl.stage==='ripe')return act('HARVEST',`PULL THE ${grade(pl.quality)} PLANT`,()=>harvest(slot));
+  if(pl.stage==='dead')return act('LIMPAR','ARRANCAR A PLANTA MORTA',()=>clearSlot(slot));
+  if(pl.stage==='ripe')return act('COLHER',`COLHER A PLANTA ${grade(pl.quality)}`,()=>harvest(slot));
   if((pl.stage==='seed'||pl.stage==='growing')&&!pl.fed&&(state.fertilizer|0)>0)
-    return act('FEED',`FEED PLANT FOOD (${state.fertilizer} LEFT)`,()=>fertilize(slot));
-  if(pl.hyd<35)return act('WATER','NEEDS WATER - GET THE BUCKET AT THE TAP',()=>message('PICK UP THE BUCKET AT THE TAP','var(--cyan)'));
-  return act('GROW',pl.fed?'GROWING (FED) - KEEP IT WATERED':'GROWING - KEEP IT WATERED',()=>message('STILL GROWING','var(--cyan)'));
+    return act('ADUBAR',`ADUBAR (RESTAM ${state.fertilizer})`,()=>fertilize(slot));
+  if(pl.hyd<35)return act('REGAR','PRECISA DE ÁGUA - PEGUE O BALDE NA TORNEIRA',()=>message('PEGUE O BALDE NA TORNEIRA','var(--cyan)'));
+  return act('CRESCENDO',pl.fed?'CRESCENDO (ADUBADA) - MANTENHA REGADA':'CRESCENDO - MANTENHA REGADA',()=>message('AINDA CRESCENDO','var(--cyan)'));
 });
 
 // ---------- second zone action: DEAL to a buyer during a delivery run ----------
@@ -877,8 +877,8 @@ function nearestSlot(): Slot|null{
   if(!best)return null;
   const chunk=Math.min(pack.buds,best.want);
   const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*(best.city?REWARDS.weedFarm.cityPriceMultiplier:1))));
-  const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
-  return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${best.city?' CITY+':''}${risk}`,
+  const risk=heat>HEAT_WARM?' - ARRISCADO, POLÍCIA DE OLHO!':'';
+  return{label:'VENDER',prompt:`VENDER ${chunk} BUDS (+R$${pay})${best.city?' CIDADE+':''}${risk}`,
     enabled:true,run:()=>deliverTo(best!)};
 });
 
@@ -894,7 +894,7 @@ function dealToPed(ped: Ped): void{
   // same STING risk as the fixed buyers: the higher the heat, the likelier a setup
   if(heat>HEAT_WARM&&Math.random()<(heat-HEAT_WARM)/120){
     heat=Math.max(0,heat-50);
-    message('SETUP! - THE BUYER WAS AN UNDERCOVER COP!','var(--pink)');
+    message('ARMADILHA! - O COMPRADOR ERA POLICIAL À PAISANA!','var(--pink)');
     blip([400,200,400,160],.13,'square',.2);
     getBusted();return;
   }
@@ -905,7 +905,7 @@ function dealToPed(ped: Ped): void{
   economy.earn(pay,'weed-deal');runEarned+=pay;
   heat=Math.min(100,heat+12);
   pack.buds-=chunk;pack.val=Math.max(0,pack.val-chunk*perBud);
-  message(`DEALT ${chunk} BUDS - +$${pay}${pack.buds>0?` (${pack.buds} LEFT)`:''}`,'var(--gold)');
+  message(`VENDEU ${chunk} BUDS - +R$${pay}${pack.buds>0?` (RESTAM ${pack.buds})`:''}`,'var(--gold)');
   blip([523,659,784,1047],.08,'square',.16);
   say(ped.g,pick(WEED_BUYER_LINES),{life:3.8,yOff:2.45});
   ped.markWeedSold(); // back to walking, on cooldown before they flag you again
@@ -926,8 +926,8 @@ function dealToPed(ped: Ped): void{
   const chunk=Math.min(pack.buds,best.wantBuds);
   const pay=Math.min(REWARDS.weedFarm.maxPayPerDeal,
     Math.max(1,Math.round(chunk*(pack.val/Math.max(1,pack.buds))*marketFactor()*REWARDS.weedFarm.cityPriceMultiplier)));
-  const risk=heat>HEAT_WARM?' - RISKY, HEAT HIGH!':'';
-  return{label:'DEAL',prompt:`DEAL ${chunk} BUDS (+$${pay})${risk}`,enabled:true,run:()=>dealToPed(best!)};
+  const risk=heat>HEAT_WARM?' - ARRISCADO, POLÍCIA DE OLHO!':'';
+  return{label:'VENDER',prompt:`VENDER ${chunk} BUDS (+R$${pay})${risk}`,enabled:true,run:()=>dealToPed(best!)};
 });
 
 // The grow-op itself stays OFF the map (you find the walls). But while a delivery run
@@ -935,11 +935,11 @@ function dealToPed(ped: Ped): void{
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>{
   if(!delivering)return[];
   const out=buyers.filter(b=>!b.served).map(b=>({x:b.x,z:b.z,icon:'person',
-    color:b.city?'#19e3ff':'#9dff2e',label:'BUYER'}));
+    color:b.city?'#19e3ff':'#9dff2e',label:'COMPRADOR'}));
   // street peds who like weed and are actively flagging you down also show as buyers,
   // so the "they only wave" deals aren't invisible — you can see who wants to buy.
   for(const ped of peds)if(ped.aiState==='weed')
-    out.push({x:ped.g.position.x,z:ped.g.position.z,icon:'person',color:'#9dff2e',label:'BUYER'});
+    out.push({x:ped.g.position.x,z:ped.g.position.z,icon:'person',color:'#9dff2e',label:'COMPRADOR'});
   return out;
 });
 
@@ -994,15 +994,15 @@ function updateWeedHud(): void{
   if(!weedHud)return;
   if(!delivering){weedHud.classList.remove('show');return;}
   weedHud.classList.add('show');
-  const tag=heat>HEAT_HOT?'HOT':heat>HEAT_WARM?'WARM':'CHILL';
+  const tag=heat>HEAT_HOT?'ALTA':heat>HEAT_WARM?'MÉDIA':'BAIXA';
   const col=heat>HEAT_HOT?'#ff4d4d':heat>HEAT_WARM?'#ffb43b':'#7fe07f';
   const left=buyers.filter(b=>!b.served).length;
   weedHud.innerHTML=
-    `<div class="weed-label">WEED RUN</div>`+
+    `<div class="weed-label">ENTREGAS</div>`+
     `<div class="weed-main"><span>BUDS</span><b>${pack.buds}</b></div>`+
-    `<div class="weed-row"><span>EARNED</span><b>$${runEarned}</b></div>`+
-    `<div class="weed-row"><span>BUYERS</span><b>${left}</b></div>`+
-    `<div class="weed-heat" style="color:${col}">HEAT ${tag}</div>`+
+    `<div class="weed-row"><span>GANHO</span><b>R$${runEarned}</b></div>`+
+    `<div class="weed-row"><span>COMPRADORES</span><b>${left}</b></div>`+
+    `<div class="weed-heat" style="color:${col}">VIGILÂNCIA ${tag}</div>`+
     `<div class="weed-meter"><i style="width:${Math.min(100,heat)|0}%;background:${col}"></i></div>`;
 }
 
@@ -1020,12 +1020,12 @@ export function updateWeedFarm(dt: number): void{
     if(away){
       if(holdingBucket()){
         setHeld('none',null);waterCharges=0;setBucketWater(0);restBucketAtTap();
-        if(state.mode==='foot')message('LEFT THE BUCKET AT THE TAP','var(--cream)');
+        if(state.mode==='foot')message('DEIXOU O BALDE NA TORNEIRA','var(--cream)');
       }else if(holdingShears()){
         setHeld('none',null);restShears();
       }else if(holdingPlant()){
         dropPlantHere(false);
-        if(state.mode==='foot')message('YOU PUT THE PLANT DOWN','var(--cream)');
+        if(state.mode==='foot')message('VOCÊ LARGOU A PLANTA','var(--cream)');
       }
     }
   }else if(fpBusy()&&(state.mode!=='foot'||state.swimming))abortActions();
@@ -1064,7 +1064,7 @@ export function updateWeedFarm(dt: number): void{
   if(heat>0)heat=Math.max(0,heat-dt*3);
   if(heat>HEAT_HOT&&nearFarm()){
     farmLinger+=dt;
-    if(farmLinger>6){addWanted(3.5,'POLICE RAID ON THE FARM!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
+    if(farmLinger>6){addWanted(3.5,'BATIDA POLICIAL NA PLANTAÇÃO!','weed_raid');heat=Math.max(0,heat-40);farmLinger=0;}
   }else farmLinger=0;
   updateWeedHud();
 

@@ -11,8 +11,7 @@
 // Frames stream from Chrome's screencast (JPEG + real timestamps) and are written ONLY
 // while a clip is rolling, so everything between clips (walking, setup) is cut by
 // construction. The game's sound (master bus: SFX + music) is recorded for the whole shoot
-// and each clip gets its matching slice. HUD text is Portuguese by default (?lang=pt-BR);
-// strings with no translation yet are listed in output/video/<scene>/untranslated.txt.
+// and each clip gets its matching slice. The game itself is in Brazilian Portuguese.
 // test/video/make-video.mjs then builds the 9:16 30 fps MP4 (with sound) + cover.
 // See .claude/skills/record-video/SKILL.md for the full workflow.
 import type { Page, CDPSession } from '@playwright/test';
@@ -25,7 +24,6 @@ export interface SceneOptions {
   subtitle?: string;      // cover line under it
   outro?: string;         // end-card headline (default: the game's name)
   outroSub?: string;      // end-card smaller line under it
-  lang?: string;          // HUD language (default 'pt-BR' — see src/js/core/i18n.ts)
   music?: number | null;  // radio station playing under the scene (0 funk, 1 pagode, 2 forró, 3 sertanejo); null = none
   tod?: number;           // time of day 0..1 (0.42 = bright late morning)
   settings?: Record<string, unknown>; // extra graphics settings (localStorage)
@@ -51,7 +49,6 @@ export class Director {
   private coverAt: number | null = null;
   private n = 0;
   private audioStart: number | null = null;
-  private misses = new Set<string>();
 
   private constructor(page: Page, private name: string, private opts: SceneOptions) {
     this.page = page;
@@ -71,9 +68,8 @@ export class Director {
       const add = () => { const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st); };
       if (document.head) add(); else document.addEventListener('DOMContentLoaded', add);
     }, opts.hide ?? ['#police-radio', '#radio-hud']);
-    page.on('console', (m) => { const t = m.text(); if (t.startsWith('[i18n-miss]')) d.misses.add(t.slice(12)); });
     page.on('pageerror', (e) => { if (!/Pointer Lock/i.test(e.message)) console.error('[pageerror]', e.message); });
-    await page.goto(`/?tod=${opts.tod ?? .42}&lang=${opts.lang ?? 'pt-BR'}`, { waitUntil: 'load' });
+    await page.goto(`/?tod=${opts.tod ?? .42}`, { waitUntil: 'load' });
     await page.waitForFunction(() => !!(window as any).render_game_to_text
       && JSON.parse((window as any).render_game_to_text()).started === true, null, { timeout: 90_000 });
     // screencast runs the whole time; frames are only KEPT while a clip rolls
@@ -124,10 +120,6 @@ export class Director {
     await this.cdp.send('Page.stopScreencast').catch(() => {});
     const b64 = (await this.ev(() => (window as any).__test.audioStop())) as string;
     if (b64) fs.writeFileSync(path.join(this.dir, 'audio.webm'), Buffer.from(b64, 'base64'));
-    if (this.misses.size) {
-      fs.writeFileSync(path.join(this.dir, 'untranslated.txt'), [...this.misses].map((m) => m + '\n').join(''));
-      console.log(`[video] ${this.misses.size} HUD string(s) not translated -> ${path.join(this.dir, 'untranslated.txt')}`);
-    }
     const capture = { name: this.name, ...this.opts, clips: this.clips, frames: this.frames, coverAt: this.coverAt,
       audioStart: b64 ? this.audioStart : null };
     const file = path.join(this.dir, 'capture.json');

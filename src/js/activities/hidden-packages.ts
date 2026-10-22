@@ -14,7 +14,7 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // coletável livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. Os pacotes NÃO aparecem no mapa/radar — o jogador descobre sozinho.
-new MiniGame({id:MiniGameId.HIDDEN_PACKAGES,name:'Hidden Stashes',exclusive:false});
+new MiniGame({id:MiniGameId.HIDDEN_PACKAGES,name:'Pacotes Escondidos',exclusive:false});
 
 // HIDDEN STASHES: colecionáveis escondidos espalhados pela cidade (estilo open-world).
 // Coleta a pé ou de carro; pequenos prêmios por pacote, bônus a cada 10, e um
@@ -179,17 +179,17 @@ export function updateHiddenPackages(dt: number): void{
       popAt(p.g);              // estoura no lugar (depois sai da cena)
       if(found>=TOTAL){
         economy.earn(BONUS_ALL,'hidden-package-all');
-        bigText('ALL '+TOTAL+' PACKAGES FOUND! +$'+BONUS_ALL,'var(--gold)');
+        bigText('TODOS OS '+TOTAL+' PACOTES ACHADOS! +R$'+BONUS_ALL,'var(--gold)');
         blip([880,1320,1760],0.09,'triangle',.2);
         setTimeout(hideBig,1500);
       }else if(found%10===0){
         economy.earn(BONUS_EACH,'hidden-package-bonus');
-        bigText('PACKAGE BONUS! +$'+BONUS_EACH,'var(--gold)');
+        bigText('BÔNUS DE PACOTE! +R$'+BONUS_EACH,'var(--gold)');
         blip([784,1175],0.08,'triangle',.18);
         setTimeout(hideBig,1300);
-        message('HIDDEN STASH '+found+'/'+TOTAL,'var(--cyan)');
+        message('PACOTE ESCONDIDO '+found+'/'+TOTAL,'var(--cyan)');
       }else{
-        message('HIDDEN STASH '+found+'/'+TOTAL,'var(--cyan)');
+        message('PACOTE ESCONDIDO '+found+'/'+TOTAL,'var(--cyan)');
       }
     }
   }

@@ -22,4 +22,4 @@ export function makeMoonSprite(): {sprite: THREE.Sprite; material: THREE.SpriteM
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Daynight',label:'Moon',build:()=>makeMoonSprite()};
+export default {category:'Céu',label:'Lua',build:()=>makeMoonSprite()};

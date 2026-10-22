@@ -127,7 +127,7 @@ export class MiniGame{
     if(!this.canStart())return false;
     // regra 1x/dia: já concluiu este mini-game hoje? bloqueia e avisa.
     if(mgPlayedToday(this.id)){
-      refs.message?.(`${this.name.toUpperCase()} - ALREADY DONE TODAY, COME BACK TOMORROW`,'var(--pink)');
+      refs.message?.(`${this.name.toUpperCase()} - JÁ FEITO HOJE, VOLTE AMANHÃ`,'var(--pink)');
       return false;
     }
     this._active=true;

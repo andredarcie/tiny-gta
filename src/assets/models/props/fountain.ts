@@ -35,7 +35,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Fountain',build};
+export default {category:'Objetos',label:'Chafariz',build};
 
 export function addFountain(x: number,z: number): {x0:number;x1:number;z0:number;z1:number;h:number}{
   const g=build();g.position.set(x,0,z);bakeProp(g);

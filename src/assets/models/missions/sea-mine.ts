@@ -81,4 +81,4 @@ function build(opts: {radius?:number}={}): THREE.Group{
 export function makeSeaMine(opts: {radius?:number}): THREE.Group{return build(opts);}
 
 // Standard model descriptor (auto-discovered by the model viewer).
-export default {category:'Missions',label:'Sea mine',build};
+export default {category:'Missões',label:'Mina aquática',build};

@@ -54,6 +54,8 @@ let phase='count';        // 'count' -> 'play' -> 'result'
 let notes:Note[]=[],lastNoteT=0,songTime=0,chartStart=0;
 let score=0,combo=0,maxCombo=0,hype=HYPE_START;
 let counts:Record<'PERFECT'|'GREAT'|'GOOD'|'MISS',number>={PERFECT:0,GREAT:0,GOOD:0,MISS:0};
+// What the judgement flash says on screen
+const JUDGE_LABEL={PERFECT:'PERFEITO',GREAT:'ÓTIMO',GOOD:'BOM'} as const;
 let flashText='',flashColor='#fff',flashT=0;
 let moveLane=-1,moveT=0,moveStray=false,missT=0;
 let result:string|null=null,resultT=0,grade='',reward=0,newBest=false;
@@ -242,7 +244,7 @@ function judge(n:Note,d:number){
   score+=pts*comboMult();
   counts[kind]++;
   hype=Math.min(HYPE_MAX,hype+gv);
-  flash(kind,col);
+  flash(JUDGE_LABEL[kind],col);
   triggerMove(n.lane,false);
   if(kind==='PERFECT')blip([880,1320],.05,'square',.13);
   else if(kind==='GREAT')blip([660,990],.05,'square',.1);
@@ -253,7 +255,7 @@ function noteMiss(n:Note){
   n.judged=true;n.hit=false;
   combo=0;counts.MISS++;
   hype=Math.max(0,hype-HYPE_MISS);
-  flash('MISS','#ff2e88');missT=.3;
+  flash('ERROU','#ff2e88');missT=.3;
   blip([170,120],.12,'sawtooth',.14);
   if(hype<=0)lose();
 }
@@ -430,9 +432,9 @@ function draw(){
 
   // ---- cabeçalho ----
   ctx.fillStyle='#ff2e88';ctx.font="700 13px 'Barlow Condensed',monospace";
-  ctx.fillText('THE FLAMINGO',cw/2,ch*.05);
+  ctx.fillText('BOATE FLAMINGO',cw/2,ch*.05);
   ctx.fillStyle='#ffe6f4';ctx.font="800 26px 'Alfa Slab One','Barlow Condensed',monospace";
-  ctx.fillText('DANCE FEVER',cw/2,ch*.092);
+  ctx.fillText('FEBRE DA DANÇA',cw/2,ch*.092);
 
   const travel=recY-topY;
   const goodPx=GOOD/APPROACH*travel,perfectPx=PERFECT/APPROACH*travel;
@@ -497,13 +499,13 @@ function draw(){
     if(n<=3&&n>0){ctx.font="800 88px 'Alfa Slab One','Barlow Condensed',monospace";
       ctx.fillText(String(n),cw/2,ch*.46);}
     else{ctx.font="800 40px 'Alfa Slab One','Barlow Condensed',monospace";
-      ctx.fillText('GET READY!',cw/2,ch*.46);}
+      ctx.fillText('PREPARE-SE!',cw/2,ch*.46);}
     ctx.shadowBlur=0;ctx.fillStyle='rgba(255,230,244,.85)';
     ctx.font="700 15px 'Barlow Condensed',monospace";
-    ctx.fillText('PRESS WHEN THE ARROW REACHES THE LINE',cw/2,ch*.54);
+    ctx.fillText('APERTE QUANDO A SETA CHEGAR NA LINHA',cw/2,ch*.54);
     ctx.fillStyle='rgba(255,230,244,.6)';ctx.font="700 13px 'Barlow Condensed',monospace";
-    ctx.fillText(state.mobile?'USE THE 4 BUTTONS BELOW'
-      :'USE THE ARROW KEYS  ←  ↓  ↑  →',cw/2,ch*.585);
+    ctx.fillText(state.mobile?'USE OS 4 BOTÕES ABAIXO'
+      :'USE AS SETAS DO TECLADO  ←  ↓  ↑  →',cw/2,ch*.585);
   }
 
   // ---- texto flutuante do julgamento ----
@@ -514,9 +516,9 @@ function draw(){
     ctx.fillStyle=flashColor;ctx.shadowColor=flashColor;ctx.shadowBlur=22;
     ctx.font="800 38px 'Alfa Slab One','Barlow Condensed',monospace";
     ctx.fillText(flashText,0,0);
-    if(combo>=4&&flashText!=='MISS'){ctx.shadowBlur=0;ctx.globalAlpha=k;
+    if(combo>=4&&flashText!=='ERROU'){ctx.shadowBlur=0;ctx.globalAlpha=k;
       ctx.fillStyle='#fff';ctx.font="800 20px 'Alfa Slab One','Barlow Condensed',monospace";
-      ctx.fillText(combo+' COMBO',0,34);}
+      ctx.fillText('COMBO '+combo,0,34);}
     ctx.restore();
   }
 
@@ -531,7 +533,7 @@ function drawHud(){
   if(p>0){ctx!.fillStyle=col;ctx!.shadowColor=col;ctx!.shadowBlur=12;rr(bx,by,bw*p,bh,7);ctx!.fill();ctx!.shadowBlur=0;}
   ctx!.lineWidth=2;ctx!.strokeStyle='rgba(255,230,244,.5)';rr(bx,by,bw,bh,7);ctx!.stroke();
   ctx!.fillStyle='#ffe6f4';ctx!.font="700 10px 'Barlow Condensed',monospace";
-  ctx!.fillText('CROWD HYPE',cw/2,by+bh/2+.5);
+  ctx!.fillText('ANIMAÇÃO DA GALERA',cw/2,by+bh/2+.5);
 
   // placar + multiplicador
   ctx!.textAlign='left';ctx!.fillStyle='#ffe6f4';
@@ -559,26 +561,26 @@ function drawResult(){
     ctx!.fillText(grade,cw/2,y);y+=big*.62;
     ctx!.shadowBlur=0;ctx!.fillStyle='#ffe6f4';
     ctx!.font=`800 ${mid}px 'Alfa Slab One','Barlow Condensed',monospace`;
-    const msg=({S:'SUPERSTAR!',A:'AMAZING!',B:'GREAT MOVES!',C:'NICE MOVES!',
-      D:'YOU SURVIVED!',F:'YOU SURVIVED!'} as Record<string,string>)[grade]||'NICE!';
+    const msg=({S:'SUPERESTRELA!',A:'INCRÍVEL!',B:'QUE GINGADO!',C:'MANDOU BEM!',
+      D:'SOBREVIVEU!',F:'SOBREVIVEU!'} as Record<string,string>)[grade]||'BOA!';
     ctx!.fillText(msg,cw/2,y);y+=mid*1.3;
   }else{
     ctx!.fillStyle='#ff2e88';ctx!.shadowColor='#ff2e88';ctx!.shadowBlur=30;
     ctx!.font=`800 ${mid*1.5}px 'Alfa Slab One','Barlow Condensed',monospace`;
-    ctx!.fillText('BOOED OFF!',cw/2,y+big*.2);ctx!.shadowBlur=0;y+=big*.45+mid;
+    ctx!.fillText('VAIADO!',cw/2,y+big*.2);ctx!.shadowBlur=0;y+=big*.45+mid;
   }
   y=Math.max(y,ch*.56);
   ctx!.fillStyle='#ffe6f4';ctx!.font=`700 ${lin}px 'Barlow Condensed',monospace`;
-  ctx!.fillText(`SCORE ${score}   MAX COMBO ${maxCombo}`,cw/2,y);y+=lin*1.6;
-  ctx!.fillText(`PERFECT ${counts.PERFECT}  GREAT ${counts.GREAT}  GOOD ${counts.GOOD}  MISS ${counts.MISS}`,cw/2,y);y+=lin*1.9;
+  ctx!.fillText(`PONTOS ${score}   COMBO MÁXIMO ${maxCombo}`,cw/2,y);y+=lin*1.6;
+  ctx!.fillText(`PERFEITO ${counts.PERFECT}  ÓTIMO ${counts.GREAT}  BOM ${counts.GOOD}  ERROU ${counts.MISS}`,cw/2,y);y+=lin*1.9;
   if(reward>0){ctx!.fillStyle='#ffd24a';ctx!.font=`800 ${tip}px 'Alfa Slab One','Barlow Condensed',monospace`;
-    ctx!.fillText(`TIP  +$${reward}`,cw/2,y);y+=tip*1.4;}
+    ctx!.fillText(`GORJETA  +R$${reward}`,cw/2,y);y+=tip*1.4;}
   if(newBest){ctx!.fillStyle='#9dff2e';ctx!.font=`800 ${lin*1.15}px 'Alfa Slab One','Barlow Condensed',monospace`;
-    ctx!.fillText('★ NEW HIGH SCORE ★',cw/2,y);y+=lin*1.6;}
+    ctx!.fillText('★ NOVO RECORDE ★',cw/2,y);y+=lin*1.6;}
   else{ctx!.fillStyle='rgba(255,230,244,.7)';ctx!.font=`700 ${lin*.85}px 'Barlow Condensed',monospace`;
-    ctx!.fillText('BEST '+best,cw/2,y);y+=lin*1.6;}
+    ctx!.fillText('RECORDE '+best,cw/2,y);y+=lin*1.6;}
   ctx!.fillStyle='rgba(255,230,244,.7)';ctx!.font="700 13px 'Barlow Condensed',monospace";
-  ctx!.fillText(state.mobile?'TAP TO CONTINUE':'SPACE / CLICK TO CONTINUE',cw/2,ch*.9);
+  ctx!.fillText(state.mobile?'TOQUE PARA CONTINUAR':'ESPAÇO / CLIQUE PARA CONTINUAR',cw/2,ch*.9);
 }
 
 // ----- botões de pista (toque/clique) + QUIT -----

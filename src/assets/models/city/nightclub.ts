@@ -38,7 +38,7 @@ function signTexture():THREE.CanvasTexture{
   x.font='bold 56px monospace';
   x.shadowColor='#ff2e88';x.shadowBlur=26;
   x.fillStyle='#ffe6f4';
-  for(let k=0;k<3;k++)x.fillText('THE FLAMINGO',256,64); // passadas extras = glow
+  for(let k=0;k<3;k++)x.fillText('FLAMINGO',256,64); // passadas extras = glow
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }

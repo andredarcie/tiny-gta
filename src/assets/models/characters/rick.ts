@@ -36,4 +36,4 @@ export function buildRick(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor pro model-viewer (descoberta automática).
-export default {category:'Characters',label:'Rick (hippie)',build:buildRick};
+export default {category:'Personagens',label:'Rick (hippie)',build:buildRick};

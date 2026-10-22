@@ -27,4 +27,4 @@ export function buildFlashlight(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Flashlight',build:buildFlashlight};
+export default {category:'Objetos',label:'Lanterna',build:buildFlashlight};

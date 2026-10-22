@@ -73,7 +73,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Abandoned house',build};
+export default {category:'Objetos',label:'Casa abandonada',build};
 
 export function addAbandonedHouse(cx: number,cz: number,ry: number): {x0:number;x1:number;z0:number;z1:number;h:number}{
   const g=build();

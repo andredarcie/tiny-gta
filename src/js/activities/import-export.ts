@@ -15,7 +15,7 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. A ação EXPORT já fica indisponível durante uma sessão (trava nas
 // zoneActions do input/hud).
-new MiniGame({id:MiniGameId.IMPORT_EXPORT,name:'Dock Exports',exclusive:false});
+new MiniGame({id:MiniGameId.IMPORT_EXPORT,name:'Exportação',exclusive:false});
 
 // Minigame DOCK EXPORTS (garagem da doca que compra carros, estilo open-world): uma
 // garagem fica numa interseccao do mapa. Ela mantem uma "lista de procurados"
@@ -83,12 +83,12 @@ function nextWanted(){
 function startExport(){
   if(job)return;                        // ja exportando
   // regra 1x/dia: já exportou hoje? avisa e não começa.
-  if(refs.mgPlayedToday?.(MiniGameId.IMPORT_EXPORT)){message('ALREADY EXPORTED TODAY - COME BACK TOMORROW','var(--gold)');return;}
+  if(refs.mgPlayedToday?.(MiniGameId.IMPORT_EXPORT)){message('JÁ EXPORTOU HOJE - VOLTE AMANHÃ','var(--gold)');return;}
   const car=cur;
   if(!car)return;
   // veiculo especial/unico: recusa e avisa (nunca destroi o unico do mundo)
   if(isSpecial(car)){
-    message('CAN\'T EXPORT THIS VEHICLE','var(--gold)');
+    message('NÃO DÁ PRA EXPORTAR ESTE VEÍCULO','var(--gold)');
     blip([220,165],.1,'square',.14);
     return;
   }
@@ -121,12 +121,12 @@ function finishExport(j: ExportJob){
   exported++;
 
   if(j.match){
-    message('PERFECT MATCH!  +$'+j.total,'var(--gold)');
-    bigText('PERFECT MATCH!','var(--gold)');
+    message('ENCOMENDA CERTINHA!  +R$'+j.total,'var(--gold)');
+    bigText('ENCOMENDA CERTINHA!','var(--gold)');
     blip([523,659,784,1047],.09,'square',.2);
   }else{
-    message('EXPORTED  +$'+j.total,'var(--gold)');
-    bigText('+$'+j.total,'var(--gold)');
+    message('EXPORTADO  +R$'+j.total,'var(--gold)');
+    bigText('+R$'+j.total,'var(--gold)');
     blip([392,523,659],.08,'square',.16);
   }
   setTimeout(hideBig,1100);
@@ -231,14 +231,14 @@ function updateJob(dt: number){
   if(Math.hypot(p.x-PAD.x,p.z-PAD.z)>ZONE_R||Math.abs(cur.speed)>STOP_SPEED)return null;
   // veiculo especial: ainda mostra o prompt, mas explicando que e recusado
   if(isSpecial(cur))
-    return{label:'EXPORT',prompt:'CAN\'T EXPORT THIS VEHICLE',enabled:true,run(){startExport();}};
-  const tag=cur.name===wanted?'PERFECT MATCH — BONUS!':wanted;
-  return{label:'EXPORT',prompt:'EXPORT THIS CAR ('+tag+')',enabled:true,run(){startExport();}};
+    return{label:'EXPORTAR',prompt:'NÃO DÁ PRA EXPORTAR ESTE VEÍCULO',enabled:true,run(){startExport();}};
+  const tag=cur.name===wanted?'ENCOMENDA CERTINHA — BÔNUS!':wanted;
+  return{label:'EXPORTAR',prompt:'EXPORTAR ESTE CARRO ('+tag+')',enabled:true,run(){startExport();}};
 });
 
 // Blip fixo no radar/mapa (POI da garagem).
 (refs.miniBlips||(refs.miniBlips=[])).push(()=>[
-  {x:PAD.x,z:PAD.z,icon:'package',color:'#7ad0ff',label:'DOCK EXPORTS'}
+  {x:PAD.x,z:PAD.z,icon:'package',color:'#7ad0ff',label:'EXPORTAÇÃO'}
 ]);
 
 // Snapshot pro render_game_to_text.
@@ -264,10 +264,10 @@ export function updateImportExport(dt: number){
   const near=inCar&&Math.hypot(pp.x-PAD.x,pp.z-PAD.z)<=ZONE_R&&Math.abs(cur!.speed)<=STOP_SPEED;
   if(near&&!wasNear){
     if(cur!.name===wanted){
-      message('PERFECT MATCH! THIS IS THE '+wanted+' — EXPORT FOR A BONUS','var(--gold)');
+      message('É ESSE! ESTE É O '+wanted+' — EXPORTE E GANHE BÔNUS','var(--gold)');
       blip([523,659,784],.07,'square',.14);
     }else{
-      message('WANTED: '+wanted+' — EXPORT ANY CAR FOR CASH','var(--cyan)');
+      message('ENCOMENDA: '+wanted+' — EXPORTE QUALQUER CARRO POR DINHEIRO','var(--cyan)');
       blip([523,392],.06,'square',.12);
     }
   }

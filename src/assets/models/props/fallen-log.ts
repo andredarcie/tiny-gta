@@ -28,7 +28,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Fallen log',build};
+export default {category:'Objetos',label:'Tronco caído',build};
 
 export function addFallenLog(px: number,pz: number): THREE.Group{
   const g=build();

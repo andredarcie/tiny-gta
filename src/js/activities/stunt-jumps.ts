@@ -13,7 +13,7 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 
 // atividade livre (não trava o mundo): registra a identidade no enum/registro de
 // mini games. As rampas NÃO aparecem no mapa/radar — o jogador descobre sozinho.
-new MiniGame({id:MiniGameId.STUNT_JUMPS,name:'Daredevil Jumps',exclusive:false});
+new MiniGame({id:MiniGameId.STUNT_JUMPS,name:'Saltos Radicais',exclusive:false});
 
 // DAREDEVIL JUMPS — rampas escondidas na beira das estradas de Divinolândia (NUNCA no
 // meio da rua). O jogador chega de carro em alta velocidade, decola num arco e
@@ -132,19 +132,19 @@ export function updateStuntJumps(dt: number): void{
         jumpRamp.done=true;jumpRamp.paidAt=state.time;
         const bonus=REWARDS.stuntJump.firstTimeBonus;
         economy.earn(v+bonus,'stunt-jump');
-        bigText('DAREDEVIL JUMP! +$'+(v+bonus),'var(--gold)');
-        message('DAREDEVIL JUMP  +$'+(v+bonus),'var(--gold)');
+        bigText('SALTO RADICAL! +R$'+(v+bonus),'var(--gold)');
+        message('SALTO RADICAL  +R$'+(v+bonus),'var(--gold)');
         blip([523,659,784,1047,1319],0.1,'square',.2);
       }else if(jumpRamp&&state.time-jumpRamp.paidAt>=REPEAT_PAY_CD){
         // repetição após o cooldown: paga de novo (evita farm na mesma rampa)
         jumpRamp.paidAt=state.time;
         economy.earn(v,'stunt-jump-repeat');
-        bigText('INSANE STUNT! +$'+v,'var(--gold)');
-        message('INSANE STUNT  +$'+v,'var(--gold)');
+        bigText('MANOBRA INSANA! +R$'+v,'var(--gold)');
+        message('MANOBRA INSANA  +R$'+v,'var(--gold)');
         blip([659,880,1175],0.09,'square',.18);
       }else{
         // repetição dentro do cooldown: ainda dá o baque/letreiro, mas SEM dinheiro
-        bigText('INSANE STUNT!','var(--gold)');
+        bigText('MANOBRA INSANA!','var(--gold)');
         blip([659,880,1175],0.09,'square',.18);
       }
       setTimeout(hideBig,1100);

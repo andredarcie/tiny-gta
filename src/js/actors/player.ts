@@ -278,8 +278,8 @@ function registerCrash(speed:number,pt:THREE.Vector3,dir:THREE.Vector3):boolean{
   ud.crashCd=CRASH_CD;
   ud.crashCount=(ud.crashCount||0)+1;
   if(ud.crashCount>=EXPLODE_CRASHES)return explodePlayerCar();
-  if(ud.crashCount===SMOKE_CRASHES)message('ENGINE DAMAGED!','var(--gold)');
-  else if(ud.crashCount===HEAVY_CRASHES)message('ENGINE ON FIRE!','var(--pink)');
+  if(ud.crashCount===SMOKE_CRASHES)message('MOTOR DANIFICADO!','var(--gold)');
+  else if(ud.crashCount===HEAVY_CRASHES)message('MOTOR PEGANDO FOGO!','var(--pink)');
   return false;
 }
 
@@ -469,11 +469,11 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     const p=refs.trafficPos({...c,t:c.t});
     cur={g:c.g,heading:Math.atan2(p.dx,p.dz),speed:0,name:c.name,police:false};
     refs.ejectDriver?.(c.g.position.x,c.g.position.z,cur.heading);
-    addWanted(1,'STOLEN CAR!','vehicle_theft');refs.spawnTraffic?.();
+    addWanted(1,'CARRO ROUBADO!','vehicle_theft');refs.spawnTraffic?.();
   }else{
     cops.splice(cops.indexOf(c),1);
     cur={g:c.g,heading:c.heading,speed:0,name:'VIATURA',police:true};
-    addWanted(2,'STOLEN POLICE CAR!','police_vehicle_theft');
+    addWanted(2,'VIATURA ROUBADA!','police_vehicle_theft');
   }
   // motorista NPC some do banco (o ejetado/fugitivo é tratado à parte)
   if(c.driver){c.g.remove(c.driver);c.driver=null;}
@@ -531,7 +531,7 @@ let exiting:Exiting|null=null;
 export function exitCar(){
   if(exiting||entering)return;
   if(cur!.plane&&cur!.g.position.y>groundHeight(cur!.g.position.x,cur!.g.position.z)+1.2){
-    message('LAND BEFORE BAILING OUT!','var(--gold)');return;
+    message('POUSE ANTES DE SAIR!','var(--gold)');return;
   }
   cur!.speed=0;
   const door=cur!.g.userData.doors?.[0]||cur!.g.userData.door||null; // sai pela porta do motorista
@@ -608,7 +608,7 @@ export function getBusted(){
   if(dying)return; // morrendo não é preso
   refs.endOverkill?.(); // prisão também encerra o modo overkill na hora
   cancelEntering();
-  startCut('BUSTED','#3e7bff',()=>{
+  startCut('PRESO!','#3e7bff',()=>{
     state.onRoof=null;roofFall=null; // presídio fica no chão, não no telhado
     state.wanted=0;state.bustT=0;
     refs.clearCops?.(); // viaturas, policiais a pé, mísseis e tracers
@@ -626,12 +626,12 @@ export function getBusted(){
     economy.penalty(.85,'busted');
     refs.confiscateWeapon?.();
     if(refs.prisonAdmit)refs.prisonAdmit();
-    else{player.g.position.set(DIV_OX,groundHeight(DIV_OX,DIV_OZ+30),DIV_OZ+30);message('YOU WERE RELEASED. BEHAVE.','var(--cyan)');}
+    else{player.g.position.set(DIV_OX,groundHeight(DIV_OX,DIV_OZ+30),DIV_OZ+30);message('VOCÊ FOI SOLTO. SE COMPORTE.','var(--cyan)');}
   });
 }
 
 function wastedCut(){
-  startCut('WASTED','#ff2e88',()=>{
+  startCut('MORREU','#ff2e88',()=>{
     state.onRoof=null;roofFall=null;
     state.health=100; // wake up at the hospital fully healed
     // Hospital bill on death: a FIXED $100 fee (capped at the balance), not a
@@ -745,7 +745,7 @@ function updatePlane(dt:number){
   // amerissagem: tocou a água = afunda, jogador sai nadando
   if(inWater(p)&&p.y<=surfY(p.x,p.z)+.05){
     c.sinkT=(c.sinkT||0)+dt;
-    if(c.sinkT<dt*1.5){message('YOUR PLANE IS SINKING!','var(--pink)');thud(8);}
+    if(c.sinkT<dt*1.5){message('SEU AVIÃO ESTÁ AFUNDANDO!','var(--pink)');thud(8);}
     c.speed*=Math.exp(-2.4*dt);
     p.x+=Math.sin(c.heading)*c.speed*dt;
     p.z+=Math.cos(c.heading)*c.speed*dt;
@@ -759,7 +759,7 @@ function updatePlane(dt:number){
       cur=null;state.mode='foot';state.weaponHeld=!!state.hasGun;
       hudCar!.style.display='none';radioOff();
       spawnPlane();
-      message('SWIM BACK TO SHORE!','var(--cyan)');
+      message('NADE DE VOLTA PRA MARGEM!','var(--cyan)');
     }
     return;
   }
@@ -828,7 +828,7 @@ export function updateCar(dt:number){
   }else if(inWater(cur!.g.position)){
     // In the river the car loses grip, slowly sinks and the player swims out
     const p=cur!.g.position;
-    if(!cur!.sinkT){cur!.sinkT=1e-6;message('YOUR CAR IS SINKING!','var(--pink)');thud(8);}
+    if(!cur!.sinkT){cur!.sinkT=1e-6;message('SEU CARRO ESTÁ AFUNDANDO!','var(--pink)');thud(8);}
     cur!.sinkT+=dt;
     cur!.speed*=Math.exp(-2.4*dt);
     p.x+=Math.sin(cur!.heading)*cur!.speed*dt;
@@ -843,7 +843,7 @@ export function updateCar(dt:number){
       player.g.visible=true;
       cur=null;state.mode='foot';state.weaponHeld=!!state.hasGun;
       hudCar!.style.display='none';radioOff();
-      message('SWIM BACK TO SHORE!','var(--cyan)');
+      message('NADE DE VOLTA PRA MARGEM!','var(--cyan)');
     }
     return;
   }

@@ -65,7 +65,7 @@ export function makeRaceFinish(): THREE.Group{
     const x=c.getContext('2d')!;
     x.fillStyle='#14161a';x.fillRect(0,0,256,64);
     x.fillStyle='#ffce5a';x.font='bold 44px monospace';x.textAlign='center';x.textBaseline='middle';
-    x.fillText('FINISH',128,36);
+    x.fillText('CHEGADA',128,36);
     const label=new THREE.Mesh(new THREE.PlaneGeometry(W*.9,.9),
       new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,side:THREE.DoubleSide}));
     label.position.set(0,4.3,.1);g.add(label);
@@ -95,4 +95,4 @@ export function makeRaceFinish(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Race finish line',build:()=>makeRaceFinish()};
+export default {category:'Missões',label:'Linha de chegada',build:()=>makeRaceFinish()};

@@ -25,7 +25,7 @@ import {Npc} from '@/actors/npc.ts';
 // segue na ambulância, recomeça no nível 1 no frame seguinte (mesmo ciclo do táxi).
 // Sair da ambulância encerra o plantão.
 
-const MED_BUILD=' ◆ MEDIC';
+const MED_BUILD=' ◆ RESGATE';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',MED_BUILD);
 
 const PATIENT_CAP=6;                 // teto de feridos simultâneos por nível
@@ -51,10 +51,10 @@ idleCars.push(amb);
 class Patient extends Npc{
   x:number;z:number;ring:THREE.Mesh|null;beacon:Beacon|null;loaded:boolean;
   constructor(g:THREE.Object3D,x:number,z:number,ring:THREE.Mesh,beacon:Beacon){
-    super(g,{kind:'patient',hp:1,register:false,area:'City streets'});
+    super(g,{kind:'patient',hp:1,register:false,area:'Ruas da cidade'});
     this.x=x;this.z=z;this.ring=ring;this.beacon=beacon;this.loaded=false;
   }
-  override aliveState():string{return this.loaded?'In the ambulance':'Injured — needs rescue';}
+  override aliveState():string{return this.loaded?'Na ambulância':'Ferido — precisa de resgate';}
 }
 interface Marker{ring:THREE.Mesh;beacon:Beacon;}
 
@@ -71,11 +71,11 @@ let runRescues=0;  // pacientes entregues no plantão (resumo)
 
 // mini game (sessão): trava o mundo durante o plantão; os alvos são os feridos
 // (fase rescue) ou o hospital (fase hospital)
-const game=new MiniGame({id:MiniGameId.PARAMEDIC,name:'Ambulance Rush',
+const game=new MiniGame({id:MiniGameId.PARAMEDIC,name:'Plantão de Ambulância',
   blips:()=>phase==='hospital'
     ?[{x:dropX,z:dropZ,icon:'cross',color:'#19e3ff',label:'HOSPITAL',current:true,reveal:false}]
     :patients.filter(p=>!p.loaded).map(p=>({x:p.x,z:p.z,icon:'cross',color:'#5eff8a',
-      label:'PATIENT',current:true,reveal:false}))});
+      label:'PACIENTE',current:true,reveal:false}))});
 
 const _v=new THREE.Vector3(); // scratch pra contas por frame (sem new no loop)
 const medHud=document.getElementById('medhud');
@@ -144,7 +144,7 @@ function startLevel(announce=true){
   clearHospMk();
   spawnPatients();
   if(announce){
-    message(`AMBULANCE RUSH - LEVEL ${level}: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
+    message(`PLANTÃO DE AMBULÂNCIA - NÍVEL ${level}: RESGATE ${needed} PACIENTE${needed>1?'S':''}`,'var(--gold)');
     blip([523,659],.08,'sine',.16);
   }
   phase='rescue';
@@ -154,16 +154,16 @@ function startLevel(announce=true){
 function startDuty(){
   if(!game.begin())return; // outra sessão de mini game rolando: não começa
   level=1;runRescues=0;
-  message('AMBULANCE RUSH STARTED','var(--gold)');
+  message('PLANTÃO DE AMBULÂNCIA COMEÇOU','var(--gold)');
   startLevel(false);
-  message(`LEVEL 1: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
+  message(`NÍVEL 1: RESGATE ${needed} PACIENTE${needed>1?'S':''}`,'var(--gold)');
   blip([440,587,740],.08,'sine',.16);
 }
 
-function endDuty(text='AMBULANCE RUSH ENDED',col='var(--cyan)'){
+function endDuty(text='PLANTÃO DE AMBULÂNCIA ENCERRADO',col='var(--cyan)'){
   clearPatients();
   clearHospMk();
-  const summary=runRescues>0?` - ${runRescues} PATIENTS SAVED`:'';
+  const summary=runRescues>0?` - ${runRescues} PACIENTES SALVOS`:'';
   // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   phase='off';onboard=0;needed=0;timeLeft=0;
@@ -178,12 +178,12 @@ function loadPatient(p: Patient){
   p.loaded=true;
   onboard++;
   blip([587,784],.07,'sine',.15);
-  message(`PATIENT ${onboard}/${needed} ABOARD`,'var(--cyan)');
+  message(`PACIENTE ${onboard}/${needed} A BORDO`,'var(--cyan)');
   if(onboard>=needed){
     // todos a bordo: abre a entrega no hospital
     hospMk=spawnMarker(0x19e3ff,dropX,dropZ);
     phase='hospital';
-    message('TAKE THEM TO THE HOSPITAL','var(--gold)');
+    message('LEVE TODOS PARA O HOSPITAL','var(--gold)');
     blip([659,880],.08,'sine',.16);
   }
   updateMedHud();
@@ -195,17 +195,17 @@ function deliver(){
   runRescues+=onboard;
   clearHospMk();
   clearPatients();
-  message(`PATIENTS DELIVERED +$${reward}`,'var(--gold)');
-  bigText('PATIENTS DELIVERED','var(--gold)');
+  message(`PACIENTES ENTREGUES +R$${reward}`,'var(--gold)');
+  bigText('PACIENTES ENTREGUES','var(--gold)');
   setTimeout(hideBig,1400);
   blip([523,659,784,1047],.09,'sine',.18);
   level++;
   startLevel(false);
-  message(`LEVEL ${level}: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
+  message(`NÍVEL ${level}: RESGATE ${needed} PACIENTE${needed>1?'S':''}`,'var(--gold)');
 }
 
 function timeout(){
-  message('PATIENTS LOST - OUT OF TIME','var(--pink)');
+  message('PACIENTES PERDIDOS - ACABOU O TEMPO','var(--pink)');
   blip([220,165,110],.12,'sawtooth',.16);
   // Keep the session alive (do NOT call endDuty/game.end): the player is still in
   // the ambulance, so ending here would re-open the briefing overlay
@@ -214,7 +214,7 @@ function timeout(){
   clearHospMk();
   level=1;
   startLevel(false);
-  message(`LEVEL 1: RESCUE ${needed} PATIENT${needed>1?'S':''}`,'var(--gold)');
+  message(`NÍVEL 1: RESGATE ${needed} PACIENTE${needed>1?'S':''}`,'var(--gold)');
 }
 
 // ----- ambulância destruída: reaparece no ponto do hospital -----
@@ -235,12 +235,12 @@ function updateMedHud(){
   medHud.classList.add('show');
   const pct=Math.round(clamp(timeLeft/timeMax,0,1)*100);
   const rowState=phase==='hospital'
-    ?'<div class="med-row"><span>TO HOSPITAL</span><b>DELIVER</b></div>'
-    :'<div class="med-row"><span>TO HOSPITAL</span><b>--</b></div>';
+    ?'<div class="med-row"><span>AO HOSPITAL</span><b>ENTREGAR</b></div>'
+    :'<div class="med-row"><span>AO HOSPITAL</span><b>--</b></div>';
   medHud.innerHTML=`
-    <div class="med-label">MEDIC</div>
-    <div class="med-main"><span>LEVEL</span><b>${level}</b></div>
-    <div class="med-row"><span>ONBOARD</span><b>${onboard}/${needed}</b></div>
+    <div class="med-label">RESGATE</div>
+    <div class="med-main"><span>NÍVEL</span><b>${level}</b></div>
+    <div class="med-row"><span>A BORDO</span><b>${onboard}/${needed}</b></div>
     ${rowState}
     <div class="med-meter"><i style="width:${pct}%"></i></div>`;
 }
@@ -253,7 +253,7 @@ export function updateParamedic(dt: number){
       wreckT=0;resetAmbulance();
       scene.add(amb.g);
       if(!idleCars.includes(amb))idleCars.push(amb);
-      message('A NEW AMBULANCE IS WAITING AT THE HOSPITAL','var(--cyan)');
+      message('UMA NOVA AMBULÂNCIA ESPERA NO HOSPITAL','var(--cyan)');
     }
   }
 

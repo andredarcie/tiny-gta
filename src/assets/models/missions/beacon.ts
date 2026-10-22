@@ -24,4 +24,4 @@ export function makeBeacon(color: number): THREE.Mesh{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Beacon',build:(o:{color?:number})=>makeBeacon(o.color??0x19e3ff)};
+export default {category:'Missões',label:'Sinalizador',build:(o:{color?:number})=>makeBeacon(o.color??0x19e3ff)};

@@ -25,7 +25,7 @@ import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 // suspeito escapa e a patrulha recomeça (igual ao expediente contínuo do táxi).
 // Sair da viatura (ou WASTED/BUSTED) encerra a patrulha.
 
-const VIG_BUILD=' ◆ STREET JUSTICE';
+const VIG_BUILD=' ◆ JUSTIÇA NAS RUAS';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',VIG_BUILD);
 
 const RED=0xff3b56;
@@ -62,9 +62,9 @@ let criminal: Criminal|null=null; // {g,hp,destX,destZ,heading,speed,ring,beacon
 let wreckT=0;      // viatura destruída: volta ao presídio depois de um tempo
 
 // mini game (sessão): trava o mundo durante a patrulha; o alvo é o fugitivo
-const game=new MiniGame({id:MiniGameId.VIGILANTE,name:'Street Justice',
+const game=new MiniGame({id:MiniGameId.VIGILANTE,name:'Justiça nas Ruas',
   blips:()=>criminal?[{x:criminal.g.position.x,z:criminal.g.position.z,
-    icon:'target',color:'#ff3b56',label:'SUSPECT',current:true,reveal:false}]:[]});
+    icon:'target',color:'#ff3b56',label:'SUSPEITO',current:true,reveal:false}]:[]});
 
 const vigHud=document.getElementById('vighud');
 
@@ -140,10 +140,10 @@ function updateVigHud(){
   vigHud.classList.add('show');
   const pct=Math.round(clamp(timeLeft/DUTY_TIME,0,1)*100);
   vigHud.innerHTML=`
-    <div class="vig-label">JUSTICE</div>
-    <div class="vig-main"><span>LEVEL</span><b>${level}</b></div>
-    <div class="vig-row"><span>BUSTS</span><b>${busts}</b></div>
-    <div class="vig-row"><span>TIME</span><b>${Math.ceil(timeLeft)}s</b></div>
+    <div class="vig-label">JUSTIÇA</div>
+    <div class="vig-main"><span>NÍVEL</span><b>${level}</b></div>
+    <div class="vig-row"><span>PRISÕES</span><b>${busts}</b></div>
+    <div class="vig-row"><span>TEMPO</span><b>${Math.ceil(timeLeft)}s</b></div>
     <div class="vig-meter"><i style="width:${pct}%"></i></div>`;
 }
 
@@ -161,14 +161,14 @@ function startDuty(){
   clearTimeout(hideTimer!);hideTimer=null; // cancel any stale hide from a previous session
   phase='duty';level=1;busts=0;timeLeft=DUTY_TIME;
   spawnCriminal();
-  message('STREET JUSTICE - RAM THE FLEEING SUSPECT','var(--blue)');
+  message('JUSTIÇA NAS RUAS - BATA NO SUSPEITO EM FUGA','var(--blue)');
   blip([523,659,784],.08,'square',.16);
   updateVigHud();
 }
 
-function endDuty(text='STREET JUSTICE OFF DUTY',col='var(--cyan)'){
+function endDuty(text='JUSTIÇA NAS RUAS ENCERRADA',col='var(--cyan)'){
   removeCriminal();
-  const summary=busts>0?` - ${busts} BUSTS / LVL ${level}`:'';
+  const summary=busts>0?` - ${busts} PRISÕES / NÍV ${level}`:'';
   // session over: counts toward the once-per-day lock
   markMiniGamePlayed(game.id);
   phase='off';
@@ -181,8 +181,8 @@ function bustCriminal(){
   const reward=Math.min(REWARDS.vigilante.maxReward,REWARDS.vigilante.perBust*level);
   economy.earn(reward,'vigilante');
   busts++;
-  message(`CRIMINAL BUSTED +$${reward}`,'var(--gold)');
-  bigText('CRIMINAL BUSTED','var(--gold)');
+  message(`CRIMINOSO PRESO +R$${reward}`,'var(--gold)');
+  bigText('CRIMINOSO PRESO','var(--gold)');
   scheduleHide(1100);
   blip([523,659,784,1047],.09,'square',.2);
   removeCriminal();
@@ -193,8 +193,8 @@ function bustCriminal(){
 }
 
 function failDuty(){
-  message('SUSPECT GOT AWAY','var(--pink)');
-  bigText('SUSPECT GOT AWAY','var(--pink)');
+  message('O SUSPEITO FUGIU','var(--pink)');
+  bigText('O SUSPEITO FUGIU','var(--pink)');
   scheduleHide(1200);
   blip([330,247,180],.12,'sawtooth',.18);
   // patrulha CONTÍNUA (igual ao expediente do táxi): a fuga zera o nível/streak e o
@@ -270,7 +270,7 @@ export function updateVigilante(dt: number){
       wreckT=0;resetCruiser();
       scene.add(cruiser.g);
       if(!idleCars.includes(cruiser))idleCars.push(cruiser);
-      message('A NEW POLICE CRUISER IS WAITING BY THE JAIL','var(--cyan)');
+      message('UMA NOVA VIATURA ESPERA PERTO DA CADEIA','var(--cyan)');
     }
   }
 

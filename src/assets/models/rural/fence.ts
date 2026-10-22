@@ -35,7 +35,7 @@ function buildPreview(): THREE.Group {
   return g;
 }
 
-export default {category:'Rural',label:'Rail fence',build:buildPreview};
+export default {category:'Rural',label:'Cerca de ripas',build:buildPreview};
 
 // Lay a fence run from (x0,z0) to (x1,z1), baking each section into the props.
 // Returns nothing (decorative; no collision — players/cars hop the low rails).

@@ -161,8 +161,8 @@ export class Npc{
   onDeath?:(dir?:THREE.Vector3)=>void;
 
   constructor(g:THREE.Object3D,{
-    kind='npc',hp=1,drop=null,wanted=0,wantedMsg='SHOT FIRED!',crime='npc_shot',
-    name,gender,punchToDown=3,showLabel=false,area='City',register=true,femaleLook=true,likes,indoor=false,personality='chill',dialogues,
+    kind='npc',hp=1,drop=null,wanted=0,wantedMsg='TIRO DISPARADO!',crime='npc_shot',
+    name,gender,punchToDown=3,showLabel=false,area='Cidade',register=true,femaleLook=true,likes,indoor=false,personality='chill',dialogues,
   }:NpcOpts={}){
     this.g=g;
     this.kind=kind;
@@ -209,11 +209,11 @@ export class Npc{
   // Human-readable status for the pause-menu roster. Base covers down/hospital;
   // subclasses override aliveState() to report their routine (walking, patrol, …).
   stateName():string{
-    if(this.hospitalT>0)return 'In hospital';
-    if(this.dead)return 'Down';
+    if(this.hospitalT>0)return 'No hospital';
+    if(this.dead)return 'Caído';
     return this.aliveState();
   }
-  aliveState():string{return 'Active';}
+  aliveState():string{return 'Ativo';}
 
   // Where this NPC is currently headed, in WORLD x/z (for the full-map path trail).
   // Base returns null (no known path); wandering subclasses override it.
@@ -369,13 +369,13 @@ export interface NpcRosterEntry{
 
 // Friendly label per NPC kind (player-facing in the roster).
 const KIND_LABELS:Record<string,string>={
-  ped:'Civilian',gang:'Gang',officer:'Police',police:'Police',rural:'Country folk',
-  soldier:'Army',criminal:'Criminal',patient:'Injured',camper:'Camp redneck',zombie:'Zombie',priest:'Priest',villager:'Villager',
-  sicko:'Sicko',npc:'NPC',
+  ped:'Civil',gang:'Gangue',officer:'Polícia',police:'Polícia',rural:'Caipira',
+  soldier:'Exército',criminal:'Criminoso',patient:'Ferido',camper:'Acampado',zombie:'Zumbi',priest:'Padre',villager:'Morador do vilarejo',
+  sicko:'Psicopata',npc:'Morador',
   // interior NPCs
-  dancer:'Clubber',gymgoer:'Gym-goer',guard:'Guard',inmate:'Inmate',
-  clerk:'Clerk',medic:'Hospital',fare:'Passenger',buyer:'Buyer',
-  driver:'Driver',rick:'Hermit',
+  dancer:'Baladeiro',gymgoer:'Marombeiro',guard:'Carcereiro',inmate:'Detento',
+  clerk:'Balconista',medic:'Hospital',fare:'Passageiro',buyer:'Comprador',
+  driver:'Motorista',rick:'Eremita',
 };
 export function kindLabel(kind:string):string{return KIND_LABELS[kind]||kind;}
 
@@ -412,7 +412,7 @@ export function reconcileVehicleNpcs():void{
     const live=attachedToScene(d);
     const npc=d.userData.occupantNpc as Npc|undefined;
     if(live&&!npc){
-      d.userData.occupantNpc=new Npc(d,{kind:'driver',register:false,showLabel:true,area:'On the road'});
+      d.userData.occupantNpc=new Npc(d,{kind:'driver',register:false,showLabel:true,area:'Na estrada'});
     }else if(!live){
       // vehicle gone from the scene (destroyed, or the player stole the car and the
       // seated driver was removed): reap the NPC if it was tagged, and ALWAYS drop the

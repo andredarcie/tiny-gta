@@ -13,4 +13,4 @@ export function makeExplosionModel(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Effects',label:'Explosion',build:()=>makeExplosionModel()};
+export default {category:'Efeitos',label:'Explosão',build:()=>makeExplosionModel()};

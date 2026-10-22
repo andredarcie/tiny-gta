@@ -140,9 +140,9 @@ export function houseTvInteract(){
 }
 
 export function houseTvState(){
-  if(active)return{label:'EXIT',prompt:'EXIT TV',enabled:true};
+  if(active)return{label:'SAIR',prompt:'SAIR DA TV',enabled:true};
   if(!nearTv())return null;
-  return{label:'TV',prompt:'USE TV',enabled:true};
+  return{label:'TV',prompt:'USAR A TV',enabled:true};
 }
 
 export function updateHouseTv(){

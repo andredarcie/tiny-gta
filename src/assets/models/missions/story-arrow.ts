@@ -10,4 +10,4 @@ export function makeStoryArrow(): {arrow: THREE.Group; material: THREE.MeshBasic
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Story arrow',build:()=>makeStoryArrow()};
+export default {category:'Missões',label:'Seta da história',build:()=>makeStoryArrow()};

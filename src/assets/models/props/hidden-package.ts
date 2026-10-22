@@ -41,4 +41,4 @@ export function makeHiddenPackage(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'Hidden package',build:()=>makeHiddenPackage()};
+export default {category:'Objetos',label:'Pacote escondido',build:()=>makeHiddenPackage()};

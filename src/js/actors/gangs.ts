@@ -41,7 +41,7 @@ export class GangMember extends Npc{
   shootT!:number;
   tgt!:THREE.Vector3|null;
   tgtT!:number;
-  override aliveState():string{return this.aiState==='aggro'?'Attacking':'Roaming turf';}
+  override aliveState():string{return this.aiState==='aggro'?'Atacando':'Rondando o território';}
   override pathTarget():{x:number;z:number}|null{return this.tgt?{x:this.tgt.x,z:this.tgt.z}:null;}
 }
 
@@ -68,9 +68,9 @@ const GANG_ROSTER=7;
 const GANG_ALIVE=3;
 export const gangs:Gang[]=[
   // turf: the riverside streets of Beira-Rio (north) and the blocks round Galhano (south-east)
-  {name:'VIPERS', color:0x35d435,pants:0x14401c,css:'#35d435',cssA:'rgba(53,212,53,.22)',
+  {name:'VÍBORAS', color:0x35d435,pants:0x14401c,css:'#35d435',cssA:'rgba(53,212,53,.22)',
    x:DIV_OX+430,z:DIV_OZ-380,r:GANG_R0} as unknown as Gang,
-  {name:'SKULLS', color:0x9d2eff,pants:0x2a1440,css:'#9d2eff',cssA:'rgba(157,46,255,.22)',
+  {name:'CAVEIRAS', color:0x9d2eff,pants:0x2a1440,css:'#9d2eff',cssA:'rgba(157,46,255,.22)',
    x:DIV_OX+700,z:DIV_OZ+330,r:GANG_R0} as unknown as Gang,
 ];
 for(const g of gangs){g.spawnT=rand(4,10);g.alarmT=0;g.wasInside=false;g.remaining=GANG_ROSTER;g.defeated=false;}
@@ -176,7 +176,7 @@ export function updateGangs(dt:number){
     g.alarmT=Math.max(0,g.alarmT-dt);
     const inside=Math.hypot(pp.x-g.x,pp.z-g.z)<g.r&&!playerSafe;
     if(inside&&!g.wasInside&&state.started&&state.mode!=='cut'){
-      message(g.name+' TERRITORY',g.css);
+      message('TERRITÓRIO DOS '+g.name,g.css);
     }
     g.wasInside=inside;
     let live=0;for(const m of gangPeds)if(m.gang===g&&!m.dead)live++;
@@ -187,7 +187,7 @@ export function updateGangs(dt:number){
     }
     if(g.remaining<=0&&live===0){
       g.defeated=true;g.r=0;g.wasInside=false;
-      if(state.started)message(g.name+' WIPED OUT!',g.css);
+      if(state.started)message(g.name+' ELIMINADOS!',g.css);
       blip([523,659,784,1047],.1,'square',.2);
     }
   }
@@ -208,7 +208,7 @@ export function updateGangs(dt:number){
       m.wanted=mw;
       {const hd=new THREE.Vector3(Math.sin(c!.heading),0,Math.cos(c!.heading));
        if(Math.abs(c!.speed)>24)refs.gibNpc?.(m,hd,1.3);else refs.maimRandom?.(m,hd);}
-      addWanted(1,'HIT AND RUN!','hit_run');
+      addWanted(1,'ATROPELAMENTO E FUGA!','hit_run');
       thud(Math.abs(c!.speed));state.shake=.35;
       continue;
     }

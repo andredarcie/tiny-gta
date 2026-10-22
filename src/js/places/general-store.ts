@@ -32,7 +32,7 @@ const BUY_RANGE=1.4; // distance to a seed display that selects/enables it
 
 class GeneralStoreInterior extends Interior{
   override onEnter(){
-    message('GENERAL STORE - PICK A STRAIN AT THE SEED COUNTER','var(--gold)');
+    message('ARMAZÉM - ESCOLHA UMA VARIEDADE NO BALCÃO DE SEMENTES','var(--gold)');
     blip([392,523,659],.08,'sine',.12);
   }
   override updateFx(dt:number){
@@ -50,13 +50,13 @@ export const generalStore=new GeneralStoreInterior({
   door:GENSTORE_DOOR,spawnOut:GENSTORE_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:genStoreFx,
   exterior:{x:GENSTORE_DOOR.x,z:GENSTORE_DOOR.z,r:16}, // gang-free apron round the storefront
-  mapIcon:{id:'general-store',label:'GENERAL STORE',icon:'store',color:'#f4c542'},
+  mapIcon:{id:'general-store',label:'ARMAZÉM',icon:'store',color:'#f4c542'},
   spawnHeading:Math.PI/2,      // spawn just inside, facing east into the room
   spawnOutHeading:GENSTORE_SITE.head(Math.PI), // out of the door, facing the street
 });
 
 // Give the shopkeeper a name (women get the female look).
-if(genStoreFx.keeper)nameInteriorNpc(genStoreFx.keeper.g,'clerk','General Store');
+if(genStoreFx.keeper)nameInteriorNpc(genStoreFx.keeper.g,'clerk','Armazém');
 
 // the strain whose display the player is standing at (nearest within BUY_RANGE), or null
 function nearStrain():Strain|null{
@@ -73,11 +73,11 @@ function nearStrain():Strain|null{
 function buySeeds(s:Strain){
   const price=REWARDS.weedFarm.seedPrices[s.id];
   if(!economy.spend(price,'seeds')){
-    message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)');return;
+    message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${price}`,'var(--pink)');return;
   }
   state.seeds[s.id]=(state.seeds[s.id]|0)+s.pack;
   state.seedSel=s.id; // this strain is now the one the farm plants
-  message(`BOUGHT ${s.pack} ${s.name} SEEDS - ${state.seeds[s.id]} IN THE BAG`,'var(--gold)');
+  message(`COMPROU ${s.pack} SEMENTES DE ${s.name} - ${state.seeds[s.id]} NA SACOLA`,'var(--gold)');
   blip([523,659,784],.08,'square',.14);
 }
 
@@ -90,10 +90,10 @@ const nearFert=()=>{
 function buyFert(){
   const price=REWARDS.weedFarm.fertilizerPrice;
   if(!economy.spend(price,'seeds')){
-    message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)');return;
+    message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${price}`,'var(--pink)');return;
   }
   state.fertilizer=(state.fertilizer|0)+FERTILIZER.pack;
-  message(`BOUGHT ${FERTILIZER.pack} PLANT FOOD - ${state.fertilizer} IN THE BAG`,'var(--gold)');
+  message(`COMPROU ${FERTILIZER.pack} ADUBOS - ${state.fertilizer} NA SACOLA`,'var(--gold)');
   blip([523,659,784],.08,'square',.14);
 }
 
@@ -107,18 +107,18 @@ function buyFert(){
     const have=state.seeds[s.id]|0;
     const price=REWARDS.weedFarm.seedPrices[s.id];
     if(state.money<price)
-      return{label:'SEEDS',prompt:`NEED $${price} FOR ${s.name} SEEDS`,enabled:true,
-        run:()=>message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)')};
-    return{label:'SEEDS',prompt:`BUY ${s.pack} ${s.name} $${price} · ${s.blurb} (HAVE ${have})`,
+      return{label:'SEMENTES',prompt:`PRECISA DE R$${price} PARA SEMENTES DE ${s.name}`,enabled:true,
+        run:()=>message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${price}`,'var(--pink)')};
+    return{label:'SEMENTES',prompt:`COMPRAR ${s.pack} ${s.name} R$${price} · ${s.blurb} (TEM ${have})`,
       enabled:true,run:()=>buySeeds(s)};
   }
   if(nearFert()){
     const have=state.fertilizer|0;
     const price=REWARDS.weedFarm.fertilizerPrice;
     if(state.money<price)
-      return{label:'FOOD',prompt:`NEED $${price} FOR PLANT FOOD`,enabled:true,
-        run:()=>message(`NOT ENOUGH MONEY - NEED $${price}`,'var(--pink)')};
-    return{label:'FOOD',prompt:`BUY ${FERTILIZER.pack} PLANT FOOD $${price} · ${FERTILIZER.blurb} (HAVE ${have})`,
+      return{label:'ADUBO',prompt:`PRECISA DE R$${price} PARA O ADUBO`,enabled:true,
+        run:()=>message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${price}`,'var(--pink)')};
+    return{label:'ADUBO',prompt:`COMPRAR ${FERTILIZER.pack} ADUBOS R$${price} · ${FERTILIZER.blurb} (TEM ${have})`,
       enabled:true,run:buyFert};
   }
   return null;

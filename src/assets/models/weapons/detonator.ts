@@ -44,4 +44,4 @@ export function makeDetonatorModel({pickup=false}:{pickup?:boolean}={}): THREE.G
   return g;
 }
 
-export default {category:'Weapons',label:'Detonator',build:()=>makeDetonatorModel()};
+export default {category:'Armas',label:'Detonador',build:()=>makeDetonatorModel()};

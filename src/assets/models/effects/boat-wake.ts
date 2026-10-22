@@ -37,6 +37,6 @@ export function makeWakePuff(): THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicM
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Effects',label:'Boat wake',build:()=>{
+export default {category:'Efeitos',label:'Rastro da lancha',build:()=>{
   const m=makeWakePuff();m.material.opacity=.85;m.scale.setScalar(2);return m;
 }};

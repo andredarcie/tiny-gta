@@ -17,7 +17,7 @@ import {nameInteriorNpc} from '@/actors/npc.ts';
 class PrisonInterior extends Interior{
   sayT?:number;
   override onEnter(){
-    message('COUNTY JAIL - WALK TO THE EXIT','var(--cyan)');
+    message('CADEIA - VÁ ATÉ A SAÍDA','var(--cyan)');
     blip([220,180,140],.08,'square',.12);
   }
   override updateFx(dt:number){
@@ -40,7 +40,7 @@ class PrisonInterior extends Interior{
       }
       if(this.sayT<=0&&!guard.g.userData.speaking&&
         Math.hypot(pp.x-guard.g.position.x,pp.z-guard.g.position.z)<4.5){
-        say(guard.g,'The crime king paid to get you out.',{life:5,yOff:1.7});
+        say(guard.g,'O rei do crime pagou pra te soltar.',{life:5,yOff:1.7});
         this.sayT=12;
       }
     }
@@ -57,15 +57,15 @@ addPrison(solids); // the jail on its lot by the Polícia Militar + the off-map 
 export const prison=new PrisonInterior({
   group:prisonInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:PRISON_DOOR,spawnOut:PRISON_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
-  fx:prisonFx,enterMsg:'COUNTY JAIL',enterColor:'var(--cyan)',
+  fx:prisonFx,enterMsg:'CADEIA',enterColor:'var(--cyan)',
   exterior:{...PRISON_SITE.P(-66,-66),r:26},
   spawnOutHeading:PRISON_SITE.head(-Math.PI/2), // released onto the street
-  mapIcon:{id:'prison',label:'COUNTY JAIL',icon:'prison',color:'#19e3ff'},
+  mapIcon:{id:'prison',label:'CADEIA',icon:'prison',color:'#19e3ff'},
 });
 
 // Name the jail's guards and inmates (women get the female look); they keep their
 // patrol/idle animation from updateFx.
-for(const g of prisonFx.guards)nameInteriorNpc(g.g,'guard','County Jail');
-for(const i of prisonFx.inmates)nameInteriorNpc(i.g,'inmate','County Jail');
+for(const g of prisonFx.guards)nameInteriorNpc(g.g,'guard','Cadeia');
+for(const i of prisonFx.inmates)nameInteriorNpc(i.g,'inmate','Cadeia');
 
 export function prisonAdmit(){prison.enterAt(PRISON_RELEASE,-Math.PI/2);}

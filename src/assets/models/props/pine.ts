@@ -26,7 +26,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Pine tree',build};
+export default {category:'Objetos',label:'Pinheiro',build};
 
 // Pine → a random code-built pine (stacked cones, nature/kit.ts), baked into the merged nature chunks.
 export function addPine(px: number,pz: number): void{

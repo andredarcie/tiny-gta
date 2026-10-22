@@ -43,4 +43,4 @@ export function makeBuoy(color=0xff8a1e): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Missions',label:'Race buoy',build:(o?:{color?:number})=>buildBuoy(o?.color??0xff8a1e)};
+export default {category:'Missões',label:'Boia de corrida',build:(o?:{color?:number})=>buildBuoy(o?.color??0xff8a1e)};

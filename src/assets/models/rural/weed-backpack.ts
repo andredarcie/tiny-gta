@@ -108,4 +108,4 @@ export function makeWeedBackpack(): THREE.Group {
   return g;
 }
 
-export default {category:'Rural',label:'Weed backpack',build:makeWeedBackpack,zoom:1.8};
+export default {category:'Rural',label:'Mochila de erva',build:makeWeedBackpack,zoom:1.8};

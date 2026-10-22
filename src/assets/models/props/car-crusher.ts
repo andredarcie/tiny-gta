@@ -73,4 +73,4 @@ export function makeCarCrusher(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Props',label:'Car crusher',build:()=>makeCarCrusher()};
+export default {category:'Objetos',label:'Prensa de carro',build:()=>makeCarCrusher()};

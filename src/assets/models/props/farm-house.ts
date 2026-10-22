@@ -34,7 +34,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Farm house',build};
+export default {category:'Objetos',label:'Casa de fazenda',build};
 
 export function addFarmHouse(cx: number,cz: number,ry: number): {x0:number;x1:number;z0:number;z1:number;h:number}{
   const g=build();

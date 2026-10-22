@@ -67,5 +67,5 @@ function buildPreview(opts: {stage?: string}={}): THREE.Group{
 }
 
 export {build as buildGrave};
-export default {category:'Missions',label:'Grave',build:buildPreview,
-  variants:[{label:'Finished',opts:{}},{label:'Open pit',opts:{stage:'open'}}]};
+export default {category:'Missões',label:'Cova',build:buildPreview,
+  variants:[{label:'Pronta',opts:{}},{label:'Cova aberta',opts:{stage:'open'}}]};

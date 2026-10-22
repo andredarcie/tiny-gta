@@ -32,4 +32,4 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Cigarette',build};
+export default {category:'Objetos',label:'Cigarro',build};

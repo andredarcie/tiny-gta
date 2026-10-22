@@ -45,7 +45,7 @@ function signTexture():THREE.CanvasTexture{
   x.font='900 50px monospace';
   x.shadowColor='#3e7bff';x.shadowBlur=20;
   x.fillStyle='#dfeaff';
-  for(let k=0;k<3;k++)x.fillText('COUNTY JAIL',256,64);
+  for(let k=0;k<3;k++)x.fillText('CADEIA PÚBLICA',256,64);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }
@@ -131,7 +131,7 @@ function cellBlockSign():THREE.CanvasTexture{
   x.fillStyle='#161b22';x.fillRect(0,0,256,64);
   x.strokeStyle='#3e7bff';x.lineWidth=4;x.strokeRect(5,5,246,54);
   x.fillStyle='#dfeaff';x.textAlign='center';x.textBaseline='middle';
-  x.font='900 28px monospace';x.fillText('CELL BLOCK D',128,34);
+  x.font='900 28px monospace';x.fillText('BLOCO D',128,34);
   cbSignTex=new THREE.CanvasTexture(c);cbSignTex.colorSpace=THREE.SRGBColorSpace;
   return cbSignTex;
 }

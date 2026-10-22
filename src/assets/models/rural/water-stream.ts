@@ -25,5 +25,5 @@ export function makeWaterStream(): THREE.Mesh{
   return m;
 }
 
-export default {category:'Rural',label:'Water stream',build:()=>{
+export default {category:'Rural',label:'Jato de água',build:()=>{
   const m=makeWaterStream();m.scale.set(.05,.6,.05);return m;},zoom:3};

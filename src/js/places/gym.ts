@@ -26,8 +26,8 @@ const TRAIN_RANGE=2.2;    // distância pra liberar a ação TRAIN
 class GymInterior extends Interior{
   override onEnter(){
     const left=dailyLockCleared(state.gymDay,state.gymTime)&&state.armScale<ARM_MAX-1e-3;
-    message(left?'WELCOME TO IRON TEMPLE - HIT THE BENCH TO TRAIN'
-                :'WELCOME TO IRON TEMPLE','var(--gold)');
+    message(left?'BEM-VINDO À ACADEMIA - VÁ AO SUPINO PARA TREINAR'
+                :'BEM-VINDO À ACADEMIA','var(--gold)');
   }
   // o "pump" do braço roda SEMPRE (mesmo fora da academia), por isso vai aqui
   // antes do update base — updateInteriors chama update() de todo interior/frame
@@ -56,11 +56,11 @@ export const gym=new GymInterior({
   fx:gymFx,
   exterior:{...GYM_SITE.P(154,-110),r:24}, // fachada: gangue não chega perto
   spawnOutHeading:GYM_SITE.head(-Math.PI/2), // stepping out faces the street
-  mapIcon:{id:'gym',label:'IRON TEMPLE',icon:'gym',color:'#ff8a1e'},
+  mapIcon:{id:'gym',label:'ACADEMIA',icon:'gym',color:'#ff8a1e'},
 });
 
 // Name every gym-goer (women get the female look); they keep lifting via updateFx.
-for(const m of gymFx.lifters)nameInteriorNpc(m.g,'gymgoer','Iron Temple');
+for(const m of gymFx.lifters)nameInteriorNpc(m.g,'gymgoer','Academia');
 
 // jogador perto do supino, dentro da academia (HUD/interact usam isto)
 function gymTrainNear(){
@@ -72,9 +72,9 @@ function gymTrainNear(){
 // Estado do supino pra montar o rótulo do HUD ('BENCH PRESS' / 'MAX' / 'TOMORROW')
 export function gymTrainState(){
   if(!gymTrainNear()||gymGameActive())return null;
-  if(state.armScale>=ARM_MAX-1e-3)return{label:'MAX',prompt:'ARMS MAXED OUT',enabled:false};
-  if(!dailyLockCleared(state.gymDay,state.gymTime))return{label:'GYM',prompt:'ALREADY TRAINED - COME BACK TOMORROW',enabled:false};
-  return{label:'BENCH',prompt:'HIT THE BENCH PRESS',enabled:true};
+  if(state.armScale>=ARM_MAX-1e-3)return{label:'MÁXIMO',prompt:'BRAÇOS NO MÁXIMO',enabled:false};
+  if(!dailyLockCleared(state.gymDay,state.gymTime))return{label:'ACADEMIA',prompt:'JÁ TREINOU - VOLTE AMANHÃ',enabled:false};
+  return{label:'SUPINO',prompt:'FAZER SUPINO',enabled:true};
 }
 
 // Ação no supino (chamada pelo performInteract): abre o mini-game do supino.
@@ -82,10 +82,10 @@ export function gymTrainState(){
 // dia. Perder não faz nada. Devolve true se consumiu a interação.
 export function gymTrain(){
   if(!gymTrainNear())return false;
-  if(state.armScale>=ARM_MAX-1e-3){message('YOUR ARMS ARE MAXED OUT','var(--pink)');return true;}
-  if(!dailyLockCleared(state.gymDay,state.gymTime)){message('ALREADY TRAINED TODAY - COME BACK TOMORROW','var(--pink)');return true;}
+  if(state.armScale>=ARM_MAX-1e-3){message('SEUS BRAÇOS JÁ ESTÃO NO MÁXIMO','var(--pink)');return true;}
+  if(!dailyLockCleared(state.gymDay,state.gymTime)){message('JÁ TREINOU HOJE - VOLTE AMANHÃ','var(--pink)');return true;}
   // briefing com o top 5 antes de treinar; o supino abre quando o jogador "passa"
-  openMiniGameIntro(MiniGameId.GYM,'Bench Press',()=>openGymGame({onWin:onSetComplete}));
+  openMiniGameIntro(MiniGameId.GYM,'Supino',()=>openGymGame({onWin:onSetComplete}));
   return true;
 }
 
@@ -94,7 +94,7 @@ function onSetComplete(){
   state.gymDay=getDay();
   state.gymTime=Date.now(); // real timestamp so the lock also clears after ~30 min away (see dailyLockCleared)
   state.armTarget=Math.min(ARM_MAX,state.armScale+ARM_STEP);
-  message('PUMPED UP! YOUR ARMS GREW','var(--gold)');
+  message('BOMBADO! SEUS BRAÇOS CRESCERAM','var(--gold)');
   blip([330,440,587,660],.09,'square',.16);
 }
 

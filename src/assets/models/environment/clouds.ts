@@ -48,4 +48,4 @@ function buildPreview(): THREE.Group{
   sprs.forEach((sp,i)=>{sp.position.set((i-2)*60,rand(-10,10),rand(-30,30));g.add(sp);});
   return g;
 }
-export default {category:'Environment',label:'Clouds',build:buildPreview};
+export default {category:'Ambiente',label:'Nuvens',build:buildPreview};

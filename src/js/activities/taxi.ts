@@ -28,12 +28,12 @@ class Fare extends Npc{
   pay: number; tip: number;
   rideStart: number; deadline: number;
   constructor(ped: THREE.Object3D,x: number,z: number){
-    super(ped,{kind:'fare',hp:1,register:false,area:'Taxi passenger'});
+    super(ped,{kind:'fare',hp:1,register:false,area:'Passageiro de táxi'});
     this.x=x;this.z=z;this.dropX=0;this.dropZ=0;
     this.pay=0;this.tip=0;this.rideStart=0;this.deadline=0;
   }
   get ped(): THREE.Object3D{return this.g;}
-  override aliveState():string{return 'Riding the cab';}
+  override aliveState():string{return 'No táxi';}
 }
 // A just-dropped-off passenger walking away (carries its Npc so it leaves the
 // census once it has wandered off and is removed).
@@ -45,7 +45,7 @@ interface LeavingPed{g: THREE.Object3D; npc: Fare; t: number; bob: number; h: nu
 // through the glass), drive to the marker and they pay the fare. Chain rides forever;
 // getting out ends the shift.
 
-const TAXI_BUILD=' ◆ CAB HUSTLE';
+const TAXI_BUILD=' ◆ CORRE DE TÁXI';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',TAXI_BUILD);
 
 // the cab rank: parked on the kerb of the square in front of the Matriz
@@ -77,12 +77,12 @@ const taxiHud=document.getElementById('taxihud');
 
 // mini game (sessão): trava o mundo durante o expediente; o alvo é o passageiro
 // (fase pickup) ou o destino da corrida (fase ride)
-const game=new MiniGame({id:MiniGameId.TAXI,name:'Cab Hustle',
+const game=new MiniGame({id:MiniGameId.TAXI,name:'Corre de Táxi',
   blips:(): Blip[]=>{
     if(phase==='pickup'&&fare)
-      return[{x:fare.x,z:fare.z,icon:'person',color:'#5eff8a',label:'PASSENGER',current:true,reveal:false}];
+      return[{x:fare.x,z:fare.z,icon:'person',color:'#5eff8a',label:'PASSAGEIRO',current:true,reveal:false}];
     if(phase==='ride'&&fare)
-      return[{x:fare.dropX,z:fare.dropZ,icon:'flag',color:'#5eff8a',label:'DROP OFF',current:true,reveal:false}];
+      return[{x:fare.dropX,z:fare.dropZ,icon:'flag',color:'#5eff8a',label:'DESEMBARQUE',current:true,reveal:false}];
     return[];
   }});
 
@@ -145,15 +145,15 @@ function updateTaxiHud(){
   if(phase==='pickup'){
     const d=Math.hypot(taxi.g.position.x-fare.x,taxi.g.position.z-fare.z);
     taxiHud.innerHTML=`
-      <div class="taxi-label">CAB</div>
-      <div class="taxi-main"><span>PICK</span><b>${Math.ceil(d)}m</b></div>`;
+      <div class="taxi-label">TÁXI</div>
+      <div class="taxi-main"><span>BUSCAR</span><b>${Math.ceil(d)}m</b></div>`;
   }else{
     const d=Math.hypot(taxi.g.position.x-fare.dropX,taxi.g.position.z-fare.dropZ);
     const span=Math.max(.1,fare.deadline-fare.rideStart);
     const pct=Math.round(clamp((fare.deadline-state.time)/span,0,1)*100);
     taxiHud.innerHTML=`
-      <div class="taxi-label">CAB</div>
-      <div class="taxi-main"><span>DROP</span><b>${Math.ceil(d)}m</b></div>
+      <div class="taxi-label">TÁXI</div>
+      <div class="taxi-main"><span>DEIXAR</span><b>${Math.ceil(d)}m</b></div>
       <div class="taxi-meter"><i style="width:${pct}%"></i></div>`;
   }
 }
@@ -191,7 +191,7 @@ function spawnFare(announce=true){
   fare=new Fare(ped,x,z);
   setMarker(x,z);
   phase='pickup';
-  if(announce)message('PICK UP THE FARE','var(--gold)');
+  if(announce)message('BUSQUE O PASSAGEIRO','var(--gold)');
   updateTaxiHud();
 }
 
@@ -215,7 +215,7 @@ function boardFare(){
   fare!.deadline=state.time+clamp(REWARDS.taxi.deadlineBaseSec+dist/REWARDS.taxi.deadlinePerMeterDiv,REWARDS.taxi.deadlineMinSec,REWARDS.taxi.deadlineMaxSec);
   setMarker(dx,dz);
   phase='ride';
-  message(`TAKE THE FARE TO THE MARKER - TIP $${fare!.tip}`,'var(--gold)');
+  message(`LEVE O PASSAGEIRO ATÉ O MARCADOR - GORJETA R$${fare!.tip}`,'var(--gold)');
   blip([440,550],.07,'sine',.14);
   updateTaxiHud();
 }
@@ -234,7 +234,7 @@ function dropPassenger(){
   leaving.push({g:ped,npc:f,t:0,bob:0,h:ped.rotation.y}); // keep the Npc so it leaves the census on removal
 }
 
-function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
+function endShift(text='TURNO DE TÁXI ENCERRADO',col='var(--cyan)'){
   if(phase==='pickup'&&fare){clearMarker();fare.despawn();} // removes the waiting fare from the scene + census
   else if(phase==='ride'&&fare){clearMarker();dropPassenger();}
   // session over: counts toward the once-per-day lock
@@ -242,7 +242,7 @@ function endShift(text='CAB SHIFT ENDED',col='var(--cyan)'){
   fare=null;phase='off';
   game.end(); // libera a trava do mundo
   hideTaxiHud();
-  const summary=shiftFares>0?` - ${shiftFares} FARES / $${shiftEarnings}`:'';
+  const summary=shiftFares>0?` - ${shiftFares} CORRIDAS / R$${shiftEarnings}`:'';
   message(text+summary,col);
 }
 
@@ -250,7 +250,7 @@ function startShift(){
   if(!game.begin())return; // outra sessão de mini game rolando: não começa
   shiftFares=0;shiftEarnings=0;shiftStartedAt=state.time;
   spawnFare(false);
-  message('CAB SHIFT STARTED - PICK UP THE FARE','var(--gold)');
+  message('TURNO DE TÁXI COMEÇOU - BUSQUE O PASSAGEIRO','var(--gold)');
   blip([523,659],.08,'sine',.16);
 }
 
@@ -258,7 +258,7 @@ function failRide(){
   clearMarker();
   dropPassenger();
   fare=null;
-  message('FARE LOST - TOO SLOW','var(--pink)');
+  message('PASSAGEIRO PERDIDO - DEMOROU DEMAIS','var(--pink)');
   blip([196,146,110],.1,'sawtooth',.14);
   spawnFare(false);
 }
@@ -274,7 +274,7 @@ function completeRide(){
   shiftFares++;
   shiftEarnings+=paid;
   saveBest();
-  message(tip>0?`FARE PAID +$${paid} - SPEED TIP!`:`FARE PAID +$${paid}`,'var(--gold)');
+  message(tip>0?`CORRIDA PAGA +R$${paid} - GORJETA PELA RAPIDEZ!`:`CORRIDA PAGA +R$${paid}`,'var(--gold)');
   blip([523,659,784,1047],.09,'sine',.18);
   fare=null;
   spawnFare(false); // expediente contínuo: já tem outro passageiro esperando
@@ -299,7 +299,7 @@ export function updateTaxi(dt: number){
       wreckT=0;resetTaxiCar();
       scene.add(taxi.g);
       if(!idleCars.includes(taxi))idleCars.push(taxi);
-      message('A NEW CAB IS WAITING BY THE PLAZA','var(--cyan)');
+      message('UM NOVO TÁXI ESPERA PERTO DA PRAÇA','var(--cyan)');
     }
   }
 

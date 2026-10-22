@@ -134,4 +134,4 @@ export function buildTractor(): THREE.Group{
 export function makeTractor(): THREE.Group{const g=buildTractor();scene.add(g);return g;}
 
 // Model-viewer descriptor (auto-discovered).
-export default {category:'Vehicles',label:'Tractor',build:buildTractor};
+export default {category:'Veículos',label:'Trator',build:buildTractor};

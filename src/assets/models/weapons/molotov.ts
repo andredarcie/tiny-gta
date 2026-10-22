@@ -39,4 +39,4 @@ export function makeMolotovModel({pickup=false}:{pickup?:boolean}={}): THREE.Gro
   return g;
 }
 
-export default {category:'Weapons',label:'Molotov Cocktail',build:()=>makeMolotovModel()};
+export default {category:'Armas',label:'Coquetel molotov',build:()=>makeMolotovModel()};

@@ -39,7 +39,7 @@ function signTexture():THREE.CanvasTexture{
   x.font='900 50px monospace';
   x.shadowColor='#ff5a1e';x.shadowBlur=22;
   x.fillStyle='#ffe2cf';
-  for(let k=0;k<3;k++)x.fillText('IRON TEMPLE',256,64); // passadas extras = glow
+  for(let k=0;k<3;k++)x.fillText('ACADEMIA',256,64); // passadas extras = glow
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   return t;
 }

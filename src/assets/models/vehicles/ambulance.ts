@@ -77,7 +77,7 @@ function makeMarkTex(mirror: boolean,w: number,h: number): THREE.CanvasTexture{
   x.fillStyle='#d81f1f';x.textBaseline='middle';
   x.font=`900 ${Math.round(h*.46)}px 'Barlow Condensed', monospace`;
   x.textAlign=mirror?'center':'left';
-  x.fillText('AMBULANCE',mirror?w/2:h*.96,cy+2);
+  x.fillText('AMBULÂNCIA',mirror?w/2:h*.96,cy+2);
   const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
   t.anisotropy=4;
   return t;
@@ -147,4 +147,4 @@ export function makeAmbulance(): THREE.Group{const g=buildAmbulance();scene.add(
 // Padrão de modelo: build() puro; descriptor pro model-viewer (descoberta
 // automática). zoom<1 aproxima a câmera (a van é grande, então enquadra melhor);
 // yaw mostra um 3/4 traseiro com a cruz + o letreiro lateral logo de cara.
-export default {category:'Vehicles',label:'Ambulance',build:buildAmbulance,zoom:.62,yaw:-.5};
+export default {category:'Veículos',label:'Ambulância',build:buildAmbulance,zoom:.62,yaw:-.5};

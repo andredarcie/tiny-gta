@@ -132,4 +132,4 @@ function buildArmyTruck(): THREE.Group{
 
 export function makeArmyTruck(): THREE.Group{const g=buildArmyTruck();return g;}
 
-export default {category:'Vehicles',label:'Army truck',build:buildArmyTruck,zoom:.55,yaw:-.6};
+export default {category:'Veículos',label:'Caminhão do Exército',build:buildArmyTruck,zoom:.55,yaw:-.6};

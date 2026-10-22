@@ -53,7 +53,7 @@ function signTexture():THREE.CanvasTexture{
     x.font='900 52px monospace';
     x.shadowColor='#ff6fae';x.shadowBlur=22;
     x.fillStyle='#ffe6f3';
-    for(let k=0;k<3;k++)x.fillText('THREADS',w/2,h/2);
+    for(let k=0;k<3;k++)x.fillText('MODAS',w/2,h/2);
   });
 }
 function panelTexture(lines:string,{bg='#1a121f',fg='#ffe6f3',sub='#ff6fae'}={}):THREE.CanvasTexture{
@@ -66,8 +66,8 @@ function panelTexture(lines:string,{bg='#1a121f',fg='#ffe6f3',sub='#ff6fae'}={})
       x.font=`900 ${i===0?46:28}px monospace`;
       x.lineWidth=7;x.strokeStyle='#000';
       const y=h/2+i*54-(arr.length-1)*27;
-      x.strokeText(line,w/2,y);
-      x.fillStyle=i===0?fg:sub;x.fillText(line,w/2,y);
+      x.strokeText(line,w/2,y,w-40); // maxWidth: long lines squeeze to fit
+      x.fillStyle=i===0?fg:sub;x.fillText(line,w/2,y,w-40);
     });
   });
 }
@@ -167,7 +167,7 @@ export function addClothingStore(solids:{x0:number;x1:number;z0:number;z1:number
     const s=new THREE.Mesh(new THREE.BoxGeometry(.1,.1,19.6),accentM);
     s.position.set(x,3.2,-380);clothesInterior.add(s);
   }
-  const logo=makePanel('THREADS\nWEAR IT LOUD',5.2,1.55);
+  const logo=makePanel('MODAS\nVISTA-SE COM ESTILO',5.2,1.55);
   logo.position.set(-900,4.55,-390.86);clothesInterior.add(logo);
 
   // ceiling lights
@@ -203,7 +203,7 @@ export function addClothingStore(solids:{x0:number;x1:number;z0:number;z1:number
     const frame=new THREE.Mesh(new THREE.BoxGeometry(1.5,3.2,.12),woodM);
     frame.position.set(st.x+dx,1.7,st.z-1.78);frame.rotation.y=ry;clothesInterior.add(frame);
   }
-  const stSign=makePanel('CHANGING ROOM\nPRESS E TO DRESS UP',3.6,1.0);
+  const stSign=makePanel('PROVADOR\nAPERTE E PARA SE VESTIR',3.6,1.0);
   stSign.position.set(st.x,3.9,-390.84);clothesInterior.add(stSign);
   clothesFx.stationArrow=makeDoorArrow();
   clothesFx.stationArrow.position.set(st.x,1.9,st.z);clothesInterior.add(clothesFx.stationArrow);
@@ -215,7 +215,7 @@ export function addClothingStore(solids:{x0:number;x1:number;z0:number;z1:number
   // exit door (west wall) + bouncing arrow
   const exitDoor=new THREE.Mesh(new THREE.BoxGeometry(.16,3,2.4),darkM);
   exitDoor.position.set(-913.85,1.5,-377);clothesInterior.add(exitDoor);
-  const exitSign=makePanel('EXIT',1.15,.42);
+  const exitSign=makePanel('SAÍDA',1.15,.42);
   exitSign.position.set(-913.7,3.3,-377);exitSign.rotation.y=Math.PI/2;clothesInterior.add(exitSign);
   clothesFx.exitArrow=makeDoorArrow();
   clothesFx.exitArrow.position.set(-912.6,1.7,-377);clothesInterior.add(clothesFx.exitArrow);

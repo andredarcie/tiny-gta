@@ -83,8 +83,8 @@ class HouseInterior extends Interior{
   // a porta só "existe" depois de comprada
   override near():'enter'|'exit'|null{if(!saved.owned)return null;return super.near();}
   override onEnter():void{
-    message(state.health<100?'HOME SWEET HOME - GRAB A BITE FROM THE FRIDGE'
-                            :'HOME SWEET HOME','var(--gold)');
+    message(state.health<100?'LAR, DOCE LAR - PEGUE ALGO PRA COMER NA GELADEIRA'
+                            :'LAR, DOCE LAR','var(--gold)');
   }
   // roda SEMPRE (mesmo fora da sala): liga/desliga placas e seta da fachada
   override update(dt:number):void{
@@ -118,7 +118,7 @@ export const house=new HouseInterior({
   group:ranchInterior,bounds:INT_BOUNDS,center:INT_CENTER,
   door:RANCH_DOOR,spawnOut:RANCH_SPAWN_OUT,intDoor:INT_DOOR,intSpawn:INT_SPAWN,
   fx:ranchFx,exterior:{x:RANCH_CX,z:RANCH_CZ,r:16}, // gangue não chega perto da casa
-  mapIcon:{id:'house',label:'SAFE HOUSE',icon:'house',color:'#9dff2e'},
+  mapIcon:{id:'house',label:'ESCONDERIJO',icon:'house',color:'#9dff2e'},
   spawnOutHeading:RANCH_SITE.head(Math.PI), // sai pela porta da frente olhando pro alpendre
 });
 
@@ -132,16 +132,16 @@ function buyNear():boolean{
 export function houseBuyState(){
   if(!buyNear())return null;
   return state.money<PRICE
-    ?{label:'BUY',prompt:`NEED $${PRICE} TO BUY THIS HOUSE`,enabled:false}
-    :{label:'BUY',prompt:`BUY HOUSE $${PRICE}`,enabled:true};
+    ?{label:'COMPRAR',prompt:`PRECISA DE R$${PRICE} PARA COMPRAR ESTA CASA`,enabled:false}
+    :{label:'COMPRAR',prompt:`COMPRAR A CASA R$${PRICE}`,enabled:true};
 }
 // ação de compra (chamada pelo performInteract a pé). true = consumiu a interação.
 export function houseBuy():boolean{
   if(!buyNear())return false;
-  if(state.money<PRICE){message(`NOT ENOUGH MONEY - NEED $${PRICE}`,'var(--pink)');return true;}
+  if(state.money<PRICE){message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${PRICE}`,'var(--pink)');return true;}
   economy.spend(PRICE,'property');
   saved.owned=true;persist();
-  message('PROPERTY PURCHASED! THE HOUSE IS YOURS','var(--gold)');
+  message('IMÓVEL COMPRADO! A CASA É SUA','var(--gold)');
   blip([392,523,659,784],.1,'square',.18);
   return true;
 }
@@ -155,14 +155,14 @@ function foodNear():boolean{
 export function houseEatState(){
   if(!foodNear())return null;
   return state.health>=100
-    ?{label:'EAT',prompt:'ALREADY FULL HEALTH',enabled:false}
-    :{label:'EAT',prompt:'EAT FROM THE FRIDGE',enabled:true};
+    ?{label:'COMER',prompt:'SAÚDE JÁ ESTÁ CHEIA',enabled:false}
+    :{label:'COMER',prompt:'COMER ALGO DA GELADEIRA',enabled:true};
 }
 export function houseEat():boolean{
   if(!foodNear())return false;
-  if(state.health>=100){message('YOU ARE ALREADY FULL','var(--cyan)');return true;}
+  if(state.health>=100){message('VOCÊ JÁ ESTÁ SATISFEITO','var(--cyan)');return true;}
   state.health=100;
-  message('NICE MEAL - FULLY HEALED','var(--cyan)');
+  message('QUE REFEIÇÃO - TOTALMENTE CURADO','var(--cyan)');
   blip([523,659,784,1047],.09,'sine',.18);
   return true;
 }
@@ -175,7 +175,7 @@ function spawnGarageCar():void{
   if(garageVehicle)return;
   const type=d.type==='bike'?'bike':'car';
   const color=Number.isFinite(d.color)?d.color:(type==='bike'?0xd11f3a:0xff2e88);
-  const name=d.name||(type==='bike'?'GARAGE BIKE':'GARAGE CAR');
+  const name=d.name||(type==='bike'?'MOTO DA GARAGEM':'CARRO DA GARAGEM');
   const g=type==='bike'?makeMotorcycle(color):makeCar(color,false);
   if(type==='car')applyCarMods(g,d); // re-install the saved spoiler/rims/neon/hood/engine
   const heading=GARAGE_HEADING; // nariz pra fora: pronto pra sair da garagem
@@ -205,7 +205,7 @@ function parkNear():boolean{
 // rótulo do HUD quando o carro está parado dentro da garagem
 export function houseGarageState(){
   if(!parkNear())return null;
-  return{label:'PARK',prompt:'STORE CAR IN GARAGE',enabled:true};
+  return{label:'GUARDAR',prompt:'GUARDAR O CARRO NA GARAGEM',enabled:true};
 }
 // guarda o carro atual: salva a identidade e sai a pé (o carro vira idleCar aqui).
 export function houseGaragePark():boolean{
@@ -215,10 +215,10 @@ export function houseGaragePark():boolean{
   replaceGarageVehicle(c);
   const type:'car'|'bike'=c.bike?'bike':'car';
   saved.car={type,color:c.g.userData.color??(type==='bike'?0xd11f3a:0xff2e88),
-    name:c.name||(type==='bike'?'GARAGE BIKE':'GARAGE CAR'),
+    name:c.name||(type==='bike'?'MOTO DA GARAGEM':'CARRO DA GARAGEM'),
     ...(type==='car'?readCarMods(c.g):{})}; // keep its installed customs
   persist();
-  message('CAR SAVED TO YOUR GARAGE','var(--gold)');
+  message('CARRO GUARDADO NA SUA GARAGEM','var(--gold)');
   blip([330,440,587],.08,'triangle',.14);
   garageVehicle=c as unknown as GarageVehicle;
   refs.exitCar?.();
@@ -244,7 +244,7 @@ function sanitizeCar(c:any):SavedCar|null{
   if(!c||typeof c!=='object')return null;
   const type=c.type==='bike'?'bike':'car';
   const color=Number.isFinite(c.color)?c.color:(type==='bike'?0xd11f3a:0xff2e88);
-  const name=(typeof c.name==='string'&&c.name)?c.name.slice(0,20):(type==='bike'?'GARAGE BIKE':'GARAGE CAR');
+  const name=(typeof c.name==='string'&&c.name)?c.name.slice(0,20):(type==='bike'?'MOTO DA GARAGEM':'CARRO DA GARAGEM');
   const out:SavedCar={type,color,name};
   if(type==='car'){ // carry the customs through, validated so junk can't install a part
     if(Number.isFinite(c.rims))out.rims=c.rims;

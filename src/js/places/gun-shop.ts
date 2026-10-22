@@ -45,7 +45,7 @@ class GunShopInterior extends Interior{
     Object.assign(this.center,SHOP_CENTER);
     gunShopInterior.visible=true;
     gunRangeInterior.visible=false;
-    message('AMMO DEPOT - BUY WEAPONS OR USE THE RANGE ROOM','var(--gold)');
+    message('LOJA DE ARMAS - COMPRE ARMAS OU USE O ESTANDE DE TIRO','var(--gold)');
     blip([330,440,587],.08,'square',.12);
   }
   override onExit():void{
@@ -63,7 +63,7 @@ class GunShopInterior extends Interior{
     }
     if(isTrainingWeaponActive()&&!rangeActive){
       clearTrainingWeapon();
-      message('RANGE WEAPON RETURNED','var(--gold)');
+      message('ARMA DO ESTANDE DEVOLVIDA','var(--gold)');
     }
     const activeTrain=getTrainingWeaponId();
     for(const p of gunShopFx.rangePickups||[]){
@@ -102,7 +102,7 @@ class GunShopInterior extends Interior{
     // afastou da arma (ou foi pra outra) com uma confirmação pendente: cancela
     if(pending&&!rangeActive){
       const it=nearItem();
-      if(!it||it.id!==pending){pending=null;message('PURCHASE CANCELLED','var(--pink)');}
+      if(!it||it.id!==pending){pending=null;message('COMPRA CANCELADA','var(--pink)');}
     }
   }
 }
@@ -115,11 +115,11 @@ export const gunShop=new GunShopInterior({
   fx:gunShopFx,
   exterior:{...GUNSHOP_SITE.P(-110,66),r:24}, // fachada: gangue não chega perto
   spawnOutHeading:GUNSHOP_SITE.head(-Math.PI/2), // stepping out faces the street
-  mapIcon:{id:'gun-shop',label:'AMMO DEPOT',icon:'gun',color:'#f5c518'},
+  mapIcon:{id:'gun-shop',label:'LOJA DE ARMAS',icon:'gun',color:'#f5c518'},
 });
 
 // Give the gun-shop clerk a name (women get the female look).
-if(gunShopFx.keeper)nameInteriorNpc(gunShopFx.keeper.g,'clerk','Ammo Depot');
+if(gunShopFx.keeper)nameInteriorNpc(gunShopFx.keeper.g,'clerk','Loja de Armas');
 
 // arma do balcão mais perto do jogador (só dentro da loja)
 function nearItem():any{
@@ -168,7 +168,7 @@ function enterRangeRoom():boolean{
   gunShopInterior.visible=false;
   gunRangeInterior.visible=true;
   gunShop.teleport(RANGE_SPAWN.x,RANGE_SPAWN.z,Math.PI/2);
-  message('SHOOTING RANGE - PICK ONE TRAINING WEAPON','var(--gold)');
+  message('ESTANDE DE TIRO - ESCOLHA UMA ARMA DE TREINO','var(--gold)');
   blip([330,440,587],.07,'square',.13);
   return true;
 }
@@ -181,7 +181,7 @@ function exitRangeRoom():boolean{
   gunRangeInterior.visible=false;
   gunShopInterior.visible=true;
   gunShop.teleport(RANGE_RETURN.x,RANGE_RETURN.z,-Math.PI/2);
-  message(returned?'RANGE WEAPON RETURNED':'RETURNED TO AMMO DEPOT','var(--gold)');
+  message(returned?'ARMA DO ESTANDE DEVOLVIDA':'DE VOLTA À LOJA DE ARMAS','var(--gold)');
   blip([300,240],.05,'square',.1);
   return true;
 }
@@ -196,33 +196,33 @@ export const gunShopTargets=()=>inGunShopRange()?GUN_RANGE_TARGETS:[];
 // Null quando não há arma por perto.
 export function gunShopState(){
   if(nearRangeExit())
-    return{label:'EXIT',prompt:'RETURN TO AMMO DEPOT',enabled:true};
+    return{label:'SAIR',prompt:'VOLTAR À LOJA DE ARMAS',enabled:true};
   if(nearRangeEntry())
-    return{label:'RANGE',prompt:'ENTER SHOOTING RANGE',enabled:true};
+    return{label:'ESTANDE',prompt:'ENTRAR NO ESTANDE DE TIRO',enabled:true};
   const tr=nearTrainingWeapon();
   if(tr){
     const active=getTrainingWeaponId();
-    if(active===tr.id)return{label:'RANGE',prompt:`USING ${tr.name} - LEAVE RANGE TO RETURN`,enabled:false};
-    return{label:active?'SWAP':'PICK',prompt:`${active?'SWAP TO':'PICK UP'} ${tr.name}`,enabled:true};
+    if(active===tr.id)return{label:'ESTANDE',prompt:`USANDO ${tr.name} - SAIA DO ESTANDE PARA DEVOLVER`,enabled:false};
+    return{label:active?'TROCAR':'PEGAR',prompt:`${active?'TROCAR POR':'PEGAR'} ${tr.name}`,enabled:true};
   }
   const it=nearItem();
   if(!it)return null;
   // já possui: no MESMO balcão a oferta vira RECARGA de munição (não recompra)
   if(ownsWeapon(it.id)){
     const info=weaponAmmoInfo(it.id);
-    if(!info||info.infinite)return{label:'OWNED',prompt:`${it.name} - ALREADY OWNED`,enabled:false};
-    if(info.full)return{label:'FULL',prompt:`${it.name} - AMMO FULL`,enabled:false};
+    if(!info||info.infinite)return{label:'JÁ TEM',prompt:`${it.name} - VOCÊ JÁ TEM`,enabled:false};
+    if(info.full)return{label:'CHEIA',prompt:`${it.name} - MUNIÇÃO CHEIA`,enabled:false};
     const ap=ammoPrice(it.price);
     // preço sempre visível, mesmo sem grana (prompt fica ativo só pra informar)
-    if(state.money<ap)return{label:'AMMO',prompt:`NEED $${ap} FOR ${it.name} AMMO`,enabled:true};
-    if(pending===it.id)return{label:'CONFIRM',prompt:`CONFIRM: ${it.name} AMMO $${ap}`,enabled:true};
-    return{label:'AMMO',prompt:`BUY ${it.name} AMMO $${ap}`,enabled:true};
+    if(state.money<ap)return{label:'MUNIÇÃO',prompt:`PRECISA DE R$${ap} PARA MUNIÇÃO DE ${it.name}`,enabled:true};
+    if(pending===it.id)return{label:'CONFIRMAR',prompt:`CONFIRMAR: MUNIÇÃO DE ${it.name} R$${ap}`,enabled:true};
+    return{label:'MUNIÇÃO',prompt:`COMPRAR MUNIÇÃO DE ${it.name} R$${ap}`,enabled:true};
   }
   // não possui: compra a arma — preço SEMPRE visível, mesmo sem grana pra comprar
-  if(state.money<it.price)return{label:'BUY',prompt:`NEED $${it.price} FOR ${it.name}`,enabled:true};
+  if(state.money<it.price)return{label:'COMPRAR',prompt:`PRECISA DE R$${it.price} PARA ${it.name}`,enabled:true};
   if(pending===it.id)
-    return{label:'CONFIRM',prompt:`CONFIRM: BUY ${it.name} $${it.price}`,enabled:true};
-  return{label:'BUY',prompt:`BUY ${it.name} $${it.price}`,enabled:true};
+    return{label:'CONFIRMAR',prompt:`CONFIRMAR: COMPRAR ${it.name} R$${it.price}`,enabled:true};
+  return{label:'COMPRAR',prompt:`COMPRAR ${it.name} R$${it.price}`,enabled:true};
 }
 
 // Interação com a arma (chamada pelo performInteract). 1º E pede confirmação;
@@ -235,7 +235,7 @@ export function gunShopBuy():boolean{
   if(tr){
     beginTrainingWeapon(tr.id);
     pending=null;
-    message(`TRAINING WITH ${tr.name} - LEAVE RANGE TO RETURN IT`,'var(--gold)');
+    message(`TREINANDO COM ${tr.name} - SAIA DO ESTANDE PARA DEVOLVER`,'var(--gold)');
     return true;
   }
   const it=nearItem();
@@ -243,13 +243,13 @@ export function gunShopBuy():boolean{
   // já possui: compra MUNIÇÃO (recarga) com a mesma confirmação em dois toques
   if(ownsWeapon(it.id)){
     const info=weaponAmmoInfo(it.id);
-    if(!info||info.infinite){message(`YOU ALREADY OWN THE ${it.name}`,'var(--pink)');pending=null;return true;}
-    if(info.full){message(`${it.name} AMMO IS ALREADY FULL`,'var(--pink)');pending=null;return true;}
+    if(!info||info.infinite){message(`VOCÊ JÁ TEM ${it.name}`,'var(--pink)');pending=null;return true;}
+    if(info.full){message(`A MUNIÇÃO DE ${it.name} JÁ ESTÁ CHEIA`,'var(--pink)');pending=null;return true;}
     const ap=ammoPrice(it.price);
-    if(state.money<ap){message(`NOT ENOUGH MONEY - NEED $${ap}`,'var(--pink)');pending=null;return true;}
+    if(state.money<ap){message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${ap}`,'var(--pink)');pending=null;return true;}
     if(pending!==it.id){ // 1º toque: pede confirmação
       pending=it.id;
-      message(`BUY ${it.name} AMMO FOR $${ap}? PRESS E TO CONFIRM, WALK AWAY TO CANCEL`,'var(--gold)');
+      message(`COMPRAR MUNIÇÃO DE ${it.name} POR R$${ap}? APERTE E PARA CONFIRMAR, AFASTE-SE PARA CANCELAR`,'var(--gold)');
       blip([440,560],.06,'square',.12);
       return true;
     }
@@ -257,15 +257,15 @@ export function gunShopBuy():boolean{
     pending=null;
     economy.spend(ap,'ammo');
     refillAmmo(it.id);
-    message(`${it.name} AMMO REFILLED`,'var(--gold)');
+    message(`MUNIÇÃO DE ${it.name} REABASTECIDA`,'var(--gold)');
     blip([330,440,587,660],.09,'square',.16);
     return true;
   }
   // não possui: compra a arma (confirmação em dois toques)
-  if(state.money<it.price){message(`NOT ENOUGH MONEY - NEED $${it.price}`,'var(--pink)');pending=null;return true;}
+  if(state.money<it.price){message(`DINHEIRO INSUFICIENTE - PRECISA DE R$${it.price}`,'var(--pink)');pending=null;return true;}
   if(pending!==it.id){ // 1º toque: pede confirmação
     pending=it.id;
-    message(`BUY ${it.name} FOR $${it.price}? PRESS E TO CONFIRM, WALK AWAY TO CANCEL`,'var(--gold)');
+    message(`COMPRAR ${it.name} POR R$${it.price}? APERTE E PARA CONFIRMAR, AFASTE-SE PARA CANCELAR`,'var(--gold)');
     blip([440,560],.06,'square',.12);
     return true;
   }
@@ -273,7 +273,7 @@ export function gunShopBuy():boolean{
   pending=null;
   economy.spend(it.price,'weapon');
   buyWeapon(it.id);
-  message(`BOUGHT ${it.name}`,'var(--gold)');
+  message(`COMPROU ${it.name}`,'var(--gold)');
   blip([330,440,587,660],.09,'square',.16);
   return true;
 }

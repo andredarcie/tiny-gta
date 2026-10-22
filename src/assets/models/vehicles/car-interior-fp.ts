@@ -232,4 +232,4 @@ export function buildCarInteriorFp(): THREE.Group{
 }
 
 // Model-viewer descriptor (auto-discovered). The viewer shows the bare cockpit.
-export default {category:'Vehicles',label:'Car Interior (FP)',build:buildCarInteriorFp};
+export default {category:'Veículos',label:'Interior do carro (1ª pessoa)',build:buildCarInteriorFp};

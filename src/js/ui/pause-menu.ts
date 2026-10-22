@@ -26,10 +26,10 @@ const $=(id: string): HTMLElement | null=>document.getElementById(id);
 const escapeHtml=(s: unknown): string=>String(s).replace(/[&<>"']/g,
   c=>(({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'} as Record<string, string>)[c]));
 
-const fmtMoney=(n: unknown): string=>'$'+Math.abs(Math.floor(Number(n)||0)).toLocaleString('en-US');
+const fmtMoney=(n: unknown): string=>'R$'+Math.abs(Math.floor(Number(n)||0)).toLocaleString('pt-BR');
 const fmtSigned=(n: unknown): string=>(Number(n)<0?'-':'+')+fmtMoney(n);
-const fmtTime=(t: unknown): string=>{try{return new Date(Number(t)).toLocaleString();}catch(e){return '';}};
-const fmtDate=(d: string): string=>{try{return new Date(d+'T00:00:00').toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}catch(e){return String(d);}};
+const fmtTime=(t: unknown): string=>{try{return new Date(Number(t)).toLocaleString('pt-BR');}catch(e){return '';}};
+const fmtDate=(d: string): string=>{try{return new Date(d+'T00:00:00').toLocaleDateString('pt-BR',{year:'numeric',month:'short',day:'numeric'});}catch(e){return String(d);}};
 
 // ---- updates / changelog (driven by data/updates.json, newest-first) ----
 // The newest entry's id is what we remember as "seen": when it differs from the
@@ -48,18 +48,18 @@ function markUpdatesSeen(): void {
 // Friendly names for the ledger `why` source strings (see economy.js callsites).
 // Unknown sources fall back to a humanized version of the raw string.
 const WHY_LABELS: Record<string, string>={
-  start:'Starting cash', earn:'Income', spend:'Purchase', penalty:'Penalty', fold:'Adjustment',
-  taxi:'Taxi fare', race:'Street race', 'boat-race':'Boat race', offroad:'Off-road race',
-  dance:'Dance tips', rampage:'Rampage', 'rocket-rampage':'Rocket rampage', overkill:'Overkill',
-  paramedic:'Ambulance shift', firefighter:'Firefighter', vigilante:'Street justice',
-  'car-crusher':'Car crusher', 'import-export':'Car export', 'weed-farm':'Weed sale', 'weed-deal':'Weed delivery',
-  delivery:'Delivery', 'cash-drop':'Cash drop', loot:'Loot', 'rc-toyz':'RC Toyz',
-  'hidden-package':'Hidden package', 'hidden-package-all':'All packages bonus',
-  'hidden-package-bonus':'Package bonus', 'stunt-jump':'Stunt jump',
-  'stunt-jump-repeat':'Stunt jump', story:'Mission reward', rick:'Side mission',
-  property:'Bought house', 'mod-shop':'Car mods', 'bomb-shop':'Car bomb',
-  weapon:'Weapon', ammo:'Ammo', busted:'Arrested', wasted:'Hospital bill',
-  seeds:'Seeds',
+  start:'Dinheiro inicial', earn:'Receita', spend:'Compra', penalty:'Multa', fold:'Ajuste',
+  taxi:'Corrida de táxi', race:'Racha de rua', 'boat-race':'Corrida de lanchas', offroad:'Corrida off-road',
+  dance:'Gorjeta da dança', rampage:'Fúria', 'rocket-rampage':'Fúria de bazuca', overkill:'Overkill',
+  paramedic:'Plantão de ambulância', firefighter:'Bombeiro', vigilante:'Justiça nas ruas',
+  'car-crusher':'Ferro-velho', 'import-export':'Exportação de carro', 'weed-farm':'Venda de erva', 'weed-deal':'Entrega de erva',
+  delivery:'Entrega', 'cash-drop':'Dinheiro achado', loot:'Saque', 'rc-toyz':'Carrinho RC',
+  'hidden-package':'Pacote escondido', 'hidden-package-all':'Bônus de todos os pacotes',
+  'hidden-package-bonus':'Bônus de pacote', 'stunt-jump':'Salto acrobático',
+  'stunt-jump-repeat':'Salto acrobático', story:'Recompensa de missão', rick:'Missão secundária',
+  property:'Compra da casa', 'mod-shop':'Tunagem', 'bomb-shop':'Carro-bomba',
+  weapon:'Arma', ammo:'Munição', busted:'Preso', wasted:'Conta do hospital',
+  seeds:'Sementes',
 };
 const whyLabel=(w: string): string=>WHY_LABELS[w]||(w?String(w).replace(/[-_]/g,' '):'—');
 
@@ -90,26 +90,26 @@ function openView(v: string): void {
 }
 
 // ---- shared chrome ---------------------------------------------------------
-const backBtn=(): string=>`<button class="pause-btn pause-back" data-act="back">&#8592; BACK</button>`;
+const backBtn=(): string=>`<button class="pause-btn pause-back" data-act="back">&#8592; VOLTAR</button>`;
 function pager(page: number,pages: number,note: string): string {
   if(pages<=1)return note?`<div class="pause-bar"><span class="pause-note">${note}</span></div>`:'';
   return `<div class="pause-bar">`+
-    `<button class="pause-mini" data-act="page" data-dir="-1"${page===0?' disabled':''}>&#8592; PREV</button>`+
-    `<span class="pause-note">Page ${page+1}/${pages}${note?' &middot; '+note:''}</span>`+
-    `<button class="pause-mini" data-act="page" data-dir="1"${page>=pages-1?' disabled':''}>NEXT &#8594;</button>`+
+    `<button class="pause-mini" data-act="page" data-dir="-1"${page===0?' disabled':''}>&#8592; ANTERIOR</button>`+
+    `<span class="pause-note">Página ${page+1}/${pages}${note?' &middot; '+note:''}</span>`+
+    `<button class="pause-mini" data-act="page" data-dir="1"${page>=pages-1?' disabled':''}>PRÓXIMA &#8594;</button>`+
     `</div>`;
 }
 
 // ---- main menu -------------------------------------------------------------
 function goMain(): void {
   view='main';
-  setTitle('PAUSED');
+  setTitle('PAUSADO');
   bodyEl().innerHTML=
     `<div class="pause-menu">`+
-      `<button class="pause-btn pause-btn-go" data-act="resume">RESUME</button>`+
-      `<button class="pause-btn" data-act="info">INFO${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
-      `<button class="pause-btn" data-act="settings">SETTINGS</button>`+
-      `<button class="pause-btn pause-btn-danger" data-act="quit">QUIT TO TITLE</button>`+
+      `<button class="pause-btn pause-btn-go" data-act="resume">CONTINUAR</button>`+
+      `<button class="pause-btn" data-act="info">INFO${hasUnseenUpdates()?'<span class="pause-badge">NOVO</span>':''}</button>`+
+      `<button class="pause-btn" data-act="settings">CONFIGURAÇÕES</button>`+
+      `<button class="pause-btn pause-btn-danger" data-act="quit">SAIR PARA O MENU</button>`+
     `</div>`;
 }
 
@@ -119,11 +119,11 @@ function goInfo(): void {
   setTitle('INFO');
   bodyEl().innerHTML=
     `<div class="pause-menu">`+
-      `<button class="pause-btn" data-act="transactions">TRANSACTIONS</button>`+
-      `<button class="pause-btn" data-act="updates">UPDATES${hasUnseenUpdates()?'<span class="pause-badge">NEW</span>':''}</button>`+
-      `<button class="pause-btn" data-act="map">MAP</button>`+
-      `<button class="pause-btn" data-act="minigames">MINI GAMES</button>`+
-      `<button class="pause-btn" data-act="npcs">NPCS</button>`+
+      `<button class="pause-btn" data-act="transactions">EXTRATO</button>`+
+      `<button class="pause-btn" data-act="updates">NOVIDADES${hasUnseenUpdates()?'<span class="pause-badge">NOVO</span>':''}</button>`+
+      `<button class="pause-btn" data-act="map">MAPA</button>`+
+      `<button class="pause-btn" data-act="minigames">MINIGAMES</button>`+
+      `<button class="pause-btn" data-act="npcs">MORADORES</button>`+
     `</div>`+
     backBtn();
 }
@@ -135,12 +135,12 @@ function goInfo(): void {
 // The world is frozen while the pause menu is open, so the snapshot stays accurate.
 const NPC_PER_PAGE=12;
 let npcList: NpcRosterEntry[]=[],npcPage=0;
-let npcFilterArea='All',npcFilterState='All',npcFiltersOpen=false;
+let npcFilterArea='Todos',npcFilterState='Todos',npcFiltersOpen=false;
 function openNpcs(): void {
   view='npcs';
-  setTitle('NPCS');
+  setTitle('MORADORES');
   npcList=getNpcRoster();
-  npcFilterArea='All';npcFilterState='All';npcFiltersOpen=false; // start collapsed: the chip rows are tall
+  npcFilterArea='Todos';npcFilterState='Todos';npcFiltersOpen=false; // start collapsed: the chip rows are tall
   npcPage=0;
   renderNpcsPage();
 }
@@ -148,7 +148,7 @@ function openNpcs(): void {
 function npcFilterValues(key:'area'|'state'): string[] {
   const set=new Set<string>();
   for(const n of npcList)set.add(n[key]);
-  return ['All',...Array.from(set).sort((a,b)=>a.localeCompare(b))];
+  return ['Todos',...Array.from(set).sort((a,b)=>a.localeCompare(b))];
 }
 // A row of filter chips for one dimension; the active value is highlighted.
 function npcFilterRow(label:string,dim:'area'|'state',active:string): string {
@@ -164,21 +164,21 @@ function npcFilterRow(label:string,dim:'area'|'state',active:string): string {
 // the player still sees that the list is being narrowed.
 function npcFilterSection(): string {
   const active: string[]=[];
-  if(npcFilterArea!=='All')active.push(npcFilterArea);
-  if(npcFilterState!=='All')active.push(npcFilterState);
+  if(npcFilterArea!=='Todos')active.push(npcFilterArea);
+  if(npcFilterState!=='Todos')active.push(npcFilterState);
   const toggle=`<button class="pause-mini npc-filter-toggle${active.length?' on':''}" `+
     `data-act="npcfilttoggle" aria-expanded="${npcFiltersOpen}">`+
-    `${npcFiltersOpen?'HIDE FILTERS':'SHOW FILTERS'}</button>`;
+    `${npcFiltersOpen?'OCULTAR FILTROS':'MOSTRAR FILTROS'}</button>`;
   const summary=(!npcFiltersOpen&&active.length)
     ? `<span class="npc-filter-active">${active.map(escapeHtml).join(' · ')}</span>` : '';
   const rows=npcFiltersOpen
-    ? npcFilterRow('AREA','area',npcFilterArea)+npcFilterRow('STATUS','state',npcFilterState) : '';
+    ? npcFilterRow('ÁREA','area',npcFilterArea)+npcFilterRow('SITUAÇÃO','state',npcFilterState) : '';
   return `<div class="pause-filter-bar">${toggle}${summary}</div>${rows}`;
 }
 function renderNpcsPage(): void {
   const filtered=npcList.filter(n=>
-    (npcFilterArea==='All'||n.area===npcFilterArea)&&
-    (npcFilterState==='All'||n.state===npcFilterState));
+    (npcFilterArea==='Todos'||n.area===npcFilterArea)&&
+    (npcFilterState==='Todos'||n.state===npcFilterState));
   const pages=Math.max(1,Math.ceil(filtered.length/NPC_PER_PAGE));
   npcPage=Math.min(Math.max(0,npcPage),pages-1);
   const start=npcPage*NPC_PER_PAGE;
@@ -193,11 +193,11 @@ function renderNpcsPage(): void {
   ).join('');
   const table=filtered.length
     ? `<table class="pause-table pause-npc-table"><thead><tr>`+
-        `<th>NAME</th><th>SEX</th><th>TYPE</th><th>AREA</th><th>STATUS</th>`+
+        `<th>NOME</th><th>SEXO</th><th>TIPO</th><th>ÁREA</th><th>SITUAÇÃO</th>`+
       `</tr></thead><tbody>${rows}</tbody></table>`
-    : `<div class="pause-empty">No NPCs match these filters.</div>`;
+    : `<div class="pause-empty">Nenhum morador com esses filtros.</div>`;
   const filters=npcFilterSection();
-  const note=`${filtered.length} of ${npcList.length} NPC${npcList.length===1?'':'s'}`;
+  const note=`${filtered.length} de ${npcList.length} morador${npcList.length===1?'':'es'}`;
   bodyEl().innerHTML=
     filters+
     `<div class="pause-scroll">${table}</div>`+
@@ -211,7 +211,7 @@ let txList: { amt: number; why: string; t: number }[]=[],txPage=0;
 
 function openTransactions(): void {
   view='transactions';
-  setTitle('TRANSACTIONS');
+  setTitle('EXTRATO');
   txList=economy.history();
   txPage=0;
   renderTransactionsPage();
@@ -227,13 +227,13 @@ function renderTransactionsPage(): void {
     `<td class="num ${tx.amt<0?'pause-neg':'pause-pos'}">${fmtSigned(tx.amt)}</td></tr>`
   ).join('');
   const table=txList.length
-    ? `<table class="pause-table"><thead><tr><th>WHEN</th><th>SOURCE</th><th class="num">AMOUNT</th></tr></thead><tbody>${rows}</tbody></table>`
-    : `<div class="pause-empty">No transactions yet.</div>`;
+    ? `<table class="pause-table"><thead><tr><th>QUANDO</th><th>ORIGEM</th><th class="num">VALOR</th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="pause-empty">Nenhuma movimentação ainda.</div>`;
   bodyEl().innerHTML=
     `<div class="pause-wallet">`+
-      `<div class="pw-cell"><span>BALANCE</span><b>${fmtMoney(s.balance)}</b></div>`+
-      `<div class="pw-cell"><span>EARNED</span><b class="pause-pos">${fmtMoney(s.earned)}</b></div>`+
-      `<div class="pw-cell"><span>SPENT</span><b class="pause-neg">${fmtMoney(s.spent)}</b></div>`+
+      `<div class="pw-cell"><span>SALDO</span><b>${fmtMoney(s.balance)}</b></div>`+
+      `<div class="pw-cell"><span>GANHO</span><b class="pause-pos">${fmtMoney(s.earned)}</b></div>`+
+      `<div class="pw-cell"><span>GASTO</span><b class="pause-neg">${fmtMoney(s.spent)}</b></div>`+
     `</div>`+
     `<div class="pause-scroll">${table}</div>`+
     pager(txPage,pages,'recent activity')+
@@ -243,7 +243,7 @@ function renderTransactionsPage(): void {
 // ---- updates (player-facing changelog, newest-first) -----------------------
 function openUpdates(): void {
   view='updates';
-  setTitle('UPDATES');
+  setTitle('NOVIDADES');
   markUpdatesSeen(); // viewing the panel clears the NEW badge
   renderUpdates();
 }
@@ -258,7 +258,7 @@ function renderUpdates(): void {
     `</div>`
   ).join('');
   bodyEl().innerHTML=
-    `<div class="pause-scroll pause-updates">${items||'<div class="pause-empty">No updates yet.</div>'}</div>`+
+    `<div class="pause-scroll pause-updates">${items||'<div class="pause-empty">Nenhuma novidade ainda.</div>'}</div>`+
     backBtn();
 }
 
@@ -269,25 +269,25 @@ interface MgTunable { field: string; value: unknown; description: string }
 const MG_DATA=MINIGAME_REWARDS as unknown as Record<string, MgTunable[]>;
 // Friendly name + one-line blurb per mini-game (the JSON keys are terse).
 const MG_META: Record<string, { name: string; blurb: string }>={
-  race:          {name:'Street Race',     blurb:'Place in the street circuit for the purse.'},
-  boatRace:      {name:'Boat Race',       blurb:'Race the buoys at sea — dodge the mines.'},
-  offroad:       {name:'Off-Road',        blurb:'Dirt-track circuit out on open terrain.'},
-  taxi:          {name:'Cab Hustle',      blurb:'Pick up fares; speed earns a bigger tip.'},
-  carCrusher:    {name:'Scrap Crusher',   blurb:'Crush a car for scrap (once per in-game day).'},
-  vigilante:     {name:'Street Justice',  blurb:'Ram & bust suspects; pay scales with patrol level.'},
-  paramedic:     {name:'Ambulance Rush',  blurb:'Rush patients to the hospital before time runs out.'},
-  firefighter:   {name:'Fire Brigade',    blurb:'Put out fires fast for a quick-extinguish bonus.'},
-  stuntJump:     {name:'Daredevil Jumps', blurb:'Clear ramps for speed cash + first-time bonuses.'},
-  hiddenPackages:{name:'Hidden Stashes',  blurb:'Find packages hidden across the map (one-time).'},
-  importExport:  {name:'Dock Exports',    blurb:'Deliver a wanted car to the docks (once per day).'},
-  rcToyz:        {name:'RC Smash',         blurb:'Wreck cars with the RC for combo multipliers.'},
-  weedFarm:      {name:'Green Acres',      blurb:'Grow, cure and deal weed to buyers across the map.'},
-  rampage:       {name:'Frenzy',           blurb:'Melee kill-spree against the clock.'},
-  rocketRampage: {name:'Rocket Frenzy',    blurb:'Blow up the goal cars with the rocket launcher.'},
-  overkill:      {name:'Overkill',         blurb:'Go loud city-wide — a streak multiplier on kill income.'},
-  dance:         {name:'Dance Fever',      blurb:'Hit the beats; the crowd tips by your grade.'},
-  bombShop:      {name:'Demo Garage',      blurb:'Arm a car bomb (a cost, not income).'},
-  drugBust:      {name:'Drug Bust',        blurb:'The crooked-cop shakedown if a weed deal goes wrong.'},
+  race:          {name:'Racha de Rua',     blurb:'Termine bem colocado no circuito de rua e leve o prêmio.'},
+  boatRace:      {name:'Corrida de Lanchas', blurb:'Desça o Rio do Peixe passando pelas boias — desvie das minas.'},
+  offroad:       {name:'Off-Road',        blurb:'Circuito de terra em campo aberto.'},
+  taxi:          {name:'Corre de Táxi',   blurb:'Pegue passageiros; quanto mais rápido, maior a gorjeta.'},
+  carCrusher:    {name:'Ferro-Velho',     blurb:'Prense um carro como sucata (uma vez por dia do jogo).'},
+  vigilante:     {name:'Justiça nas Ruas', blurb:'Bata nos suspeitos e prenda; o pagamento sobe com o nível da patrulha.'},
+  paramedic:     {name:'Plantão de Ambulância', blurb:'Leve os pacientes ao hospital antes que o tempo acabe.'},
+  firefighter:   {name:'Bombeiros',       blurb:'Apague os incêndios rápido para ganhar bônus.'},
+  stuntJump:     {name:'Saltos Radicais', blurb:'Salte as rampas: dinheiro pela velocidade + bônus na primeira vez.'},
+  hiddenPackages:{name:'Pacotes Escondidos', blurb:'Ache os pacotes escondidos pelo mapa (uma vez só).'},
+  importExport:  {name:'Exportação',      blurb:'Entregue o carro encomendado na exportação (uma vez por dia).'},
+  rcToyz:        {name:'Destruição RC',    blurb:'Detone carros com o carrinho RC e faça combos.'},
+  weedFarm:      {name:'Plantação',        blurb:'Plante, seque e venda erva para os compradores da cidade.'},
+  rampage:       {name:'Fúria',            blurb:'Matança no braço contra o relógio.'},
+  rocketRampage: {name:'Fúria de Bazuca',  blurb:'Exploda os carros da meta com a bazuca.'},
+  overkill:      {name:'Overkill',         blurb:'Barulho na cidade toda — multiplicador de sequência no que você ganha por abate.'},
+  dance:         {name:'Febre da Dança',   blurb:'Acerte as batidas; a galera dá gorjeta conforme sua nota.'},
+  bombShop:      {name:'Oficina de Bombas', blurb:'Instale uma bomba no carro (é um custo, não uma renda).'},
+  drugBust:      {name:'Batida Policial',  blurb:'O achaque do policial corrupto quando a venda de erva dá errado.'},
 };
 // Render any tunable value (number / array / map / array-of-maps) as compact text.
 function fmtMgVal(v: unknown): string {
@@ -298,7 +298,7 @@ function fmtMgVal(v: unknown): string {
 }
 function openMiniGames(): void {
   view='minigames';
-  setTitle('MINI GAMES');
+  setTitle('MINIGAMES');
   renderMiniGames();
 }
 function renderMiniGames(): void {
@@ -306,9 +306,9 @@ function renderMiniGames(): void {
     const meta=MG_META[key]||{name:key,blurb:''};
     const rows=MG_DATA[key].map(t=>
       `<div class="pause-mg-row">`+
-        `<div class="pause-mg-kv"><span class="pause-mg-field">${escapeHtml(t.field)}</span>`+
+        // the description is the label; the JSON field name is a code identifier, not shown
+        `<div class="pause-mg-kv"><span class="pause-mg-field">${escapeHtml(t.description)}</span>`+
         `<b class="pause-mg-val">${escapeHtml(fmtMgVal(t.value))}</b></div>`+
-        `<div class="pause-mg-desc">${escapeHtml(t.description)}</div>`+
       `</div>`
     ).join('');
     return `<div class="pause-mg-card">`+
@@ -324,19 +324,19 @@ function renderMiniGames(): void {
 
 // ---- settings (graphics + audio) -------------------------------------------
 const SCHEMA: { group: string; items: SettingItem[] }[]=[
-  {group:'GAMEPLAY',items:[
-    {key:'aimAssist',type:'toggle',label:'Aim assist'},
+  {group:'JOGABILIDADE',items:[
+    {key:'aimAssist',type:'toggle',label:'Mira assistida'},
   ]},
-  {group:'AUDIO',items:[
-    {key:'master',type:'range',label:'Master volume',min:0,max:100,step:1,suffix:'%'},
-    {key:'music', type:'range',label:'Music volume', min:0,max:100,step:1,suffix:'%'},
-    {key:'muted', type:'toggle',label:'Mute all'},
+  {group:'ÁUDIO',items:[
+    {key:'master',type:'range',label:'Volume geral',min:0,max:100,step:1,suffix:'%'},
+    {key:'music', type:'range',label:'Volume da música', min:0,max:100,step:1,suffix:'%'},
+    {key:'muted', type:'toggle',label:'Silenciar tudo'},
   ]},
-  {group:'GRAPHICS',items:[
-    {key:'shadows',   type:'toggle',label:'Shadows'},
-    {key:'bloom',     type:'toggle',label:'Bloom (glow)'},
-    {key:'brightness',type:'range', label:'Brightness',min:50,max:150,step:5,suffix:'%'},
-    {key:'fps',       type:'toggle',label:'Show FPS'},
+  {group:'GRÁFICOS',items:[
+    {key:'shadows',   type:'toggle',label:'Sombras'},
+    {key:'bloom',     type:'toggle',label:'Bloom (brilho)'},
+    {key:'brightness',type:'range', label:'Brilho',min:50,max:150,step:5,suffix:'%'},
+    {key:'fps',       type:'toggle',label:'Mostrar FPS'},
   ]},
 ];
 const findItem=(key: string): SettingItem | null=>{for(const g of SCHEMA)for(const it of g.items)if(it.key===key)return it;return null;};
@@ -356,7 +356,7 @@ function settingRow(it: SettingItem): string {
 }
 function openSettings(): void {
   view='settings';
-  setTitle('SETTINGS');
+  setTitle('CONFIGURAÇÕES');
   renderSettings();
 }
 function renderSettings(): void {
@@ -366,13 +366,13 @@ function renderSettings(): void {
   ).join('');
   // Fullscreen is an action (not a persisted setting), so it gets its own DISPLAY row.
   const display=
-    `<div class="pause-set-group"><div class="pause-set-title">DISPLAY</div>`+
-      `<div class="pause-row"><span>Fullscreen</span>`+
-      `<button class="pause-mini" data-act="fullscreen">TOGGLE</button></div>`+
+    `<div class="pause-set-group"><div class="pause-set-title">TELA</div>`+
+      `<div class="pause-row"><span>Tela cheia</span>`+
+      `<button class="pause-mini" data-act="fullscreen">ALTERNAR</button></div>`+
     `</div>`;
   bodyEl().innerHTML=
     `<div class="pause-scroll pause-settings">${display}${groups}</div>`+
-    `<div class="pause-bar"><button class="pause-mini" data-act="reset">RESET DEFAULTS</button></div>`+
+    `<div class="pause-bar"><button class="pause-mini" data-act="reset">RESTAURAR PADRÃO</button></div>`+
     backBtn();
 }
 
@@ -404,7 +404,7 @@ function onBodyClick(e: MouseEvent): void {
     case'npcs': openNpcs(); break;
     case'npcfilter':{                                 // narrow the roster by area / status
       const dim=el.dataset.dim;
-      const val=el.dataset.val||'All';
+      const val=el.dataset.val||'Todos';
       if(dim==='area')npcFilterArea=val;else if(dim==='state')npcFilterState=val;
       npcPage=0;renderNpcsPage();
       break;
@@ -418,7 +418,7 @@ function onBodyClick(e: MouseEvent): void {
     case'settings': openSettings(); break;
     case'fullscreen': refs.toggleFullscreen?.(); break;
     case'quit':
-      if(confirm('Quit to the title screen? Your progress is saved.')){saveNow();location.reload();}
+      if(confirm('Sair para o menu inicial? Seu progresso está salvo.')){saveNow();location.reload();}
       break;
     case'back': goBack(); break;
     case'page': changePage(parseInt(el.dataset.dir!,10)||0); break;

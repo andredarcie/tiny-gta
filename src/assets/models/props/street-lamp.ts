@@ -35,7 +35,7 @@ function build(): THREE.Group{
   return g;
 }
 
-export default {category:'Props',label:'Street lamp',build};
+export default {category:'Objetos',label:'Poste de luz',build};
 
 export function addStreetLamp(px: number,pz: number): {halo:THREE.Sprite}{
   const p=new THREE.Mesh(poleG,poleM);p.position.set(px,2.7,pz);p.castShadow=false;bakeProp(p);

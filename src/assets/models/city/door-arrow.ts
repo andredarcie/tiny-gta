@@ -49,4 +49,4 @@ export function updateDoorArrows(t:number,px:number,pz:number):void{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'City',label:'Door arrow',build:()=>makeDoorArrow()};
+export default {category:'Cidade',label:'Seta de porta',build:()=>makeDoorArrow()};

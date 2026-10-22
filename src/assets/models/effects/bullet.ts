@@ -14,4 +14,4 @@ export function makeBulletModel(): THREE.Group{
 }
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
-export default {category:'Effects',label:'Bullet',build:()=>makeBulletModel()};
+export default {category:'Efeitos',label:'Bala',build:()=>makeBulletModel()};
