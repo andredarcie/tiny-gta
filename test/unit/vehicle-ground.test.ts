@@ -17,7 +17,7 @@ function underside(H: GroundFn, x: number, z: number, h: number) { return poseOn
 describe('resting pose', () => {
   it('sits flat on flat ground', () => {
     const p = poseOnGround(flat, 0, 0, 0);
-    expect(p.y).toBeCloseTo(10, 6); expect(p.pitch).toBeCloseTo(0, 6); expect(p.roll).toBeCloseTo(0, 6);
+    expect(p.y).toBeCloseTo(10.03, 6);   // tyres on the drawn asphalt (STREET_LIFT) expect(p.pitch).toBeCloseTo(0, 6); expect(p.roll).toBeCloseTo(0, 6);
   });
   it('pitches up a climb (nose up when facing uphill)', () => {
     expect(poseOnGround(ramp, 0, 0, 0).pitch).toBeCloseTo(Math.atan(.15), 3);

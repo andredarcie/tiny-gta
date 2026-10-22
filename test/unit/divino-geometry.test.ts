@@ -206,7 +206,7 @@ describe('streets and grounds lie on the terrain', () => {
   };
   it('no hill pokes through a street, a sidewalk or a plaza', () => {
     const lines = D.roads.map(r => ({ pts: r.pts.map(p => [p[0] + DIV_OX, p[1] + DIV_OZ] as P2), hw: r.hw, paved: !!r.p, sett: r.sf === 'sett', sidewalk: !!r.p }));
-    expect(lift(makeStreets(lines, divinoHeight, nearGrid))).toBeGreaterThan(.09);
+    expect(lift(makeStreets(lines, divinoHeight, nearGrid))).toBeGreaterThan(.015);   // a hair above (STREET_LIFT: the tyres rest on it; polygon offsets order the layers)
     for (const g of grounds) expect(lift(makeSurface('praca', g.pts.map(q => [q[0] + DIV_OX, q[1] + DIV_OZ] as P2), divinoHeight, nearGrid))).toBeGreaterThan(.09);
   });
 });

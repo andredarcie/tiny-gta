@@ -23,6 +23,9 @@
 // order 'YXZ' as rotation.set(-pitch, heading, roll).
 
 export type GroundFn=(x: number,z: number)=>number;
+// The streets are drawn this much above the terrain they are draped on (rua.ts STREET_LIFT):
+// the tyres rest on the drawn asphalt, not a few centimetres under it.
+const TYRE_LIFT=.03;
 
 export interface Chassis{
   halfBase: number;     // axle distance from the centre (m)
@@ -51,7 +54,7 @@ function requiredY(H: GroundFn,x: number,z: number,h: number,tp: number,tr: numb
   let need=-1e9;
   const wheels=c.twoWheel?[[c.halfBase,0],[-c.halfBase,0]]:[[c.halfBase,c.halfTrack],[c.halfBase,-c.halfTrack],[-c.halfBase,c.halfTrack],[-c.halfBase,-c.halfTrack]];
   for(const[a,b]of wheels){
-    const g=H(x+fx*a+lx*b,z+fz*a+lz*b);
+    const g=H(x+fx*a+lx*b,z+fz*a+lz*b)+TYRE_LIFT;
     need=Math.max(need,g-off(a,b,tp,tr));
   }
   for(const[ua,ub]of PROBES){
@@ -65,7 +68,7 @@ function requiredY(H: GroundFn,x: number,z: number,h: number,tp: number,tr: numb
 // Resting pose of a chassis centred at (x,z) facing `h`.
 export function poseOnGround(H: GroundFn,x: number,z: number,h: number,c: Chassis=CAR): Pose{
   const fx=Math.sin(h),fz=Math.cos(h),lx=Math.cos(h),lz=-Math.sin(h);
-  const at=(a: number,b: number)=>H(x+fx*a+lx*b,z+fz*a+lz*b);
+  const at=(a: number,b: number)=>H(x+fx*a+lx*b,z+fz*a+lz*b)+TYRE_LIFT;
   let pitch: number,roll: number,mid: number;
   if(c.twoWheel){
     const f=at(c.halfBase,0),r=at(-c.halfBase,0);
@@ -92,14 +95,14 @@ function contactReport(H: GroundFn,x: number,z: number,h: number,y: number,tp: n
   }
   const wheels=c.twoWheel?[[c.halfBase,0],[-c.halfBase,0]]:[[c.halfBase,c.halfTrack],[c.halfBase,-c.halfTrack],[-c.halfBase,c.halfTrack],[-c.halfBase,-c.halfTrack]];
   for(const[a,b]of wheels){
-    pen=Math.max(pen,H(x+fx*a+lx*b,z+fz*a+lz*b)-(y+off(a,b,tp,tr)));
-    float=Math.max(float,y+off(a,b,tp,tr)-H(x+fx*a+lx*b,z+fz*a+lz*b));
+    pen=Math.max(pen,H(x+fx*a+lx*b,z+fz*a+lz*b)+TYRE_LIFT-(y+off(a,b,tp,tr)));
+    float=Math.max(float,y+off(a,b,tp,tr)-H(x+fx*a+lx*b,z+fz*a+lz*b)-TYRE_LIFT);
   }
   return{penetration:pen,float};
 }
 
 // ---- the driven car --------------------------------------------------------------
-export interface VehicleBody{y: number;vy: number;pitch: number;roll: number;air: number;}
+export interface VehicleBody{y: number;vy: number;pitch: number;roll: number;air: number;lastNeed?: number;}
 export const newBody=(y: number): VehicleBody=>({y,vy:0,pitch:0,roll:0,air:0});
 
 const G=9.81;
@@ -117,7 +120,6 @@ export function stepBody(b: VehicleBody,H: GroundFn,x0: number,z0: number,x1: nu
     const target=poseOnGround(H,x,z,h,c);
     // ballistic vertical motion, then the ground pushes back (never ends inside it)
     b.vy-=G*sdt;
-    const prev=b.y;
     b.y+=b.vy*sdt;
     const need=target.y;                                        // resting height on the four contacts
     if(b.air>0){                                                // in the air the body keeps its attitude,
@@ -130,9 +132,12 @@ export function stepBody(b: VehicleBody,H: GroundFn,x0: number,z0: number,x1: nu
       // in contact: the body moves with the ground under it (up a ramp it keeps that upward
       // speed, so a crest taken fast throws the car; down a slope it keeps descending, so it
       // only leaves the ground where the slope falls away faster than gravity can follow)
-      b.vy=Math.min(MAX_RISE_V,Math.max(-30,(need-prev)/sdt));
+      // (at the ground's own rise rate under the car: setting it down a few cm low or landing
+      // on it gives no launch from that correction)
+      b.vy=b.lastNeed!==undefined?Math.min(MAX_RISE_V,Math.max(-30,(need-b.lastNeed)/sdt)):0;
       b.y=need;b.air=0;
     }else b.air+=sdt;
+    b.lastNeed=need;
   }
   return landed;
 }
