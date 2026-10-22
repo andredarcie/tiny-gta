@@ -62,4 +62,16 @@ describe('driving', () => {
   it('climbs a kerb-height step without going through it', () => {
     expect(drive(step, 8, -5, 5).minClear).toBeGreaterThan(-1e-6);
   });
+  it('is not thrown into the air by a kerb or a road edge, at any speed', () => {
+    const kerb: GroundFn = (_x, z) => (z < 0 ? 10 : 10.18);           // the 18 cm kerb of a raised sidewalk
+    for (const speed of [5, 15, 30]) {
+      const b = newBody(kerb(0, -5)); let z = -5, top = 0;
+      for (let k = 0; k < 120; k++) {
+        const nz = z + speed / 60;
+        stepBody(b, kerb, 0, z, 0, nz, 0, 1 / 60); z = nz;
+        top = Math.max(top, b.y - poseOnGround(kerb, 0, z, 0).y);   // height above where it rests
+      }
+      expect(top).toBeLessThan(.08);                                 // a jolt, not a launch
+    }
+  });
 });

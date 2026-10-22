@@ -101,13 +101,19 @@ function contactReport(H: GroundFn,x: number,z: number,h: number,y: number,tp: n
 }
 
 // ---- the driven car --------------------------------------------------------------
-export interface VehicleBody{y: number;vy: number;pitch: number;roll: number;air: number;lastNeed?: number;}
+export interface VehicleBody{y: number;vy: number;pitch: number;roll: number;air: number;lastNeed?: number;rate?: number;}
 export const newBody=(y: number): VehicleBody=>({y,vy:0,pitch:0,roll:0,air:0});
 
 const G=9.81;
 const STEP=1/120;              // fixed physics step
 const ATTITUDE_RATE=12;        // in the air, how fast the body turns toward the ground's slope (×.2, 1/s)
 const MAX_RISE_V=9;            // m/s: a car lifted by the slope keeps at most this much upward speed
+// The upward speed the ground gives the car is its rise rate smoothed over RISE_TAU seconds (what
+// a suspension does): up a hill it converges to the true climb rate, so a crest taken fast still
+// throws the car; a ledge — a kerb, the road's edge, a square's paving drawn a few cm higher —
+// rises once and only gives a jolt (taken raw, an 18 cm kerb rising in 1/120 s read as a 20 m/s
+// climb and launched the car metres into the air).
+const RISE_TAU=.2;
 
 // Advance the body from (x0,z0) to (x1,z1) over dt (the horizontal move is the caller's
 // arcade handling). Sub-steps at 120 Hz along the path. Returns true if it landed this call.
@@ -133,9 +139,10 @@ export function stepBody(b: VehicleBody,H: GroundFn,x0: number,z0: number,x1: nu
       // only leaves the ground where the slope falls away faster than gravity can follow)
       // (at the ground's own rise rate under the car: setting it down a few cm low or landing
       // on it gives no launch from that correction)
-      b.vy=b.lastNeed!==undefined?Math.min(MAX_RISE_V,Math.max(-30,(need-b.lastNeed)/sdt)):0;
+      b.vy=Math.min(MAX_RISE_V,Math.max(-30,b.rate??0));
       b.y=need;b.air=0;
     }else b.air+=sdt;
+    if(b.lastNeed!==undefined)b.rate=(b.rate??0)+((need-b.lastNeed)/sdt-(b.rate??0))*(1-Math.exp(-sdt/RISE_TAU));
     b.lastNeed=need;
   }
   return landed;
