@@ -43,7 +43,7 @@ const easeOut=(t: number)=>1-(1-t)*(1-t)*(1-t);
 const lerp=(a: number,b: number,t: number)=>a+(b-a)*t;
 const lerpV=(a: THREE.Vector3,b: THREE.Vector3,t: number)=>a.clone().lerp(b,t);
 
-// ---------- the rig: a box-hands pair parented to the camera ----------
+// ---------- the rig: the first-person hands pair parented to the camera ----------
 const rig=new THREE.Group();
 rig.name='farm-fp-rig';
 rig.visible=false;
@@ -52,15 +52,11 @@ const hands=makeFpHands({sleeve:0x19e3ff});   // same cyan sleeves as the weapon
 rig.add(hands);
 interface Arm{g: THREE.Group;hand: THREE.Object3D;sleeve: THREE.Mesh;anchor: THREE.Vector3;side: number;}
 function armOf(g: THREE.Group,side: number): Arm{
-  let sleeve: THREE.Mesh|null=null,hand: THREE.Object3D|null=null;
-  for(const c of g.children){
-    const m=c as THREE.Mesh;
-    if(m.isMesh&&(m.geometry as THREE.BoxGeometry).parameters?.height===.3)sleeve=m;
-    else hand=c;
-  }
+  const sleeve=g.userData.sleeve as THREE.Mesh,hand=g.userData.hand as THREE.Object3D;
   // "elbow" anchors just past the lower screen corners, a little behind the camera plane
-  sleeve!.scale.x=sleeve!.scale.z=.78;          // a touch slimmer than the gun arms (they fill more of the view)
-  return{g,hand:hand!,sleeve:sleeve!,anchor:V(side*.44,-.7,-.02),side};
+  sleeve.scale.x=sleeve.scale.z=.78;            // a touch slimmer than the gun arms (they fill more of the view)
+  (g.userData.cuff as THREE.Object3D).scale.set(.8,1,.8);
+  return{g,hand,sleeve,anchor:V(side*.44,-.7,-.02),side};
 }
 const R=armOf(hands.userData.right as THREE.Group,1), L=armOf(hands.userData.left as THREE.Group,-1);
 const FIST=V(0,.015,-.03);                    // fist centre in arm space (wrist = origin)

@@ -41,6 +41,7 @@ export interface FpArmPose{
 export interface FpHandsPose{
   right: FpArmPose;
   left: FpArmPose;
+  shape?: 'grip'|'fist';        // hand shape (default: curled around a grip)
 }
 
 // Descritor declarativo passado ao construtor de cada arma.

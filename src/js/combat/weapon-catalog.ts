@@ -23,8 +23,8 @@ import {makeGrenadeModel} from '../../assets/models/weapons/grenade.ts';
 import {makeDetonatorModel} from '../../assets/models/weapons/detonator.ts';
 
 const TWO_HANDED_PISTOL: FpHandsPose={
-  right:{position:[.21,-.20,-.46],rotation:[-.55,0,.32]},
-  left:{position:[.15,-.20,-.46],rotation:[-.55,0,-.32]},
+  right:{position:[.215,-.165,-.45],rotation:[-.55,0,.32]},
+  left:{position:[.165,-.17,-.45],rotation:[-.55,0,-.32]},
 };
 const SMG_HANDS: FpHandsPose={
   right:{position:[.21,-.18,-.46],rotation:[-.55,0,.32]},
@@ -49,6 +49,7 @@ const BAT_HANDS: FpHandsPose={
 const FISTS: FpHandsPose={
   right:{position:[.22,-.20,-.43],rotation:[-.72,0,.40]},
   left:{position:[-.03,-.21,-.43],rotation:[-.72,0,-.40]},
+  shape:'fist',
 };
 
 // Melee --------------------------------------------------------------------
