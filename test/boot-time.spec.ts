@@ -9,7 +9,7 @@ test('boot timeline', async ({page}) => {
   test.setTimeout(120_000);
   // Optional graphics settings, e.g. BOOT_SETTINGS='{"shadows":false}', to attribute boot cost.
   if (process.env.BOOT_SETTINGS) {
-    await page.addInitScript((json) => { try { localStorage.setItem('tinygta_settings', json); } catch { /* ignore */ } }, process.env.BOOT_SETTINGS);
+    await page.addInitScript((json) => { try { localStorage.setItem('divinocity_settings', json); } catch { /* ignore */ } }, process.env.BOOT_SETTINGS);
   }
   await page.goto('/', {waitUntil: 'load'});
   // wait for the first real 3D frame (marks exist in dev AND production builds; the

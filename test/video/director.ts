@@ -64,7 +64,7 @@ export class Director {
     fs.rmSync(d.dir, { recursive: true, force: true });
     fs.mkdirSync(path.join(d.dir, 'frames'), { recursive: true });
     await page.addInitScript((extra) => {
-      try { localStorage.setItem('tinygta_settings', JSON.stringify({ fps: false, ...extra })); } catch { /* ignore */ }
+      try { localStorage.setItem('divinocity_settings', JSON.stringify({ fps: false, ...extra })); } catch { /* ignore */ }
     }, opts.settings ?? {});
     await page.addInitScript((sel: string[]) => {
       const css = sel.map((q) => `${q}{display:none!important}`).join('');

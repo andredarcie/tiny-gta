@@ -7,7 +7,7 @@ import {setShadowsEnabled,setBrightness,setBloomEnabled} from '@/core/engine.ts'
 import {setMasterVolume} from '@/audio/audio.ts';
 import {setMusicVolume} from '@/ui/radio.ts';
 
-const KEY='tinygta_settings';
+const KEY='divinocity_settings';
 
 // Settings shape: audio/graphics knobs persisted to localStorage.
 interface Settings {

@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import { fileURLToPath } from 'node:url';
 
 // Caminhos relativos para o build funcionar tanto na raiz quanto em
-// subpastas (ex.: GitHub Pages em user.github.io/tiny-gta/).
+// subpastas (ex.: GitHub Pages em user.github.io/<repo>/).
 export default defineConfig({
   base: './',
   // `@/` -> js/  (so imports are stable regardless of a file's folder depth)

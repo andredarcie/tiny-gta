@@ -20,7 +20,7 @@ import type * as THREE from 'three';
 //   - COMPRA: placa FOR SALE na frente; só depois de paga a porta abre;
 //   - GELADEIRA: comida que enche a vida (ação EAT lá dentro);
 //   - GARAGEM: guarda um carro que volta salvo até depois de fechar o jogo.
-// Posse e carro guardado persistem em localStorage (chave tinygta_property).
+// Posse e carro guardado persistem em localStorage (chave divinocity_property).
 
 const PRICE=HOUSE_PRICE; // preço definido no modelo (e mostrado na placa)
 const BUY_RANGE=2.6;
@@ -71,7 +71,7 @@ interface GarageVehicle{
 }
 
 // ----- persistência -----
-const KEY='tinygta_property';
+const KEY='divinocity_property';
 let saved:SavedProperty={owned:false,car:null};
 try{const s=JSON.parse(localStorage.getItem(KEY) as string);if(s)saved=s;}catch(e){}
 function persist():void{try{localStorage.setItem(KEY,JSON.stringify(saved));}catch(e){}}

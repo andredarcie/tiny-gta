@@ -1,6 +1,6 @@
 ---
 name: record-video
-description: Film a short VERTICAL promo video of GTA Divinolândia gameplay (TikTok / Instagram Reels / WhatsApp) — 9:16, 30 fps, small file, eye-catching cover, captions, hard cuts. Use whenever the user asks to record/make/film a video ("grave um vídeo", "faz um vídeo mostrando…", "video of the new feature", "vídeo pra divulgar"), for any feature or scene of the game.
+description: Film a short VERTICAL promo video of Divino City gameplay (TikTok / Instagram Reels / WhatsApp) — 9:16, 30 fps, small file, eye-catching cover, captions, hard cuts. Use whenever the user asks to record/make/film a video ("grave um vídeo", "faz um vídeo mostrando…", "video of the new feature", "vídeo pra divulgar"), for any feature or scene of the game.
 ---
 
 # Recording a short promo video
@@ -32,7 +32,7 @@ Output: `output/video/<scene>/<scene>.mp4` + `output/video/<scene>/cover.jpg` (g
 1. **Plan the beats** (4–9 clips, 1.2–3 s each): hook first, payoff last. Pick the cover moment.
 2. **Write `test/video/scenes/<name>.video.ts`** (copy an existing scene):
    ```ts
-   const d = await Director.start(page, '<name>', { title: '2-4 WORDS', subtitle: 'one line', outro: 'GTA DIVINOLÂNDIA', tod: .42 });
+   const d = await Director.start(page, '<name>', { title: '2-4 WORDS', subtitle: 'one line', outro: 'DIVINO CITY', tod: .42 });
    // setup between clips is NOT filmed: teleport, give items, walk…
    await d.clip('beat', 'Short caption', async () => { /* the action */ });
    d.cover();            // inside the clip that holds the best frame

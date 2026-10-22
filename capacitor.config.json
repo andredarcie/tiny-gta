@@ -1,6 +1,6 @@
 {
-  "appId": "com.andredarcie.tinygta",
-  "appName": "GTA Divinolândia",
+  "appId": "com.andredarcie.divinocity",
+  "appName": "Divino City",
   "webDir": "dist",
   "backgroundColor": "#14091f",
   "android": {

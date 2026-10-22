@@ -4,7 +4,7 @@ Cada arquivo `NN_AAAA-MM-DD_HH-MM-SS.png` é uma print **lado a lado** gerada nu
 evolução do visual do player:
 
 - **Coluna esquerda** = Schedule I (referência real, screenshots da Steam)
-- **Coluna direita** = player do GTA Divinolândia (estilo novo)
+- **Coluna direita** = player do Divino City (estilo novo)
 - Linha de cima = rosto · Linha de baixo = corpo
 
 Os números crescem a cada nova versão (nunca sobrescreve), então dá para abrir e

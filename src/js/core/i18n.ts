@@ -6,7 +6,7 @@ import PT_BR from '../../data/i18n/pt-BR.json';
 // strings. Tables grow ON DEMAND: a string is translated when a video (or the user)
 // needs it — see .claude/skills/record-video/SKILL.md.
 //
-// Language: ?lang=pt-BR in the URL, else localStorage 'tinygta_lang', else English.
+// Language: ?lang=pt-BR in the URL, else localStorage 'divinocity_lang', else English.
 // Table format (src/data/i18n/<lang>.json):
 //   exact    — { "ENGLISH TEXT": "TRADUÇÃO" }  (whole-string match)
 //   patterns — [[ "regex", "replacement with $1" ], …]  for strings with numbers/names
@@ -20,7 +20,7 @@ function pickLang(): string {
   try {
     const q = new URLSearchParams(location.search).get('lang');
     if (q) return q;
-    return localStorage.getItem('tinygta_lang') || 'en';
+    return localStorage.getItem('divinocity_lang') || 'en';
   } catch { return 'en'; }
 }
 export const lang = pickLang();

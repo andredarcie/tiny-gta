@@ -1,6 +1,6 @@
-# Android build (GTA Divinolândia)
+# Android build (Divino City)
 
-GTA Divinolândia ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
+Divino City ships to Android via **[Capacitor](https://capacitorjs.com/)**. Capacitor
 bundles the production web build (`dist/`) straight into a native APK, so the game
 runs **fully offline** inside an Android System WebView — no server to host, no
 PWA hosting, no Digital Asset Links. The game has no online features at all (fonts
@@ -17,7 +17,7 @@ handling.
 
 | Path | Purpose |
 |---|---|
-| `capacitor.config.json` | App id (`com.andredarcie.tinygta`), name, `webDir: dist`, background color |
+| `capacitor.config.json` | App id (`com.andredarcie.divinocity`), name, `webDir: dist`, background color |
 | `android/` | The generated native Gradle project (committed; build outputs are git-ignored) |
 | `js/native.js` | Native glue — routes the Android **back button**; no-op in the browser |
 | `android/.../MainActivity.java` | Immersive-sticky fullscreen + keep-screen-on |
@@ -80,7 +80,7 @@ Signing is already wired in `android/app/build.gradle`: it reads from a git-igno
 ```bash
 # 1. Create your release keystore (needs the JDK's keytool)
 cd android
-keytool -genkey -v -keystore tinygta-release-key.jks -alias tinygta \
+keytool -genkey -v -keystore divinocity-release-key.jks -alias divinocity \
         -keyalg RSA -keysize 2048 -validity 10000
 
 # 2. Copy the template and fill in your passwords
@@ -92,7 +92,7 @@ cd android && ./gradlew bundleRelease
 # → android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-> ⚠️ Back up `tinygta-release-key.jks` and its passwords somewhere safe. If you lose
+> ⚠️ Back up `divinocity-release-key.jks` and its passwords somewhere safe. If you lose
 > them you can never publish an update to the same app. The `.jks` and
 > `keystore.properties` are git-ignored on purpose — never commit them.
 
@@ -113,23 +113,22 @@ What this repo already satisfies:
   forced on, so inspection is disabled in the non-debuggable release build.
 - ✅ **64-bit / 16 KB page size** — no native `.so` libraries (pure WebView), so
   these requirements don't apply.
-- ✅ **Unique application id** — `com.andredarcie.tinygta`.
+- ✅ **Unique application id** — `com.andredarcie.divinocity`.
 
 What you must do **in the Play Console / before going public** (can't live in the repo):
 
-- ⚠️ **Trademark / IP — RISK.** The app ships as **"GTA Divinolândia"** (`app_name`/
+- ✅ **Trademark / IP.** The app ships as **"Divino City"** (`app_name`/
   `title_activity_main` in `strings.xml`, the title-screen logo, the page `<title>`,
-  and `appName` in `capacitor.config.json`). "GTA" is a third-party trademark, which
-  Play's IP policy is likely to flag. The owner's call. Keep the **store listing, icon,
-  and screenshots** original either way.
-  (`applicationId` stays `com.andredarcie.tinygta` — an internal id, not user-visible.)
+  and `appName` in `capacitor.config.json`) — an original name, no third-party game
+  branding. Keep the **store listing, icon, and screenshots** original too.
+  (`applicationId` is `com.andredarcie.divinocity` — an internal id, not user-visible.)
 
 - 📋 **Privacy policy URL** — the game collects no data, but Play still asks for a
   hosted policy. Publish [`PRIVACY.md`](../PRIVACY.md) at a public URL and link it in
   the listing.
 - 📋 **Data Safety form** — fill it using the table at the bottom of `PRIVACY.md`.
 - 📋 **Content rating (IARC questionnaire)** — declare cartoon/action violence;
-  GTA Divinolândia is **not** a "Designed for Families" title.
+  Divino City is **not** a "Designed for Families" title.
 - 📋 **Target audience & content** — set Teen/Mature, not directed at children.
 - 📋 **Store listing assets** — 512×512 hi-res icon, 1024×500 feature graphic, and
   at least 2 landscape screenshots.

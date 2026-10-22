@@ -11,10 +11,10 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "com.andredarcie.tinygta"
+    namespace = "com.andredarcie.divinocity"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.andredarcie.tinygta"
+        applicationId "com.andredarcie.divinocity"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

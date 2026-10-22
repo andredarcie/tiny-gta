@@ -9,13 +9,13 @@
     "id": "2026-10-21-welcome-to-divinolandia",
     "date": "2026-10-21",
     "title": "Welcome to Divinolândia, SP",
-    "description": "The game now takes place in a real town: Divinolândia, in the interior of São Paulo, rebuilt at full scale from maps and street photos — its real streets and hills, the Rio do Peixe, the Igreja Matriz and its two squares, the Prefeitura, the Hospital Regional, the school and thousands of houses where houses really stand. Everything you could do before (shops, the club, races, jobs, the weed farm, garages) has moved into town. The whole world got a realistic new look, with natural sunlight, sky and haze and colours taken from photos of the town. The menus and on-screen info now look like the street signs of a small paulista town, and the title screen reads GTA Divinolândia. The weed farm is now played by hand in first person, from planting to drying and trimming. Busy streets run smoother. And the classic square Fiat Uno Mille Fire was rebuilt to look just like the real one."
+    "description": "The game now takes place in a real town: Divinolândia, in the interior of São Paulo, rebuilt at full scale from maps and street photos — its real streets and hills, the Rio do Peixe, the Igreja Matriz and its two squares, the Prefeitura, the Hospital Regional, the school and thousands of houses where houses really stand. Everything you could do before (shops, the club, races, jobs, the weed farm, garages) has moved into town. The whole world got a realistic new look, with natural sunlight, sky and haze and colours taken from photos of the town. The menus and on-screen info now look like the street signs of a small paulista town, and the title screen reads Divino City. The weed farm is now played by hand in first person, from planting to drying and trimming. Busy streets run smoother. And the classic square Fiat Uno Mille Fire was rebuilt to look just like the real one."
   },
   {
     "id": "2026-09-29-first-person-violence-offline",
     "date": "2026-09-29",
     "title": "First-person mayhem: a whole new way to play",
-    "description": "GTA Divinolândia has been rebuilt from the ground up. On foot you now play in FIRST PERSON, with fast, snappy movement inspired by the classic DOOM, and you can see your own blocky arms swing as you walk and kick back when you fire. Jump into any car, bike, boat or plane and the classic behind-the-vehicle camera comes back. Everyone in the city is now a chunky box character, the whole world got a clean flat-colour look, and the countryside's trees and rocks were rebuilt to match. Combat is brutal: one bullet to the head drops anyone, body shots tear off arms and legs, and there is a LOT more blood. You're tougher to kill, the police take longer to show up, and the wanted stars climb much more slowly — firing into the air out in the countryside won't bring the cops at all. The bridge to the countryside is now level with the road for a smooth drive across (boats can no longer sail under it). The game also opens instantly with no loading screen, runs smoother by day, and is now fully offline: no account, no internet needed, your progress saves on your device."
+    "description": "Divino City has been rebuilt from the ground up. On foot you now play in FIRST PERSON, with fast, snappy movement inspired by the classic DOOM, and you can see your own blocky arms swing as you walk and kick back when you fire. Jump into any car, bike, boat or plane and the classic behind-the-vehicle camera comes back. Everyone in the city is now a chunky box character, the whole world got a clean flat-colour look, and the countryside's trees and rocks were rebuilt to match. Combat is brutal: one bullet to the head drops anyone, body shots tear off arms and legs, and there is a LOT more blood. You're tougher to kill, the police take longer to show up, and the wanted stars climb much more slowly — firing into the air out in the countryside won't bring the cops at all. The bridge to the countryside is now level with the road for a smooth drive across (boats can no longer sail under it). The game also opens instantly with no loading screen, runs smoother by day, and is now fully offline: no account, no internet needed, your progress saves on your device."
   },
   {
     "id": "2026-07-07-stylized-nature-overhaul",
@@ -81,7 +81,7 @@
     "id": "2026-07-04-online-players",
     "date": "2026-07-04",
     "title": "Other players are in your city now!",
-    "description": "GTA Divinolândia just went online. From now on, everyone playing at the same time shares the same city: other real players walk, run, drive and sail around your world, each with their name floating over their head. No setup needed — just play, and if someone else is online you'll bump into them. Under the FPS counter you'll now see how many players are online with you and your ping to the server (it says OFFLINE when you're riding solo). This first version is about seeing each other move; more shared action (and shared trouble) is on the way. If the world ever fills up, the game simply runs in classic solo mode for whoever arrives late."
+    "description": "Divino City just went online. From now on, everyone playing at the same time shares the same city: other real players walk, run, drive and sail around your world, each with their name floating over their head. No setup needed — just play, and if someone else is online you'll bump into them. Under the FPS counter you'll now see how many players are online with you and your ping to the server (it says OFFLINE when you're riding solo). This first version is about seeing each other move; more shared action (and shared trouble) is on the way. If the world ever fills up, the game simply runs in classic solo mode for whoever arrives late."
   },
   {
     "id": "2026-07-04-performance-boost",
@@ -102,10 +102,10 @@
     "description": "Playing on a phone just got a lot easier. The moment you hop into anything that drives or flies — a car, a bike, a plane, even a tractor — the on-screen controls switch to simple buttons: steer left and right on one side, gas and brake pedals on the other, so you no longer have to wrestle a thumb-stick to drive. We also tidied up the screen: the extra PAUSE button at the top is gone (the round button in the corner still pauses), the radar map is a touch smaller, and every mini-game's info box now tucks neatly into the top-left corner."
   },
   {
-    "id": "2026-07-01-back-tiny-theft-auto",
+    "id": "2026-07-01-back",
     "date": "2026-07-01",
-    "title": "We're back — welcome to GTA Divinolândia",
-    "description": "Development is no longer paused — the game is open to play again for everyone. It also has a brand-new name, GTA Divinolândia, shown right on the title screen. Jump back in and enjoy."
+    "title": "We're back — welcome to Divino City",
+    "description": "Development is no longer paused — the game is open to play again for everyone. It also has a brand-new name, Divino City, shown right on the title screen. Jump back in and enjoy."
   },
   {
     "id": "2026-06-25-new-3d-characters",
@@ -386,7 +386,7 @@
   {
     "id": "2026-06-13-launch",
     "date": "2026-06-13",
-    "title": "Welcome to GTA Divinolândia",
+    "title": "Welcome to Divino City",
     "description": "The world opened up: a house and safe house to call home, motorcycles to ride, street races to win, a gym to train at, plus a prison, a hospital, talking pedestrians and the very first story missions."
   }
 ]

@@ -116,7 +116,7 @@ const coverVf = [scaleCrop, 'eq=saturation=1.25:contrast=1.08',
   // dark bands top and bottom so the text pops on any frame
   `drawbox=x=0:y=0:w=iw:h=ih*0.34:color=0x000000@0.45:t=fill`,
   `drawbox=x=0:y=ih*0.8:w=iw:h=ih*0.2:color=0x000000@0.45:t=fill`,
-  ...textLines(['GTA DIVINOLÂNDIA'], H * .06, 58, '0xFF3D9A'),
+  ...textLines(['DIVINO CITY'], H * .06, 58, '0xFF3D9A'),
   ...textLines(titleLines, H * .13, 108, '0xFFD24A'),
   ...(cap.subtitle ? textLines(wrap(cap.subtitle.toUpperCase(), 22), H * .84, 50, '0xFFFFFF') : []),
 ];
@@ -140,7 +140,7 @@ const voLen = cap.outroVo ? parseFloat(String(spawnSync('ffprobe', ['-v', 'error
 const endLen = Math.max(1.6, VO_DELAY + voLen + .7);
 
 const endVf = [scaleCrop, 'boxblur=14:2', 'eq=brightness=-0.2',
-  ...textLines(wrap((cap.outro || 'GTA DIVINOLÂNDIA').toUpperCase(), 14), H * .36, 92, '0xFF3D9A'),
+  ...textLines(wrap((cap.outro || 'DIVINO CITY').toUpperCase(), 14), H * .36, 92, '0xFF3D9A'),
   ...(cap.outroSub ? textLines(wrap(cap.outroSub.toUpperCase(), 22), H * .56, 46, '0xFFD24A') : []),
   `fade=t=out:st=${(endLen - .3).toFixed(3)}:d=0.3`, 'format=yuv420p'];
 fs.writeFileSync(path.join(TMP, 'end.filter'), endVf.join(',\n'));

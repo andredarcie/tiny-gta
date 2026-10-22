@@ -5,7 +5,7 @@ q = open(sys.argv[1], encoding='utf8').read()
 for url in ('https://overpass-api.de/api/interpreter', 'https://maps.mail.ru/osm/tools/overpass/api/interpreter', 'https://overpass.private.coffee/api/interpreter', 'https://overpass.kumi.systems/api/interpreter'):
     try:
         req = urllib.request.Request(url, data=urllib.parse.urlencode({'data': q}).encode(),
-                                     headers={'User-Agent': 'tiny-gta-divinolandia-research/1.0'})
+                                     headers={'User-Agent': 'divino-city-research/1.0'})
         raw = urllib.request.urlopen(req, timeout=180).read()
         d = json.loads(raw)
         json.dump(d, open(sys.argv[2], 'w', encoding='utf8'), ensure_ascii=False)

@@ -19,7 +19,7 @@ for (const [todName, tod] of TODS) {
     test.setTimeout(120_000);
     // Optional graphics settings for A/B comparisons, e.g. SHOTS_SETTINGS='{"bloom":false}'.
     if (process.env.SHOTS_SETTINGS) {
-      await page.addInitScript((json) => { try { localStorage.setItem('tinygta_settings', json); } catch { /* ignore */ } }, process.env.SHOTS_SETTINGS);
+      await page.addInitScript((json) => { try { localStorage.setItem('divinocity_settings', json); } catch { /* ignore */ } }, process.env.SHOTS_SETTINGS);
     }
     await page.goto(`/?tod=${tod}`, {waitUntil: 'load'});
     await page.waitForFunction(() => !!(window as any).render_game_to_text

@@ -3,6 +3,10 @@
 // (js/core/main.ts — its import builds the world) loads right after that first paint, and
 // the GPU warmup then runs in the BACKGROUND (js/core/warmup.ts), never blocking.
 
+// Saved data under the game's former storage keys moves to the current ones before any
+// module reads its key (storage-migrate.ts).
+import '@/core/storage-migrate.ts';
+
 // UI fonts, bundled with the game (no font CDN — the game must run fully offline).
 // Only the latin subsets/weights the CSS actually uses.
 // The interior-paulista look: Alfa Slab One = the hand-painted shop lettering (letreiro);

@@ -162,7 +162,7 @@ await game.inPage(() => (window as any).advanceTime(122_000));   // ~122s of gam
 **Seed persisted state before boot** (save files, owned property, garage car, …) with
 `addInitScript` so it's in `localStorage` before any game script runs:
 ```ts
-await page.addInitScript(() => localStorage.setItem('tinygta_property',
+await page.addInitScript(() => localStorage.setItem('divinocity_property',
   JSON.stringify({ owned: true, car: { type: 'car', color: 0x2a6cff, name: 'GT', spoiler: 'gt' } })));
 // ...then boot and assert via render_game_to_text().house
 ```

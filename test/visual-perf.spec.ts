@@ -16,7 +16,7 @@ test('graphics settings FPS matrix', async ({page}) => {
   const rows: string[] = [];
   for (const [name, cfg] of CONFIGS) {
     await page.addInitScript((c) => {
-      try { localStorage.setItem('tinygta_settings', JSON.stringify({...JSON.parse(localStorage.getItem('tinygta_settings') || '{}'), ...c, fps: true})); } catch { /* ignore */ }
+      try { localStorage.setItem('divinocity_settings', JSON.stringify({...JSON.parse(localStorage.getItem('divinocity_settings') || '{}'), ...c, fps: true})); } catch { /* ignore */ }
     }, cfg);
     await page.goto('/?tod=0.5', {waitUntil: 'load'});
     await page.waitForFunction(() => !!(window as any).render_game_to_text

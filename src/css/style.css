@@ -480,12 +480,12 @@ body.mod-shop-open #touch-controls{display:none!important}
 #title-scene{position:absolute;left:0;right:0;bottom:0;width:100%;height:58%;pointer-events:none}
 #logo{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;
   font-size:clamp(14px,2.6vw,30px);transform:rotate(-2deg)}
-/* "GTA": hand-painted slab letters, cream with a terra-roxa drop and a dark outline */
-#logo .lg-gta{font-family:'Alfa Slab One';font-size:4.3em;line-height:.9;letter-spacing:.04em;color:var(--cal);
+/* "DIVINO": hand-painted slab letters, cream with a terra-roxa drop and a dark outline */
+#logo .lg-name{font-family:'Alfa Slab One';font-size:4.3em;line-height:.9;letter-spacing:.04em;color:var(--cal);
   -webkit-text-stroke:.035em var(--cafe);paint-order:stroke fill;
   text-shadow:.07em .07em 0 var(--terra),.12em .12em 0 var(--cafe)}
-/* "DIVINOLÂNDIA": the blue enamel street plate */
-#logo .lg-town{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:2.4em;line-height:1;letter-spacing:.06em;
+/* "CITY": the blue enamel street plate */
+#logo .lg-city{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:2.4em;line-height:1;letter-spacing:.06em;
   color:var(--cal);background:var(--azul);padding:.12em .55em .16em;border-radius:.22em;
   box-shadow:inset 0 0 0 .08em var(--azul),inset 0 0 0 .16em var(--cal),.08em .1em 0 rgba(0,0,0,.4)}
 #logo span{display:block}

@@ -1,8 +1,8 @@
-# Privacy Policy — GTA Divinolândia
+# Privacy Policy — Divino City
 
 _Last updated: 2026-09-28_
 
-GTA Divinolândia ("the game", "we") is a single-player, fully offline browser/Android
+Divino City ("the game", "we") is a single-player, fully offline browser/Android
 game. This policy explains what data the game handles. **Google Play requires a
 publicly hosted privacy policy URL** — publish this file at a stable URL (e.g.
 GitHub Pages) and paste that URL into the Play Console listing and the Data Safety
@@ -37,7 +37,7 @@ Families").
 ## Your choices / deletion
 
 You can erase your saved progress any time by clearing the site data in your browser,
-or on Android via **Settings → Apps → GTA Divinolândia → Storage → Clear data**.
+or on Android via **Settings → Apps → Divino City → Storage → Clear data**.
 
 ## Contact
 

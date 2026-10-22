@@ -1,4 +1,4 @@
-# GTA Divinolândia
+# Divino City
 
 A fully **offline** browser open-world action game (no server, no accounts, no leaderboard — progress is saved in the browser) built with TypeScript ES modules and [Three.js](https://threejs.org/), bundled by [Vite](https://vitejs.dev/). No UI framework. The whole world — city, terrain, characters, vehicles, effects — is generated **procedurally in code**: there are no image/model binary assets, textures are drawn to `<canvas>`, and geometry is built from Three.js primitives.
 

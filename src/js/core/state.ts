@@ -47,13 +47,13 @@ export const input: InputState = {
 };
 
 export let best: BestScore = {money:0,deliveries:0};
-try{best=JSON.parse(localStorage.getItem('tinygta_best') as string)||best;}catch(e){}
+try{best=JSON.parse(localStorage.getItem('divinocity_best') as string)||best;}catch(e){}
 
 export function saveBest(){
   let ch=false;
   if(state.money>best.money){best.money=state.money;ch=true;}
   if(state.deliveries>best.deliveries){best.deliveries=state.deliveries;ch=true;}
-  if(ch)try{localStorage.setItem('tinygta_best',JSON.stringify(best));}catch(e){}
+  if(ch)try{localStorage.setItem('divinocity_best',JSON.stringify(best));}catch(e){}
 }
 
 export const keys: Record<string, boolean> = {};

@@ -24,7 +24,7 @@ const PER_PACKAGE=REWARDS.hiddenPackages.perPackage;  // dinheiro por pacote
 const BONUS_EACH=REWARDS.hiddenPackages.bonusPer10;   // bônus a cada 10 coletados
 const BONUS_ALL=REWARDS.hiddenPackages.bonusAll;      // bônus ao achar todos
 const PICK_R=3.2;         // raio de coleta (a pé ou de carro)
-const STORE_KEY='tinygta_packages';
+const STORE_KEY='divinocity_packages';
 
 // pacote: posição, modelo 3D, halo opcional, altura base e se já foi coletado
 interface Pack{x:number;z:number;g:THREE.Object3D;halo:THREE.Object3D|null;baseY:number;taken:boolean;}

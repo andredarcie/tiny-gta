@@ -64,7 +64,7 @@ test('garaged car keeps its MOD-GARAGE customs across a reload', async ({page}) 
   // seed a modded, owned garage car BEFORE any game script runs, so initProperty()
   // rebuilds it at boot via applyCarMods (spoiler/rims/neon/hood/engine).
   await page.addInitScript(() => {
-    localStorage.setItem('tinygta_property', JSON.stringify({
+    localStorage.setItem('divinocity_property', JSON.stringify({
       owned: true,
       car: {type: 'car', color: 0x2a6cff, name: 'TEST GT',
         spoiler: 'gt', rims: 0xffd24a, neon: 0xff2e88, hood: 'scoop', speedMul: 1.26},

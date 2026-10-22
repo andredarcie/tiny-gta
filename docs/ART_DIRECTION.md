@@ -61,14 +61,14 @@ colours, are what still reads as stylised.
 The interface speaks the signage of a small paulista town, not neon:
 - **Blue enamel street plate** (`--azul`, white inner border, rounded): the status stack
   (clock, money, health), the location label over the radar (it shows street names), the
-  pause title, the "DIVINOLÂNDIA" plate on the title screen; the radar rim is the same blue.
-- **Green road sign** (`--verde`): the speedometer, the "SP" plate.
+  pause title, the "CITY" plate of the title logo; the radar rim is the same blue.
+- **Green road sign** (`--verde`): the speedometer.
 - **Hand-painted shop lettering**: Alfa Slab One in limewash white with a terra-roxa drop
-  shadow for messages, big texts, buttons and "GTA" on the title; buttons are lottery-shop
+  shadow for messages, big texts, buttons and "DIVINO" on the title; buttons are lottery-shop
   yellow (`--amarelo`) or cal white plates.
 - **Road-sign lettering**: Barlow Condensed for every reading and label (tabular figures).
   Yellowtail stays for painted script (the car's name).
 - No glows: hard painted shadows only. Colours live in `src/css/style.css` `:root` (the old
   names `--pink/--cyan/--gold/--cream` now hold terra / plate blue / yellow / cal).
-- Title screen: "GTA Divinolândia" over an inline-SVG view of the town under the serra
+- Title screen: "Divino City" over an inline-SVG view of the town under the serra
   (index.html — still no image files).

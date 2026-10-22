@@ -59,7 +59,7 @@ export function applySave(blob: unknown): void {
 // Same key older builds used for their local save copy, so progress already on
 // this device carries over. That copy was stored as {pid, save}; new writes
 // store the blob itself — loadLocalSave() accepts both shapes.
-const SAVE_KEY = 'tinygta_save';
+const SAVE_KEY = 'divinocity_save';
 // Saving is armed only AFTER the stored save was restored (startLocalSave), so the
 // fresh boot state can never overwrite real progress before it is loaded.
 let armed = false, lastJson = '';

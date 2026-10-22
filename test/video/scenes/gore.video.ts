@@ -8,7 +8,7 @@ test('video: gore', async ({ page }) => {
   const d = await Director.start(page, 'gore', {
     title: 'TERAPIA URBANA',
     subtitle: 'Relaxante. Educativo. Ilegal.',
-    outro: 'GTA DIVINOLÂNDIA',
+    outro: 'DIVINO CITY',
     outroSub: 'Jogue com moderação (ou não)',
     music: 0,                                   // BOOMBEAT RADIO — funk under the carnage
     tod: .42,

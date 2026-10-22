@@ -70,7 +70,7 @@ const ctx=canvas&&canvas.getContext('2d')!;
 let cw=0,ch=0,dpr=1;
 
 let best=0;
-try{best=+JSON.parse(localStorage.getItem('tinygta_dance')||'{}').best||0;}catch(e){}
+try{best=+JSON.parse(localStorage.getItem('divinocity_dance')||'{}').best||0;}catch(e){}
 
 function zeroInput(){
   input.moveX=0;input.moveY=0;input.turnX=0;input.lookX=0;input.lookY=0;
@@ -279,7 +279,7 @@ function gradeFor(){
 function payout(){
   reward=REWARDS.dance.gradePayouts[grade]||0;
   if(score>best){best=score;newBest=true;
-    try{localStorage.setItem('tinygta_dance',JSON.stringify({best}));}catch(e){}}
+    try{localStorage.setItem('divinocity_dance',JSON.stringify({best}));}catch(e){}}
 }
 
 // --------------------------------------------------------------- pose 3D do boneco

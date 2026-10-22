@@ -1,4 +1,4 @@
-name: Deploy tiny-theft-auto (itch.io + GitHub Pages)
+name: Deploy Divino City (itch.io + GitHub Pages)
 
 on:
   push:

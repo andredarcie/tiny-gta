@@ -18,7 +18,7 @@ test('video: trailer', async ({ page }) => {
   const d = await Director.start(page, 'trailer', {
     title: 'TRAILER OFICIAL',
     subtitle: 'Bem-vindo ao interior',
-    outro: 'GTA DIVINOLÂNDIA',
+    outro: 'DIVINO CITY',
     outroSub: 'Divinolândia te espera',
     outroVo: 'final',
     music: 2,                                   // the groove station under the whole trailer

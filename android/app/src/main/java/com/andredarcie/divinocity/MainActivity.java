@@ -1,4 +1,4 @@
-package com.andredarcie.tinygta;
+package com.andredarcie.divinocity;
 
 import android.os.Bundle;
 import android.view.WindowManager;
