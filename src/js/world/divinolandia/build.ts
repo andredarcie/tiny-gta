@@ -10,7 +10,8 @@
 // collision, radar, fog and the hospital respawn. Traffic/peds/police/missions still live
 // in the classic map and migrate to the town step by step.
 import * as THREE from 'three';
-import {scene} from '@/core/engine.ts';
+import {scene,camera} from '@/core/engine.ts';
+import {trackStatic} from '@/core/render-census.ts';
 import {refs} from '@/core/state.ts';
 import {setDivinoTerrain} from '@/core/terrain.ts';
 import {player,playerCar,idleCars,cameraRig} from '@/actors/player.ts';
@@ -18,7 +19,8 @@ import {message} from '@/ui/hud.ts';
 import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
 import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR} from './data.ts';
 import {addObb,setPlayBounds} from './collide.ts';
-import {makeTerrainMesh,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
+import {makeTerrainTiles,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
+import {enableTerrainLod,updateTerrainLod} from '../../../assets/models/divinolandia/terrain-tiles.ts';
 import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
 import {addCasa,finalizeCasas,casaTop,EAVE,type CasaSpec} from '../../../assets/models/divinolandia/casa.ts';
 import {makeTrees,makeCoffee} from '../../../assets/models/divinolandia/vegetacao.ts';
@@ -63,12 +65,12 @@ const H=divinoHeight;
 const w=(p:number[]):P2=>[p[0]+DIV_OX,p[1]+DIV_OZ];
 
 // Static landmark group → identity parent → merged by material (few draw calls).
-function placeStatic(obj:THREE.Object3D):THREE.Group{
+function placeStatic(obj:THREE.Object3D,category='landmarks'):THREE.Group{
   const root=new THREE.Group();root.add(obj);
   root.updateMatrixWorld(true);
   root.traverse(o=>{if(o!==root){o.matrixAutoUpdate=false;o.updateMatrix();}});
-  mergeStatic(root);
-  root.matrixAutoUpdate=false;scene.add(root);
+  mergeStatic(root,new Set(),{vertexColors:true});
+  root.matrixAutoUpdate=false;scene.add(trackStatic(category,root));
   return root;
 }
 // world-space footprint box of a model-frame box (cx,cz,w,d) under yaw θ (THREE rotation.y)
@@ -80,6 +82,7 @@ const yawTo=(fx:number,fz:number,tx:number,tz:number):number=>Math.atan2(tx-fx,t
 
 const cullGroups:{g:THREE.Group;r:number}[]=[];
 let built=false;
+let farTerrain:THREE.Group|null=null;
 
 export function buildDivinolandia():void{
   if(built)return;built=true;
@@ -94,9 +97,11 @@ export function buildDivinolandia():void{
   const townAt=(x:number,z:number):number=>{const i=Math.floor((x-tx0)/TC),j=Math.floor((z-tz0)/TC);return i<0||j<0||i>=tnx||j>=tnz?0:town[j*tnx+i];};
 
   // ---------- terrain: near (playable, 8 m) + far serras (48 m, hole under the near) ----------
-  scene.add(makeTerrainMesh(nearGrid,{town:townAt}));
+  scene.add(trackStatic('terrain',makeTerrainTiles(nearGrid,{town:townAt})));
   const nx1=nearGrid.x0+(nearGrid.nx-1)*nearGrid.cell,nz1=nearGrid.z0+(nearGrid.nz-1)*nearGrid.cell,m=farGrid.cell*1.5;
-  scene.add(makeTerrainMesh(farGrid,{skip:{x0:nearGrid.x0+m,x1:nx1-m,z0:nearGrid.z0+m,z1:nz1-m},drop:1.2,mat:farTerrainMat}));
+  farTerrain=makeTerrainTiles(farGrid,{skip:{x0:nearGrid.x0+m,x1:nx1-m,z0:nearGrid.z0+m,z1:nz1-m},drop:1.2,mat:farTerrainMat},768);
+  enableTerrainLod(farTerrain,farGrid,{distance:1800,stride:4,maxError:3});
+  scene.add(trackStatic('terrain',farTerrain));
 
   // ---------- streets, sidewalks, water ----------
   const SURVEYED=new Set(STREETS.map(s=>s.rua));
@@ -110,7 +115,7 @@ export function buildDivinolandia():void{
     const sett=r.sf==='sett'||!!r.p&&Math.hypot(mid[0]-DIV_OX-45,mid[1]-DIV_OZ-5)<130;
     return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
-  scene.add(makeStreets(lines,H,nearGrid));
+  scene.add(trackStatic('otherStatic',makeStreets(lines,H,nearGrid)));
   // is (x,z) within `margin` of a street's drawn width (roadway + sidewalk)?
   const SC=24,streetHash=new Map<string,{ax:number;az:number;bx:number;bz:number;r:number}[]>();
   for(const l of lines)for(let i=1;i<l.pts.length;i++){
@@ -134,16 +139,16 @@ export function buildDivinolandia():void{
     if(pts.length<2)continue;
     const street=new THREE.Group();                          // all lots merged together (few draw calls)
     const r=buildSurveyedStreet(spec,pts,D.roads.find(r=>r.n===spec.rua)!.hw,H,o=>{street.add(o);});
-    scene.add(r.wires);                                      // lines aren't merged with the meshes
+    scene.add(trackStatic('surveyedStreets',r.wires));                                      // lines aren't merged with the meshes
     surveyedLots.push(...r.footprints);
-    placeStatic(street);
+    placeStatic(street,'surveyedStreets');
   }
   // ---------- the cell towers of the centre (seen over the roofs from the street) ----------
   for(const p of D.landmarks.torresCelular){
     const[x,z]=w(p);const t=Torre.build({h:38,painted:false,mirante:false});t.position.set(x,H(x,z),z);placeStatic(t);
     addObb(x,z,3.6,3.6,0,H(x,z)+40);
   }
-  scene.add(makeWater(waterLines));
+  scene.add(trackStatic('otherStatic',makeWater(waterLines)));
 
   // ---------- plazas, greens, pitches, cemetery, schools ----------
   const ground=new THREE.Group();
@@ -202,7 +207,7 @@ export function buildDivinolandia():void{
     }
   }
   for(const g of ground.children){(g as THREE.Mesh).matrixAutoUpdate=false;}
-  scene.add(ground);
+  scene.add(trackStatic('otherStatic',ground));
   placeStatic(deco);
 
   // ---------- Igreja Matriz + its two squares, 1:1 from the satellite and Street View ----------
@@ -326,7 +331,7 @@ export function buildDivinolandia():void{
       g.position.set(x,y,z);g.rotation.y=Math.atan2(p.nx,p.nz);g.scale.x=p.w/p.spec.w;shops.add(g);
       const c=p.d/2;addObb(x-p.nx*c,z-p.nz*c,p.w,p.d,-Math.atan2(p.nx,p.nz),y+(p.spec.f.floors??1)*3+1.2);
     }
-    placeStatic(shops);
+    placeStatic(shops,'shops');
   }
 
   // ---------- houses ----------
@@ -354,7 +359,7 @@ export function buildDivinolandia():void{
     addCasa(spec);
     addObb(spec.x,spec.z,spec.w,spec.d,spec.rot,spec.floor+casaTop(spec));
   }
-  for(const g of finalizeCasas()){scene.add(g);cullGroups.push({g,r:1100});}
+  for(const g of finalizeCasas()){scene.add(trackStatic('houses',g));cullGroups.push({g,r:1100});}
 
   // ---------- utility poles along inhabited streets ----------
   const poleRoutes=planRoadPoles({
@@ -373,7 +378,7 @@ export function buildDivinolandia():void{
     surveyedStreets:[...SURVEYED],
   }).map(route=>route.map(site=>({...site,y:H(site.x,site.z)})));
   const poles=poleRoutes.flat();
-  scene.add(makePostes(poles),makePoleWires(poleRoutes));
+  scene.add(trackStatic('otherStatic',makePostes(poles)),trackStatic('otherStatic',makePoleWires(poleRoutes)));
   for(const pole of poles)addObb(pole.x,pole.z,.36,.36,0,pole.y+10.5);
 
   // ---------- vegetation ----------
@@ -382,13 +387,13 @@ export function buildDivinolandia():void{
     if(inMatrizSquare(D.trees[i],D.trees[i+1]))continue;      // their trees are the surveyed ones
     const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});
   }
-  for(const g of makeTrees(trees)){scene.add(g);cullGroups.push({g,r:900});}
+  for(const g of makeTrees(trees)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:900});}
   const cof:{x:number;y:number;z:number;s:number;r:number}[]=[];
   for(let i=0;i<D.coffee.length;i+=3){
     if(onSiteLot(D.coffee[i],D.coffee[i+1],3))continue;
     const[x,z]=w([D.coffee[i],D.coffee[i+1]]);cof.push({x,y:H(x,z)-.15,z,s:1,r:D.coffee[i+2]});
   }
-  for(const g of makeCoffee(cof)){scene.add(g);cullGroups.push({g,r:650});}
+  for(const g of makeCoffee(cof)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:650});}
 
   // ---------- parked cars on the streets around the Matriz (enter with E) ----------
   const parked:{k:'uno'|'kombi';c:number}[]=[{k:'uno',c:0xc23b4e},{k:'kombi',c:0},{k:'uno',c:0xe8e6df},{k:'uno',c:0x3b7ac2},{k:'uno',c:0x5b5f6b},{k:'kombi',c:0}];
@@ -417,6 +422,7 @@ export function buildDivinolandia():void{
 
 // distance culling for the big batched groups (houses, woods, coffee)
 export function updateDivinolandia(px:number,pz:number):void{
+  if(farTerrain)updateTerrainLod(farTerrain,camera.position);
   for(const{g,r}of cullGroups){const dx=g.userData.cx-px,dz=g.userData.cz-pz;g.visible=dx*dx+dz*dz<r*r;}
 }
 

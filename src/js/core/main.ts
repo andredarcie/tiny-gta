@@ -51,7 +51,9 @@ import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
   switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest,viewmodelArms} from '@/combat/weapons.ts';
 import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
-import {updateDayNight} from '@/world/daynight.ts';
+import {renderCensus,staticRenderGroups} from '@/core/render-census.ts';
+import {materialCensus} from '@/core/material-census.ts';
+import {setTod,getTod,updateDayNight} from '@/world/daynight.ts';
 import {updateInteriors,interiors} from '@/world/interior.ts';
 import {updateJailBreak} from '@/activities/jail-break.ts';
 import {updateSpeech,updateStreetChatter} from '@/ui/speech.ts';
@@ -95,6 +97,7 @@ declare global {
     render_game_to_text?: () => string;
     __renderScale?: () => number;
     __test?: {
+      profileView: (view: {x:number;z:number;height:number;targetX:number;targetZ:number;targetHeight:number;fov:number} | null) => unknown;
       enterCar: () => string;
       enterPrimaryCar: () => string;
       exitCar: () => string;
@@ -167,30 +170,13 @@ P.setCounts(()=>({
   return JSON.stringify(out,null,2);
 };
 
-// Censo do MUNDO ESTÁTICO: atribui os draws entre chunks de prédio, props e lotes
-// (os grandes grupos merge-por-chunk). O resto (chão/estradas/mar/céu) sai como
-// "misc" = total − (buildings+props+lots+dynâmicos). Mesma técnica do censo acima.
-(window as any).profilerCensusStatic=()=>{
-  const wasShadow=renderer.shadowMap.enabled;
-  renderer.shadowMap.enabled=false;
-  const measure=()=>{renderer.render(scene,camera);
-    return{calls:renderer.info.render.calls,tris:renderer.info.render.triangles};};
-  const base=measure();
-  const groups:Record<string,THREE.Object3D[]>={props:propChunks};
-  const out:Record<string,{draws:number;tris:number}>={};
-  (out as any).__total={draws:base.calls,tris:base.tris};
-  for(const[name,arr]of Object.entries(groups)){
-    const saved=arr.map(o=>o.visible);
-    for(const o of arr)o.visible=false;
-    const after=measure();
-    arr.forEach((o,i)=>{o.visible=saved[i];});
-    out[name]={draws:base.calls-after.calls,tris:base.tris-after.tris};
-  }
-  measure();
-  renderer.shadowMap.enabled=wasShadow;
-  renderer.shadowMap.needsUpdate=true;
-  return JSON.stringify(out,null,2);
-};
+// Color-pass draw calls/triangles, including dynamic roots so the remainder is explicit.
+(window as any).profilerMaterialCensus=()=>JSON.stringify(materialCensus(renderer,scene,camera,staticRenderGroups),null,2);
+(window as any).profilerCensusStatic=()=>JSON.stringify(renderCensus(renderer,scene,camera,{
+  ...staticRenderGroups,props:propChunks,
+  dynamic:[...traffic,...idleCars,...peds,...gangPeds,...cops,...officers,...folk]
+    .flatMap(e=>e.g?[e.g]:[]),
+}),null,2);
 
 // Quebra da cena por objeto de TOPO: pra cada filho direto de scene, conta quantos
 // meshes renderáveis VISÍVEIS ele tem (aprox. de draws) e a soma de triângulos.
@@ -348,7 +334,7 @@ function step(dt: number){
     c.position.x+=c.userData.v*dt;
     if(c.position.x>550)c.position.x=-550;
   }
-  P.begin('daynight');updateDayNight(dt);P.end();
+  P.begin('daynight');if(profileView)setTod(.5);updateDayNight(profileView?0:dt);P.end();
 
   if(!state.started){
     // title backdrop: a slow orbit over the Igreja Matriz and the centre of Divinolândia
@@ -416,7 +402,7 @@ function step(dt: number){
   for(const c of idleCars)blinkBar(c.g);
   P.end();
 
-  P.begin('camera');updateCamera(dt);updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
+  P.begin('camera');updateCamera(dt);applyProfileView();updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
@@ -488,8 +474,19 @@ function step(dt: number){
 // decente (e a maioria travada no vsync) passa longe e fica em 1.0 (resolução
 // cheia, ZERO mudança visual). Abaixo disso, ajuda o hardware que realmente
 // engasga a recuperar fluidez. O piso de escala (.72 no engine) mantém nítido.
+type ProfileView={x:number;z:number;height:number;targetX:number;targetZ:number;targetHeight:number;fov:number};
+let profileView:ProfileView|null=null;
+let profileRestore:{scale:number;fov:number;tod:number}|null=null;
+function applyProfileView(){
+  if(!profileView)return;
+  const v=profileView;
+  camera.fov=v.fov;camera.updateProjectionMatrix();
+  camera.position.set(v.x,groundHeight(v.x,v.z)+v.height,v.z);
+  camera.lookAt(v.targetX,groundHeight(v.targetX,v.targetZ)+v.targetHeight,v.targetZ);
+}
 let _emaDt=16.7,_frames=0,_scaleLocked=false;
 function adaptResolution(ms: number){
+  if(profileView)return;
   if(ms<1||ms>200)return; // hitch isolado (compile de shader, aba em 2º plano): ignora
   _emaDt=_emaDt*.9+ms*.1;
   if(_scaleLocked)return;
@@ -583,6 +580,22 @@ window.render_game_to_text=()=>{
 // race checkpoint). The game itself never uses it. See test/support/game.js and
 // the Testing section in CLAUDE.md / README.
 window.__test={
+  profileView:(view)=>{
+    if(view){
+      if(!Object.values(view).every(Number.isFinite)||view.fov<=0||view.fov>=180)throw new Error('Invalid profile view');
+      profileRestore??={scale:getRenderScale(),fov:camera.fov,tod:getTod()};
+      profileView={...view};
+      setRenderScale(1);setTod(.5);camera.fov=view.fov;camera.updateProjectionMatrix();
+      applyProfileView();
+    }else{
+      profileView=null;
+      if(profileRestore){setRenderScale(profileRestore.scale);setTod(profileRestore.tod);camera.fov=profileRestore.fov;camera.updateProjectionMatrix();profileRestore=null;}
+    }
+    const size=renderer.getDrawingBufferSize(new THREE.Vector2());
+    return {view:profileView,camera:{position:camera.position.toArray(),quaternion:camera.quaternion.toArray(),fov:camera.fov,near:camera.near,far:camera.far},
+      viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},drawingBuffer:{width:size.x,height:size.y},renderScale:getRenderScale(),tod:getTod(),
+      shadows:renderer.shadowMap.enabled};
+  },
   enterCar:()=>{
     if(state.mode!=='foot')return state.mode;
     const f=nearestCar(1e9);                 // nearest car at any distance
