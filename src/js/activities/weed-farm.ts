@@ -174,7 +174,7 @@ const nearFarm=()=>{const p=playerPos();return Math.hypot(p.x-WEED_CX,p.z-WEED_C
   const x=WEED_GATE.x+4.5, z=WEED_GATE.z+0.8;          // beside the gate, clear of the opening
   const g=makeMotorcycle(0x6a7c3f);                    // muted farm-green
   g.position.set(x,groundHeight(x,z),z);g.rotation.y=0;// nose pointing away from the gate
-  idleCars.push({g,heading:0,speed:0,name:'DIRT RUNNER',police:false,bike:true});
+  idleCars.push({g,heading:0,speed:0,name:'BIZ',police:false,bike:true});
 })();
 
 // ---------- buyers' patter: a fat pool of random, funny one-liners a buyer blurts

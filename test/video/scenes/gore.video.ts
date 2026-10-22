@@ -10,7 +10,7 @@ test('video: gore', async ({ page }) => {
     subtitle: 'Relaxante. Educativo. Ilegal.',
     outro: 'DIVINO CITY',
     outroSub: 'Jogue com moderação (ou não)',
-    music: 0,                                   // BOOMBEAT RADIO — funk under the carnage
+    music: 0,                                   // BATIDÃO FM — funk under the carnage
     tod: .42,
   });
   await d.giveGun();

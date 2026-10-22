@@ -129,7 +129,7 @@ export const cameraRig:CameraRig={
   touchLookIdle:0,
 };
 
-export const playerCar:Vehicle={g:makeCar(0xff2e88,false),heading:Math.PI/2,speed:0,name:'PINK COMET',police:false};
+export const playerCar:Vehicle={g:makeCar(0xff2e88,false),heading:Math.PI/2,speed:0,name:'OPALA',police:false};
 playerCar.g.position.set(DIV_OX+40,groundHeight(DIV_OX+40,DIV_OZ),DIV_OZ); // parked by the Praça by the town build
 playerCar.g.rotation.y=playerCar.heading;
 export const idleCars:Vehicle[]=[playerCar];
@@ -150,10 +150,10 @@ function spawnBikeAt(color:number,name:string,lx:number,lz:number):Vehicle{
   const r=roadside(lx,lz,-1.2);
   return spawnBike(color,name,r.x,groundHeight(r.x,r.z),r.z,r.h);
 }
-spawnBikeAt(0xd11f3a,'STREET ROCKET',110,-20);
-spawnBikeAt(0x18b0a6,'NEON BLADE',-60,-190);
+spawnBikeAt(0xd11f3a,'CG TITAN',110,-20);
+spawnBikeAt(0x18b0a6,'CB 300',-60,-190);
 // a getaway bike waiting in the fort courtyard, by where the escape tunnel surfaces
-spawnBike(0x8a3b2a,'FORT RUNNER',FORT_EXIT.x+4,groundHeight(FORT_EXIT.x+4,FORT_EXIT.z),FORT_EXIT.z,Math.PI);
+spawnBike(0x8a3b2a,'BROS',FORT_EXIT.x+4,groundHeight(FORT_EXIT.x+4,FORT_EXIT.z),FORT_EXIT.z,Math.PI);
 
 export let cur:Vehicle|null=null;
 
@@ -161,7 +161,7 @@ export let cur:Vehicle|null=null;
 // of the town, at the start of its longest straight (~580 m): the highway is the runway.
 const PLANE_SPOT={x:DIV_OX+862.5,z:DIV_OZ-370.8,h:-1.9};
 export function spawnPlane():Vehicle{
-  const pl:Vehicle={g:makePlane(),heading:PLANE_SPOT.h,speed:0,name:'CROP HOPPER',police:false,
+  const pl:Vehicle={g:makePlane(),heading:PLANE_SPOT.h,speed:0,name:'IPANEMA',police:false,
     plane:true,vy:0};
   pl.g.position.set(PLANE_SPOT.x,groundHeight(PLANE_SPOT.x,PLANE_SPOT.z),PLANE_SPOT.z);pl.g.rotation.y=pl.heading;
   idleCars.push(pl);
@@ -178,13 +178,13 @@ function spawnBoat(color:number,name:string,x:number,z:number,heading:number):Ve
   idleCars.push(b);
   return b;
 }
-{const r=riverAt(BOAT_MOOR_S);spawnBoat(0xff5a3c,'RIVER BLASTER',r.x,r.z,Math.atan2(r.dx,r.dz));}
+{const r=riverAt(BOAT_MOOR_S);spawnBoat(0xff5a3c,'LANCHA',r.x,r.z,Math.atan2(r.dx,r.dz));}
 
 // Tractor parked out at the rural farms (east of the city). A slow, chunky utility
 // vehicle (flag `tractor`): car-style physics but low top speed, open seat (rider
 // posed via vehicle-pose.js), and it never dents/explodes. Only one, only out here.
 function spawnTractor(x:number,z:number,heading:number):Vehicle{
-  const t:Vehicle={g:makeTractor(),heading,speed:0,name:'FIELD MULE',police:false,tractor:true};
+  const t:Vehicle={g:makeTractor(),heading,speed:0,name:'TRATOR',police:false,tractor:true};
   t.g.position.set(x,groundHeight(x,z),z);t.g.rotation.y=heading;
   idleCars.push(t);
   return t;
@@ -472,7 +472,7 @@ function completeEnter(f:{c:Vehicle;kind:string}){
     addWanted(1,'STOLEN CAR!','vehicle_theft');refs.spawnTraffic?.();
   }else{
     cops.splice(cops.indexOf(c),1);
-    cur={g:c.g,heading:c.heading,speed:0,name:'CRUISER 47',police:true};
+    cur={g:c.g,heading:c.heading,speed:0,name:'VIATURA',police:true};
     addWanted(2,'STOLEN POLICE CAR!','police_vehicle_theft');
   }
   // motorista NPC some do banco (o ejetado/fugitivo é tratado à parte)

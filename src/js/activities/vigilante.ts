@@ -45,7 +45,7 @@ const spawn=(()=>{
 })();
 
 const cruiser: any={g:makeCar(0xe8e8ee,true),heading:spawn.heading,speed:0,
-  name:'POLICE CRUISER',police:true,vigilante:true};
+  name:'VIATURA',police:true,vigilante:true};
 cruiser.g.position.set(spawn.x,groundHeight(spawn.x,spawn.z),spawn.z);
 cruiser.g.rotation.y=spawn.heading;
 idleCars.push(cruiser);

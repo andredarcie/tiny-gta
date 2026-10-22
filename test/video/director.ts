@@ -26,7 +26,7 @@ export interface SceneOptions {
   outro?: string;         // end-card headline (default: the game's name)
   outroSub?: string;      // end-card smaller line under it
   lang?: string;          // HUD language (default 'pt-BR' — see src/js/core/i18n.ts)
-  music?: number | null;  // radio station playing under the scene (0 funk, 1 pagode, 2 groove, 3 country); null = none
+  music?: number | null;  // radio station playing under the scene (0 funk, 1 pagode, 2 forró, 3 sertanejo); null = none
   tod?: number;           // time of day 0..1 (0.42 = bright late morning)
   settings?: Record<string, unknown>; // extra graphics settings (localStorage)
   hide?: string[];        // CSS selectors hidden while filming (default: police radio subtitle + radio station tag)

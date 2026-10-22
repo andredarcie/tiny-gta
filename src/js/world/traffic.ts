@@ -50,8 +50,8 @@ const cruise=(e:NavEdge):number=>e.kind==='primary'||e.kind==='secondary'?12:e.p
 // so they drive, brake, dent, get stolen and seat a driver exactly the same way.
 function pickTrafficBody():{g:THREE.Object3D;name:string}{
   const r=Math.random();
-  if(r<.16)return{g:makeKombi(),name:'BREAD LOAF VAN'};
-  if(r<.4){const ci=irand(0,carColors.length-1);return{g:makeFiatUno(carColors[ci]),name:'SQUARE FIRE'};}
+  if(r<.16)return{g:makeKombi(),name:'KOMBI'};
+  if(r<.4){const ci=irand(0,carColors.length-1);return{g:makeFiatUno(carColors[ci]),name:'UNO MILLE'};}
   const ci=irand(0,carColors.length-1);
   return{g:makeCar(carColors[ci],false),name:carNames[ci]};
 }

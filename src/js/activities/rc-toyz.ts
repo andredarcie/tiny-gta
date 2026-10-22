@@ -111,7 +111,7 @@ const RC_SCALE=1.5;
 const rc=makeRcRager();
 rc.scale.setScalar(RC_SCALE);
 scene.add(rc); // makeRcRager is a PURE build() (no scene.add), so we add it here
-const rcObj: any={g:rc,heading:PAD_H,speed:0,name:'RC RAGER',remote:true};
+const rcObj: any={g:rc,heading:PAD_H,speed:0,name:'CARRINHO RC',remote:true};
 
 // grab the antenna parts to wobble them (search the built group)
 let _ant: THREE.Object3D|null=null,_antTip: THREE.Object3D|null=null;

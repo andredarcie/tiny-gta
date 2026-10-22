@@ -752,7 +752,7 @@ window.__test={
     };
     r.rec.stop();
   }),
-  // Video: play radio station i (0 funk, 1 pagode, 2 groove, 3 country) even on foot.
+  // Video: play radio station i (0 funk, 1 pagode, 2 forró, 3 sertanejo) even on foot.
   music:(i: number)=>{radioPlay(i);return true;},
   // Video/test: stand `dist` m from the nearest living outdoor pedestrian and aim the
   // first-person view at its head/body/legs (the next attack() fires there). Returns

@@ -19,7 +19,7 @@ edited automatically. The structure already exists — reuse it, don't reinvent:
 Output: `output/video/<scene>/<scene>.mp4` + `output/video/<scene>/cover.jpg` (git-ignored).
 
 ## The spec every video must meet
-- **With sound**: the game's own mix (gunshots, explosions, engines, UI blips) is recorded from the master audio bus for the whole shoot and sliced per clip. Put the game's music under it with `music:` (radio station 0 funk, 1 pagode, 2 groove, 3 country) — pick one that fits the mood. The final track is loudness-normalised (-14 LUFS).
+- **With sound**: the game's own mix (gunshots, explosions, engines, UI blips) is recorded from the master audio bus for the whole shoot and sliced per clip. Put the game's music under it with `music:` (radio station 0 funk, 1 pagode, 2 forró, 3 sertanejo) — pick one that fits the mood. The final track is loudness-normalised (-14 LUFS).
 - **In Brazilian Portuguese (pt-BR)**: title, subtitle, captions and end card in PT-BR, and the game itself runs with `?lang=pt-BR` (the director's default). Tone: **sarcastic, funny, scroll-stopping** — short punchlines, dark humour that fits the scene (e.g. *"Ele perdeu a cabeça. Literalmente."*, *"Resolvendo conflitos com diálogo"*).
 - **Vertical 9:16, 720×1280, 30 fps** — watched on a phone held upright.
 - **Short: 12–30 s total** (TikTok/Reels sweet spot ~15–25 s). Only the key actions; **cut** all walking/setup (just don't wrap it in `clip()`).

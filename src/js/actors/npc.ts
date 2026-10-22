@@ -23,16 +23,16 @@ import {NPC_DEFS,type NpcDef} from '@/core/npc-defs.ts';
 // OWN AI in update(); the damage/death is inherited from here. See rural-folk.ts.
 // ============================================================================
 
-// Name pools — 30 common US English first names per gender. Each NPC is assigned
+// Name pools — 30 common Brazilian first names per gender. Each NPC is assigned
 // a mandatory name at birth, with a 50/50 male/female split (see balancedGenders).
-export const MALE_NAMES=['James','John','Robert','Michael','William','David','Richard',
-  'Joseph','Thomas','Charles','Christopher','Daniel','Matthew','Anthony','Mark','Donald',
-  'Steven','Andrew','Joshua','Kenneth','Kevin','Brian','George','Edward','Ronald',
-  'Timothy','Jason','Jeffrey','Ryan','Gary'];
-export const FEMALE_NAMES=['Mary','Patricia','Jennifer','Linda','Elizabeth','Barbara',
-  'Susan','Jessica','Sarah','Karen','Nancy','Lisa','Betty','Margaret','Sandra','Ashley',
-  'Kimberly','Emily','Donna','Michelle','Carol','Amanda','Dorothy','Melissa','Deborah',
-  'Stephanie','Rebecca','Laura','Sharon','Cynthia'];
+export const MALE_NAMES=['João','José','Antônio','Francisco','Carlos','Paulo','Pedro',
+  'Lucas','Luiz','Marcos','Gabriel','Rafael','Daniel','Marcelo','Bruno','Eduardo',
+  'Felipe','Raimundo','Rodrigo','Sebastião','Mateus','André','Fernando','Fábio','Leonardo',
+  'Gustavo','Tiago','Diego','Benedito','Wellington'];
+export const FEMALE_NAMES=['Maria','Ana','Francisca','Antônia','Adriana','Juliana',
+  'Márcia','Fernanda','Patrícia','Aline','Sandra','Camila','Amanda','Bruna','Jéssica','Letícia',
+  'Júlia','Luciana','Vanessa','Mariana','Gabriela','Vera','Vitória','Larissa','Cláudia',
+  'Beatriz','Rita','Sônia','Aparecida','Tereza'];
 
 // A minimal RNG shape: anything with a 0..1 random(). The seeded makeRng() streams
 // satisfy it, and so does a {random:Math.random} fallback.

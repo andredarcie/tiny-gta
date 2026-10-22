@@ -20,11 +20,11 @@ interface Song {
 interface BassOpts { cut?: number; q?: number; type?: OscillatorType; spread?: number; sub?: boolean; }
 
 export const STATIONS: Station[]=[
-  {name:'BOOMBEAT RADIO 98.3', tag:'FUNK PARTY',        col:'#ff2e88', id:'batidao'},
-  {name:'PAGODE RADIO 104.5',  tag:'PAGODE & SAMBA',    col:'#ffd24a', id:'pagode'},
-  {name:'GROOVE FM',           tag:'BLACK MUSIC',        col:'#19e3ff', id:'groove'},
-  {name:'COUNTRY ROOTS 107.1', tag:'COUNTRY ROOTS',      col:'#9dff2e', id:'sertao'},
-  {name:'OFF AIR',             tag:'',                   col:'#666666', id:null},
+  {name:'BATIDÃO FM 98.3',     tag:'FUNK',               col:'#ff2e88', id:'batidao'},
+  {name:'PAGODÃO 104.5',       tag:'PAGODE E SAMBA',     col:'#ffd24a', id:'pagode'},
+  {name:'ARRASTA-PÉ FM 92.7',  tag:'FORRÓ E PISEIRO',    col:'#19e3ff', id:'forro'},
+  {name:'MODÃO FM 107.1',      tag:'SERTANEJO',          col:'#9dff2e', id:'sertao'},
+  {name:'RÁDIO DESLIGADO',     tag:'',                   col:'#666666', id:null},
 ];
 export let stationIdx=0;
 let radioActive=false,radioGain: GainNode | null=null,radioNodes: RadioNode[]=[];
@@ -76,13 +76,13 @@ export function radioPlay(i: number): void {
   radioOn();
 }
 
-// Entrou no carro: sorteia uma estação de música (nunca a OFF AIR)
+// Got in a car: pick a random music station (never the switched-off one)
 export function radioRandom(): void {
   stationIdx=Math.floor(Math.random()*(STATIONS.length-1));
 }
 
-// Entrou no carro: sorteia uma estação. NÃO força mais a country ao chegar na
-// zona rural — a COUNTRY ROOTS continua na lista pra sintonizar na mão.
+// Got in a car: pick a random station (the countryside no longer forces the
+// sertanejo one — MODÃO FM stays on the dial to tune by hand).
 export function radioEnter(): void { radioRandom(); }
 
 export function radioSwitch(): void {
@@ -338,7 +338,7 @@ function startSong(song: Song): void {
 //  Padrões e vozes ficam em const de módulo (sem alocar por passo).
 // ===================================================================
 
-// ---- BOOMBEAT 98.3 — funk brasileiro, 130 BPM, vi–IV–I–V (Am F C G) ----
+// ---- BATIDÃO 98.3 — Brazilian funk, 130 BPM, vi–IV–I–V (Am F C G) ----
 const BAT_ROOTS=[110,87.3,130.8,98];                 // A F C G (Hz, ciclo de 4 compassos)
 const BAT_CH=[                                        // vozes (MIDI) — encadeamento suave
   [57,60,64,67],                                      // Am7
@@ -367,35 +367,34 @@ function batidaoStep(bar: number,step: number,t: number): void {
   if(last&&step>=8&&step%2===0)_rs(t,.28+(step-8)*.02,1); // virada no fim
 }
 
-// ---- GROOVE FM — funk/soul, 105 BPM, ii–V–I em Dó (com 9ªs/13ª) ----
-const GRV_ROOT=[130.8,110,146.8,98, 130.8,110,146.8,98]; // C A D G (Hz)
-const GRV_CH=[
-  [60,64,67,71,74],   // Cmaj9
-  [57,60,64,67,71],   // Am9
-  [62,65,69,72,76],   // Dm9
-  [55,59,65,69,74],   // G13
-  [60,64,67,71,74],
-  [57,60,64,67,71],
-  [62,65,69,72,76],
-  [55,59,65,69,74],
+// ---- ARRASTA-PÉ 92.7 — forró/piseiro, 128 BPM, baião em Sol mixolídio (G F C D) ----
+const FOR_ROOT=[98,87.3,130.8,146.8, 98,87.3,130.8,98]; // G F C D / G F C G (Hz)
+const FOR_CH=[
+  [55,59,62,67],   // G
+  [53,57,60,65],   // F
+  [55,60,64,67],   // C
+  [57,62,66,69],   // D
+  [55,59,62,67],
+  [53,57,60,65],
+  [55,60,64,67],
+  [55,59,62,67],
 ];
-const GRV_BASS=[1,0,0,1,0,1,1,0, 1,0,1,1,0,0,1,0];     // slap em 16 avos
-const GRV_LICK=[72,0,0,76,0,79,0,76, 0,74,72,0,69,0,72,0]; // lick pentatônico de Dó
-function grooveStep(bar: number,step: number,t: number): void {
-  const cyc=bar&7,root=GRV_ROOT[cyc],ch=GRV_CH[cyc];
+const FOR_ZAB=[1,0,0,1,1,0,0,0, 1,0,0,1,1,0,0,0];     // zabumba: a célula do baião (3+3+2)
+const FOR_MEL=[                                        // sanfona: frase em Sol mixolídio (Fá natural)
+  [79,0,77,79,0,76,74,0, 72,0,74,76,77,0,76,0],
+  [74,0,76,77,79,0,81,0, 79,77,76,0,74,0,72,0],
+];
+function forroStep(bar: number,step: number,t: number): void {
+  const cyc=bar&7,root=FOR_ROOT[cyc],ch=FOR_CH[cyc];
   const sec=bar<2?0:bar<10?1:2,last=bar===15;
-  _rh(t+(step%2?.012:0),step%2?.11:.06,step%4===2?.05:.03); // chimbal com swing
-  if(step===14)_roh(t,.09);
-  if(step===0||step===8||(step===6&&(bar&1)))_rk(t,step===0?.95:.8);
-  if(sec>0&&(step===4||step===12))_rclap(t,.5);        // palmas no 2 e 4
-  if(GRV_BASS[step]){
-    const oct=(step===3||step===10||step===14)?2:1;
-    _rbass(t,root*oct,step%4===2?.16:.24,.42,{cut:300,q:7,spread:7}); // baixo slapado
-  }
-  if(sec>0&&(step===2||step===7||step===11))_rchord(t,ch,.3,.05,'triangle',1,0); // Rhodes em stabs
-  if(sec>0&&step===0&&(bar&1)===0)_rpad(t,ch,curStepDur*14,.028,'sawtooth');      // colchão leve
-  if(sec===2&&GRV_LICK[step])_rlead(t,mtof(GRV_LICK[step]),step%2?.14:.22,.085,'sawtooth',0,1); // wah lead
-  if(last&&step>=10&&step%2===0)_rclap(t,.4);
+  _rh(t,step%4===2?.11:.05,step%4===2?.06:.025);       // triângulo: 16 avos, aberto no contratempo
+  if(FOR_ZAB[step])_rk(t,step%8===0?.9:.7,step%8===0?52:58); // zabumba (grave + resposta)
+  if(sec>0&&(step===4||step===12))_rs(t,.14,1.6);       // bacalhau da zabumba
+  if(FOR_ZAB[step])_rbass(t,step%8===0?root:root*1.5,.2,.34,{type:'triangle',cut:520,q:1.6,spread:0});
+  if(sec>0&&(step===2||step===6||step===10||step===14))_rchord(t,ch,.16,.035,'square',1,0); // sanfona no contratempo
+  if(sec===2){const mel=FOR_MEL[bar&1][step];if(mel)_rfiddle(t,mtof(mel),step%2?.14:.24,.08);} // solo de sanfona
+  else if(sec===1&&step===0)_rfiddle(t,mtof(ch[3]+12),curStepDur*7,.05);                    // fole sustentado
+  if(last&&step>=8&&step%2===0)_rk(t,.6,60);             // virada da zabumba
 }
 
 // ---- PAGODE 104.5 — samba/pagode, 95 BPM, roda de acordes em Sol ----
@@ -430,17 +429,17 @@ function pagodeStep(bar: number,step: number,t: number): void {
   if(sec===2&&PAG_MEL[step])_rlead(t,mtof(PAG_MEL[step]),step%2?.2:.34,.075,'triangle',1,1);
 }
 
-// ---- COUNTRY ROOTS 107.1 — country/sertanejo, 100 BPM, em Sol maior ----
-const SER_ROOT=[98,130.8,98,146.8, 98,82.4,130.8,146.8]; // G C G D / G E C D (Hz)
+// ---- MODÃO 107.1 — sertanejo, 100 BPM, em Sol maior (G D Em C, a roda do modão) ----
+const SER_ROOT=[98,146.8,82.4,130.8, 98,146.8,82.4,130.8]; // G D E C (Hz)
 const SER_CH=[
   [55,59,62,67],   // G
-  [60,64,67,72],   // C
-  [55,59,62,67],   // G
   [62,66,69,74],   // D
-  [55,59,62,67],   // G
   [64,67,71,76],   // Em
   [60,64,67,72],   // C
+  [55,59,62,67],   // G
   [62,66,69,74],   // D
+  [64,67,71,76],   // Em
+  [60,64,67,72],   // C
 ];
 const SER_MEL=[                                        // frase de viola/sanfona (Sol maior)
   [79,0,0,76,74,0,72,0, 74,0,76,0,79,0,76,74],
@@ -463,6 +462,6 @@ function sertaoStep(bar: number,step: number,t: number): void {
 const SONGS: Record<string, Song>={
   batidao:{bpm:130,bars:16,delayDiv:3,dfb:.30,dwet:.12,rwet:.12,step:batidaoStep},
   pagode :{bpm:95, bars:16,delayDiv:2,dfb:.20,dwet:.08,rwet:.20,step:pagodeStep},
-  groove :{bpm:105,bars:16,delayDiv:3,dfb:.32,dwet:.14,rwet:.16,step:grooveStep},
+  forro  :{bpm:128,bars:16,delayDiv:2,dfb:.18,dwet:.08,rwet:.14,step:forroStep},
   sertao :{bpm:100,bars:16,delayDiv:3,dfb:.24,dwet:.10,rwet:.18,step:sertaoStep},
 };

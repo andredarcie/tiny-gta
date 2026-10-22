@@ -57,7 +57,7 @@ export function saveBest(){
 }
 
 export const keys: Record<string, boolean> = {};
-export const carNames=['TUNED BUG','COMPANY SEDAN','RUSTY PICKUP','SLOW TURBO','BLUE SHARK','GRANDPA COUPE','BUDGET ROCKET','GOLDEN BOAT'];
+export const carNames=['GOL','CORSA','PALIO','CELTA','ONIX','VOYAGE','OPALA','SANTANA'];
 // Paint vocabulary lives in the central palette; indexed in lockstep with carNames.
 export const carColors=CAR_COLORS;
 

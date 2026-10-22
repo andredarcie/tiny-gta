@@ -64,7 +64,7 @@ const spawn=(()=>{
   return{x:r.x-p.dz*laneOff(r.e),z:r.z+p.dx*laneOff(r.e),heading:Math.atan2(p.dx,p.dz)};
 })();
 
-const truck: any={g:makeFireTruck(),heading:spawn.heading,speed:0,name:'FIRE TRUCK',firetruck:true};
+const truck: any={g:makeFireTruck(),heading:spawn.heading,speed:0,name:'CAMINHÃO DE BOMBEIROS',firetruck:true};
 truck.g.position.set(spawn.x,groundHeight(spawn.x,spawn.z),spawn.z);
 truck.g.rotation.y=spawn.heading;
 scene.add(truck.g);

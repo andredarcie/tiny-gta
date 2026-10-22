@@ -53,7 +53,7 @@ const rank=roadside(divData.landmarks.pracaMatriz.x,divData.landmarks.pracaMatri
 const stand={x:rank.x,z:rank.z,heading:rank.h};
 
 export const taxi: any={g:makeCar(0xffd24a,false),heading:stand.heading,speed:0,
-  name:'TAXI CAB',police:false,taxi:true};
+  name:'TÁXI',police:false,taxi:true};
 {
   // letreiro TAXI no teto (base escura + caixa amarela acesa)
   const base=new THREE.Mesh(new THREE.BoxGeometry(.78,.06,.44),

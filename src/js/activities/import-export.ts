@@ -65,7 +65,7 @@ const hookRestY=hook?hook.position.y:0;
 // rc-toyz.js e player.js.
 function isSpecial(car: any){
   return !!(car&&(car.taxi||car.police||car.vigilante||car.ambulance||
-    car.firetruck||car.boat||car.bike||car.plane||car.name==='RC RAGER'));
+    car.firetruck||car.boat||car.bike||car.plane||car.remote));
 }
 
 // Sorteia um novo pedido diferente do atual. Se a lista so tiver um nome, sai do

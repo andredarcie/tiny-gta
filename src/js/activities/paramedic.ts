@@ -40,7 +40,7 @@ const bay=(()=>{
 const dropX=bay.x,dropZ=bay.z;
 
 // Ambulância estacionada na rua em frente ao hospital
-const amb: any={g:makeAmbulance(),heading:bay.h,speed:0,name:'AMBULANCE',police:false,ambulance:true};
+const amb: any={g:makeAmbulance(),heading:bay.h,speed:0,name:'AMBULÂNCIA',police:false,ambulance:true};
 amb.g.position.set(bay.x,groundHeight(bay.x,bay.z),bay.z);
 amb.g.rotation.y=bay.h;
 idleCars.push(amb);

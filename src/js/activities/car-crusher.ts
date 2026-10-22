@@ -64,7 +64,7 @@ const _car0={y:0,scaleY:1};
 function isSpecialVehicle(c: any){
   if(!c)return false;
   return !!(c.taxi||c.police||c.vigilante||c.ambulance||c.firetruck
-    ||c.boat||c.bike||c.plane)||c.name==='RC RAGER';
+    ||c.boat||c.bike||c.plane)||c.remote;
 }
 
 // ----- partículas de impacto (estilhaços/poeira) num pool reaproveitado -----

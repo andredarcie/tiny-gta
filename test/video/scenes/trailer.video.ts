@@ -1,5 +1,5 @@
 // VIDEO: the GTA-style trailer of Divinolândia — drone shots of the town's landmarks with a
-// female narrator (trailer.vo.json, voiced through VoiceStudio), the game's groove radio
+// female narrator (trailer.vo.json, voiced through VoiceStudio), the game's forró radio
 // under it, and a car blowing up at night in front of the Matriz as the payoff (and the cover).
 //   npm run video -- trailer
 import { test } from '@playwright/test';
@@ -21,7 +21,7 @@ test('video: trailer', async ({ page }) => {
     outro: 'DIVINO CITY',
     outroSub: 'Divinolândia te espera',
     outroVo: 'final',
-    music: 2,                                   // the groove station under the whole trailer
+    music: 2,                                   // the forró station under the whole trailer
     tod: .42,
     hide: ['#hud', '#npc-labels', '#police-radio', '#cine-sub', '#cine-hint'],
   });
