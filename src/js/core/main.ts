@@ -5,10 +5,11 @@ import {renderer,scene,camera,clouds,dlight,sunDir,setRenderScale,getRenderScale
 import {updateAudio,AC,master} from '@/audio/audio.ts';
 import {radioPlay} from '@/ui/radio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
-import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
+import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx,settleParkedVehicles} from '@/actors/player.ts';
 import {groundHeight,DIVINO_X_MIN} from '@/core/constants.ts';
 import {poseOnGround,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
 import {obbsNear} from '@/world/divinolandia/collide.ts';
+import {walkHeight} from '@/world/surface-lift.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts';
@@ -407,6 +408,7 @@ function step(dt: number){
   updateDrivenShadow(); // sombra some do carro/moto que o jogador está dirigindo
   if(cur)blinkBar(cur.g);
   for(const c of idleCars)blinkBar(c.g);
+  settleParkedVehicles();   // parked vehicles sit on their wheels on the drawn paving
   P.end();
 
   P.begin('camera');updateCamera(dt);applyProfileView();applyCineShot();updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
@@ -578,7 +580,7 @@ window.render_game_to_text=()=>{
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi,
       heading:c.heading,crashes:c.g.userData.crashCount||0,air:(c.g.userData.body as VehicleBody|undefined)?.air||0,
       // how far the car sits below its resting height on its wheels (> 0 = cutting into the ground)
-      sink:c.plane||c.boat?0:poseOnGround(groundHeight,c.g.position.x,c.g.position.z,c.heading,c.bike?BIKE:CAR).y-c.g.position.y}:null,
+      sink:c.plane||c.boat?0:poseOnGround(walkHeight,c.g.position.x,c.g.position.z,c.heading,c.bike?BIKE:CAR).y-c.g.position.y}:null,
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
     boatRace:refs.getBoatRaceState?.()||null,

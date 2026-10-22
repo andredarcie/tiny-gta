@@ -11,11 +11,13 @@ import Arvore from '../../../../assets/models/divinolandia/arvore-rua.ts';
 import {makeSidewalks,KERB_H,type Paving} from '../../../../assets/models/divinolandia/calcada.ts';
 import Poste,{makeWires} from '../../../../assets/models/divinolandia/poste-rede.ts';
 import {addObb} from '../collide.ts';
+import {addSurfacePolygon} from '../../surface-lift.ts';
 import {groundRange,type P2} from '../ground-fit.ts';
 import type {StreetSpec} from './spec.ts';
 import {EXTRAS} from './extras.ts';
 
 export const SIDEWALK=2.2;                  // kerb → façade line
+const SIDEWALK_TOP=.15+KERB_H;               // top of the raised sidewalk above the terrain (makeSidewalks' default road lift + kerb)
 
 type Frame={x:number;z:number;ux:number;uz:number};
 // point + unit tangent at distance s along a polyline (world coords)
@@ -75,6 +77,11 @@ export function buildSurveyedStreet(spec:StreetSpec,pts:[number,number][],hw:num
     strip(side,cur,b,spec.gapWalk?.find(g=>g.side===side&&g.block===i)?.k??'cimento');
   }
   place(makeSidewalks(strips,H));
+  // the raised sidewalks are walked and parked on: register what is drawn (quad by quad)
+  for(const st of strips)for(let i=1;i<st.pts.length;i++){
+    const q:[number,number][]=[i-1,i,i,i-1].map((j,k)=>k<2?[st.pts[j][0],st.pts[j][1]]:[st.pts[j][0]+st.nx[j]*st.w,st.pts[j][1]+st.nz[j]*st.w]);
+    addSurfacePolygon(q,SIDEWALK_TOP);
+  }
   // street trees on the sidewalk
   for(const t of TREES){
     const f=alongPolyline(pts,t.s),[nx,nz]=sideNormal(f,t.side),off=hw+.9,x=f.x+nx*off,z=f.z+nz*off;

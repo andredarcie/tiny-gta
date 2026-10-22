@@ -8,6 +8,8 @@
 // draws (data.ts divinoHeight), which keeps it cheap (4 + 9 lookups) and makes what you
 // see and what you drive on the same surface.
 //
+// The ground function given to it must be the DRAWN surface (walkHeight: terrain + paving),
+// or the wheels sink into the streets drawn over the terrain.
 //   poseOnGround — the resting pose: height, pitch and roll from the four wheel contacts
 //     (a plane through the axle mid-points), then raised just enough that no point of the
 //     underside dips into the ground (a crest under the floor pan lifts the car instead of
@@ -23,9 +25,8 @@
 // order 'YXZ' as rotation.set(-pitch, heading, roll).
 
 export type GroundFn=(x: number,z: number)=>number;
-// The streets are drawn this much above the terrain they are draped on (rua.ts STREET_LIFT):
-// the tyres rest on the drawn asphalt, not a few centimetres under it.
-const TYRE_LIFT=.03;
+// (callers pass the ground the wheels actually rest on: world/surface-lift.ts walkHeight —
+// the terrain plus the paving drawn over it)
 
 export interface Chassis{
   halfBase: number;     // axle distance from the centre (m)
@@ -54,7 +55,7 @@ function requiredY(H: GroundFn,x: number,z: number,h: number,tp: number,tr: numb
   let need=-1e9;
   const wheels=c.twoWheel?[[c.halfBase,0],[-c.halfBase,0]]:[[c.halfBase,c.halfTrack],[c.halfBase,-c.halfTrack],[-c.halfBase,c.halfTrack],[-c.halfBase,-c.halfTrack]];
   for(const[a,b]of wheels){
-    const g=H(x+fx*a+lx*b,z+fz*a+lz*b)+TYRE_LIFT;
+    const g=H(x+fx*a+lx*b,z+fz*a+lz*b);
     need=Math.max(need,g-off(a,b,tp,tr));
   }
   for(const[ua,ub]of PROBES){
@@ -68,7 +69,7 @@ function requiredY(H: GroundFn,x: number,z: number,h: number,tp: number,tr: numb
 // Resting pose of a chassis centred at (x,z) facing `h`.
 export function poseOnGround(H: GroundFn,x: number,z: number,h: number,c: Chassis=CAR): Pose{
   const fx=Math.sin(h),fz=Math.cos(h),lx=Math.cos(h),lz=-Math.sin(h);
-  const at=(a: number,b: number)=>H(x+fx*a+lx*b,z+fz*a+lz*b)+TYRE_LIFT;
+  const at=(a: number,b: number)=>H(x+fx*a+lx*b,z+fz*a+lz*b);
   let pitch: number,roll: number,mid: number;
   if(c.twoWheel){
     const f=at(c.halfBase,0),r=at(-c.halfBase,0);
@@ -95,8 +96,8 @@ function contactReport(H: GroundFn,x: number,z: number,h: number,y: number,tp: n
   }
   const wheels=c.twoWheel?[[c.halfBase,0],[-c.halfBase,0]]:[[c.halfBase,c.halfTrack],[c.halfBase,-c.halfTrack],[-c.halfBase,c.halfTrack],[-c.halfBase,-c.halfTrack]];
   for(const[a,b]of wheels){
-    pen=Math.max(pen,H(x+fx*a+lx*b,z+fz*a+lz*b)+TYRE_LIFT-(y+off(a,b,tp,tr)));
-    float=Math.max(float,y+off(a,b,tp,tr)-H(x+fx*a+lx*b,z+fz*a+lz*b)-TYRE_LIFT);
+    pen=Math.max(pen,H(x+fx*a+lx*b,z+fz*a+lz*b)-(y+off(a,b,tp,tr)));
+    float=Math.max(float,y+off(a,b,tp,tr)-H(x+fx*a+lx*b,z+fz*a+lz*b));
   }
   return{penetration:pen,float};
 }

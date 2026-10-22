@@ -5,7 +5,8 @@ import {roadside} from '@/world/divinolandia/nav.ts';
 import {DIV_OX,DIV_OZ,PLAY} from '@/world/divinolandia/data.ts';
 import {FORT_EXIT} from '../../assets/models/rural/abandoned-fort.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
-import {stepBody,newBody,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
+import {stepBody,newBody,parkOnGround,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
+import {walkHeight} from '@/world/surface-lift.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
@@ -297,6 +298,20 @@ const _footF=new THREE.Vector3(),_footR=new THREE.Vector3(),_footMv=new THREE.Ve
 const _camFwd=new THREE.Vector3(),_camFocus=new THREE.Vector3(),_camWant=new THREE.Vector3();
 // First-person: eye position + look direction (live together -> 2 distinct instances).
 const _fpEye=new THREE.Vector3(),_fpDir=new THREE.Vector3();
+
+// Every parked vehicle rests on its wheels on the drawn paving (vehicle-ground.ts), whoever
+// spawned it (taxi stand, cruiser, ambulance, garage, bikes…): re-seated whenever it was
+// moved or turned since the last time. Cheap — only changed vehicles are touched.
+export function settleParkedVehicles():void{
+  for(const c of idleCars){
+    if(c===cur||c.plane||c.boat||c.remote||c.sinkT)continue;
+    const p=c.g.position,ud=c.g.userData,h=c.heading??c.g.rotation.y;
+    const at=ud.parkedAt as {x:number;z:number;h:number}|undefined;
+    if(at&&at.x===p.x&&at.z===p.z&&at.h===h)continue;
+    parkOnGround(c.g,walkHeight,p.x,p.z,h,c.bike?BIKE:CAR);
+    ud.parkedAt={x:p.x,z:p.z,h};
+  }
+}
 
 export function nearestCar(maxD:number):{c:Vehicle;kind:string}|null{
   let best:Vehicle|null=null,bd=maxD,kind:string|null=null;
@@ -936,7 +951,7 @@ export function updateCar(dt:number){
   if(groundHeight(p.x,p.z)-p.y>2.5){p.x=px0;p.z=pz0;cur!.speed*=-.25;}
   let body=ud.body as VehicleBody|undefined;
   if(!body||Math.abs(body.y-p.y)>.6){body=newBody(p.y);ud.body=body;}   // fresh car, or moved by someone else (a jump, a teleport)
-  stepBody(body,groundHeight,px0,pz0,p.x,p.z,cur!.heading,dt,bike?BIKE:CAR);
+  stepBody(body,walkHeight,px0,pz0,p.x,p.z,cur!.heading,dt,bike?BIKE:CAR);   // on the drawn paving
   p.y=body.y;
   cur!.g.rotation.order='YXZ';
   cur!.g.rotation.set(-body.pitch,cur!.heading,body.roll+ud.lean);

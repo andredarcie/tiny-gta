@@ -11,7 +11,7 @@ import {drapePolys,type DrapeGrid} from './terreno.ts';
 // (terreno.ts drapeTris) and lies exactly on the ground; without it (model viewer) each
 // vertex just reads the ground height. The bake already levelled the terrain across each
 // street bed (no sideways tilt). Where ribbons overlap (junctions) the order is fixed by
-// polygon offset (and a few millimetres of lift): setts > asphalt > dirt > sidewalk > ground. One merged mesh per
+// lift + polygon offset: setts > asphalt > dirt > sidewalk > ground. One merged mesh per
 // material for the whole town.
 // (asphalt and dirt carry a near-white detail texture averaging ~0.85: their colour is lifted
 // to match, so the palette value is what the surface reads as)
@@ -23,10 +23,9 @@ export const settMat=matte({map:settTexture(),polygonOffset:true,polygonOffsetFa
 // (the cement-slab texture is already the sidewalk's own grey: no tint)
 export const sidewalkMat=matte({color:0xf4f1ea,map:calcadaTexture('cimento'),polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});
 
-// How far the street ribbons are drawn above the terrain they are draped on. Kept a hair
-// above it: the polygon offsets (not this lift) decide what draws over what, so the asphalt
-// you see is where the wheels actually rest (vehicle-ground.ts adds the same lift).
-export const STREET_LIFT=.03;
+// How far each ribbon is drawn above the terrain it is draped on (the world registers the
+// same heights as walkable surfaces — world/surface-lift.ts — so wheels and feet rest on them).
+export const STREET_LIFT={paved:.14,dirt:.12,sett:.16,walk:.1};
 
 export type StreetLine={pts:[number,number][];hw:number;paved:boolean;sidewalk:boolean;sett?:boolean};
 type HAt=(x:number,z:number)=>number;
@@ -88,13 +87,13 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid):THREE.Gr
     ribbon(s.pts,-s.hw,s.hw,step,road);
     // two cobbled streets crossing would lay the same ground twice with their setts at
     // different angles: a few millimetres apart, one always shows over the other
-    if(s.sett)lay(road,hAt,STREET_LIFT+.012+.004*(k%3),grid,sett,settUv);
-    else lay(road,hAt,s.paved?STREET_LIFT:STREET_LIFT-.005,grid,s.paved?asph:dirt,s.paved?asphUv:dirtUv);
+    if(s.sett)lay(road,hAt,STREET_LIFT.sett+.006*(k%3),grid,sett,settUv);
+    else lay(road,hAt,s.paved?STREET_LIFT.paved:STREET_LIFT.dirt,grid,s.paved?asph:dirt,s.paved?asphUv:dirtUv);
     if(s.sidewalk){
       const side:number[][]=[];
       ribbon(s.pts,s.hw,s.hw+2.1,step,side);
       ribbon(s.pts,-s.hw-2.1,-s.hw,step,side);
-      lay(side,hAt,STREET_LIFT-.01,grid,walk,walkUv);
+      lay(side,hAt,STREET_LIFT.walk,grid,walk,walkUv);
     }
   });
   const g=new THREE.Group();

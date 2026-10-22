@@ -20,10 +20,11 @@ import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
 import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR} from './data.ts';
 import {addObb,setPlayBounds} from './collide.ts';
 import {parkOnGround} from '@/actors/vehicle-ground.ts';
+import {addSurfaceStrip,addSurfacePolygon,walkHeight} from '../surface-lift.ts';
 import {groundRange,fitBuilding,rect} from './ground-fit.ts';
 import {makeTerrainTiles,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
 import {enableTerrainLod,updateTerrainLod} from '../../../assets/models/divinolandia/terrain-tiles.ts';
-import {makeStreets,makeWater,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
+import {makeStreets,makeWater,STREET_LIFT,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
 import {addCasa,finalizeCasas,casaTop,EAVE,type CasaSpec} from '../../../assets/models/divinolandia/casa.ts';
 import {makeTrees,makeCoffee} from '../../../assets/models/divinolandia/vegetacao.ts';
 import {makeSurface,makeWall,makeTomb,makeGoal,type Surface} from '../../../assets/models/divinolandia/praca.ts';
@@ -39,7 +40,7 @@ import Igreja,{IGREJA_FOOT} from '../../../assets/models/divinolandia/igreja-mat
 import PracaAlcindo,{ALCINDO} from '../../../assets/models/divinolandia/praca-alcindo.ts';
 import PracaLadislau,{LADISLAU,MATRIZ_AT} from '../../../assets/models/divinolandia/praca-ladislau.ts';
 import {CORETO_R} from '../../../assets/models/rural/coreto.ts';
-import type {GroundAt} from '../../../assets/models/divinolandia/praca-chao.ts';
+import {STREET_TOP,type GroundAt} from '../../../assets/models/divinolandia/praca-chao.ts';
 import Bench from '../../../assets/models/props/park-bench.ts';
 import PostoTriangulo,{ORIGIN as TRI_O,POSTO_FOOT as TRI_FOOT} from '../../../assets/models/divinolandia/posto-triangulo.ts';
 import PostoPassoni,{ORIGIN as PAS_O,POSTO_FOOT as PAS_FOOT} from '../../../assets/models/divinolandia/posto-passoni.ts';
@@ -118,6 +119,11 @@ export function buildDivinolandia():void{
     return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
   });
   scene.add(trackStatic('otherStatic',makeStreets(lines,H,nearGrid)));
+  // ... and register them as the surface wheels and feet rest on (world/surface-lift.ts)
+  for(const l of lines){
+    addSurfaceStrip(l.pts,l.hw,l.sett?STREET_LIFT.sett+.012:l.paved?STREET_LIFT.paved:STREET_LIFT.dirt);
+    if(l.sidewalk)addSurfaceStrip(l.pts,l.hw+2.1,STREET_LIFT.walk,l.hw);
+  }
   // is (x,z) within `margin` of a street's drawn width (roadway + sidewalk)?
   const SC=24,streetHash=new Map<string,{ax:number;az:number;bx:number;bz:number;r:number}[]>();
   for(const l of lines)for(let i=1;i<l.pts.length;i++){
@@ -227,6 +233,11 @@ export function buildDivinolandia():void{
     return{ox,oz,y0,th:-sq.rot,at,world};
   };
   {
+    // the squares' paving and the setts of the streets round them are drawn at STREET_TOP
+    for(const sq of[ALCINDO,LADISLAU]){
+      const Q=square(sq),m=8;                                    // (the ring streets: ~8 m round each block)
+      addSurfacePolygon([[sq.u0-m,sq.v0-m],[sq.u1+m,sq.v0-m],[sq.u1+m,sq.v1+m],[sq.u0-m,sq.v1+m]].map(([u,v])=>Q.world(u,v)),STREET_TOP);
+    }
     const A=square(ALCINDO);
     const g=PracaAlcindo.build({groundAt:A.at});g.position.set(A.ox,A.y0,A.oz);g.rotation.y=A.th;placeStatic(g);
     const top=(u:number,v:number,h:number):number=>A.y0+A.at(u,v)+h;
@@ -398,11 +409,11 @@ export function buildDivinolandia():void{
   const parked:{k:'uno'|'kombi';c:number}[]=[{k:'uno',c:0xc23b4e},{k:'kombi',c:0},{k:'uno',c:0xe8e6df},{k:'uno',c:0x3b7ac2},{k:'uno',c:0x5b5f6b},{k:'kombi',c:0}];
   const spots=streetSpots(lines,px,pz,parked.length+1);
   // the pink hero car waits right next to the plaza
-  if(spots[0]){const s=spots[0];parkOnGround(playerCar.g,H,s.x,s.z,s.h);playerCar.heading=s.h;}
+  if(spots[0]){const s=spots[0];parkOnGround(playerCar.g,walkHeight,s.x,s.z,s.h);playerCar.heading=s.h;}
   parked.forEach((p,i)=>{
     const s=spots[i+1];if(!s)return;
     const g=p.k==='uno'?makeFiatUno(p.c):makeKombi();
-    parkOnGround(g,H,s.x,s.z,s.h);                         // on its four wheels (the street is graded level across)
+    parkOnGround(g,walkHeight,s.x,s.z,s.h);                // on its four wheels, on the drawn paving
     idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':'KOMBI',police:false});
   });
 
