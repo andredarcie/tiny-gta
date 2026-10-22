@@ -29,5 +29,10 @@
     "name": "CRIANÇA",
     "design": "A Brazilian boy about eight years old. High-pitched, innocent, energetic child's voice, speaking Brazilian Portuguese.",
     "ref_text": "Moço, moço! Você viu minha bola? Ela caiu lá do outro lado da rua!"
+  },
+  "narrator": {
+    "name": "NARRADORA",
+    "design": "A Brazilian woman in her thirties narrating a blockbuster video game trailer. Smooth, low, husky and seductive voice, confident and ironic, slow dramatic pace with pauses, speaking Brazilian Portuguese with a São Paulo accent.",
+    "ref_text": "Toda cidade pequena tem os seus segredos. Mas nenhuma guarda eles tão bem quanto esta."
   }
 }

@@ -6,7 +6,9 @@
 //         ~1-4 MB for 15-30 s (small enough for WhatsApp, sharp on a phone)
 //         output/video/<scene>/cover.jpg   — the cover (also the video's first frame)
 // Structure: COVER (1.2 s: a punchy frame + big title, no fade — so thumbnails are never
-// black) → the kept clips with hard cuts, each with a bold caption → END card (1.3 s).
+// black) → the kept clips with hard cuts, each with a bold caption → END card (1.6 s).
+// Narration (optional): a clip's `vo` line and the scene's `outroVo` (output/voice/<scene>/,
+// voiced by tools/voice/narrate.mjs) are laid over the game's sound, which ducks under them.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -39,6 +41,20 @@ function audioIn(t, len, fadeIn = .03, fadeOut = .03) {
       + `afade=t=in:st=0:d=${fadeIn},afade=t=out:st=${Math.max(0, len - fadeOut).toFixed(3)}:d=${fadeOut}`,
   };
 }
+
+// ---- narration: a clip's line (output/voice/<scene>/<id>.mp3, tools/voice/narrate.mjs) is
+// laid over its slice of the game's sound, which ducks under the voice ----
+const VO_DIR = path.join('output/voice', scene);
+const voFile = (id) => {
+  const f = path.join(VO_DIR, `${id}.mp3`);
+  if (!fs.existsSync(f)) throw new Error(`narration '${id}' missing: node tools/voice/narrate.mjs ${scene}`);
+  return f;
+};
+const VO_DELAY = .12, DUCK = .35;
+/** Mix narration `id` (input index `idx`) over the segment's sound `a` → filter_complex. */
+const voMix = (a, idx, len) => `[1:a]${a.filter},volume=${DUCK}[g];`
+  + `[${idx}:a]aresample=48000,aformat=channel_layouts=stereo,volume=1.6,adelay=${VO_DELAY * 1000}|${VO_DELAY * 1000},apad,atrim=0:${len.toFixed(3)}[v];`
+  + `[g][v]amix=inputs=2:duration=first:normalize=0[a]`;
 
 function ff(args) {
   const r = spawnSync('ffmpeg', ['-y', '-hide_banner', '-loglevel', 'error', ...args], { stdio: 'inherit' });
@@ -84,8 +100,10 @@ cap.clips.forEach((c, i) => {
   const filt = path.join(TMP, `c${i}.filter`); fs.writeFileSync(filt, vf.join(',\n'));
   const out = path.join(TMP, `c${i}.mp4`);
   const a = audioIn(fr[0].t, len);
-  ff(['-f', 'concat', '-safe', '0', '-i', listFile, ...a.args, '-filter_script:v', filt, '-af', a.filter,
-    '-map', '0:v', '-map', '1:a', ...X264, ...AAC, '-t', len.toFixed(3), out]);
+  const sound = c.vo
+    ? ['-i', voFile(c.vo), '-filter_script:v', filt, '-filter_complex', voMix(a, 2, len), '-map', '0:v', '-map', '[a]']
+    : ['-filter_script:v', filt, '-af', a.filter, '-map', '0:v', '-map', '1:a'];
+  ff(['-f', 'concat', '-safe', '0', '-i', listFile, ...a.args, ...sound, ...X264, ...AAC, '-t', len.toFixed(3), out]);
   segs.push(out);
 });
 if (!segs.length) throw new Error('no clips with frames — nothing to edit');
@@ -116,15 +134,23 @@ fs.writeFileSync(path.join(TMP, 'coverclip.filter'),
 
 // ---- 3) END card over the last frame, blurred ----
 const last = cap.frames[cap.frames.length - 1];
+// with a narration line over it the card stays up until the line is over
+const voLen = cap.outroVo ? parseFloat(String(spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration',
+  '-of', 'csv=p=0', voFile(cap.outroVo)]).stdout)) : 0;
+const endLen = Math.max(1.6, VO_DELAY + voLen + .7);
+
 const endVf = [scaleCrop, 'boxblur=14:2', 'eq=brightness=-0.2',
   ...textLines(wrap((cap.outro || 'TINY CRIME').toUpperCase(), 14), H * .36, 92, '0xFF3D9A'),
   ...(cap.outroSub ? textLines(wrap(cap.outroSub.toUpperCase(), 22), H * .56, 46, '0xFFD24A') : []),
-  `fade=t=out:st=1.3:d=0.3`, 'format=yuv420p'];
+  `fade=t=out:st=${(endLen - .3).toFixed(3)}:d=0.3`, 'format=yuv420p'];
 fs.writeFileSync(path.join(TMP, 'end.filter'), endVf.join(',\n'));
 {
-  const a = audioIn(cap.clips[cap.clips.length - 1].end, 1.6, .03, .6);
-  ff(['-loop', '1', '-t', '1.6', '-i', path.join(DIR, 'frames', last.file), ...a.args, '-filter_script:v', path.join(TMP, 'end.filter'),
-    '-af', a.filter, '-map', '0:v', '-map', '1:a', ...X264, ...AAC, '-t', '1.6', path.join(TMP, 'end.mp4')]);
+  const a = audioIn(cap.clips[cap.clips.length - 1].end, endLen, .03, .6);
+  const sound = cap.outroVo
+    ? ['-i', voFile(cap.outroVo), '-filter_script:v', path.join(TMP, 'end.filter'), '-filter_complex', voMix(a, 2, endLen), '-map', '0:v', '-map', '[a]']
+    : ['-filter_script:v', path.join(TMP, 'end.filter'), '-af', a.filter, '-map', '0:v', '-map', '1:a'];
+  ff(['-loop', '1', '-t', endLen.toFixed(3), '-i', path.join(DIR, 'frames', last.file), ...a.args, ...sound,
+    ...X264, ...AAC, '-t', endLen.toFixed(3), path.join(TMP, 'end.mp4')]);
 }
 
 // ---- 4) stitch: cover + clips (hard cuts) + end, sound normalised to social-app loudness ----

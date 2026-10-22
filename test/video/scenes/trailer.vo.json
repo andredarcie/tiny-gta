@@ -1,0 +1,17 @@
+{
+  "_comment": "Narration of the trailer video (npm run video -- trailer). Voiced by tools/voice/narrate.mjs with the 'narrator' voice of tools/voice/voices.json into output/voice/trailer/<id>.mp3; each clip of trailer.video.ts plays its line.",
+  "voice": "narrator",
+  "tempo": 1.08,
+  "lines": {
+    "abertura":   "Divinolândia. Interior de São Paulo.",
+    "matriz":     "Uma cidadezinha de fé...",
+    "prefeitura": "de política séria...",
+    "comercio":   "e de gente trabalhadora.",
+    "hospital":   "Tem hospital no alto do morro.",
+    "rio":        "Um rio tranquilo pra pescar.",
+    "ciclista":   "E monumento pra tudo.",
+    "palmeiras":  "Aqui todo mundo se conhece.",
+    "noite":      "E ninguém nunca viu nada.",
+    "final":      "Bem-vindo a Divinolândia."
+  }
+}

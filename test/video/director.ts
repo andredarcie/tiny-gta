@@ -18,6 +18,7 @@
 import type { Page, CDPSession } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 
 export interface SceneOptions {
   title: string;          // cover headline (big, 1-4 words)
@@ -29,11 +30,15 @@ export interface SceneOptions {
   tod?: number;           // time of day 0..1 (0.42 = bright late morning)
   settings?: Record<string, unknown>; // extra graphics settings (localStorage)
   hide?: string[];        // CSS selectors hidden while filming (default: police radio subtitle + radio station tag)
+  outroVo?: string;       // narration line (id in <scene>.vo.json) spoken over the end card
 }
-interface Clip { label: string; caption?: string; start: number; end: number }
+interface Clip { label: string; caption?: string; start: number; end: number; vo?: string }
+/** A drone-camera key: `h` m over the ground at (x,z), looking at (tx,tz) `th` m over the ground. */
+export interface CamKey { x: number; z: number; h: number; tx: number; tz: number; th: number }
 interface Frame { file: string; t: number }
 
 export const OUT_ROOT = 'output/video';
+export const VOICE_ROOT = 'output/voice'; // narration clips (tools/voice/narrate.mjs)
 type Pt = { x: number; z: number };
 
 export class Director {
@@ -92,13 +97,24 @@ export class Director {
   }
 
   // ---------------- filming ----------------
-  /** Film `fn` as one kept clip with an on-screen caption. `tail` keeps rolling a bit after. */
-  async clip(label: string, caption: string | undefined, fn: () => Promise<void>, tail = 350): Promise<void> {
+  /** Film `fn` as one kept clip with an on-screen caption. `tail` keeps rolling a bit after.
+   *  `vo` = a narration line of <scene>.vo.json: the editor mixes it in at the clip's start
+   *  (the game's sound ducked under it) and the clip keeps rolling until the line ends. */
+  async clip(label: string, caption: string | undefined, fn: () => Promise<void>, tail = 350, vo?: string): Promise<void> {
     const start = Date.now() / 1000;
     this.rolling = true;
-    try { await fn(); await this.wait(tail); }
-    finally { this.rolling = false; }
-    this.clips.push({ label, caption, start, end: Date.now() / 1000 });
+    try {
+      await fn(); await this.wait(tail);
+      if (vo) await this.wait(Math.max(0, (start + this.voLength(vo) + .45) * 1000 - Date.now()));
+    } finally { this.rolling = false; }
+    this.clips.push({ label, caption, start, end: Date.now() / 1000, vo });
+  }
+  /** Seconds of a narration line (its voiced MP3 must exist: tools/voice/narrate.mjs). */
+  voLength(id: string): number {
+    const file = path.join(VOICE_ROOT, this.name, `${id}.mp3`);
+    if (!fs.existsSync(file)) throw new Error(`narration '${id}' not voiced: run node tools/voice/narrate.mjs ${this.name}`);
+    const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file]);
+    return parseFloat(String(r.stdout));
   }
   /** Mark the current moment (inside a clip) as the cover frame. */
   cover(): void { this.coverAt = Date.now() / 1000; }
@@ -138,6 +154,17 @@ export class Director {
   aimAtNpc(dist: number, part: 'head' | 'body' | 'legs' = 'body') {
     return this.ev(([d, p]: any) => (window as any).__test.aimAtNpc(d, p), [dist, part]) as Promise<{ name: string } | null>;
   }
+  /** Drone camera: glide from `a` to `b` over `ms` (eased), optionally at time of day `tod`.
+   *  Parks the (hidden) hero under the subject so traffic and people keep living around it. */
+  async shot(a: CamKey, b: CamKey = a, ms = 3000, opts: { fov?: number; tod?: number } = {}): Promise<void> {
+    await this.ev(() => (window as any).__test.cineShot(null));
+    await this.teleport({ x: (a.tx + b.tx) / 2, z: (a.tz + b.tz) / 2 }, { x: a.x, z: a.z });
+    await this.ev((s: any) => (window as any).__test.cineShot(s), { a, b, ms, ...opts });
+  }
+  /** Jump the clock to time of day `t` (0..1; .5 = noon). */
+  setTod(t: number) { return this.ev((v: number) => (window as any).__test.setTod(v), t); }
+  /** Leave the drone camera (back to the player's own view). */
+  endShot() { return this.ev(() => (window as any).__test.cineShot(null)); }
   /** Weed farm test hook ('stock' | 'ripen' | 'grow:<s>' | 'state' …). */
   farm(cmd: string) { return this.ev((c: string) => (window as any).__test.farm(c), cmd) as Promise<any>; }
 

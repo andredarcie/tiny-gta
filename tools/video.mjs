@@ -1,5 +1,7 @@
 // Film + edit one short video:  npm run video -- <scene>
 //   1) runs test/video/scenes/<scene>.video.ts in a headed portrait browser (records clips)
+//   (a scene with narration — test/video/scenes/<scene>.vo.json — first gets its lines
+//    voiced by tools/voice/narrate.mjs; needs the VoiceStudio app running)
 //   2) assembles output/video/<scene>/<scene>.mp4 (9:16, 30 fps) + cover.jpg
 // `npm run video -- <scene> --edit-only` re-edits the last capture without refilming.
 import { spawnSync } from 'node:child_process';
@@ -16,5 +18,6 @@ const run = (cmd, args) => {
   const r = spawnSync(cmd, args, { stdio: 'inherit', shell: process.platform === 'win32' });
   if (r.status !== 0) process.exit(r.status ?? 1);
 };
+if (fs.existsSync(`test/video/scenes/${scene}.vo.json`)) run('node', ['tools/voice/narrate.mjs', scene]);
 if (!editOnly) run('npx', ['playwright', 'test', '-c', 'playwright.video.config.ts', `test/video/scenes/${scene}.video.ts`]);
 run('node', ['test/video/make-video.mjs', scene]);

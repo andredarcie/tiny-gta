@@ -1001,6 +1001,9 @@ export function explodeAt(pos: THREE.Vector3,opts?: {noSelf?: boolean}){
 }
 refs.explodeAt=explodeAt;
 
+// Video/test hook path (window.__test.explodeNear): blow up one car of a list for real.
+export function explodeCarIn(car: any,arr: any[]){explodeCar(car,arr);}
+
 function explodeCar(car: any,arr: any[]){
   if(!car||car===cur)return;
   const pos=car.g.position.clone();

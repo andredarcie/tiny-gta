@@ -6,7 +6,7 @@ import {updateAudio,AC,master} from '@/audio/audio.ts';
 import {radioPlay} from '@/ui/radio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
 import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx} from '@/actors/player.ts';
-import {groundHeight} from '@/core/constants.ts';
+import {groundHeight,DIVINO_X_MIN} from '@/core/constants.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
 import {updatePeds,ejectDriver,addBloodPuddle,peds} from '@/world/pedestrians.ts';
@@ -49,7 +49,7 @@ import {applySettings} from '@/core/settings.ts';
 import {setupTouchControls,updateTouchControls} from '@/ui/touch-controls.ts';
 import {setupNative} from '@/core/native.ts'; // Android (Capacitor) shell: back-button routing — no-op on web
 import {canPickWeapon,updateWeapons,isWeaponHeld,canAttack,confiscateWeapon,
-  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest,viewmodelArms} from '@/combat/weapons.ts';
+  switchWeapon,selectWeaponSlot,getWeaponHud,grantWeapon,equipWeaponById,startRocketRampageForTest,viewmodelArms,explodeCarIn} from '@/combat/weapons.ts';
 import {setupWheel,updateWeaponWheel} from '@/combat/weapon-wheel.ts';
 import {renderCensus,staticRenderGroups} from '@/core/render-census.ts';
 import {materialCensus} from '@/core/material-census.ts';
@@ -98,6 +98,10 @@ declare global {
     __renderScale?: () => number;
     __test?: {
       profileView: (view: {x:number;z:number;height:number;targetX:number;targetZ:number;targetHeight:number;fov:number} | null) => unknown;
+      setTod: (t: number) => number;
+      carNear: (x: number, z: number) => {x: number; z: number} | null;
+      explodeNear: (x: number, z: number) => boolean;
+      cineShot: (shot: {a: CineKey; b?: CineKey; ms?: number; fov?: number; tod?: number} | null) => boolean;
       enterCar: () => string;
       enterPrimaryCar: () => string;
       exitCar: () => string;
@@ -402,7 +406,7 @@ function step(dt: number){
   for(const c of idleCars)blinkBar(c.g);
   P.end();
 
-  P.begin('camera');updateCamera(dt);applyProfileView();updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
+  P.begin('camera');updateCamera(dt);applyProfileView();applyCineShot();updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
@@ -474,6 +478,31 @@ function step(dt: number){
 // decente (e a maioria travada no vsync) passa longe e fica em 1.0 (resolução
 // cheia, ZERO mudança visual). Abaixo disso, ajuda o hardware que realmente
 // engasga a recuperar fluidez. O piso de escala (.72 no engine) mantém nítido.
+// Video: a free "drone" camera for trailer shots (window.__test.cineShot). It glides from
+// one key to another over `ms` (eased) — each key is a point (x,z) `h` m over the ground
+// looking at (tx,tz) `th` m over the ground. It runs as a cut-scene (state.cine: the
+// player's camera, weapon and police stand down; the clock keeps the time the shot set)
+// and hides the hero, who is parked by the shot so the streets around it stay alive.
+type CineKey={x:number;z:number;h:number;tx:number;tz:number;th:number};
+// the car (moving traffic or parked) nearest (x,z) within 80 m, with the list it lives in
+function nearestCarTo(x:number,z:number){
+  let best:{car:typeof traffic[number];arr:typeof traffic}|null=null,bd=80;
+  for(const arr of [traffic,idleCars] as typeof traffic[])for(const c of arr){
+    if(c===cur||c===playerCar)continue; // never the player's own car
+    const d=Math.hypot(c.g.position.x-x,c.g.position.z-z);if(d<bd){bd=d;best={car:c,arr};}
+  }
+  return best;
+}
+let cineShot:{a:CineKey;b:CineKey;ms:number;t0:number;fov:number;restoreFov:number}|null=null;
+function applyCineShot(){
+  if(!cineShot)return;
+  const {a,b}=cineShot,k=Math.min(1,(performance.now()-cineShot.t0)/cineShot.ms),e=k*k*(3-2*k);
+  const mix=(u:number,v:number)=>u+(v-u)*e;
+  // absolute heights, so a dolly over a bump doesn't bob with the ground under it
+  camera.position.set(mix(a.x,b.x),mix(groundHeight(a.x,a.z)+a.h,groundHeight(b.x,b.z)+b.h),mix(a.z,b.z));
+  camera.lookAt(mix(a.tx,b.tx),mix(groundHeight(a.tx,a.tz)+a.th,groundHeight(b.tx,b.tz)+b.th),mix(a.tz,b.tz));
+  player.g.visible=false;
+}
 type ProfileView={x:number;z:number;height:number;targetX:number;targetZ:number;targetHeight:number;fov:number};
 let profileView:ProfileView|null=null;
 let profileRestore:{scale:number;fov:number;tod:number}|null=null;
@@ -596,6 +625,32 @@ window.__test={
       viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},drawingBuffer:{width:size.x,height:size.y},renderScale:getRenderScale(),tod:getTod(),
       shadows:renderer.shadowMap.enabled};
   },
+  // Video/test: jump the clock to time of day t (0..1; .5 = noon).
+  setTod:(t: number)=>{setTod(t);return getTod();},
+  // Video: the car (moving or parked) nearest (x,z), within 80 m, or null.
+  carNear:(x: number,z: number)=>{const c=nearestCarTo(x,z);return c?{x:c.car.g.position.x,z:c.car.g.position.z}:null;},
+  // Video: blow up the car nearest (x,z) — the real car explosion — else a blast on the
+  // ground at (x,z). Returns whether a car went up.
+  explodeNear:(x: number,z: number)=>{
+    const c=nearestCarTo(x,z);
+    if(c){explodeCarIn(c.car,c.arr);return true;}
+    refs.explodeAt?.(new THREE.Vector3(x,groundHeight(x,z)+.6,z),{noSelf:true});
+    return false;
+  },
+  // Video: start a drone shot gliding from key `a` to `b` (or hold `a`) at time of day
+  // `tod` (optional), or end it (null).
+  cineShot:(shot)=>{
+    if(!shot){
+      if(cineShot){camera.fov=cineShot.restoreFov;camera.updateProjectionMatrix();state.cine=false;cineShot=null;}
+      return false;
+    }
+    const restoreFov=cineShot?.restoreFov??camera.fov;
+    cineShot={a:shot.a,b:shot.b??shot.a,ms:Math.max(1,shot.ms??1),t0:performance.now(),fov:shot.fov??50,restoreFov};
+    state.cine=true;camera.fov=cineShot.fov;camera.updateProjectionMatrix();
+    if(shot.tod!=null)setTod(shot.tod);
+    applyCineShot();
+    return true;
+  },
   enterCar:()=>{
     if(state.mode!=='foot')return state.mode;
     const f=nearestCar(1e9);                 // nearest car at any distance
@@ -658,7 +713,8 @@ window.__test={
   // it did (or null) — lets the harness exercise the gore layer directly.
   gore:(kind: string)=>{
     const pp=playerPos();let best=null as null|typeof npcs[number],bd=1e9;
-    for(const n of npcs){if(n.dead||Math.abs(n.g.position.x)>600)continue;const d=n.g.position.distanceTo(pp);if(d<bd){bd=d;best=n;}}
+    for(const n of npcs){if(n.dead||n.g.position.x<DIVINO_X_MIN)continue; // outdoors only (not the off-map rooms)
+      const d=n.g.position.distanceTo(pp);if(d<bd){bd=d;best=n;}}
     if(!best||state.mode!=='foot')return null;
     const b=best.g.position;
     player.g.position.set(b.x-5,groundHeight(b.x-5,b.z),b.z);
@@ -704,7 +760,7 @@ window.__test={
   aimAtNpc:(dist: number,part: string)=>{
     const pp=playerPos();let best=null as null|typeof npcs[number],bd=1e9;
     for(const n of npcs){
-      if(n.dead||(n as {kind?:string}).kind!=='ped'||Math.abs(n.g.position.x)>600)continue;
+      if(n.dead||(n as {kind?:string}).kind!=='ped'||n.g.position.x<DIVINO_X_MIN)continue; // outdoors only
       const d=n.g.position.distanceTo(pp);if(d<bd){bd=d;best=n;}
     }
     if(!best||state.mode!=='foot'||bd>90)return null;
