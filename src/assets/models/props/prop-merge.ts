@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {scene} from '@/core/engine.ts';
+import {bakeStaticColor,canBakeStaticColor,staticColorMaterial,staticMaterialSignature} from './static-color-batch.ts';
 
 // Fusão de props estáticos (palmeira, pinheiro, poste, guarda-sol, cadeira,
 // posto de salva-vidas, pedras, feno): cada módulo monta o prop do jeito antigo
@@ -112,40 +113,54 @@ function groupSlices(m:THREE.Mesh):{geo:THREE.BufferGeometry;mat:THREE.Material}
 // (cull/toggle seguem valendo). Meshes animados (matrixAutoUpdate=true, ex.: seta da
 // porta) e sub-árvores em `preserve` (ex.: a placa FOR SALE que liga/desliga) ficam
 // intactos. VISUAL-NEUTRO: só funde quem tem assinatura idêntica.
-export function mergeStatic(group:THREE.Object3D,preserve:Set<THREE.Object3D>=new Set()):void{
+export function mergeStatic(group:THREE.Object3D,preserve:Set<THREE.Object3D>=new Set(),options:{vertexColors?:boolean}={}):void{
   group.updateMatrixWorld(true);
   const statics:THREE.Mesh[]=[],keep:THREE.Object3D[]=[];
   const collect=(o:THREE.Object3D):void=>{
     for(const c of o.children){
-      if(preserve.has(c)){keep.push(c);continue;}
+      if(preserve.has(c)||!c.visible){keep.push(c);continue;}
       const m=c as THREE.Mesh;
       if(m.isMesh){
-        if(c.matrixAutoUpdate===false&&c.children.length===0)statics.push(m);
+        if(c.matrixAutoUpdate===false&&c.children.length===0&&!m.customDepthMaterial&&!m.customDistanceMaterial&&
+          m.onBeforeRender===THREE.Object3D.prototype.onBeforeRender&&m.onAfterRender===THREE.Object3D.prototype.onAfterRender)statics.push(m);
         else keep.push(c); // animado, ou mesh com filhos: mantém
       }else collect(c); // Group intermediário: achata (puxa os meshes estáticos pra cima)
     }
   };
   collect(group);
   if(statics.length<2)return; // nada a ganhar
-  const buckets=new Map<string,{geos:THREE.BufferGeometry[];mat:THREE.Material;cast:boolean;receive:boolean;order:number}>();
+  const buckets=new Map<string,{geos:THREE.BufferGeometry[];mat:THREE.Material;cast:boolean;receive:boolean;order:number;source:THREE.Mesh}>();
   for(const m of statics){
     const parts=Array.isArray(m.material)?groupSlices(m):[{geo:m.geometry.clone(),mat:m.material}];
     for(const{geo,mat}of parts){
-      const sig=matSig(mat,!!m.castShadow,!!m.receiveShadow,m.renderOrder);
+      const colorBatch=!!options.vertexColors&&canBakeStaticColor(mat,geo);
+      const signature=options.vertexColors?staticMaterialSignature(mat,colorBatch):matSig(mat,!!m.castShadow,!!m.receiveShadow,m.renderOrder);
+      // Preserve mesh-specific render state and attribute layouts too. A missing UV
+      // or normal must not make an otherwise compatible bucket fail its merge.
+      if(colorBatch)bakeStaticColor(geo,mat as THREE.MeshLambertMaterial);
+      const layout=Object.keys(geo.attributes).sort().map(k=>{
+        const a=geo.getAttribute(k);return[k,a.itemSize,a.normalized,a.array.constructor.name];
+      });
+      const sig=signature+'|'+JSON.stringify([colorBatch,m.castShadow,m.receiveShadow,m.renderOrder,m.visible,m.layers.mask,m.frustumCulled,layout]);
       let b=buckets.get(sig);
-      if(!b){b={geos:[],mat,cast:!!m.castShadow,receive:!!m.receiveShadow,order:m.renderOrder};buckets.set(sig,b);}
+      if(!b){b={geos:[],mat:colorBatch?staticColorMaterial(mat as THREE.MeshLambertMaterial):mat,cast:!!m.castShadow,receive:!!m.receiveShadow,order:m.renderOrder,source:m};buckets.set(sig,b);}
       b.geos.push(geo.applyMatrix4(m.matrixWorld));
     }
   }
+  const inverse=group.matrixWorld.clone().invert();
+  const keepMatrices=keep.map(k=>inverse.clone().multiply(k.matrixWorld));
   group.clear(); // solta todos os filhos; readiciona os preservados + os fundidos
-  for(const k of keep)group.add(k); // mesma matriz local; group na identidade -> world inalterado
+  for(let i=0;i<keep.length;i++){
+    const k=keep[i];k.matrix.copy(keepMatrices[i]);k.matrix.decompose(k.position,k.quaternion,k.scale);group.add(k);
+  }
   for(const[,b]of buckets){
     let geos=b.geos;
     if(geos.some(g=>g.index)&&geos.some(g=>!g.index))geos=geos.map(g=>g.index?g.toNonIndexed():g);
     const merged=mergeGeometries(geos);
-    if(!merged){for(const g of b.geos){const mm=new THREE.Mesh(g,b.mat);mm.castShadow=b.cast;mm.receiveShadow=b.receive;mm.renderOrder=b.order;mm.matrixAutoUpdate=false;mm.updateMatrix();group.add(mm);}continue;}
+    if(!merged){for(const g of b.geos){const mm=new THREE.Mesh(g,b.mat);mm.castShadow=b.cast;mm.receiveShadow=b.receive;mm.renderOrder=b.order;mm.layers.mask=b.source.layers.mask;mm.frustumCulled=b.source.frustumCulled;mm.matrixAutoUpdate=false;mm.updateMatrix();group.add(mm);}continue;}
     const mesh=new THREE.Mesh(merged,b.mat);
     mesh.castShadow=b.cast;mesh.receiveShadow=b.receive;mesh.renderOrder=b.order;
+    mesh.layers.mask=b.source.layers.mask;mesh.frustumCulled=b.source.frustumCulled;
     mesh.matrixAutoUpdate=false;mesh.updateMatrix();
     group.add(mesh);
   }

@@ -66,10 +66,15 @@ function logo(x:CanvasRenderingContext2D,kind:Logo,cx:number,cy:number,s:number,
 }
 const FONT:{[k:string]:string}={sans:'800 {S}px Arial, Helvetica, sans-serif',serif:'700 {S}px Georgia, "Times New Roman", serif',
   script:'italic 700 {S}px "Brush Script MT", "Segoe Script", cursive',stencil:'900 {S}px Impact, "Arial Black", sans-serif',italic:'italic 900 {S}px Arial, sans-serif'};
+const signTextures=new Map<string,THREE.Texture>();
 // a sign's face (canvas): background, frame, logo and the lines of text, scaled to fit
 function signTexture(s:Sign):THREE.Texture{
   const PX=96,W=Math.max(32,Math.round(s.w*PX)),H=Math.max(16,Math.round(s.h*PX));
-  return canvasTex(W,H,(x,w,h)=>{
+  // Placement/depth/lighting do not affect the painted face. Identical signs share
+  // their map, while every distinct label or logo keeps its own texture.
+  const key=JSON.stringify([W,H,s.bg,s.frame,s.logo,s.logoAt??(s.lines.length?'left':'centre'),s.logoC??s.fg,s.lines,s.fg,s.font??'sans']);
+  const existing=signTextures.get(key);if(existing)return existing;
+  const texture=canvasTex(W,H,(x,w,h)=>{
     x.fillStyle=s.bg;x.fillRect(0,0,w,h);
     if(s.frame){x.strokeStyle=s.frame;x.lineWidth=Math.max(2,h*.05);x.strokeRect(x.lineWidth/2,x.lineWidth/2,w-x.lineWidth,h-x.lineWidth);}
     let x0=w*.04,x1=w*.96;
@@ -90,6 +95,7 @@ function signTexture(s:Sign):THREE.Texture{
       x.fillText(line,(x0+x1)/2,h*(i+.5)/n+(n>1?(i-(n-1)/2)*-h*.02:0));
     });
   });
+  signTextures.set(key,texture);return texture;
 }
 function addSign(g:THREE.Group,s:Sign):void{
   const d=s.depth??.08,face=matte({map:signTexture(s),emissive:s.lit?0x262626:0x000000});

@@ -11,7 +11,11 @@ import {leafMat,leafMass} from './copa.ts';
 // Instances are grouped in square chunks so whole chunks are culled by distance.
 const trunkM=matte({color:DIVINO.trunk});
 // crowns are lumpy leaf masses with the leaf texture (copa.ts), not faceted balls
-const leafMs=DIVINO.tree.map(c=>leafMat(c));
+// Instance colours are linear, like material colours. The white leaf material keeps
+// leafMat's detail-map compensation, so material * instance colour matches each
+// former palette material without a separate draw for every tone.
+const leafColors=DIVINO.tree.map(c=>new THREE.Color(c));
+const crownM=leafMat(0xffffff);
 const eucaM=leafMat(0x55664a),eucaTrunkM=matte({color:0xb9b0a0});
 const coffeeM=leafMat(DIVINO.coffee);
 const trunkG=new THREE.CylinderGeometry(.16,.26,3,7);trunkG.translate(0,1.5,0);
@@ -28,9 +32,10 @@ function chunked(list:Inst[]):Map<string,Inst[]>{
   return m;
 }
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_s=new THREE.Vector3(),_p=new THREE.Vector3(),_up=new THREE.Vector3(0,1,0);
-function inst(geo:THREE.BufferGeometry,mat:THREE.Material,list:Inst[],shadow:boolean):THREE.InstancedMesh{
+function inst(geo:THREE.BufferGeometry,mat:THREE.Material,list:Inst[],shadow:boolean,colors?:THREE.Color[]):THREE.InstancedMesh{
   const im=new THREE.InstancedMesh(geo,mat,list.length);
   list.forEach((t,i)=>{_q.setFromAxisAngle(_up,t.r);_s.set(t.s,t.s,t.s);_p.set(t.x,t.y,t.z);im.setMatrixAt(i,_m.compose(_p,_q,_s));});
+  if(colors){list.forEach((_,i)=>im.setColorAt(i,colors[i%colors.length]));if(im.instanceColor)im.instanceColor.needsUpdate=true;}
   im.instanceMatrix.needsUpdate=true;im.computeBoundingSphere();
   im.castShadow=shadow;im.receiveShadow=false;im.matrixAutoUpdate=false;
   return im;
@@ -42,8 +47,7 @@ export function makeTrees(list:Inst[]):THREE.Group[]{
     const g=new THREE.Group(),euca=arr.filter((_,i)=>i%11===0),broad=arr.filter((_,i)=>i%11!==0);
     if(broad.length){
       g.add(inst(trunkG,trunkM,broad,false));
-      // split the crowns over the leaf tones so a wood never reads as one flat green
-      leafMs.forEach((m,mi)=>{const part=broad.filter((_,i)=>i%leafMs.length===mi);if(part.length)g.add(inst(crownG,m,part,true));});
+      g.add(inst(crownG,crownM,broad,true,leafColors));
     }
     if(euca.length){g.add(inst(eucaTrunkG,eucaTrunkM,euca,false));g.add(inst(eucaCrownG,eucaM,euca,true));}
     const[i,j]=k.split('_').map(Number);g.userData.cx=i*CH;g.userData.cz=j*CH;g.matrixAutoUpdate=false;

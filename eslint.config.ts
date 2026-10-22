@@ -11,7 +11,7 @@ export default tseslint.config(
   {
     ignores: [
       'dist/**', 'node_modules/**', 'android/**', 'public/**',
-      'docs/**', 'output/**', '.playwright-mcp/**', '.claude/**',
+      'docs/**', 'output/**', '.playwright/**', '.playwright-mcp/**', '.claude/**',
     ],
   },
   js.configs.recommended,

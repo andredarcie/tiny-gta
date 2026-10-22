@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {DIVINO} from '@/core/palette.ts';
 import {soloTexture,GROUND_TILE_M} from './texturas.ts';
+import {tileTerrainMesh} from './terrain-tiles.ts';
 
 // Divinolândia terrain — the real relief (SRTM) of the town and the serras around it,
 // drawn from a baked height grid. The triangles are EXACTLY the ones the physics
@@ -59,6 +60,12 @@ export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>nu
   const m=new THREE.Mesh(geo,opts.mat||terrainMat);
   m.receiveShadow=true;m.matrixAutoUpdate=false;
   return m;
+}
+
+export function makeTerrainTiles(g:HeightGrid,opts:Parameters<typeof makeTerrainMesh>[1]={},tileSize=384):THREE.Group{
+  const source=makeTerrainMesh(g,opts),tiles=tileTerrainMesh(source,g,tileSize);
+  source.geometry.dispose();
+  return tiles;
 }
 
 // ---- draping flat shapes EXACTLY on the terrain ----
