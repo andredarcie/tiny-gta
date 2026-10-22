@@ -8,7 +8,7 @@
 // draws (data.ts divinoHeight), which keeps it cheap (4 + 9 lookups) and makes what you
 // see and what you drive on the same surface.
 //
-// The ground function given to it must be the DRAWN surface (walkHeight: terrain + paving),
+// The ground function given to it must be the DRAWN surface (groundHeight: terrain + paving),
 // or the wheels sink into the streets drawn over the terrain.
 //   poseOnGround — the resting pose: height, pitch and roll from the four wheel contacts
 //     (a plane through the axle mid-points), then raised just enough that no point of the
@@ -25,8 +25,6 @@
 // order 'YXZ' as rotation.set(-pitch, heading, roll).
 
 export type GroundFn=(x: number,z: number)=>number;
-// (callers pass the ground the wheels actually rest on: world/surface-lift.ts walkHeight —
-// the terrain plus the paving drawn over it)
 
 export interface Chassis{
   halfBase: number;     // axle distance from the centre (m)

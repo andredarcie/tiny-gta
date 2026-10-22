@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import {pick,irand,wrapA,clamp,groundHeight} from '@/core/constants.ts';
 import {poseOnGround} from '@/actors/vehicle-ground.ts';
-import {walkHeight} from '@/world/surface-lift.ts';
 import {state,carNames,carColors} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
@@ -130,7 +129,7 @@ export function updateTraffic(dt:number){
     if(cd2>=CAR_CULL2){t.g.visible=false;t.g.position.set(np.x,groundHeight(np.x,np.z),np.z);continue;}
     // sits on its four wheels (height, pitch AND roll from the contacts; the underside
     // never cuts into a crest) — the same model as the player's car (vehicle-ground.ts)
-    const pose=poseOnGround(walkHeight,np.x,np.z,t.heading);
+    const pose=poseOnGround(groundHeight,np.x,np.z,t.heading);
     t.g.position.set(np.x,pose.y,np.z);
     t.g.rotation.set(-pose.pitch,t.heading,pose.roll);
     t.g.visible=true;

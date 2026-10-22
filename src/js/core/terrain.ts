@@ -12,7 +12,15 @@
 export const DIVINO_X_MIN=3000;
 let divinoH: ((x: number, z: number) => number) | null = null;
 export function setDivinoTerrain(fn: (x: number, z: number) => number): void { divinoH=fn; }
+// The paving drawn OVER the terrain (streets, kerbed sidewalks, squares): js/world/surface-lift.ts
+// registers it here, so whatever stands or drives on the ground stands on what is drawn.
+let overlay: ((x: number, z: number) => number) | null = null;
+export function setGroundOverlay(fn: (x: number, z: number) => number): void { overlay=fn; }
 export function groundHeight(x: number, z: number): number {
+  return x>DIVINO_X_MIN&&divinoH?divinoH(x,z)+(overlay?overlay(x,z):0):0;
+}
+// The bare terrain, without the paving (what the paving itself is draped on).
+export function terrainHeight(x: number, z: number): number {
   return x>DIVINO_X_MIN&&divinoH?divinoH(x,z):0;
 }
 

@@ -85,6 +85,10 @@ export const DIVINO={
   shutter:'#a9acaf',         // steel roll-up shop doors
   asphalt:'#6c6b68',         // sun-bleached asphalt (Street View: #85878c in the sun)
   sidewalk:'#a39a8c',
+  // road paint, measured on the SP highway at the town's edge (Street View): faded yellow
+  // centre lines, off-white edge lines and zebras
+  paintYellow:'#cba268', paintWhite:'#d0d5ce',
+  kerb:'#b9b4aa',             // concrete kerbs and gutters (meio-fio, sarjeta)
   dirtRoad:'#a48f84',        // dry terra roxa: pale rosy beige when trodden (#a99a92)
   pasture:'#52673a', pastureDry:'#727250', forest:'#2c3d27', soil:'#8a5e4a', rock:'#7d786e',
   coffee:0x324a2a, coffeeLight:0x3f5a33,

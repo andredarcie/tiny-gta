@@ -20,7 +20,8 @@ import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
 import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR} from './data.ts';
 import {addObb,setPlayBounds} from './collide.ts';
 import {parkOnGround} from '@/actors/vehicle-ground.ts';
-import {addSurfaceStrip,addSurfacePolygon,walkHeight} from '../surface-lift.ts';
+import {addSurfaceStrip,addSurfacePolygon} from '../surface-lift.ts';
+import {groundHeight} from '@/core/constants.ts';
 import {groundRange,fitBuilding,rect} from './ground-fit.ts';
 import {makeTerrainTiles,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
 import {enableTerrainLod,updateTerrainLod} from '../../../assets/models/divinolandia/terrain-tiles.ts';
@@ -116,14 +117,48 @@ export function buildDivinolandia():void{
     // granite setts: tagged in OSM, or round the Matriz squares (every Street View panorama
     // there shows paralelepípedo; OSM does not tag it)
     const sett=r.sf==='sett'||!!r.p&&Math.hypot(mid[0]-DIV_OX-45,mid[1]-DIV_OZ-5)<130;
-    return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk:!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0};
+    // road paint as Street View shows it: the double yellow line on the highways and avenues
+    // (with white edge lines where there is no kerb), a dashed one on the collector streets,
+    // none on the residential streets
+    const main=r.k==='primary'||r.k==='primary_link'||r.k==='secondary';
+    const sidewalk=!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0;
+    return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk,verge:!SURVEYED.has(r.n),
+      centre:main?'double':r.k==='tertiary'?'dashed':undefined,edges:main&&!sidewalk};
   });
-  scene.add(trackStatic('otherStatic',makeStreets(lines,H,nearGrid)));
-  // ... and register them as the surface wheels and feet rest on (world/surface-lift.ts)
-  for(const l of lines){
-    addSurfaceStrip(l.pts,l.hw,l.sett?STREET_LIFT.sett+.012:l.paved?STREET_LIFT.paved:STREET_LIFT.dirt);
-    if(l.sidewalk)addSurfaceStrip(l.pts,l.hw+2.1,STREET_LIFT.walk,l.hw);
+  // zebra crossings at the junctions round the centre: a few metres back from the street crossing
+  {
+    const key=(p:[number,number]):string=>p[0].toFixed(1)+','+p[1].toFixed(1);
+    const owners=new Map<string,number[]>();
+    lines.forEach((l,k)=>{for(const p of l.pts){const kk=key(p);const o=owners.get(kk)??[];if(!o.includes(k))o.push(k);owners.set(kk,o);}});
+    lines.forEach((l,k)=>{
+      if(!l.paved||l.sett)return;
+      const S=[0];for(let i=1;i<l.pts.length;i++)S.push(S[i-1]+Math.hypot(l.pts[i][0]-l.pts[i-1][0],l.pts[i][1]-l.pts[i-1][1]));
+      const junctions=l.pts.map((p,i)=>({i,o:owners.get(key(p))!})).filter(j=>j.o.length>1&&Math.hypot(l.pts[j.i][0]-DIV_OX-45,l.pts[j.i][1]-DIV_OZ-5)<420);
+      const zebras:number[]=[];
+      for(const j of junctions){
+        const back=Math.max(...j.o.filter(q=>q!==k).map(q=>lines[q].hw))+1.5;
+        const near=(s:number):boolean=>junctions.some(o=>o!==j&&Math.abs(S[o.i]-s)<back+5);
+        if(j.i<l.pts.length-1&&!near(S[j.i]+back+1.5))zebras.push(S[j.i]+back);
+        if(j.i>0&&!near(S[j.i]-back-1.5))zebras.push(S[j.i]-back-3);
+      }
+      if(zebras.length)l.zebras=zebras;
+    });
   }
+  // sidewalks and verges stay off the Matriz squares (their own paving) and the places' lots
+  const squarePolys=[ALCINDO,LADISLAU].map(sq=>{
+    const c=Math.cos(sq.rot),s=Math.sin(sq.rot),m=8;
+    return([[sq.u0-m,sq.v0-m],[sq.u1+m,sq.v0-m],[sq.u1+m,sq.v1+m],[sq.u0-m,sq.v1+m]] as [number,number][])
+      .map(([u,v])=>[sq.x+DIV_OX+u*c-v*s,sq.z+DIV_OZ+u*s+v*c] as [number,number]);
+  });
+  const inPoly=(x:number,z:number,P:[number,number][]):boolean=>{
+    let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const[xi,zi]=P[i],[xj,zj]=P[j];if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c;}return c;
+  };
+  scene.add(trackStatic('otherStatic',makeStreets(lines,H,nearGrid,{
+    keepWalk:(x,z)=>!squarePolys.some(P=>inPoly(x,z,P))&&!onSiteLot(x-DIV_OX,z-DIV_OZ,1),
+    onWalk:(poly,lift)=>addSurfacePolygon(poly,lift),       // the sidewalks people walk (and park) on
+  })));
+  // ... and register the roadways as the surface wheels and feet rest on (world/surface-lift.ts)
+  for(const l of lines)addSurfaceStrip(l.pts,l.hw,l.sett?STREET_LIFT.sett+.012:l.paved?STREET_LIFT.paved:STREET_LIFT.dirt);
   // is (x,z) within `margin` of a street's drawn width (roadway + sidewalk)?
   const SC=24,streetHash=new Map<string,{ax:number;az:number;bx:number;bz:number;r:number}[]>();
   for(const l of lines)for(let i=1;i<l.pts.length;i++){
@@ -359,7 +394,7 @@ export function buildDivinolandia():void{
     // level floor at the doorstep (street side), base down to the lowest ground under the
     // whole footprint — exact (ground-fit.ts), so no wall ever floats over a dip
     const front=H(x-sn*hd/2,z+cs*hd/2);
-    const fit=fitBuilding(rect(x,z,hw,hd,rot),[x-sn*hd/2,z+cs*hd/2],{footing:.6,maxBuried:HOUSE_CUT});
+    const fit=fitBuilding(rect(x,z,hw,hd,rot),[x-sn*hd/2,z+cs*hd/2],{footing:.6,maxBuried:HOUSE_CUT,lift:.36});   // floor above the kerbed sidewalk (rua.ts STREET_LIFT.walk)
     const floor=fit.floor,base=fit.base;
     if(floor-front>1.45)continue;                         // a place's levelled pad left it on a bank too steep for a doorstep
     casas.push({x,z,w:hw,d:hd,rot,floor,base,floors:fl,color:c,flat:!!roof,shop,seed:i+1,step:floor-front});
@@ -409,11 +444,11 @@ export function buildDivinolandia():void{
   const parked:{k:'uno'|'kombi';c:number}[]=[{k:'uno',c:0xc23b4e},{k:'kombi',c:0},{k:'uno',c:0xe8e6df},{k:'uno',c:0x3b7ac2},{k:'uno',c:0x5b5f6b},{k:'kombi',c:0}];
   const spots=streetSpots(lines,px,pz,parked.length+1);
   // the pink hero car waits right next to the plaza
-  if(spots[0]){const s=spots[0];parkOnGround(playerCar.g,walkHeight,s.x,s.z,s.h);playerCar.heading=s.h;}
+  if(spots[0]){const s=spots[0];parkOnGround(playerCar.g,groundHeight,s.x,s.z,s.h);playerCar.heading=s.h;}
   parked.forEach((p,i)=>{
     const s=spots[i+1];if(!s)return;
     const g=p.k==='uno'?makeFiatUno(p.c):makeKombi();
-    parkOnGround(g,walkHeight,s.x,s.z,s.h);                // on its four wheels, on the drawn paving
+    parkOnGround(g,groundHeight,s.x,s.z,s.h);                // on its four wheels, on the drawn paving
     idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':'KOMBI',police:false});
   });
 

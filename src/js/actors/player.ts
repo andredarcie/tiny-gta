@@ -6,7 +6,6 @@ import {DIV_OX,DIV_OZ,PLAY} from '@/world/divinolandia/data.ts';
 import {FORT_EXIT} from '../../assets/models/rural/abandoned-fort.ts';
 import {state,input,carNames,carColors,refs} from '@/core/state.ts';
 import {stepBody,newBody,parkOnGround,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
-import {walkHeight} from '@/world/surface-lift.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
 import {economy} from '@/core/economy.ts';
 import {scene,camera} from '@/core/engine.ts';
@@ -308,7 +307,7 @@ export function settleParkedVehicles():void{
     const p=c.g.position,ud=c.g.userData,h=c.heading??c.g.rotation.y;
     const at=ud.parkedAt as {x:number;z:number;h:number}|undefined;
     if(at&&at.x===p.x&&at.z===p.z&&at.h===h)continue;
-    parkOnGround(c.g,walkHeight,p.x,p.z,h,c.bike?BIKE:CAR);
+    parkOnGround(c.g,groundHeight,p.x,p.z,h,c.bike?BIKE:CAR);
     ud.parkedAt={x:p.x,z:p.z,h};
   }
 }
@@ -951,7 +950,7 @@ export function updateCar(dt:number){
   if(groundHeight(p.x,p.z)-p.y>2.5){p.x=px0;p.z=pz0;cur!.speed*=-.25;}
   let body=ud.body as VehicleBody|undefined;
   if(!body||Math.abs(body.y-p.y)>.6){body=newBody(p.y);ud.body=body;}   // fresh car, or moved by someone else (a jump, a teleport)
-  stepBody(body,walkHeight,px0,pz0,p.x,p.z,cur!.heading,dt,bike?BIKE:CAR);   // on the drawn paving
+  stepBody(body,groundHeight,px0,pz0,p.x,p.z,cur!.heading,dt,bike?BIKE:CAR);   // on the drawn paving
   p.y=body.y;
   cur!.g.rotation.order='YXZ';
   cur!.g.rotation.set(-body.pitch,cur!.heading,body.roll+ud.lean);

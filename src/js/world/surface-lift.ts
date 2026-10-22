@@ -2,18 +2,23 @@
 // test/unit/surface-lift.test.ts.
 //
 // The town's paving is draped over the terrain a little above it, each layer at its own
-// lift (rua.ts: asphalt 14 cm, setts 16, dirt 12, plain sidewalks 10; the surveyed streets'
-// raised sidewalks 32; the Matriz squares and their streets 21 — praca-chao.ts STREET_TOP).
-// What rests on the ground (car wheels, and anything else that asks walkHeight) must rest on
-// that DRAWN surface, not the bare terrain under it, or it sinks into the street.
+// lift (rua.ts STREET_LIFT: asphalt 14 cm, setts 16, dirt 12, the kerbed sidewalks 32 — the
+// surveyed streets' too; the Matriz squares and their streets 21 — praca-chao.ts STREET_TOP).
+// What rests on the ground (car wheels, people, props) must rest on that DRAWN surface, not
+// the bare terrain under it, or it sinks into the street.
 //
 // The world builder registers every such surface here as it lays it (street strips and
-// polygons, in world metres, with the lift above groundHeight). walkHeight(x,z) is the
-// terrain plus the highest surface covering that point. groundHeight itself stays the bare
-// terrain: the surfaces are draped ON it (reading it), so it must not include them.
-import {groundHeight} from '@/core/constants.ts';
+// polygons, in world metres, with the lift above the terrain), and this module plugs
+// surfaceLift into groundHeight (core/terrain.ts setGroundOverlay): groundHeight(x,z) is the
+// terrain plus the surface covering that point. (The paving itself is draped on the bare
+// terrain — data.ts divinoHeight / terrainHeight.)
+//
+// Where surfaces overlap, a ROADWAY (a strip with hw0 = 0) beats a band (a sidewalk strip
+// along a street is not drawn across the street crossing it); polygons (the surveyed raised
+// sidewalks, the squares) beat both when higher.
+import {setGroundOverlay} from '@/core/terrain.ts';
 
-type Seg={ax: number;az: number;bx: number;bz: number;hw0: number;hw: number;lift: number;line: Seg[]};
+type Seg={ax: number;az: number;bx: number;bz: number;hw0: number;hw: number;lift: number;line: object};
 type Poly={pts: [number,number][];lift: number;x0: number;x1: number;z0: number;z1: number};
 const CELL=16;
 const segs=new Map<number,Seg[]>(),polys=new Map<number,Poly[]>();
@@ -27,9 +32,9 @@ function bucket<T>(m: Map<number,T[]>,x0: number,x1: number,z0: number,z1: numbe
 // A strip of surface along a polyline: everything between `hw0` and `hw` from it (a band on
 // both sides, e.g. raised sidewalks; hw0 = 0 for the whole roadway), `lift` above the terrain.
 export function addSurfaceStrip(pts: [number,number][],hw: number,lift: number,hw0=0): void{
-  const line: Seg[]=[];
+  const line={};                                         // identity shared by the polyline's segments
   for(let i=1;i<pts.length;i++){
-    const[ax,az]=pts[i-1],[bx,bz]=pts[i],s: Seg={ax,az,bx,bz,hw0,hw,lift,line};line.push(s);
+    const[ax,az]=pts[i-1],[bx,bz]=pts[i],s: Seg={ax,az,bx,bz,hw0,hw,lift,line};
     bucket(segs,Math.min(ax,bx)-hw,Math.max(ax,bx)+hw,Math.min(az,bz)-hw,Math.max(az,bz)+hw,s);
   }
 }
@@ -59,15 +64,18 @@ function dist2(x: number,z: number,s: Seg): number{
 // The highest registered surface over (x,z), as a lift above the terrain (0 = bare ground).
 export function surfaceLift(x: number,z: number): number{
   const k=key(Math.floor(x/CELL),Math.floor(z/CELL));
-  let best=0;
+  let road=0,band=0;
   const ss=segs.get(k);
   if(ss)for(const s of ss){
-    if(s.lift<=best)continue;
-    const d2=dist2(x,z,s);
-    // a band (hw0 > 0) holds only outside the inner width of its WHOLE polyline (on the
-    // inside of a bend the neighbouring segment's roadway is still roadway)
-    if(d2<=s.hw*s.hw&&(s.hw0===0||s.line.every(o=>dist2(x,z,o)>=s.hw0*s.hw0)))best=s.lift;
+    if(s.lift<=(s.hw0===0?road:band))continue;
+    if(dist2(x,z,s)>s.hw*s.hw)continue;
+    if(s.hw0===0){road=s.lift;continue;}
+    // a band holds only outside the inner width of its whole polyline (on the inside of a
+    // bend the neighbouring segment's roadway is still roadway; any segment that close
+    // shares this bucket)
+    if(ss.every(o=>o.line!==s.line||dist2(x,z,o)>=s.hw0*s.hw0))band=s.lift;
   }
+  let best=road>0?road:band;
   const ps=polys.get(k);
   if(ps)for(const p of ps){
     if(p.lift<=best||x<p.x0||x>p.x1||z<p.z0||z>p.z1)continue;
@@ -76,8 +84,7 @@ export function surfaceLift(x: number,z: number): number{
   return best;
 }
 
-// Where wheels and feet rest: the terrain plus the paving drawn over it.
-export const walkHeight=(x: number,z: number): number=>groundHeight(x,z)+surfaceLift(x,z);
+setGroundOverlay(surfaceLift);
 
 // (tests) forget everything registered
 export function clearSurfaces(): void{segs.clear();polys.clear();}

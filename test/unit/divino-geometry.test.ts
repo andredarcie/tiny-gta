@@ -197,6 +197,11 @@ describe('streets and grounds lie on the terrain', () => {
       if (!g) return;
       const p = g.getAttribute('position');
       for (let i = 0; i < p.count; i += 3) for (const [u, v] of [[1 / 3, 1 / 3], [.05, .05], [.9, .05], [.05, .9]]) {
+        // (walking surfaces only: kerb faces and slab edges go down into the ground on purpose)
+        const e1x = p.getX(i + 1) - p.getX(i), e1y = p.getY(i + 1) - p.getY(i), e1z = p.getZ(i + 1) - p.getZ(i);
+        const e2x = p.getX(i + 2) - p.getX(i), e2y = p.getY(i + 2) - p.getY(i), e2z = p.getZ(i + 2) - p.getZ(i);
+        const nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+        if (Math.abs(ny) < .7 * Math.hypot(nx, ny, nz)) continue;
         const w = 1 - u - v;
         const x = p.getX(i) * w + p.getX(i + 1) * u + p.getX(i + 2) * v, y = p.getY(i) * w + p.getY(i + 1) * u + p.getY(i + 2) * v, z = p.getZ(i) * w + p.getZ(i + 1) * u + p.getZ(i + 2) * v;
         min = Math.min(min, y - divinoHeight(x, z));
