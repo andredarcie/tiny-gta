@@ -7,7 +7,7 @@ import {radioPlay} from '@/ui/radio.ts';
 import {drawMinimap,updateHUD,hideBig,tickFps,drawFullMap,mapNpcsShown} from '@/ui/hud.ts';
 import {player,playerCar,cur,playerPos,nearestCar,idleCars,cameraRig,updateCar,updateFoot,updateCamera,getBusted,getWasted,isWasted,exitCar,enterCar,updateDrivenShadow,updateCarFx,settleParkedVehicles} from '@/actors/player.ts';
 import {groundHeight,DIVINO_X_MIN} from '@/core/constants.ts';
-import {poseOnGround,CAR,BIKE,type VehicleBody} from '@/actors/vehicle-ground.ts';
+import {poseOnGround,chassisOf,type VehicleBody} from '@/actors/vehicle-ground.ts';
 import {obbsNear} from '@/world/divinolandia/collide.ts';
 import {MiniGame} from '@/activities/minigame.ts';
 import {traffic,trafficPos,spawnTraffic,updateTraffic} from '@/world/traffic.ts';
@@ -579,7 +579,7 @@ window.render_game_to_text=()=>{
     vehicle:c?{name:c.name,x:c.g.position.x,y:c.g.position.y,z:c.g.position.z,speed:c.speed,plane:!!c.plane,taxi:!!c.taxi,
       heading:c.heading,crashes:c.g.userData.crashCount||0,air:(c.g.userData.body as VehicleBody|undefined)?.air||0,
       // how far the car sits below its resting height on its wheels (> 0 = cutting into the ground)
-      sink:c.plane||c.boat?0:poseOnGround(groundHeight,c.g.position.x,c.g.position.z,c.heading,c.bike?BIKE:CAR).y-c.g.position.y}:null,
+      sink:c.plane||c.boat?0:poseOnGround(groundHeight,c.g.position.x,c.g.position.z,c.heading,chassisOf(c.g.userData,c.bike)).y-c.g.position.y}:null,
     taxi:refs.getTaxiState?.()||null,
     race:refs.getRaceState?.()||null,
     boatRace:refs.getBoatRaceState?.()||null,

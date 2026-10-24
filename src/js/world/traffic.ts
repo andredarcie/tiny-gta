@@ -1,9 +1,9 @@
 import * as THREE from 'three';
 import {pick,irand,wrapA,clamp,groundHeight} from '@/core/constants.ts';
-import {poseOnGround} from '@/actors/vehicle-ground.ts';
+import {poseOnGround,chassisOf} from '@/actors/vehicle-ground.ts';
 import {state,carNames,carColors} from '@/core/state.ts';
 import {PLAYER_DAMAGE_TAKEN} from '@/core/difficulty.ts';
-import {makeCar,makeKombi,makeFiatUno,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
+import {makeCar,makeKombi,makeFiatUno,makeHilux,spinWheels,dentCar,seatDriver,shirtColors} from '@/core/entities.ts';
 import {addWanted} from '@/core/physics.ts';
 import {thud} from '@/audio/audio.ts';
 import {playerPos,cur,player,getWasted} from '@/actors/player.ts';
@@ -47,12 +47,16 @@ export const carRoad=(e:NavEdge):boolean=>e.paved?e.kind!=='service'||e.len>30:e
 const cruise=(e:NavEdge):number=>e.kind==='primary'||e.kind==='secondary'?12:e.paved?9:7;
 
 // Body variety: mostly the regular sedan, plus the two Brazilian classics — a white
-// VW Kombi van and a boxy Fiat Uno (random colour). All three ride the SAME car rig,
-// so they drive, brake, dent, get stolen and seat a driver exactly the same way.
+// VW Kombi van and a boxy Fiat Uno (random colour) — and the farmers' Hilux pickup. All
+// ride the SAME car rig, so they drive, brake, dent, get stolen and seat a driver exactly
+// the same way (the Hilux on its own longer chassis).
+// Hilux paints: silver (the most common, so listed twice), black, white
+const HILUX_COLORS=[0xaeb2b5,0xaeb2b5,0x1c1e21,0xeceae4];
 function pickTrafficBody():{g:THREE.Object3D;name:string}{
   const r=Math.random();
   if(r<.16)return{g:makeKombi(),name:'KOMBI'};
   if(r<.4){const ci=irand(0,carColors.length-1);return{g:makeFiatUno(carColors[ci]),name:'UNO MILLE'};}
+  if(r<.5)return{g:makeHilux(pick(HILUX_COLORS)),name:'HILUX'};
   const ci=irand(0,carColors.length-1);
   return{g:makeCar(carColors[ci],false),name:carNames[ci]};
 }
@@ -129,7 +133,7 @@ export function updateTraffic(dt:number){
     if(cd2>=CAR_CULL2){t.g.visible=false;t.g.position.set(np.x,groundHeight(np.x,np.z),np.z);continue;}
     // sits on its four wheels (height, pitch AND roll from the contacts; the underside
     // never cuts into a crest) — the same model as the player's car (vehicle-ground.ts)
-    const pose=poseOnGround(groundHeight,np.x,np.z,t.heading);
+    const pose=poseOnGround(groundHeight,np.x,np.z,t.heading,chassisOf(t.g.userData));
     t.g.position.set(np.x,pose.y,np.z);
     t.g.rotation.set(-pose.pitch,t.heading,pose.roll);
     t.g.visible=true;

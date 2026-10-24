@@ -3,6 +3,7 @@ import {state} from '@/core/state.ts';
 export {beamMat,makeCar} from '../../assets/models/vehicles/car.ts';
 export {makeKombi} from '../../assets/models/vehicles/kombi.ts';
 export {makeFiatUno} from '../../assets/models/vehicles/fiat-uno.ts';
+export {makeHilux} from '../../assets/models/vehicles/hilux.ts';
 export {makeMotorcycle} from '../../assets/models/vehicles/motorcycle.ts';
 export {makeBoat} from '../../assets/models/vehicles/boat.ts';
 import {makePed,makePlayerPed,shirtColors,addFemaleLook} from '../../assets/models/characters/pedestrian.ts';
@@ -176,7 +177,7 @@ export function seatDriver(carG:THREE.Object3D,color?:number,pants?:number){
     l.leftForearm?.rotation.set(-.78,0,0);
     l.rightForearm?.rotation.set(-.78,0,0);
   }
-  d.position.set(-.38,-.52,-.15);
+  d.position.fromArray(carG.userData.seat||[-.38,-.52,-.15]);   // a pickup's seat sits higher
   carG.add(d);
   carG.userData.driver=d; // spinWheels anima os braços de quem está aqui
   return d;

@@ -36,6 +36,10 @@ export interface Chassis{
 }
 export const CAR: Chassis={halfBase:1.3,halfTrack:.78,halfLen:2.1,halfWidth:.88,clearance:.16};
 export const BIKE: Chassis={halfBase:.72,halfTrack:0,halfLen:1.05,halfWidth:.3,clearance:.18,twoWheel:true};
+// the Hilux pickup: longer wheelbase, wider track, high ground clearance (hilux.ts)
+export const HILUX: Chassis={halfBase:1.635,halfTrack:.82,halfLen:2.8,halfWidth:.97,clearance:.24};
+// the chassis a vehicle object rides on (its model may tag itself with userData.chassis)
+export function chassisOf(ud: {chassis?: string},bike?: boolean): Chassis{return bike?BIKE:ud.chassis==='hilux'?HILUX:CAR;}
 
 export interface Pose{y: number;pitch: number;roll: number;penetration: number;float: number;}
 
@@ -150,7 +154,7 @@ export function stepBody(b: VehicleBody,H: GroundFn,x0: number,z0: number,x1: nu
 
 // Park a vehicle object (THREE group) at (x,z) facing `h`, resting on its wheels.
 interface Placeable{position: {set(x: number,y: number,z: number): unknown};rotation: {order: string;set(x: number,y: number,z: number): unknown}}
-export function parkOnGround(o: Placeable,H: GroundFn,x: number,z: number,h: number,c: Chassis=CAR): void{
+export function parkOnGround(o: Placeable&{userData?: {chassis?: string}},H: GroundFn,x: number,z: number,h: number,c: Chassis=chassisOf(o.userData||{})): void{
   const p=poseOnGround(H,x,z,h,c);
   o.position.set(x,p.y,z);
   o.rotation.order='YXZ';

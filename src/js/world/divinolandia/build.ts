@@ -55,6 +55,7 @@ import {PUBLICOS,PUBLICOS_OSM} from '../../../assets/models/divinolandia/publico
 import {PRACAS} from '../../../assets/models/divinolandia/pracas-centro.ts';
 import {SITIO} from '../../../assets/models/divinolandia/sitio-maconaria.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
+import {makeHilux} from '../../../assets/models/vehicles/hilux.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
@@ -441,15 +442,15 @@ export function buildDivinolandia():void{
   for(const g of makeCoffee(cof)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:650});}
 
   // ---------- parked cars on the streets around the Matriz (enter with E) ----------
-  const parked:{k:'uno'|'kombi';c:number}[]=[{k:'uno',c:0xc23b4e},{k:'kombi',c:0},{k:'uno',c:0xe8e6df},{k:'uno',c:0x3b7ac2},{k:'uno',c:0x5b5f6b},{k:'kombi',c:0}];
+  const parked:{k:'uno'|'kombi'|'hilux';c:number}[]=[{k:'hilux',c:0xaeb2b5},{k:'uno',c:0xc23b4e},{k:'kombi',c:0},{k:'uno',c:0xe8e6df},{k:'uno',c:0x3b7ac2},{k:'uno',c:0x5b5f6b},{k:'kombi',c:0}];
   const spots=streetSpots(lines,px,pz,parked.length+1);
   // the pink hero car waits right next to the plaza
   if(spots[0]){const s=spots[0];parkOnGround(playerCar.g,groundHeight,s.x,s.z,s.h);playerCar.heading=s.h;}
   parked.forEach((p,i)=>{
     const s=spots[i+1];if(!s)return;
-    const g=p.k==='uno'?makeFiatUno(p.c):makeKombi();
+    const g=p.k==='uno'?makeFiatUno(p.c):p.k==='hilux'?makeHilux(p.c):makeKombi();
     parkOnGround(g,groundHeight,s.x,s.z,s.h);                // on its four wheels, on the drawn paving
-    idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':'KOMBI',police:false});
+    idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':p.k==='hilux'?'HILUX':'KOMBI',police:false});
   });
 
   // ---------- the player: in the Praça, facing the Matriz ----------
