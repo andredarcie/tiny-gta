@@ -82,12 +82,20 @@ function ready(): void{
   dispatchEvent(new Event('tg:ready'));
 }
 
+// which phase failed: a download failure is the network, anything after it is the game itself
+let stage: 'download'|'build'='download';
 function fail(err: unknown): void{
   failed=true;
   console.error('[boot] the game failed to load',err);
   box?.classList.add('error');
-  if(label)label.textContent='Não foi possível carregar o jogo.';
-  if(hint)hint.textContent='Confira a internet e toque no botão para tentar de novo.';
+  if(label)label.textContent=stage==='download'?'Não foi possível baixar o jogo.':'Erro ao montar a cidade.';
+  if(hint)hint.textContent=stage==='download'?'Confira a internet e toque no botão para tentar de novo.':'Toque no botão para tentar de novo. Se repetir, mande um print desta tela.';
+  // the technical message, on screen: on a phone there is no console to read it from
+  const e=err instanceof Error?err:new Error(String(err));
+  const where=(e.stack||'').split('\n').find(l=>/\.js|\.ts/.test(l))?.trim().replace(/^at\s+/,'').slice(-90)||'';
+  const tech=document.createElement('div');tech.className='ld-tech';
+  tech.textContent=`${e.name}: ${e.message}`.slice(0,240)+(where?`\n${where}`:'');
+  box?.appendChild(tech);
   if(play){play.classList.remove('is-queued');play.textContent='TENTAR DE NOVO';}
 }
 
@@ -97,6 +105,7 @@ async function boot(): Promise<void>{
   const files=W.__GAME_FILES;
   if(files?.length)await download(files);
   // 2. the town build: say it, let it paint, then import (main.ts builds the world)
+  stage='build';
   progress(70,files?.length?'Construindo a cidade…':'Carregando e construindo a cidade…');
   await frames(2);
   const graphicsReady=new Promise<void>(res=>{

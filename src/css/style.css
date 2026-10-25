@@ -556,6 +556,7 @@ body.mod-shop-open #touch-controls{display:none!important}
 .ld-pct{font-weight:800;font-size:20px;color:var(--amarelo);font-variant-numeric:tabular-nums}
 .ld-hint{margin-top:3px;font-weight:600;font-size:15px;opacity:.85;color:#ffe9a8;min-height:0}
 .ld-hint:empty{display:none}
+.ld-tech{margin-top:6px;font:12px/1.35 ui-monospace,Consolas,monospace;color:#ffb4a8;white-space:pre-wrap;word-break:break-word;opacity:.9}
 #loading.error .ld-fill{background:#c8322c}
 #loading.error .ld-shine{display:none}
 @media (max-height:480px){#loading{margin-top:10px;padding:8px 12px 7px}.ld-label{font-size:15px}.ld-pct{font-size:16px}.ld-track{height:12px}}
