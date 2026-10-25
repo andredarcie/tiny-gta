@@ -49,6 +49,9 @@ import PostoLurain,{ORIGIN as LUR_O,POSTO_FOOT as LUR_FOOT} from '../../../asset
 import PostoTaurus,{ORIGIN as TAU_O,POSTO_FOOT as TAU_FOOT} from '../../../assets/models/divinolandia/posto-taurus.ts';
 import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../../../assets/models/divinolandia/monumento-ciclista.ts';
 import EntornoCiclista,{ORIGIN as ENT_O,ENTORNO_FOOT as ENT_FOOT} from '../../../assets/models/divinolandia/entorno-ciclista.ts';
+import CristoRedentor,{ORIGIN as CRI_O,CRISTO_FOOT as CRI_FOOT} from '../../../assets/models/divinolandia/cristo-redentor.ts';
+import Galpao from '../../../assets/models/divinolandia/galpao.ts';
+import {GALPOES,type GalpaoSpec} from './galpoes.ts';
 import Mahindra,{ORIGIN as MAH_O,MAHINDRA_FOOT as MAH_FOOT} from '../../../assets/models/divinolandia/concessionaria-mahindra.ts';
 import {buildLoja} from '../../../assets/models/divinolandia/loja-comercio.ts';
 import {PUBLICOS,PUBLICOS_OSM} from '../../../assets/models/divinolandia/publicos.ts';
@@ -320,10 +323,11 @@ export function buildDivinolandia():void{
 
   // ---------- the four fuel stations, the Monumento ao Ciclista and its surroundings (the
   // lots round the east entrance, the Mahindra dealer), 1:1 from Street View (posto-*.ts,
-  // monumento-ciclista.ts, entorno-ciclista.ts, concessionaria-mahindra.ts): each is built in town-local metres and stands on the
+  // monumento-ciclista.ts, entorno-ciclista.ts, concessionaria-mahindra.ts) and the Cristo Redentor on the hill north of the
+  // river (cristo-redentor.ts): each is built in town-local metres and stands on the
   // real slope of its lot (sites-table.ts DRAPED_LOTS) ----------
   for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT],
-    [MonumentoCiclista,MON_O,MON_FOOT],[EntornoCiclista,ENT_O,ENT_FOOT],[Mahindra,MAH_O,MAH_FOOT]] as const){
+    [MonumentoCiclista,MON_O,MON_FOOT],[EntornoCiclista,ENT_O,ENT_FOOT],[Mahindra,MAH_O,MAH_FOOT],[CristoRedentor,CRI_O,CRI_FOOT]] as const){
     const[ox,oz]=w(origin),y0=H(ox,oz);
     const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
     at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
@@ -383,6 +387,40 @@ export function buildDivinolandia():void{
     placeStatic(shops,'shops');
   }
 
+  // ---------- the sheds and large buildings (galpoes.ts, from Street View + satellite) ----------
+  // each on the real slope of its lot; one touching a game place, a rebuilt public building,
+  // a surveyed business or the school campus is left out (those were surveyed first)
+  const galpoes:{spec:GalpaoSpec;rect:P2[]}[]=[];
+  for(const spec of GALPOES){
+    const rect=rectCorners(spec.c[0],spec.c[1],spec.w,spec.d,spec.rot);
+    if(houseOnSite(spec.c[0],spec.c[1],spec.w,spec.d,spec.rot))continue;
+    if(PUB_SOLIDS.some(([sx,sz,sw,sd,sr])=>Math.hypot(sx-spec.c[0],sz-spec.c[1])<90&&rectsOverlap(rect,rectCorners(sx,sz,sw+1,sd+1,sr))))continue;
+    if(lojas.some(p=>Math.hypot(p.x-spec.c[0],p.z-spec.c[1])<90&&rectsOverlap(rect,lojaCorners(p,.3))))continue;
+    if(rectsOverlap(rect,EUCLIDES_LOT))continue;
+    galpoes.push({spec,rect});
+  }
+  {
+    const sheds=new THREE.Group();
+    for(const{spec}of galpoes){
+      const c=Math.cos(spec.rot),sn=Math.sin(spec.rot);
+      const toWorld=(lx:number,lz:number):[number,number]=>[spec.c[0]+DIV_OX+lx*c-lz*sn,spec.c[1]+DIV_OZ+lx*sn+lz*c];
+      const[fx,fz]=toWorld(0,spec.d/2),y0=H(fx,fz),[x,z]=toWorld(0,0);  // floor = the ground at the middle of the street front
+      const at:GroundAt=(lx:number,lz:number):number=>{const[wx,wz]=toWorld(lx,lz);return H(wx,wz)-y0;};
+      const g=Galpao.build({...spec.o,w:spec.w,d:spec.d,groundAt:at});
+      g.position.set(x,y0,z);g.rotation.y=-spec.rot;sheds.add(g);
+      // collision: the closed body; an open shed only by its posts, a front open on posts by its back half
+      const top=y0+spec.o.h+3,open=spec.o.open??'none';
+      if(spec.o.net)continue;
+      if(open==='none')addObb(x,z,spec.w,spec.d,spec.rot,top);
+      else if(open==='front'){const[bx,bz]=toWorld(0,-spec.d/4);addObb(bx,bz,spec.w,spec.d/2,spec.rot,top);}
+      else for(const[u,v]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const[px,pz]=toWorld(u*spec.w/2,v*spec.d/2);addObb(px,pz,.5,.5,0,top);}
+    }
+    placeStatic(sheds,'galpoes');
+  }
+  const onGalpao=(x:number,z:number,m=2):boolean=>galpoes.some(({spec})=>{
+    const dx=x-spec.c[0],dz=z-spec.c[1],c=Math.cos(spec.rot),sn=Math.sin(spec.rot);
+    return Math.abs(dx*c+dz*sn)<spec.w/2+m&&Math.abs(-dx*sn+dz*c)<spec.d/2+m;});
+
   // ---------- houses ----------
   const casas:CasaSpec[]=[];
   for(let i=0;i<D.houses.length;i++){
@@ -391,6 +429,7 @@ export function buildDivinolandia():void{
     if(PUB_SOLIDS.some(([sx,sz,sw,sd,sr])=>Math.hypot(sx-hx0,sz-hz0)<60&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),rectCorners(sx,sz,sw+1,sd+1,sr))))continue;   // a rebuilt public building
     if(lojas.some(p=>Math.hypot(p.x-hx0,p.z-hz0)<40&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),lojaCorners(p,.3))))continue;   // a real business stands there
     if(rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),EUCLIDES_LOT))continue;   // the school's campus and its entrance
+    if(galpoes.some(gp=>Math.hypot(gp.spec.c[0]-hx0,gp.spec.c[1]-hz0)<90&&rectsOverlap(rectCorners(hx0,hz0,hw,hd,rot),gp.rect)))continue;   // a real shed stands there
     const[x,z]=w([hx0,hz0]),cs=Math.cos(rot),sn=Math.sin(rot);
     // level floor at the doorstep (street side), base down to the lowest ground under the
     // whole footprint — exact (ground-fit.ts), so no wall ever floats over a dip
@@ -418,7 +457,8 @@ export function buildDivinolandia():void{
     houses:[...D.houses.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),...surveyedLots,
       ...lojas.map(p=>({x:p.x-p.nx*p.d/2+DIV_OX,z:p.z-p.nz*p.d/2+DIV_OZ,width:p.w,depth:p.d,rotation:Math.atan2(p.uz,p.ux)})),
       ...PUB_SOLIDS.map(([x,z,width,depth,rotation])=>({x:x+DIV_OX,z:z+DIV_OZ,width,depth,rotation})),
-      ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot}))],
+      ...D.buildings.map(b=>({x:b.cx+DIV_OX,z:b.cz+DIV_OZ,width:Math.max(8,b.w),depth:Math.max(8,b.d),rotation:b.rot})),
+      ...galpoes.map(({spec})=>({x:spec.c[0]+DIV_OX,z:spec.c[1]+DIV_OZ,width:spec.w,depth:spec.d,rotation:spec.rot}))],
     protectedAreas:[...[...D.areas,...D.plazas].map(area=>area.pts),...(Object.keys(ALL_LOTS) as LotId[]).map(id=>siteLotPolygon(id,3))]
       .map(area=>area.map(point=>w(point))),
     surveyedStreets:[...SURVEYED],
@@ -431,12 +471,13 @@ export function buildDivinolandia():void{
   for(let i=0;i<D.trees.length;i+=3){
     if(onSiteLot(D.trees[i],D.trees[i+1],3))continue;
     if(inMatrizSquare(D.trees[i],D.trees[i+1]))continue;      // their trees are the surveyed ones
+    if(onGalpao(D.trees[i],D.trees[i+1]))continue;
     const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});
   }
   for(const g of makeTrees(trees)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:900});}
   const cof:{x:number;y:number;z:number;s:number;r:number}[]=[];
   for(let i=0;i<D.coffee.length;i+=3){
-    if(onSiteLot(D.coffee[i],D.coffee[i+1],3))continue;
+    if(onSiteLot(D.coffee[i],D.coffee[i+1],3)||onGalpao(D.coffee[i],D.coffee[i+1]))continue;
     const[x,z]=w([D.coffee[i],D.coffee[i+1]]);cof.push({x,y:H(x,z)-.15,z,s:1,r:D.coffee[i+2]});
   }
   for(const g of makeCoffee(cof)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:650});}
@@ -635,7 +676,7 @@ function drawFullMap(ctx:CanvasRenderingContext2D,cw:number,ch:number):(x:number
   ctx.font='700 12px "Barlow Condensed",monospace';ctx.textAlign='center';ctx.textBaseline='middle';
   const L=D.landmarks;
   for(const[name,p]of[['IGREJA MATRIZ',[L.matriz.cx,L.matriz.cz]],['HOSPITAL REGIONAL',L.hospital],['MIRANTE · MORRO DA TORRE',L.torre],
-    ['ESTÁDIO',L.estadio],['CEMITÉRIO',L.cemiterio],['RIO DO PEIXE',riverLabelAt()]] as [string,number[]][]){
+    ['ESTÁDIO',L.estadio],['CEMITÉRIO',L.cemiterio],['RIO DO PEIXE',riverLabelAt()],['CRISTO REDENTOR',CRI_O]] as [string,number[]][]){
     const[x,y]=P(p[0]+DIV_OX,p[1]+DIV_OZ);
     ctx.lineWidth=3;ctx.strokeStyle='rgba(5,3,8,.9)';ctx.strokeText(name,x,y-12);
     ctx.fillStyle='#ffd24a';ctx.fillText(name,x,y-12);
@@ -659,6 +700,7 @@ function placeName(x:number,z:number):string{
   let name='Divinolândia';
   const near=(p:number[],r:number):boolean=>Math.hypot(lx-p[0],lz-p[1])<r;
   if(near(L.torre,90))name='Mirante · Morro da Torre';
+  else if(near(CRI_O,40))name='Cristo Redentor';
   else if(near(L.hospital,75))name='Hospital Regional';
   else if(near([L.matriz.cx,L.matriz.cz],32))name='Igreja Matriz do Divino Espírito Santo';
   else{

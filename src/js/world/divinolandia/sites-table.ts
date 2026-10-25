@@ -68,6 +68,8 @@ export const DRAPED_LOTS={
   sitioEntrada:{x:-1358,z:-556.5,face:0,w:84,d:20,name:'Entrada do sítio'},
   sitioSede:{x:-1501,z:-611,face:0,w:58,d:62,name:'Sede do sítio'},
   sitioCasinha:{x:-1572,z:-560,face:0,w:40,d:30,name:'Casinha do sítio'},
+  // the Cristo Redentor on the hill north of the river (cristo-redentor.ts): its fenced plot
+  cristo:{x:940,z:-477.5,face:0,w:74,d:44,name:'Cristo Redentor'},
 } satisfies Record<string,SiteSpec>;
 export type LotId=SiteId|keyof typeof DRAPED_LOTS;
 export const ALL_LOTS:Record<LotId,SiteSpec>={...SITE_TABLE,...DRAPED_LOTS};
