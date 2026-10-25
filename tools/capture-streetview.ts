@@ -65,7 +65,7 @@ else{
   if(!name||!latS||!lngS){console.error('usage: capture-streetview.ts <name> <lat> <lng> [h1,h2,…] | --batch <jobs.json>');process.exit(1);}
   jobs=[{name,lat:+latS,lng:+lngS,headings:headS?headS.split(',').map(Number):undefined,fov:+(process.env.FOV||80),pitch:+(process.env.PITCH||0)}];
 }
-const browser=await chromium.launch({headless:false});
+const browser=await chromium.launch({headless:false,args:['--window-position=-32000,-32000']});   // headed (the image endpoint refuses headless) but off-screen, so the user can keep working
 try{
   const page=await browser.newPage({viewport:{width:1280,height:720},locale:'pt-BR'});
   for(const j of jobs)console.log(await capture(page,j));

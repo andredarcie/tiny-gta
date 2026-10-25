@@ -10,7 +10,7 @@ const PANORAMAS=[
 const DIRECTIONS=[140,180,220];
 
 await mkdir(OUTPUT,{recursive:true});
-const browser=await chromium.launch({headless:false});
+const browser=await chromium.launch({headless:false,args:['--window-position=-32000,-32000']});   // headed (the image endpoint refuses headless) but off-screen, so the user can keep working
 try{
   const page=await browser.newPage({viewport:{width:1280,height:720}});
   for(const panorama of PANORAMAS)for(const yaw of DIRECTIONS){

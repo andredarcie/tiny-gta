@@ -48,7 +48,7 @@ const html=`<body style="margin:0"><div id="m" style="position:relative;width:${
 
 const OUT='docs/divinolandia/referencias-satelite';
 await mkdir(OUT,{recursive:true});
-const browser=await chromium.launch({headless:false});
+const browser=await chromium.launch({headless:false,args:['--window-position=-32000,-32000']});   // headed (the image endpoint refuses headless) but off-screen, so the user can keep working
 try{
   const page=await browser.newPage({viewport:{width:Math.max(W,400),height:Math.max(H,400)}});
   await page.setContent(html,{waitUntil:'networkidle'});
