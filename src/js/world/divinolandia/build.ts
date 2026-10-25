@@ -51,6 +51,7 @@ import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../.
 import EntornoCiclista,{ORIGIN as ENT_O,ENTORNO_FOOT as ENT_FOOT} from '../../../assets/models/divinolandia/entorno-ciclista.ts';
 import CristoRedentor,{ORIGIN as CRI_O,CRISTO_FOOT as CRI_FOOT} from '../../../assets/models/divinolandia/cristo-redentor.ts';
 import Galpao from '../../../assets/models/divinolandia/galpao.ts';
+import {IGREJAS} from '../../../assets/models/divinolandia/igrejas-bairro.ts';
 import {GALPOES,type GalpaoSpec} from './galpoes.ts';
 import Mahindra,{ORIGIN as MAH_O,MAHINDRA_FOOT as MAH_FOOT} from '../../../assets/models/divinolandia/concessionaria-mahindra.ts';
 import {buildLoja} from '../../../assets/models/divinolandia/loja-comercio.ts';
@@ -360,7 +361,7 @@ export function buildDivinolandia():void{
 
   // ---------- public buildings, grounds and squares rebuilt from Street View (publicos.ts,
   // pracas-centro.ts), each on the real slope of its lot ----------
-  for(const p of[...PUBLICOS,...PRACAS,...SITIO]){
+  for(const p of[...PUBLICOS,...PRACAS,...SITIO,...IGREJAS]){
     const[ox,oz]=w(p.origin),y0=H(ox,oz);
     const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
     at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
@@ -724,7 +725,7 @@ function placeName(x:number,z:number):string{
 }
 
 // the collision boxes of the rebuilt public buildings (town-local): no generated house there
-const PUB_SOLIDS=PUBLICOS.flatMap(p=>p.foot);
+const PUB_SOLIDS=[...PUBLICOS,...IGREJAS].flatMap(p=>p.foot);
 const SURVEYED_GROUNDS=new Set(['Praça Dom Bosco','Praça Nossa Senhora do Rosário','Praça Jorge Galhano','Praça Pedro Ribeiro de Paiva',
   'Escola Estadual Deputado Vicente Nasser','Estádio Municipal Armando Grespan','Cemitério Municipal']);
 // the two squares of the Matriz, laid out 1:1 (praca-alcindo.ts / praca-ladislau.ts)

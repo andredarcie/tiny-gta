@@ -16,7 +16,9 @@ const browser=await chromium.launch({headless:false,args:['--window-position=-32
 try{
   const page=await browser.newPage({viewport:{width:1280,height:900}});
   const errs:string[]=[];page.on('pageerror',e=>errs.push(e.message));page.on('console',c=>{if(c.type()==='error')errs.push(c.text());});
-  await page.goto(`${BASE}/tools/studio/model.html?m=${encodeURIComponent(m)}&opts=${encodeURIComponent(optsS||'{}')}`);
+  // env LIST=<export>&I=<index>: one entry of a list of places (publicos.ts style) instead of the default model
+  const extra=process.env.LIST?`&list=${process.env.LIST}&i=${process.env.I??0}`:'';
+  await page.goto(`${BASE}/tools/studio/model.html?m=${encodeURIComponent(m)}&opts=${encodeURIComponent(optsS||'{}')}${extra}`);
   await page.waitForFunction(()=>(window as unknown as {__ready?:boolean}).__ready===true,null,{timeout:120000}).catch(()=>{throw new Error('studio did not load: '+errs.join(' | '));});
   console.log('info',JSON.stringify(await page.evaluate(()=>(window as unknown as {__info:unknown}).__info)));
   for(const[name,...v]of views){

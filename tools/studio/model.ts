@@ -26,8 +26,11 @@ sun.shadow.bias=-.0004;sun.shadow.normalBias=.03;scene.add(sun);scene.add(sun.ta
 const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.MeshLambertMaterial({color:0x6f7f4a}));
 ground.rotation.x=-Math.PI/2;ground.position.y=-.02;ground.receiveShadow=true;scene.add(ground);
 
-const mod=(await MODELS[path]()) as {default:{build:(o:Record<string,unknown>)=>THREE.Object3D}};
-const obj=mod.default.build(opts);
+// a model file, or one entry of a list of places (publicos.ts style: &list=IGREJAS&i=0,
+// built on flat ground)
+const mod=(await MODELS[path]()) as Record<string,unknown>&{default?:{build:(o:Record<string,unknown>)=>THREE.Object3D}};
+const list=q.get('list');
+const obj=list?(mod[list] as {build:(at:(x:number,z:number)=>number)=>THREE.Object3D}[])[+(q.get('i')||0)].build(()=>0):mod.default!.build(opts);
 obj.traverse(o=>{if((o as THREE.Mesh).isMesh){o.castShadow=true;o.receiveShadow=true;}});
 scene.add(obj);obj.updateMatrixWorld(true);
 const box=new THREE.Box3().setFromObject(obj),c=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
