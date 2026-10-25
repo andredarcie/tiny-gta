@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
-import {type GroundAt,type P2} from './praca-chao.ts';
-import {flat,brick,corrugated,walls,face,onFace,opening,glassM,block,hipRoofQuad,type Face} from './posto-kit.ts';
+import {type P2} from './praca-chao.ts';
+import {flat,brick,corrugated,walls,face,onFace,opening,block,hipRoofQuad,type Face} from './posto-kit.ts';
 import type {Publico,Solid} from './publicos.ts';
 
 // The two neighbourhood churches the town lacked, rebuilt from Google Street View

@@ -372,8 +372,11 @@ const landmarkKeep:[number,number,number][]=[
 ];
 // keep generated houses off the surveyed street (its lots come from the street spec)
 // each surveyed street's lot band: half width + sidewalk (2.2) + its deepest lot + a margin
-const surveyedPts=roads.filter(r=>SURVEYED.has(r.name)).map(r=>{const sp=SURVEYED.get(r.name)!;
-  return{pts:r.pts,band:r.hw+2.6+Math.max(...sp.lots.map(l=>(l.f.d??12)+(l.f.setback??0)))};});
+// (measured from the street's pieces CHAINED into one polyline, the spec's own frame: where
+// OSM gives a stretch of the street to another way — the Rua Sete de Setembro along the Praça
+// Dr. Alcindo — the chain bridges it, so the houses of that other way stay off the lots too)
+const surveyedPts=[...SURVEYED.values()].map(sp=>{const rs=roads.filter(r=>r.name===sp.rua);
+  return{pts:chainPieces(rs.map(r=>r.pts)),band:(rs[0]?.hw??3.6)+2.6+Math.max(...sp.lots.map(l=>(l.f.d??12)+(l.f.setback??0)))};}).filter(s=>s.pts.length>1);
 // within the street's lot band (m = 0) — or within m of its centreline
 function nearSurveyed(x:number,z:number,m=0):boolean{
   for(const{pts,band}of surveyedPts)for(let i=1;i<pts.length;i++)

@@ -28,9 +28,21 @@ ground.rotation.x=-Math.PI/2;ground.position.y=-.02;ground.receiveShadow=true;sc
 
 // a model file, or one entry of a list of places (publicos.ts style: &list=IGREJAS&i=0,
 // built on flat ground)
-const mod=(await MODELS[path]()) as Record<string,unknown>&{default?:{build:(o:Record<string,unknown>)=>THREE.Object3D}};
+// or a stretch of a surveyed street (&rua=<OSM name>&side=N|S&s0=&s1=): its lots in a straight
+// row on flat ground, façades toward +z, s running along +x — to compare with the photos
+async function streetRow():Promise<THREE.Object3D>{
+  const {STREETS}=await import('../../src/js/world/divinolandia/ruas/index.ts');
+  const {buildFachada}=await import('../../src/assets/models/divinolandia/fachada.ts');
+  const spec=STREETS.find(s=>s.rua===q.get('rua'))!,side=q.get('side')||'N',s0=+(q.get('s0')||0),s1=+(q.get('s1')||1e9);
+  const g=new THREE.Group(),flip=side==='N'?1:-1;   // seen from the street, +s (east) runs to the right on N, to the left on S
+  for(const lot of spec.lots){if(lot.side!==side||lot.s1<s0||lot.s0>s1)continue;
+    const w=lot.s1-lot.s0-.1,f=buildFachada({...lot.f,w,base:-.4,seed:Math.round(lot.s0*13)});
+    f.position.x=flip*((lot.s0+lot.s1)/2-(s0+s1)/2);g.add(f);}
+  return g;
+}
+const mod=q.get('rua')?{}:(await MODELS[path]()) as Record<string,unknown>&{default?:{build:(o:Record<string,unknown>)=>THREE.Object3D}};
 const list=q.get('list');
-const obj=list?(mod[list] as {build:(at:(x:number,z:number)=>number)=>THREE.Object3D}[])[+(q.get('i')||0)].build(()=>0):mod.default!.build(opts);
+const obj=q.get('rua')?await streetRow():list?(mod[list] as {build:(at:(x:number,z:number)=>number)=>THREE.Object3D}[])[+(q.get('i')||0)].build(()=>0):(mod as {default:{build:(o:Record<string,unknown>)=>THREE.Object3D}}).default.build(opts);
 obj.traverse(o=>{if((o as THREE.Mesh).isMesh){o.castShadow=true;o.receiveShadow=true;}});
 scene.add(obj);obj.updateMatrixWorld(true);
 const box=new THREE.Box3().setFromObject(obj),c=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());
