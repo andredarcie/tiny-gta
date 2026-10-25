@@ -120,7 +120,14 @@ function renderOnly(batch: THREE.Object3D[]): void{
 export function startWarmup(): void{
   performance.mark('tg:warm-start');
   holdRendering(true);   // released as soon as the shaders are ready (or after a safety cap)
-  const release=():void=>holdRendering(false);
+  // release drawing — and tell the loader (js/core/boot.ts) the graphics are ready, once
+  let told=false;
+  const release=():void=>{
+    holdRendering(false);
+    if(told)return;told=true;
+    (window as unknown as {__tgGraphicsReady?: boolean}).__tgGraphicsReady=true;
+    dispatchEvent(new Event('tg:graphics-ready'));
+  };
   setTimeout(release,5000);
   const bag=modelBag();
   scene.add(bag);

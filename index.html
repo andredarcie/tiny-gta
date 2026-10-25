@@ -230,7 +230,13 @@
     </g>
   </svg>
   <div id="logo"><span class="lg-name">DIVINO</span><span class="lg-city">CITY</span></div>
-  <button id="play" type="button">JOGAR</button>
+  <button id="play" class="is-loading" type="button">CARREGANDO…</button>
+  <!-- loading progress (js/core/boot.ts drives it): download, the town build, the graphics -->
+  <div id="loading" role="progressbar" aria-label="Carregando o jogo" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="ld-track"><div class="ld-fill"></div><div class="ld-shine"></div></div>
+    <div class="ld-row"><span class="ld-label">Carregando o jogo…</span><span class="ld-pct">0%</span></div>
+    <div class="ld-hint"></div>
+  </div>
 </div>
 
 <script type="module" src="src/js/core/boot.ts"></script>

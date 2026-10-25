@@ -166,7 +166,8 @@ export function setupTouchControls(): void {
   input.touchActive=true;
   input.lastInput='touch';
   const play=$('play');
-  if(play)play.textContent='TOQUE PARA JOGAR';
+  // (while the game loads the loader writes the progress on the button: it shows this once ready)
+  if(play){play.dataset.readyText='TOQUE PARA JOGAR';if(!play.classList.contains('is-loading'))play.textContent='TOQUE PARA JOGAR';}
   updateOrientationState();
 
   bindStick($('stick-move'),v=>{

@@ -199,6 +199,14 @@ const isMobileEnv=(): boolean=>state.mobile||matchMedia('(pointer: coarse)').mat
 // state.started, so a double-tap can't restore twice.
 function beginRun(): void {
   if(state.started)return;
+  // not ready yet (the loader in boot.ts is still on the graphics): remember it, the loader
+  // shows it on the button, and 'tg:ready' starts the run
+  const w=window as unknown as {__tgReady?: boolean;__playQueued?: boolean};
+  if(!w.__tgReady){
+    w.__playQueued=true;document.getElementById('play')?.classList.add('is-queued');
+    const hint=document.querySelector('#loading .ld-hint');if(hint)hint.textContent='Pode soltar: o jogo começa sozinho assim que terminar de carregar.';
+    return;
+  }
   performance.mark('tg:run-started');
   startGameFromUserGesture({mobile:isMobileEnv()});
   const save=loadLocalSave();
@@ -347,8 +355,9 @@ export function setupInput(): void {
   // testing via the host IP) is NOT localhost, so it keeps the title screen.
   const onLocalhost=['localhost','127.0.0.1','::1','[::1]'].includes(location.hostname);
   if(onLocalhost)setTimeout(()=>{ if(!state.started)beginRun(); },0);
-  // PLAY was clicked on the (instant) title before this module finished loading.
-  if((window as unknown as {__playQueued?: boolean}).__playQueued)setTimeout(()=>{ if(!state.started)beginRun(); },0);
+  // PLAY was pressed on the title before the game finished loading (boot.ts remembered it
+  // and said so): start as soon as the loader announces the game is ready.
+  addEventListener('tg:ready',()=>{ if((window as unknown as {__playQueued?: boolean}).__playQueued&&!state.started)beginRun(); });
   // A run started outside a click (queued PLAY / localhost auto-start) has its audio
   // context suspended by the browser: resume it on the first real gesture.
   const resumeAudio=():void=>{AC?.resume?.();};
