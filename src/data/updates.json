@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-10-25-tela-de-carregamento",
+    "date": "2026-10-25",
+    "title": "Agora dá pra ver o jogo carregando",
+    "description": "Ao abrir o jogo, uma barra embaixo do botão mostra o carregamento: primeiro baixando o jogo, depois construindo a cidade e por fim preparando os gráficos. Enquanto carrega, o botão mostra a porcentagem. Se você apertar JOGAR antes de terminar, ele avisa que o jogo começa sozinho assim que ficar pronto — nada de ficar na dúvida se travou."
+  },
+  {
     "id": "2026-10-25-cristo-galpoes",
     "date": "2026-10-25",
     "title": "O Cristo Redentor, os galpões e a Rua Sete de Setembro",
