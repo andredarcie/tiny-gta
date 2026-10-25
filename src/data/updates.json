@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-10-25-erro-carregamento",
+    "date": "2026-10-25",
+    "title": "Aviso mais claro quando o jogo não carrega",
+    "description": "Se algo der errado ao abrir o jogo, a tela de carregamento agora diz se o problema foi baixar o jogo ou montar a cidade, e mostra o detalhe do erro. Assim fica fácil mandar um print e a gente corrige mais rápido."
+  },
+  {
     "id": "2026-10-25-tela-de-carregamento",
     "date": "2026-10-25",
     "title": "Agora dá pra ver o jogo carregando",
