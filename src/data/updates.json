@@ -1,5 +1,11 @@
 [
   {
+    "id": "2026-10-25-jogo-volta-a-abrir",
+    "date": "2026-10-25",
+    "title": "O jogo voltou a abrir",
+    "description": "Depois da chegada dos galpões, o jogo parava em 70% e não abria mais. Corrigido: a cidade monta de novo, agora com o Cristo Redentor, os galpões, as igrejas e a Rua Sete de Setembro."
+  },
+  {
     "id": "2026-10-25-erro-carregamento",
     "date": "2026-10-25",
     "title": "Aviso mais claro quando o jogo não carrega",
