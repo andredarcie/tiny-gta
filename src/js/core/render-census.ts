@@ -1,11 +1,12 @@
 import type * as THREE from 'three';
 
-export const staticRenderGroups: Record<string, THREE.Object3D[]> = {
-  houses: [], surveyedStreets: [], shops: [], landmarks: [], vegetation: [],
-  terrain: [], otherStatic: [],
-};
+const CATEGORIES = ['houses', 'surveyedStreets', 'shops', 'landmarks', 'sheds', 'vegetation', 'terrain', 'otherStatic'] as const;
+export type StaticCategory = typeof CATEGORIES[number];
+export const staticRenderGroups = Object.fromEntries(CATEGORIES.map(c => [c, []])) as unknown as Record<StaticCategory, THREE.Object3D[]>;
 
-export function trackStatic<T extends THREE.Object3D>(category: string, root: T): T {
+// The category is typed: an unknown name used to compile and then crash the world build at
+// load (push on undefined) — the sheds went in as 'galpoes' and the game stopped loading.
+export function trackStatic<T extends THREE.Object3D>(category: StaticCategory, root: T): T {
   staticRenderGroups[category].push(root);
   return root;
 }

@@ -11,7 +11,7 @@
 // in the classic map and migrate to the town step by step.
 import * as THREE from 'three';
 import {scene,camera} from '@/core/engine.ts';
-import {trackStatic} from '@/core/render-census.ts';
+import {trackStatic,type StaticCategory} from '@/core/render-census.ts';
 import {refs} from '@/core/state.ts';
 import {setDivinoTerrain} from '@/core/terrain.ts';
 import {player,playerCar,idleCars,cameraRig} from '@/actors/player.ts';
@@ -74,7 +74,7 @@ const H=divinoHeight;
 const w=(p:number[]):P2=>[p[0]+DIV_OX,p[1]+DIV_OZ];
 
 // Static landmark group → identity parent → merged by material (few draw calls).
-function placeStatic(obj:THREE.Object3D,category='landmarks'):THREE.Group{
+function placeStatic(obj:THREE.Object3D,category:StaticCategory='landmarks'):THREE.Group{
   const root=new THREE.Group();root.add(obj);
   root.updateMatrixWorld(true);
   root.traverse(o=>{if(o!==root){o.matrixAutoUpdate=false;o.updateMatrix();}});
@@ -416,7 +416,7 @@ export function buildDivinolandia():void{
       else if(open==='front'){const[bx,bz]=toWorld(0,-spec.d/4);addObb(bx,bz,spec.w,spec.d/2,spec.rot,top);}
       else for(const[u,v]of[[-1,-1],[1,-1],[1,1],[-1,1]]){const[px,pz]=toWorld(u*spec.w/2,v*spec.d/2);addObb(px,pz,.5,.5,0,top);}
     }
-    placeStatic(sheds,'galpoes');
+    placeStatic(sheds,'sheds');
   }
   const onGalpao=(x:number,z:number,m=2):boolean=>galpoes.some(({spec})=>{
     const dx=x-spec.c[0],dz=z-spec.c[1],c=Math.cos(spec.rot),sn=Math.sin(spec.rot);
