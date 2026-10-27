@@ -2,7 +2,7 @@
 // one view aimed at each ~8 m of lot from the nearest panorama, local in
 // docs/divinolandia/referencias-streetview/cjl-N-*/ and cjl-S-*/, kept out of git). The long
 // street north of the centre, 1,100 m west→east from the Avenida Marginal to the Lourival
-// Medeiros; surveyed so far from the Marginal to s 582 (past the Joaquim Garcia).
+// Medeiros; surveyed its whole length.
 //   s=108 R. João Cabrera   s=230 R. Barão do Rio Branco   s=309 R. Espírito Santo
 //   s=415 R. Francisco Pereira de Souza   s=515 R. Joaquim Garcia   s=607 R. Campos Salles
 // Asphalt (setts from the Barão eastward). Side 'N' is the north side. Opening x is measured
@@ -139,6 +139,109 @@ export const LOTS:Lot[]=[
   // timber in front of a gable shed with a blue door
   L('N',554,564,{wall:'#d8c8a0',roof:'flat',fascia:'#8a7a64',eave:.3,open:[{t:'open',x:-2,w:3.6,h:2.6,c:'casa'},{t:'window',x:2.6,w:2.2,shutters:'#8a6a4a'}]}),
   L('N',564,578,{wall:'#d8c8a0',roof:'gable',roofColor:T,setback:7,d:5,front:{h:.2,c:'#8a7a64'},open:[{t:'garage',x:0,w:3,c:'#2a6ab0'}]}),
+  // nº 621: an old cream front, two brown roll doors and a red ornamental gate
+  L('N',578,588,{wall:'#e6e2c8',roof:'gable',roofColor:'#8a4a32',open:[{t:'garage',x:-3,w:2.6,c:'#8a4030'},{t:'garage',x:.4,w:2.6,c:'#8a4030'},{t:'gate',x:3.6,w:2.4,c:'#6a2a24'}]}),
+  // the grey speckled sobrado with green trim, a roll door, a balcony above
+  L('N',588,600,{floors:2,wall:'#a8a49a',roof:'flat',parapet:true,band:'#7ab098',open:[{t:'garage',x:-3,w:3,c:'#c8c0a8'},{t:'window',x:1.4,w:2.4,frame:'#7ab098',grille:true},{t:'door',x:4.6,w:.9,c:'#c8c8c4'}],
+    balcony:{x:0,w:12,fl:1,rail:'iron'}}),
+  // --- Campos Salles → Bernadino Franchi
+  // the old cream corner house behind its rough stone wall, a brown gate
+  L('N',611,626,{wall:'#ece8e0',roof:'hip',roofColor:'#8a4a32',setback:3,front:{h:1.6,c:'#6a5a4a',style:'stone',gates:[{t:'gate',x:3,w:1.4,c:'#8a3a2a'}]},
+    open:[{t:'door',x:-2,w:1,c:'#8a5a3a'},{t:'window',x:2,w:2.2,grille:true}]}),
+  // the pink sobrado over its open garage, green sheet door, an iron balcony with plants
+  L('N',626,636,{floors:2,wall:'#d8a898',upper:'#ece4d6',roof:'flat',parapet:true,open:[{t:'open',x:-1,w:5,h:2.6,c:'casa'},{t:'garage',x:3.2,w:2.4,c:'#3a7a4a'}],balcony:{x:0,w:9,fl:1,rail:'iron'}}),
+  // the brown-stone cottage with arched windows behind a cream wall
+  L('N',636,646,{wall:'#7a6a5a',roof:'gable',roofColor:'#8a4a32',fascia:W,setback:2,front:{h:1.6,c:'#ece0c8',gates:[{t:'gate',x:-1,w:1,c:W}]},open:[{t:'arch',x:-2.6,w:2.6,grille:true},{t:'arch',x:2.4,w:2.6,grille:true}]}),
+  // modern white wall with a black garage gate; nº 689 in beige
+  L('N',646,652,{wall:'#ece8e2',roof:'flat',parapet:true,open:[{t:'garage',x:0,w:4,c:'#2a2a2c'}]}),
+  L('N',652,658,{wall:'#c8a870',roof:'flat',parapet:true,setback:1,panels:[{x:-2,w:.4,c:'#ece8e2'}],open:[{t:'gate',x:1,w:3,c:'#2a2a2c'}]}),
+  // a green-speckled ground floor with a brick upper storey, a grey garage under a tin awning
+  L('N',658,668,{floors:2,wall:'#5a9a5a',upper:'#b5603f',roof:'flat',parapet:true,open:[{t:'window',x:-2.6,w:2.4,frame:W,grille:true},{t:'garage',x:1.6,w:3,c:'#c8cacc',awning:'#9aa0a3'},{t:'door',x:4,w:.9,c:W}]}),
+  // the bakery: orange awning and orange gates, a slatted roof terrace
+  L('N',668,680,{wall:'#9a8a7a',roof:'flat',parapet:true,open:[{t:'gate',x:-3,w:3.4,c:'#d8682a'},{t:'open',x:2.4,w:5,h:2.5,c:'casa',awning:'#d8682a'}],
+    sign:{text:'PADARIA',bg:'#d8682a',fg:'#ffffff',x:2.4,y:2.7,w:3,h:.5}}),
+  // the stone-clad house with green windows and a green roll door
+  L('N',680,688,{wall:'#b8aa94',roof:'gable',roofColor:'#8a4a32',panels:[{x:0,w:8,stone:true}],open:[{t:'window',x:-1.8,w:2,frame:'#7ab098'},{t:'garage',x:1.8,w:3,c:'#9ad0b8'}]}),
+  // --- Bernadino Franchi → Anibal Franchi (Mãe Rainha on the corner before)
+  // beige corner house behind its wall
+  L('N',714,724,{wall:'#e6d8c0',roof:'hip',roofColor:'#8a4a32',setback:3,front:{h:2,c:'#e6d8c0'}}),
+  // a beige wall, a white sheet gate, the house behind
+  muro('N',724,732,'#d8c8a8',2,{front:{h:2,c:'#d8c8a8',gates:[{t:'gate',x:.6,w:3.6,c:'#e8e8e6'}]},behind:{w:7,d:8,at:3,roofColor:'#8a4a32',wall:'#e6d8c0'}}),
+  // nº 811: beige house, glass-block corners, a tiled carport with a cream gate
+  L('N',732,746,{wall:'#ddc8a8',roof:'hip',roofColor:T,open:[{t:'gate',x:-3.6,w:3.6,c:'#e6dcc8',awning:T},{t:'window',x:1,w:1,frame:W},{t:'window',x:4,w:2.2,shutters:'#e8e4dc'}]}),
+  // white walls and white sheet gates, the new houses with light roofs behind
+  muro('N',746,754,'#ece8e2',2.4,{front:{h:2.4,c:'#ece8e2',gates:[{t:'gate',x:-1,w:3,c:'#e8e8e6'}]},behind:{w:7,d:8,at:3,roofColor:'#d8c8a8',wall:'#ece8e2'}}),
+  muro('N',754,762,'#ece8e2',2.4,{front:{h:2.4,c:'#ece8e2',gates:[{t:'gate',x:-1,w:3.4,c:'#e8e8e6'}]},behind:{w:7,d:8,at:3,roofColor:'#d8c8a8',wall:'#ece8e2'}}),
+  // grey-trimmed white houses, a barred carport
+  L('N',762,770,{wall:'#ece8e2',roof:'hip',roofColor:T,band:'#8a8c8e',open:[{t:'window',x:-2.6,w:1.4,shutters:W,frame:'#7a7c80'},{t:'window',x:0,w:1.8,grille:true,frame:'#7a7c80'},{t:'gate',x:2.8,w:2.6,c:W}]}),
+  L('N',770,776,{wall:'#ece8e2',roof:'hip',roofColor:T,open:[{t:'gate',x:0,w:3,c:W}]}),
+  // the grey stone-tile house with a pale blue band, white French windows behind white railings
+  L('N',776,788,{wall:'#8a8c8e',roof:'hip',roofColor:T,plinth:{h:.6,c:'#7ab0b8'},setback:2,front:{h:.6,c:'#7ab0b8',rail:{h:.9,c:W,style:'bars'}},
+    open:[{t:'glass',x:-3,w:2.6,y:0,h:2.4,frame:W},{t:'door',x:0,w:1,c:W},{t:'glass',x:3,w:2.6,y:0,h:2.4,frame:W}]}),
+  // the Amigos e Caprichos petshop in the same stone with a blue frame, a white door
+  L('N',788,794,{wall:'#8a8c8e',roof:'hip',roofColor:T,panels:[{x:2.4,w:1.2,c:'#7ab0b8'}],open:[{t:'window',x:-1,w:2,frame:W,grille:true},{t:'door',x:2.4,w:1,c:W}],
+    sign:{text:'AMIGOS E CAPRICHOS',bg:'#ffffff',fg:'#3a6a3a',x:-2.2,y:1.2,w:1.4,h:1}}),
+  // a red gate in a cream wall
+  muro('N',794,798,'#ecdcc0',2.2,{front:{h:2.2,c:'#ecdcc0',gates:[{t:'gate',x:0,w:2.6,c:'#9a3a2e'}]}}),
+  // nº 871: the cream house with red-brown louvred shutters over a pink base, a side porch
+  L('N',798,810,{wall:'#ece4c8',roof:'hip',roofColor:T,plinth:{h:.4,c:'#c88a80'},open:[{t:'window',x:-3.4,w:2.2,shutters:'#8a3a30'},{t:'window',x:.6,w:3,shutters:'#8a3a30'},{t:'open',x:4.4,w:2,h:2.2,c:'casa'}]}),
+  // a brick-tile wall with a white gate; the house on the corner on a stone base, white railings
+  muro('N',810,814,'#c9a07a',2.2,{front:{h:2.2,c:'#c9a07a',gates:[{t:'gate',x:0,w:2.6,c:W}]}}),
+  L('N',814,816.4,{wall:'#ece4d6',roof:'hip',roofColor:T}),
+  // --- Anibal Franchi → Prof. Silvino Ribeiro
+  // IAAFA: the sky-blue corner building, a black window and the glass door
+  L('N',824.4,836,{wall:'#6a9ad8',roof:'hip',roofColor:T,open:[{t:'window',x:-3,w:2.4,frame:'#2a2a2a'},{t:'glass',x:1.6,w:1.8,y:0,h:2.4,frame:'#2a2a2a'},{t:'window',x:4,w:1.4,frame:'#2a2a2a'}],
+    sign:{text:'IAAFA',bg:'#ffffff',fg:'#3a6a3a',x:-5,y:1.6,w:.8,h:.8}}),
+  // nº 989: the lilac house with an arcaded veranda, brown shutters, roses behind an iron fence
+  L('N',836,852,{wall:'#d8c8d0',roof:'hip',roofColor:T,setback:3,front:{h:.6,c:'#a898a8',rail:{h:1,c:'#3a2a2a',style:'bars'},gates:[{t:'gate',x:-6,w:1.4,c:'#3a2a2a'}]},
+    open:[{t:'arch',x:-5,w:2.6,h:2.4,y:0},{t:'arch',x:-1.6,w:2.6,h:2.4,y:0},{t:'arch',x:1.8,w:2.6,h:2.4,y:0},{t:'arch',x:5.2,w:2.6,h:2.4,y:0}]}),
+  // a brown sheet gate, a white house behind
+  muro('N',852,858,'#ece4d6',2.2,{front:{h:2.2,c:'#ece4d6',gates:[{t:'gate',x:0,w:4,c:'#6a4a32'}]},behind:{w:6,d:8,at:3,roofColor:T,wall:'#ece8e2'}}),
+  // a grey house with brick panels (for sale), white garage gates
+  L('N',858,866,{wall:'#d8d8d4',roof:'gable',roofColor:T,panels:[{x:-3,w:.6,c:'#b5603f'},{x:-1.6,w:.6,c:'#b5603f'}],open:[{t:'window',x:0,w:1.8,shutters:W},{t:'gate',x:2.8,w:2.4,c:W}]}),
+  // the beige house on a tiled base, a big glass window, a barred gate
+  L('N',866,874,{wall:'#d8bf98',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:1,c:'#c8a070'},open:[{t:'gate',x:-3,w:2,c:W},{t:'glass',x:0,w:2.4,frame:W},{t:'window',x:3,w:2,shutters:W}]}),
+  // nº 963: dark grey speckled gable with cream trim, a barred carport
+  L('N',874,886,{wall:'#3a3c40',roof:'gable',roofColor:'#5a3a2a',fascia:'#5a3a2a',band:'#d8c8a8',open:[{t:'gate',x:-3.4,w:3.6,c:'#3a3a3a'},{t:'window',x:2.4,w:3,frame:'#d8c8a8'}]}),
+  // the modern beige sobrado, glass balcony, white slatted garage gates and a glass front
+  L('N',886,898,{floors:2,wall:'#a89078',roof:'flat',parapet:true,open:[{t:'gate',x:-3,w:4,c:W},{t:'glass',x:2.4,w:3.4,y:.3,h:2,frame:'#4a3a2a'}],balcony:{x:-3,w:4,fl:1,rail:'glass'}}),
+  // another dark grey speckled house under a tin awning
+  L('N',898,906,{wall:'#3a3c40',roof:'gable',roofColor:'#4a4a4a',fascia:'#4a4a4a',band:'#d8c8a8',open:[{t:'window',x:-1.8,w:2,frame:'#d8c8a8'},{t:'window',x:1.8,w:2,shutters:'#5a5c60',frame:'#d8c8a8'}]}),
+  // the beige sobrado behind white slatted railings to the corner
+  L('N',906,916,{floors:2,wall:'#b8a088',roof:'flat',parapet:true,setback:2,front:{h:1,c:'#b8a088',rail:{h:1.2,c:W,style:'bars'}},open:[{t:'door',x:-3,w:1,c:'#8a3a2a'}]}),
+  // --- Prof. Silvino Ribeiro → Padre João Fonte
+  // the grey mosaic-tiled corner sobrado, a beige awning over the glass lobby
+  L('N',924.4,938,{floors:2,wall:'#9a9aa0',roof:'flat',parapet:true,open:[{t:'glass',x:-2.4,w:5,y:0,h:2.6,frame:'#2a2a2a',awning:'#d8c8b0'},{t:'glass',x:3.6,w:3,y:.6,h:1.8,frame:'#2a2a2a',awning:'#d8c8b0'}],
+    balcony:{x:0,w:12,fl:1,rail:'white'}}),
+  // a beige sobrado with a carport behind a grey sheet gate
+  L('N',938,946,{floors:2,wall:'#ddcfb8',roof:'flat',parapet:true,open:[{t:'gate',x:-1.6,w:2,c:W},{t:'gate',x:1.8,w:3,c:'#a8acb0',awning:'#c8c0b0'}]}),
+  // the grey speckled gable house with white trim, its neighbour behind a grey gate
+  L('N',946,956,{wall:'#8a908e',roof:'gable',roofColor:'#6a6c70',fascia:W,band:W,open:[{t:'open',x:-3,w:2,h:2.2,c:'casa'},{t:'window',x:0,w:2,grille:true,frame:W},{t:'window',x:3.2,w:2,shutters:'#a8acb0',frame:W}]}),
+  L('N',956,964,{wall:'#8a908e',roof:'gable',roofColor:'#6a6c70',fascia:W,open:[{t:'window',x:-1,w:2,shutters:'#a8acb0',frame:W},{t:'gate',x:2.6,w:2,c:'#a8acb0'}]}),
+  // nº 1093: the red-speckled gable house, brown shutters
+  L('N',964,972,{wall:'#c0503a',roof:'gable',roofColor:'#e8e4dc',fascia:W,band:W,open:[{t:'window',x:-1.8,w:2,shutters:'#a87a4a',frame:W},{t:'window',x:1.8,w:1.6,shutters:'#a87a4a',frame:W}]}),
+  // nº 1105: grey speckled gable, a barred carport
+  L('N',972,978,{wall:'#7a8a88',roof:'gable',roofColor:'#e8e4dc',fascia:W,band:W,open:[{t:'window',x:-1.4,w:2,grille:true,frame:W},{t:'gate',x:1.6,w:2.6,c:W}]}),
+  // the green corner house, brown shutters
+  L('N',978,984,{wall:'#8aaa78',roof:'gable',roofColor:'#5a3a2a',fascia:'#c8783a',open:[{t:'window',x:-1,w:1.4,frame:'#8a5a3a'},{t:'window',x:1.6,w:1.4,shutters:'#a8603a'}]}),
+  // --- Padre João Fonte → Lourival Medeiros
+  // grey houses behind a stone wall and grey bars, palms
+  L('N',994.4,1004,{wall:'#a8aaa8',roof:'hip',roofColor:T,setback:3,front:{h:.6,c:'#6a6c70',rail:{h:1.3,c:'#7a7c80',style:'bars'}},open:[{t:'window',x:-2,w:2,frame:W},{t:'open',x:3,w:3,h:2.3,c:'casa'}]}),
+  L('N',1004,1012,{wall:'#a8aaa8',roof:'gable',roofColor:'#5a6068',fascia:W,setback:3,front:{h:.4,c:'#6a6c70',rail:{h:1.4,c:'#7a7c80',style:'bars'}},open:[{t:'window',x:-1.4,w:2,frame:W},{t:'open',x:2,w:2.4,h:2.3,c:'casa'}]}),
+  L('N',1012,1020,{wall:'#8a9098',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',open:[{t:'gate',x:-1.6,w:3.4,c:'#e6dcc8'},{t:'window',x:2.4,w:1.8,shutters:'#e6dcc8'}]}),
+  // nº 1165 and the beige house on a tiled base with a brown art-deco gate
+  L('N',1020,1028,{wall:'#a8a8a6',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',open:[{t:'window',x:-1.4,w:2.2,frame:'#e6dcc8'},{t:'gate',x:2,w:1.6,c:W}]}),
+  L('N',1028,1036,{wall:'#d8c8a8',roof:'gable',roofColor:'#5a3a2a',fascia:'#5a3a2a',plinth:{h:1.2,c:'#a8a49c'},open:[{t:'window',x:-2,w:1.6,grille:true},{t:'gate',x:1.6,w:3,c:'#5a4a3a'}]}),
+  // an empty lot with grass
+  muro('N',1036,1048,'#b8b4aa',.3),
+  // the grey speckled warehouse with two big grey sheet doors
+  L('N',1048,1066,{wall:'#8a8c8a',roof:'flat',parapet:true,open:[{t:'garage',x:-5,w:3.4,h:3.2,c:'#9aa8b8'},{t:'garage',x:2,w:6,h:3.4,c:'#9aa8b8'}]}),
+  // a house going up behind sheet hoarding, raw brick and stacked blocks
+  muro('N',1066,1078,'#c8cacc',2,{behind:{w:8,d:8,at:3,roof:'flat',roofColor:'#9a958c',wall:'#b5603f'}}),
+  L('N',1078,1084,{wall:'#a8a8a6',roof:'flat',fascia:'#b5603f',open:[{t:'window',x:-1,w:1.6,grille:true},{t:'open',x:1.6,w:1.8,h:2.2,c:'casa'}]}),
+  // the blue-grey bungalow behind its stone wall, grey railings
+  L('N',1084,1096,{wall:'#7a8898',roof:'gable',roofColor:'#5a4a40',fascia:W,setback:3,front:{h:1.2,c:'#8a8a86',style:'stone',rail:{h:.8,c:'#b8bcc0',style:'bars'},gates:[{t:'gate',x:4,w:1.4,c:'#8a8a86'}]},
+    open:[{t:'window',x:-2,w:2.4,frame:W},{t:'window',x:2,w:2.4,frame:W}]}),
   // ================= SOUTH SIDE =================
   // --- Marginal → João Cabrera: empty lots behind precast walls, a red sheet gate
   muro('S',8,22,'#b8b4aa',1.6),
@@ -233,11 +336,106 @@ export const LOTS:Lot[]=[
   L('S',556,562,{wall:'#e2d4e0',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#8a6a8a'},open:[{t:'window',x:-1.4,w:1.6,grille:true},{t:'door',x:1.4,w:1,c:W}]}),
   L('S',562,572,{wall:'#e2d4e0',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#8a6a8a'},open:[{t:'window',x:-3,w:1.2,grille:true},{t:'window',x:0,w:2,grille:true},{t:'door',x:3.4,w:1,c:W}]}),
   L('S',572,582,{wall:'#e2d4e0',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#8a6a8a'},open:[{t:'gate',x:-2,w:2.6,c:W},{t:'gate',x:1.6,w:2.4,c:'#2a2a2a'},{t:'window',x:4,w:1.2,grille:true}]}),
+  // the brick house with green-trimmed arches behind a green glass fence
+  L('S',582,590,{wall:'#a8603a',roof:'hip',roofColor:T,setback:2,front:{h:.3,c:'#a8a49c',rail:{h:1.4,c:'#a8d8c0',style:'bars'}},open:[{t:'arch',x:-2,w:2.6,grille:true,frame:'#7ab098'},{t:'arch',x:2,w:2.2,shutters:'#7a4a2e',frame:'#7ab098'}]}),
+  // a cream wall on a grey speckled base, a pale gate, a grey-based corner house
+  muro('S',590,596,'#ecd8c8',2,{plinth:{h:1,c:'#8a9494'},front:{h:2,c:'#ecd8c8',gates:[{t:'gate',x:.6,w:3,c:'#c8d0d6'}]}}),
+  L('S',596,602.8,{wall:'#ecd8c8',roof:'hip',roofColor:T,plinth:{h:1,c:'#8a9494'},open:[{t:'window',x:-1.6,w:1.4,shutters:'#a8b0b8'},{t:'window',x:1.6,w:1.8,shutters:'#a8b0b8'}]}),
+  // --- Campos Salles → Bernadino Franchi
+  // the long brick house with white-framed arches round its veranda, iron fence on a grey base
+  L('S',611.2,630,{wall:'#a8503a',roof:'hip',roofColor:'#5a3a2a',fascia:'#5a3a2a',setback:3,front:{h:1,c:'#8a9494',rail:{h:1.2,c:'#4a4a4a',style:'bars'}},
+    open:[{t:'arch',x:-6,w:2.4,grille:true,frame:W},{t:'arch',x:-2.4,w:2.4,shutters:'#7a8088',frame:W},{t:'arch',x:2,w:3,h:2.4,y:0,frame:W},{t:'arch',x:6,w:3,h:2.4,y:0,frame:W}]}),
+  // The Doctor: a blue mechanic's front, the open workshop under a brown awning
+  L('S',630,642,{floors:2,wall:'#3a6ab0',upper:'#ecd8c8',roof:'flat',parapet:true,open:[{t:'open',x:2,w:6,h:2.8,c:'casa',awning:'#6a3a2a'},{t:'door',x:-4,w:1,c:'#ecd8c8'}],
+    sign:{text:'THE DOCTOR · MECÂNICA',bg:'#3a6ab0',fg:'#ffffff',x:-2,y:2,w:3,h:.7}}),
+  // the beige house raised over its white garage
+  L('S',642,650,{floors:2,wall:'#ddc8a8',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',open:[{t:'garage',x:0,w:3.6,c:'#f2f2f0'},{t:'window',x:-2,w:1.6,fl:1,frame:W},{t:'door',x:.4,w:1,fl:1,c:W},{t:'window',x:2.4,w:1.6,fl:1,shutters:W}]}),
+  // a pale blue wall on a grey base with a rusty sheet gate; empty lots behind precast walls
+  muro('S',650,660,'#a8b8d0',2.2,{plinth:{h:1,c:'#8a9494'},front:{h:2.2,c:'#a8b8d0',gates:[{t:'gate',x:-1,w:5,c:'#8a9aa8'}]}}),
+  muro('S',660,684,'#b8b4aa',1.6,{front:{h:1.6,c:'#b8b4aa',gates:[{t:'gate',x:-10,w:3.6,c:'#8a9aa8'}]}}),
+  // the old cream warehouse with pink pilasters and a pink base, on the corner
+  L('S',684,705.4,{wall:'#ece0b0',roof:'hip',roofColor:'#8a4a32',plinth:{h:1.4,c:'#c88a80'},panels:[{x:-6,w:.5,c:'#d8a098'},{x:0,w:.5,c:'#d8a098'},{x:6,w:.5,c:'#d8a098'}],
+    open:[{t:'window',x:-3,w:1.4,shutters:'#8a8a86'},{t:'window',x:3,w:1.4,shutters:'#8a8a86'},{t:'garage',x:8,w:2.4,c:'#a87a4a'}]}),
+  // --- Bernadino Franchi → Anibal Franchi
+  // the brick corner house over a black granite wall
+  L('S',714.2,722,{wall:'#a8503a',roof:'hip',roofColor:'#8a4a32',setback:2,front:{h:2,c:'#2a2a2c'}}),
+  // grey sobrados with dark wooden garage doors and an iron terrace; the cream art-deco gates
+  L('S',722,732,{floors:2,wall:'#a8b0b8',roof:'hip',roofColor:T,setback:0,open:[{t:'garage',x:-1.4,w:3.6,c:'#2a1e1a'},{t:'door',x:1.6,w:1,c:'#2a1e1a'}],balcony:{x:0,w:6,fl:1,rail:'iron'}}),
+  L('S',732,740,{wall:'#a8b0b8',roof:'hip',roofColor:T,open:[{t:'gate',x:-1,w:4,c:'#e6dcc8'},{t:'gate',x:2.8,w:1,c:'#e6dcc8'}]}),
+  L('S',740,748,{wall:'#a8b0b8',roof:'hip',roofColor:T,plinth:{h:1,c:'#8a9098'},open:[{t:'window',x:-1,w:1.6,grille:true}]}),
+  // the olive-green speckled house over a brown base, glass doors
+  L('S',748,756,{wall:'#7a8a3a',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#7a4a3a'},open:[{t:'door',x:-2.6,w:2,c:'#4a3a32'},{t:'window',x:-2.4,w:1.8,y:1.6,frame:W},{t:'window',x:1.4,w:3,frame:W}]}),
+  // nº 830: the cream house with red-brown shutters over a red base, a red gate; grey neighbours
+  L('S',756,764,{wall:'#ece4d6',roof:'gable',roofColor:'#5a3a2a',fascia:'#5a3a2a',plinth:{h:1,c:'#a8503a'},open:[{t:'window',x:-2.4,w:1.8,shutters:'#a8503a'},{t:'window',x:.6,w:1.8,shutters:'#a8503a'},{t:'gate',x:3,w:1.6,c:'#a8503a'}]}),
+  L('S',764,772,{wall:'#d8d8d4',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:1.2,c:'#a8a8a6'},open:[{t:'window',x:-2,w:2,frame:'#4a4a4a'},{t:'window',x:1,w:1.4,shutters:'#7a8088'},{t:'door',x:3,w:.9,c:'#7a8088'}]}),
+  L('S',772,780,{wall:'#d8d8d4',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:1.2,c:'#a8a8a6'},open:[{t:'gate',x:-2,w:2.6,c:'#7a8088',awning:T},{t:'window',x:1.8,w:1.8,frame:'#4a4a4a'}]}),
+  // an empty lot behind a low wall
+  muro('S',780,788,'#b8b4aa',.6),
+  // the old cream house with grey glazed doors, a fícus in front
+  L('S',788,798,{wall:'#ece4c8',roof:'hip',roofColor:T,open:[{t:'door',x:-3.4,w:1,c:'#8a9098'},{t:'glass',x:-.6,w:2.4,y:0,h:2.3,frame:'#8a9098'},{t:'glass',x:2.6,w:2.4,y:0,h:2.3,frame:'#8a9098'}]}),
+  // the cream gable house on an orange tile base, a wooden gate under a tiled hood
+  L('S',798,808,{wall:'#ecdcb0',roof:'gable',roofColor:T,plinth:{h:1,c:'#d8784a'},open:[{t:'window',x:-3,w:1,shutters:W},{t:'gate',x:0,w:2.6,c:'#5a4030',awning:T},{t:'window',x:3,w:1,shutters:W}]}),
+  // the cream corner house, its veranda with twisted columns on an orange tile base
+  L('S',808,816,{wall:'#ecdcb0',roof:'hip',roofColor:T,plinth:{h:1.2,c:'#d8784a'},open:[{t:'open',x:-1.4,w:3.4,h:2.2,y:1.2,c:'casa'},{t:'window',x:2.4,w:1.4,y:1.4,shutters:W}]}),
+  // --- Anibal Franchi → Prof. Silvino Ribeiro
+  // the yellow corner house over a grey stone base, a veranda
+  L('S',825,834,{d:11,wall:'#ece4a0',roof:'hip',roofColor:T,plinth:{h:1.2,c:'#8a9494',stone:true},open:[{t:'window',x:-2.6,w:2.4,frame:W},{t:'open',x:1.6,w:3.4,h:2.2,c:'casa'}]}),
+  L('S',834,842,{wall:'#ece4a0',roof:'hip',roofColor:T,plinth:{h:1.6,c:'#8a9494',stone:true},open:[{t:'garage',x:-2.6,w:2,c:'#3a3a3a'},{t:'window',x:0,w:1.8,y:1.8,shutters:'#a8b0b8'},{t:'window',x:2.8,w:1.8,y:1.8,frame:W}]}),
+  // the yellow garages with grey sheet doors
+  L('S',842,856,{wall:'#ece4a0',roof:'flat',parapet:true,plinth:{h:1.4,c:'#8a9494',stone:true},open:[{t:'garage',x:-4.6,w:2.6,c:'#a8b0b8'},{t:'garage',x:-1,w:2.6,c:'#3a3a3a'},{t:'garage',x:4.4,w:3,c:'#a8b0b8'}]}),
+  // a dirt drive, a grey sheet gate between block walls
+  muro('S',856,862,'#7a5a4a',1.6,{front:{h:1.6,c:'#7a5a4a',gates:[{t:'gate',x:0,w:3,c:'#c8d0d6'}]}}),
+  // the grey veranda house behind white railings on a rough stone wall
+  L('S',862,870,{wall:'#a8b0bc',roof:'hip',roofColor:'#6a6c70',setback:2,front:{h:1.2,c:'#7a5a4a',style:'stone',rail:{h:.6,c:W,style:'bars'}},open:[{t:'open',x:0,w:5,h:2.3,c:'casa'}]}),
+  // the blue sobrado over two grey garages on a tiled base
+  L('S',870,878,{floors:2,wall:'#8aa8d0',roof:'flat',parapet:true,plinth:{h:2.8,c:'#e6dcc0'},open:[{t:'garage',x:-1.8,w:2.8,c:'#a8b0b8'},{t:'garage',x:1.8,w:2.8,c:'#a8b0b8'},{t:'window',x:-1.6,w:2,fl:1,grille:true},{t:'door',x:1.4,w:1,fl:1,c:'#7a8088'}],
+    balcony:{x:0,w:7,fl:1,rail:'iron'}}),
+  // the dark red cottages raised on a whitewashed retaining wall, steps up
+  L('S',878,886,{wall:'#7a2a24',roof:'gable',roofColor:'#5a3a2a',fascia:'#5a3a2a',band:W,plinth:{h:1.6,c:'#ece8e2'},open:[{t:'window',x:-2,w:1.4,y:1.8,frame:W,grille:true},{t:'window',x:1.4,w:2,y:1.8,frame:W}]}),
+  L('S',886,892,{wall:'#7a2a24',roof:'gable',roofColor:'#5a3a2a',fascia:'#5a3a2a',band:W,plinth:{h:1.6,c:'#ece8e2'},open:[{t:'door',x:-1,w:1,y:1.6,c:'#3a3a3a'},{t:'window',x:1.4,w:1.6,y:1.8,frame:W}]}),
+  // the white sobrado over a brown speckled ground floor and brown garage
+  L('S',892,900,{floors:2,wall:'#7a5a44',upper:'#ece8e2',roof:'flat',parapet:true,open:[{t:'garage',x:.6,w:3,c:'#7a5a44'},{t:'window',x:-2,w:2,fl:1,grille:true},{t:'window',x:2,w:2,fl:1,grille:true}]}),
+  // the granite-clad bar with yellow-framed shopfronts, a terrace above, to the corner
+  L('S',900,916,{floors:2,wall:'#c8b4a0',upper:'#ece8e2',roof:'flat',parapet:true,open:[{t:'glass',x:-6,w:2.4,y:0,h:2.6,frame:'#d8b048'},{t:'garage',x:-2,w:3.4,c:'#c8784a'},{t:'glass',x:2,w:2.4,y:0,h:2.4,frame:'#c8784a'},{t:'glass',x:5.6,w:3.2,y:0,h:2.6,frame:'#d8b048'}],
+    balcony:{x:0,w:16,fl:1,rail:'iron'}}),
+  // --- Prof. Silvino Ribeiro → Padre João Fonte
+  // the stone-clad corner shop with its black and red fascia, grey sobrado above
+  L('S',924,936,{floors:2,wall:'#5a5a4a',upper:'#c8c8c4',roof:'flat',parapet:true,panels:[{x:0,w:12,stone:true,y0:0,y1:2.9}],open:[{t:'open',x:2,w:3,h:2.6,c:'casa'},{t:'glass',x:-2.6,w:2.4,y:0,h:2.6,frame:'#2a2a2a'}],
+    sign:{text:'HD',bg:'#1c1c1e',fg:'#d82a2a',x:0,y:2.7,w:10,h:.6},balcony:{x:-3,w:5,fl:1,rail:'glass'}}),
+  // nº 1028: grey-based beige house behind a white sheet gate
+  L('S',936,942,{wall:'#ddd0b8',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:1.2,c:'#8a8c8e'},open:[{t:'window',x:-1.4,w:1.6,frame:'#2a2a2a'},{t:'gate',x:1.4,w:2.6,c:'#e8e8e6'}]}),
+  // the stone-clad shop with a glass door under a dark glass balcony
+  L('S',942,950,{floors:2,wall:'#c8c0b4',roof:'flat',parapet:true,panels:[{x:0,w:8,stone:true,y0:0,y1:2.9}],open:[{t:'glass',x:-.6,w:2.6,y:0,h:2.6,frame:'#2a2a2a'},{t:'gate',x:2.8,w:1.6,c:'#c8a87a'}],balcony:{x:0,w:7,fl:1,rail:'glass'}}),
+  // the grey-based house behind a white sheet gate; the pale blue cottage
+  L('S',950,958,{wall:'#ddd8cc',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:1.2,c:'#8a8c8e'},open:[{t:'gate',x:-2.6,w:2.6,c:'#e8e8e6'},{t:'door',x:0,w:.9,c:W},{t:'window',x:2.4,w:1.6,shutters:W}]}),
+  L('S',958,966,{wall:'#a8c4dc',roof:'gable',roofColor:'#4a4a4a',fascia:'#4a4a4a',plinth:{h:.8,c:'#6a6c6a',stone:true},open:[{t:'open',x:-1.4,w:1.8,h:2.2,c:'casa'},{t:'window',x:.8,w:1.2,shutters:'#5a5c60'},{t:'gate',x:3,w:2.4,c:'#e8e8e6'}]}),
+  // the brick-block garage with a grey sheet door, blue pilasters
+  L('S',966,976,{wall:'#a8503a',roof:'flat',fascia:'#6a8ab0',eave:.3,panels:[{x:-4.6,w:.5,c:'#6a8ab0'},{x:-.8,w:.5,c:'#6a8ab0'}],open:[{t:'garage',x:-2.6,w:3,c:'#c8cacc'},{t:'gate',x:2,w:1.2,c:'#3a3a3a'}]}),
+  // the old white corner house over a rough base, a stair up the wall
+  L('S',976,984,{wall:'#ece8e2',roof:'hip',roofColor:'#8a4a32',plinth:{h:1.4,c:'#c8c0b4'},open:[{t:'window',x:-1,w:1.6,y:1.6,frame:'#3a3a3a'},{t:'window',x:2,w:1,y:1.8,shutters:'#7a7c80'}]}),
+  // --- Padre João Fonte → Lourival Medeiros
+  // the peach sobrado over two grey garages
+  L('S',991.6,1004,{floors:2,wall:'#ecc8b0',roof:'flat',parapet:true,open:[{t:'garage',x:-3.4,w:3,c:'#a8b0b8'},{t:'door',x:-.2,w:1,c:'#a8b0b8'},{t:'garage',x:3.2,w:3,c:'#a8b0b8'},{t:'window',x:-2,w:2.4,fl:1,shutters:'#8a9098'},{t:'window',x:2.6,w:2.4,fl:1,grille:true}]}),
+  // a long whitewashed wall
+  muro('S',1004,1012,'#ece8e2',2.6),
+  // a grey shop under a pink upper storey (a dark sign over the door), then grey workshops
+  L('S',1012,1022,{floors:2,wall:'#9a9c9e',upper:'#d8b8b4',roof:'flat',parapet:true,open:[{t:'window',x:-4,w:1.4,grille:true},{t:'window',x:-1.6,w:1.4,grille:true},{t:'open',x:2.6,w:1.8,h:2.4,c:'casa'},{t:'window',x:0,w:1.8,fl:1,shutters:W}],
+    balcony:{x:-3,w:4,fl:1,rail:'white'}}),
+  L('S',1022,1030,{wall:'#9a9c9e',roof:'flat',parapet:true,open:[{t:'door',x:-2.4,w:1.6,c:'#6a6c70'},{t:'window',x:0,w:1.4,grille:true},{t:'glass',x:2.4,w:1.4,y:.3,h:2,frame:'#6a6c70'}],balcony:{x:0,w:8,fl:1,rail:'white'}}),
+  // a rough pink wall in front of the little houses
+  muro('S',1030,1044,'#c88a80',2.2,{behind:{w:8,d:8,at:3,roofColor:'#6a6c70',wall:'#e6d4d0'}}),
+  // the green sobrado with the black-and-white striped gate and a diamond on its front
+  L('S',1044,1049.4,{floors:2,wall:'#a8d08a',roof:'flat',parapet:true,open:[{t:'window',x:-1.4,w:1.6,frame:'#2a2a2a'},{t:'gate',x:1.2,w:2.4,c:W}],balcony:{x:0,w:5,fl:1,rail:'glass'}}),
+  // the dark green speckled cottage, a white door under a little canopy
+  L('S',1049.4,1056,{d:7,wall:'#3a7a3a',roof:'flat',parapet:true,open:[{t:'window',x:-1,w:1.6,grille:true,awning:W},{t:'door',x:1.6,w:.9,c:W,awning:W}]}),
+  // the navy-blue convenience store to the corner, white roll doors
+  L('S',1056,1063,{d:6,floors:2,wall:'#2a3a6a',roof:'flat',parapet:true,open:[{t:'garage',x:-.6,w:3,c:'#f2f2f0'},{t:'window',x:1.6,w:1.2,fl:1,frame:W}]}),
 ];
 
 export const TREES:Tree[]=[
   {side:'N',s:8,kind:'palmeira'},{side:'S',s:228,kind:'ficus'},{side:'S',s:296,kind:'ficus'},{side:'S',s:304,kind:'ficus'},
   {side:'N',s:236,kind:'reseda'},{side:'N',s:248,kind:'reseda'},{side:'N',s:360,kind:'reseda'},
+  {side:'N',s:756,kind:'ficus'},{side:'N',s:778,kind:'ficus'},{side:'S',s:792,kind:'ficus'},{side:'S',s:802,kind:'ficus'},{side:'N',s:996,kind:'palmeira'},
 ];
 
 export const SPEC:StreetSpec={
@@ -246,6 +444,7 @@ export const SPEC:StreetSpec={
   keepOut:[
     {side:'S',s0:380,s1:396,why:'Charme Elegância (comercio/lojas.ts)'},
     {side:'S',s0:519,s1:540,why:'Auto Mais Peças (comercio/lojas.ts)'},
+    {side:'N',s0:687,s1:706,why:'Supermercado Mãe Rainha (comercio/lojas.ts)'},
   ],
 };
 
