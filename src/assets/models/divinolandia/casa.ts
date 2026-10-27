@@ -91,6 +91,30 @@ function hipRoof(b:Buf,f:Frame,hw:number,hd:number,y:number,rh:number,cl:THREE.C
   }
 }
 
+// gable roof with the ridge running back from the street (the triangle faces the street, as
+// on so many houses in the Street View frames): two slopes over [-hw,hw]×[-hd,hd] at height
+// y, ridge rh higher; the triangular gable walls front and back in the wall colour and the
+// dark bargeboards along the rakes
+function gableRoof(b:Bucket,f:Frame,hw:number,hd:number,y:number,rh:number,cl:THREE.Color,wall:THREE.Color,ov:number):void{
+  const P=(lx:number,ly:number,lz:number):number[]=>T(f,lx,ly,lz);
+  const W=hw+ov,D=hd+.45;
+  for(const sd of[-1,1]){
+    const a=P(sd*W,y-ov*.3,-D),bb=P(sd*W,y-ov*.3,D),c=P(0,y+rh,D),d=P(0,y+rh,-D);
+    const ux=bb[0]-a[0],uy=bb[1]-a[1],uz=bb[2]-a[2],vx=d[0]-a[0],vy=d[1]-a[1],vz=d[2]-a[2];
+    let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const l=Math.hypot(nx,ny,nz)||1;nx/=l;ny/=l;nz/=l;if(ny<0){nx=-nx;ny=-ny;nz=-nz;}
+    col.copy(cl).multiplyScalar(sd>0?1:.94);tri(b.roof,a,bb,c,[nx,ny,nz],col);tri(b.roof,a,c,d,[nx,ny,nz],col);
+  }
+  for(const sz of[-1,1]){                                   // the gable triangles
+    const z=sz*hd,n=TN(f,0,0,sz);
+    tri(b.wall,T(f,-hw,y,z),T(f,hw,y,z),T(f,0,y+rh*(hw/W),z),n,wall);
+  }
+  // the bargeboards along the two rakes, front and back: what the street sees of the roof
+  for(const sz of[-1,1])for(const sd of[-1,1]){
+    const z=sz*(D+.02),lo=y-ov*.3;
+    quad(b.trim,f,[[sd*W,lo-.24,z],[0,y+rh-.24,z],[0,y+rh+.02,z],[sd*W,lo+.02,z]],[0,0,sz],TILE_EDGE);
+  }
+}
+
 // step: how far the floor stands above the ground in front of the façade (0 = level);
 // eave: how far the tiled roof overhangs the left (−x) and right (+x) walls — less than
 // the usual EAVE where a neighbour stands close, so the two roofs never cut into each other
@@ -265,8 +289,12 @@ function writeCasa(bk:Bucket,s0:CasaSpec):void{
   }else{
     const[eL,eR]=s.eave??[EAVE,EAVE],off=(eR-eL)/2;
     const rf:Frame={...f,x:f.x+off*f.c,z:f.z+off*f.s};      // the roof's own centre along x
-    hipRoof(bk.roof,rf,hw+(eL+eR)/2,hd+EAVE,H,Math.min(s.w,s.d)*.3,TILE[Math.floor(rnd(1)*TILE.length)].clone().lerp(SILL,.27));
-    box(bk.trim,f,-hw-eL,hw+eR,H-.13,H+.04,hd+.36,hd+.48,TILE_EDGE);
+    const tile=TILE[Math.floor(rnd(1)*TILE.length)].clone().lerp(SILL,.27);
+    if(rnd(48)<.4&&s.w<10.5){gableRoof(bk,f,hw,hd,H,Math.min(hw*.62,2.6),tile,wall,Math.min(eL,eR));}   // front gable
+    else{
+      hipRoof(bk.roof,rf,hw+(eL+eR)/2,hd+EAVE,H,Math.min(s.w,s.d)*.3,tile);
+      box(bk.trim,f,-hw-eL,hw+eR,H-.13,H+.04,hd+.36,hd+.48,TILE_EDGE);
+    }
   }
   drawFront({bucket:bk,frame:f,spec:s,halfWidth:hw,halfDepth:hd,wall,random:rnd});
   quad(bk.trim,f,[[hw+.022,.95,-.66],[hw+.022,.95,.66],[hw+.022,2.2,.66],[hw+.022,2.2,-.66]],[1,0,0],FRAME);
