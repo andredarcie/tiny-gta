@@ -8,6 +8,7 @@ import {SPEC as SETE_DE_SETEMBRO} from './sete-de-setembro.ts';
 import {SPEC as BARAO_DO_RIO_BRANCO} from './barao-do-rio-branco.ts';
 import {SPEC as TREZE_DE_MAIO} from './treze-de-maio.ts';
 import {SPEC as ROMEU_ZANETTI} from './romeu-zanetti.ts';
+import {SPEC as FRANCISCO_PEREIRA_DE_SOUZA} from './francisco-pereira-de-souza.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
@@ -16,4 +17,5 @@ export const STREETS:StreetSpec[]=[
   BARAO_DO_RIO_BRANCO,
   TREZE_DE_MAIO,
   ROMEU_ZANETTI,
+  FRANCISCO_PEREIRA_DE_SOUZA,
 ];
