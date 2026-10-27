@@ -5,6 +5,8 @@
 // the town build (refs.divinoPlace: the street name under the player).
 import {divData as D,DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 import {CITY_NEIGHBORHOODS,inNeighborhood} from '@/world/neighborhoods.ts';
+import {STREETS} from '@/world/divinolandia/ruas/index.ts';
+import {chainPieces} from '@/world/divinolandia/ruas/spec.ts';
 
 // A region name anchored on the full map. `kind` only drives the label styling
 // (warm cream for the built-up town, cool blue for the open countryside).
@@ -14,7 +16,20 @@ export interface RegionLabel { name: string; cx: number; cz: number; kind: 'city
 const TC=40;
 const cells=new Map<number,number>();
 const ck=(i:number,j:number):number=>i*73856093^j*19349663;
-for(const h of D.houses){const k=ck(Math.floor(h[0]/TC),Math.floor(h[1]/TC));cells.set(k,(cells.get(k)||0)+1);}
+const addPoint=(x:number,z:number):void=>{const k=ck(Math.floor(x/TC),Math.floor(z/TC));cells.set(k,(cells.get(k)||0)+1);};
+for(const h of D.houses)addPoint(h[0],h[1]);
+// the surveyed streets carry no generated houses (the bake clears them): count their lots
+for(const spec of STREETS){
+  const road=D.roads.find(r=>r.n===spec.rua);if(!road)continue;
+  const pts=chainPieces(D.roads.filter(r=>r.n===spec.rua).map(r=>r.pts.map(p=>[p[0],p[1]] as [number,number])));
+  const cum=[0];for(let i=1;i<pts.length;i++)cum.push(cum[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  for(const lot of spec.lots){
+    const s=(lot.s0+lot.s1)/2;let i=1;while(i<pts.length-1&&cum[i]<s)i++;
+    const[ax,az]=pts[i-1],[bx,bz]=pts[i],l=Math.hypot(bx-ax,bz-az)||1,t=Math.max(0,Math.min(1,(s-cum[i-1])/l));
+    const ux=(bx-ax)/l,uz=(bz-az)/l,sg=lot.side==='N'?1:-1,off=road.hw+8;
+    addPoint(ax+(bx-ax)*t+sg*uz*off,az+(bz-az)*t-sg*ux*off);
+  }
+}
 function builtUp(lx:number,lz:number):boolean{
   const i=Math.floor(lx/TC),j=Math.floor(lz/TC);
   let n=0;for(let b=-1;b<=1;b++)for(let a=-1;a<=1;a++)n+=cells.get(ck(i+a,j+b))||0;
