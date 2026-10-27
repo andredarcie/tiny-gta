@@ -3,7 +3,8 @@
 // docs/divinolandia/referencias-streetview/lmb-N-*/ and lmb-S-*/, kept out of git). It leaves
 // the Sete de Setembro between the two Matriz squares and runs south up the hill; `s` starts
 // at the NORTH end, so side 'N' is the EAST side (left of a walker going south) and 'S' the
-// WEST side. Surveyed to the Rua Mato Grosso (s 305); beyond it the street winds on.
+// WEST side. Surveyed to s 401 on the west side (the Mato Grosso crosses it twice at s 305–317); beyond it the street winds
+// round a wooded block behind precast walls.
 //   s=60 R. José Augusto Machado   s=139 R. São Vicente de Paula
 //   s=229 R. Dom Alberto J. Gonçalves   s=305 R. Mato Grosso
 // Granite setts. Left alone: Chiquinho Tintas on the Dom Alberto corner (comercio/lojas.ts).
@@ -152,6 +153,28 @@ export const LOTS:Lot[]=[
   // sobrado with dark glass balconies and brown diagonal garage doors
   L('S',284,296,{floors:2,wall:'#ece8e2',roof:'flat',parapet:true,panels:[{x:3,w:3,stone:true,y0:2.9,y1:5.8}],
     open:[{t:'garage',x:-2.4,w:4,c:'#4a3024'},{t:'garage',x:3,w:3.4,c:'#4a3024'},{t:'window',x:-2,w:4,fl:1,frame:'#3a3a3a'}],balcony:{x:-1,w:8,fl:1,rail:'glass'}}),
+  // --- Mato Grosso → the bend (west side; the east side is the wall of the E.E. Dep. Eduardo
+  // Vicente Nasser, publicos.ts, then the wooded block behind its precast wall)
+  // beige gable cottage with an arched porch, grey shutters, behind an iron fence on a stone base
+  L('S',296,304,{wall:'#ecd8bc',roof:'gable',roofColor:T,fascia:W,setback:3,front:{h:.6,c:'#b8a284',style:'stone',rail:{h:1.2,c:'#6a6c70',style:'bars'}},
+    open:[{t:'arch',x:1.4,w:1.6,h:2.2,y:0},{t:'window',x:-1.6,w:1.4,shutters:'#7a8a9a'}]}),
+  // nº 320: purple-and-grey house, a lime-green garage door
+  L('S',321,328,{wall:'#8a94a0',roof:'hip',roofColor:T,panels:[{x:2,w:3.4,c:'#5a3a9a'}],open:[{t:'window',x:-2,w:1.8,grille:true},{t:'garage',x:2,w:2.4,c:'#a8c83a'}]}),
+  // cream houses with carports behind low walls and iron gates
+  L('S',328,338,{wall:'#ece4d0',roof:'hip',roofColor:T,setback:2,front:{h:1,c:'#ece4d0',rail:{h:.6,c:'#3a3a3a',style:'bars'}},open:[{t:'open',x:-1,w:4,h:2.3,c:'casa'},{t:'window',x:3,w:1.2,shutters:'#6a3a2a'}]}),
+  L('S',338,346,{wall:'#ece4d0',roof:'hip',roofColor:T,setback:2,front:{h:1,c:'#ece4d0',gates:[{t:'gate',x:1,w:2.6,c:'#3a2a24'}]},open:[{t:'open',x:0,w:4,h:2.3,c:'casa'}]}),
+  // grey roughcast house with a grey sheet garage door
+  L('S',346,354,{wall:'#9a9c9e',roof:'flat',parapet:true,open:[{t:'garage',x:-1,w:3,c:'#c8cacc'},{t:'window',x:2.6,w:1.2,frame:W}]}),
+  // modern grey houses: white roll doors, louvred white gates, slit windows above
+  L('S',354,362,{wall:'#9a9c9e',roof:'flat',parapet:true,open:[{t:'garage',x:-2,w:2.6,c:'#f2f2f0'},{t:'door',x:2,w:1,c:W}]}),
+  L('S',362,370,{floors:2,wall:'#8e9094',roof:'flat',parapet:true,open:[{t:'garage',x:-1.6,w:3.4,c:'#f2f2f0'},{t:'garage',x:2.4,w:2,c:'#f2f2f0'}]}),
+  L('S',370,378,{floors:2,wall:'#8e9094',roof:'flat',parapet:true,open:[{t:'gate',x:0,w:4.4,c:'#f2f2f0'},{t:'window',x:0,w:.3,h:1.6,fl:1},{t:'window',x:1,w:.3,h:1.6,fl:1}]}),
+  // a grey house behind a white picket fence, a pindó palm
+  L('S',378,386,{wall:'#a8acb0',roof:'hip',roofColor:T,setback:3,front:{h:.3,c:W,rail:{h:1.2,c:W,style:'bars'}},open:[{t:'window',x:-1.6,w:2.2,shutters:W},{t:'window',x:2,w:1.6}]}),
+  // the sobrado with pink balusters and a brown sheet garage under a gable
+  L('S',386,394,{floors:2,wall:'#ece8e2',roof:'gable',roofColor:T,open:[{t:'garage',x:0,w:4,c:'#4a3024'}],balcony:{x:0,w:6,fl:1,rail:'white'}}),
+  L('S',394,401,{floors:2,wall:'#ece8e2',roof:'flat',parapet:true,setback:2,front:{h:1,c:'#c8a49a',rail:{h:.1,c:W,style:'bars'}},
+    open:[{t:'door',x:-1,w:1,c:'#4a3024'},{t:'window',x:2,w:2.4,frame:'#2a2a2a'},{t:'window',x:0,w:2.4,fl:1,frame:'#2a2a2a'}],balcony:{x:0,w:10,fl:1,rail:'white'}}),
 ];
 
 export const TREES:Tree[]=[
