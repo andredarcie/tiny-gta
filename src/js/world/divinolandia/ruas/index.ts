@@ -18,6 +18,7 @@ import {SPEC as BERNADINO_FRANCHI} from './bernadino-franchi.ts';
 import {SPEC as ESPIRITO_SANTO} from './espirito-santo.ts';
 import {SPEC as CAMPOS_SALLES} from './campos-salles.ts';
 import {SPEC as AV_LEONOR} from './avenida-leonor-mendes-de-barros.ts';
+import {SPEC as AV_ADHEMAR} from './avenida-adhemar-de-barros.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
@@ -36,4 +37,5 @@ export const STREETS:StreetSpec[]=[
   ESPIRITO_SANTO,
   CAMPOS_SALLES,
   AV_LEONOR,
+  AV_ADHEMAR,
 ];

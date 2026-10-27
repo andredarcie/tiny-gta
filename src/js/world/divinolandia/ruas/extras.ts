@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import CasaRosa,{ROSA_SOLIDS} from '../../../../assets/models/divinolandia/casa-rosa-esquina.ts';
 import {addObb} from '../collide.ts';
 import {RUA as JAM,ROSA_AT} from './jose-augusto-machado.ts';
-import {hospitalLeonor} from './extras-hospital.ts';
+import {hospitalLeonor,hospitalAdhemar} from './extras-hospital.ts';
 import type {StreetSpec} from './spec.ts';
 
 export type Frame={x:number;z:number;ux:number;uz:number};
@@ -44,4 +44,6 @@ export const EXTRAS:Record<string,(ctx:ExtrasCtx)=>number>={
   },
   // the Hospital Regional's parking apron, fence and grounds, the park and the SABESP tanks
   'Avenida Leonor Mendes de Barros':hospitalLeonor,
+  // its fence, palms, water tanks and tower along the Adhemar de Barros
+  'Avenida Adhemar de Barros':hospitalAdhemar,
 };
