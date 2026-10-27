@@ -19,7 +19,7 @@ import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 export const RUA='Rua Francisco Pereira de Souza';
 export const CROSS=[0,52.2,102.8,163.4,191.5,245.3,324.4,389.8,455.9,543.6,606.1,682.1];
 const SURFACE:Surface[]=[[0,324.4,'asphalt'],[324.4,682.1,'sett']];
-const T='#b0603f',TD='#8e4632',W='#f1efe9';
+const T='#b0603f',W='#f1efe9';
 
 const L=(side:'N'|'S',s0:number,s1:number,f:Lot['f'],walk?:Lot['walk']):Lot=>{
   const set=f.setback??0,d=Math.min(f.d??12,12-set);
