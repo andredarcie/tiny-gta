@@ -103,7 +103,7 @@ const jobs:[string,()=>Promise<THREE.Object3D>][]=[
   ...['saude3','oftalmo','congregacao','espirita','saosebastiao','pm','delegacia','vicentenasser','estadio','cemiterio','dombosco','rosario','jorgegalhano','pedroribeiro']
     .map(id=>['pub-'+id,async()=>{const{PUBLICOS}=await M('publicos.ts'),{PRACAS}=await M('pracas-centro.ts');
       const p=[...PUBLICOS,...PRACAS].find((q:any)=>q.id===id);return p.build(ground(p.origin));}] as [string,()=>Promise<THREE.Object3D>]),
-  ...['maconaria','sitio-entrada','sitio-sede','sitio-casinha'].map(id=>['sitio-'+id,async()=>{const{SITIO}=await M('sitio-maconaria.ts');
+  ...['maconaria','sitio-entrada','sitio-sede','sitio-casinha','letreiro-entrada'].map(id=>['sitio-'+id,async()=>{const{SITIO}=await M('sitio-maconaria.ts');
     const p=SITIO.find((q:any)=>q.id===id);return p.build(ground(p.origin));}] as [string,()=>Promise<THREE.Object3D>]),
   ['palmeira-imperial',async()=>(await M('palmeira-imperial.ts')).default.build({whitewash:true})],
   ['lojas',async()=>{

@@ -7,6 +7,7 @@ import {building,rect,type Publico} from './publicos.ts';
 import Imperial from './palmeira-imperial.ts';
 import ArvoreRua from './arvore-rua.ts';
 import ArvorePraca from './arvore-praca.ts';
+import Letreiro,{LETREIRO_W} from './letreiro-divinolandia.ts';
 
 // The western entrance of the town on the Rua São Paulo, by the junction with the SP-344
 // (Street View sitio-a / -a-zoom / -mac / -m / -n, local), and the sítio up the drive that
@@ -235,4 +236,19 @@ const casinha:Publico={id:'sitio-casinha',nome:'Casinha do sítio (pelo satélit
   for(const[x,z]of[[-1588,-566],[-1587,-560],[-1586,-555]] as P2[]){const t=ArvorePraca.build({kind:'copa',r:2.6,seed:Math.round(x+z)});t.position.set(x,at(x,z),z);g.add(t);}
   return r;}};
 
-export const SITIO:Publico[]=[maconaria,entrada,sede,casinha];
+// the white DIVINOLÂNDIA letters on the grass island at the junction with the highway,
+// south of it and west of the Rua São Paulo (Street View letras-j1 / -z1 / -f1: located by
+// crossing the bearings from two panoramas), parallel to the highway and read from it
+const LET:P2=[-1307.6,-645.3],LET_ROT=Math.atan2(-.433,-.9);       // the text runs along the highway, west-south-west
+const letreiro:Publico={id:'letreiro-entrada',nome:'Letreiro DIVINOLÂNDIA (entrada oeste)',origin:LET,
+  foot:[[LET[0],LET[1],LETREIRO_W,.7,LET_ROT,1.6]],build(at){
+  const{r,g}=root(LET);
+  const m=Letreiro.build();m.position.set(LET[0],at(LET[0],LET[1])-.12,LET[1]);
+  m.rotation.y=-LET_ROT;                                             // local +x → the text direction, faces toward the highway
+  g.add(m);
+  // agaves along its foot, as in the photos
+  for(const k of[-6.2,-3,3,6.2]){const x=LET[0]+Math.cos(LET_ROT)*k-Math.sin(LET_ROT)*1.2,z=LET[1]+Math.sin(LET_ROT)*k+Math.cos(LET_ROT)*1.2;
+    const a=new THREE.Mesh(new THREE.ConeGeometry(.45,.55,7),M('agave',()=>matte({color:0x8fa8a0})));a.position.set(x,at(x,z)+.2,z);g.add(a);}
+  return r;}};
+
+export const SITIO:Publico[]=[maconaria,entrada,sede,casinha,letreiro];
