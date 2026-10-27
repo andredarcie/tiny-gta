@@ -2,7 +2,7 @@
 // one view aimed at each ~8 m of lot from the nearest panorama, local in
 // docs/divinolandia/referencias-streetview/cjl-N-*/ and cjl-S-*/, kept out of git). The long
 // street north of the centre, 1,100 m west→east from the Avenida Marginal to the Lourival
-// Medeiros; surveyed so far from the Marginal to s 385 (past the Espírito Santo).
+// Medeiros; surveyed so far from the Marginal to s 582 (past the Joaquim Garcia).
 //   s=108 R. João Cabrera   s=230 R. Barão do Rio Branco   s=309 R. Espírito Santo
 //   s=415 R. Francisco Pereira de Souza   s=515 R. Joaquim Garcia   s=607 R. Campos Salles
 // Asphalt (setts from the Barão eastward). Side 'N' is the north side. Opening x is measured
@@ -106,6 +106,39 @@ export const LOTS:Lot[]=[
   // nº 385: lime house, grey louvred windows, a barred carport
   L('N',374,386,{wall:'#dcdc9a',roof:'hip',roofColor:T,open:[{t:'window',x:-4,w:2,shutters:'#7a8088'},{t:'window',x:-1,w:2,grille:true},{t:'gate',x:3.4,w:3.2,c:'#9aa0a3'}]}),
 
+  // nº 413: long white house raised over a low wall, barred windows; its neighbour behind a rough wall
+  L('N',386,400,{wall:'#ece8e2',roof:'hip',roofColor:T,plinth:{h:.9,c:'#d8d4ca'},open:[{t:'window',x:-3.6,w:2.2,y:1.2,grille:true},{t:'window',x:1,w:2.2,y:1.2,grille:true},{t:'window',x:4.6,w:1.4,y:1.2,shutters:'#8a8a5a'}]}),
+  L('N',400,410.6,{wall:'#e6d8bc',roof:'hip',roofColor:T,setback:2,front:{h:1.2,c:'#d8c8a8'},open:[{t:'window',x:-2,w:1.6,shutters:'#7a8088'},{t:'window',x:2,w:1.6,grille:true}]}),
+  // --- Francisco Pereira de Souza → Joaquim Garcia
+  // the arched pink-and-brown corner house, a flowering ixora behind its iron fence
+  L('N',419,432,{wall:'#e6c8bc',roof:'hip',roofColor:T,setback:2,panels:[{x:-3,w:1.2,c:'#6a3a2a'}],front:{h:.4,c:'#c8a888',rail:{h:1.5,c:'#3a2a24',style:'bars'}},
+    open:[{t:'arch',x:-1,w:3,h:2.3,y:0},{t:'arch',x:3,w:3,h:2.3,y:0}]}),
+  // the pink house and a rough old wall round the telecom tower's yard
+  L('N',432,438,{wall:'#ecc8c8',roof:'hip',roofColor:T,open:[{t:'window',x:0,w:1.4,grille:true}]}),
+  muro('N',438,446,'#8a7a64',2.2,{front:{h:2.2,c:'#8a7a64',gates:[{t:'gate',x:2,w:3,c:'#a8acb0'}]}}),
+  // Hidro Fit (natação, hidroginástica): the blue sheet gates in a grey wall, the pool hall behind
+  L('N',446,462,{wall:'#ece8e2',roof:'flat',parapet:true,setback:6,d:6,front:{h:2.4,c:'#d8d4ca',gates:[{t:'gate',x:-3,w:4,c:'#2a4ab0'},{t:'gate',x:2,w:3,c:'#2a4ab0'}]},
+    open:[{t:'window',x:-2,w:2,frame:'#2a4ab0'},{t:'window',x:2,w:2,frame:'#2a4ab0'}],sign:{text:'HIDRO FIT · NATAÇÃO',bg:'#ece8e2',fg:'#2a4ab0',x:5,y:1.6,w:2.4,h:.8}}),
+  // light-blue house with an arched porch behind grey bars
+  L('N',462,474,{wall:'#a8b8d0',roof:'gable',roofColor:'#8a8a86',fascia:W,setback:2,front:{h:.6,c:'#a8b8d0',rail:{h:1.1,c:'#9aa0a3',style:'bars'}},
+    open:[{t:'arch',x:-2,w:2.4,h:2.2,y:0},{t:'window',x:2,w:1.8,shutters:W}]}),
+  // a grey wall, a breeze-block screen and crotons, the modern grey house behind
+  L('N',474,486,{wall:'#a8a49c',roof:'hip',roofColor:'#c8b8a0',setback:3,front:{h:2.4,c:'#a8a49c',gates:[{t:'gate',x:-4,w:3,c:'#e8e4dc'}]},panels:[{x:2,w:3,c:'#e8e4dc'}]}),
+  L('N',486,496,{wall:'#a8a49c',roof:'flat',parapet:true,setback:1,open:[{t:'door',x:-1,w:1.2,c:'#e8e4dc'},{t:'window',x:2,w:1.4,grille:true}]}),
+  // the grey speckled corner house, a barred carport
+  L('N',496,510,{wall:'#8f9496',roof:'hip',roofColor:T,setback:1,open:[{t:'window',x:-3,w:1.8,frame:W},{t:'open',x:2.6,w:3.6,h:2.3,c:'casa'}]}),
+  // --- Joaquim Garcia → Campos Salles
+  // grey-speckled house with white walls and gates on the corner
+  L('N',520.4,530,{wall:'#9aa0a4',roof:'hip',roofColor:T,setback:3,front:{h:1.2,c:'#ece8e2',rail:{h:.8,c:W,style:'bars'},gates:[{t:'gate',x:3,w:3,c:W}]},open:[{t:'window',x:-2,w:1.6,frame:W}]}),
+  // beige house, a dark window and a white barred door
+  L('N',530,538,{wall:'#ece4d6',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',open:[{t:'door',x:-2.6,w:1,c:W},{t:'window',x:1,w:2,frame:'#3a3a3a'}]}),
+  L('N',538,546,{wall:'#ece4d6',roof:'hip',roofColor:T,plinth:{h:.8,c:'#7a7a78'},open:[{t:'window',x:-2,w:1.4,shutters:W},{t:'door',x:.6,w:1,c:'#6a6a6a'},{t:'window',x:2.6,w:1.6,shutters:'#7a8088'}]}),
+  // a carport behind grey bars, a grey sheet gate
+  L('N',546,554,{wall:'#ece0c8',roof:'hip',roofColor:T,setback:2,front:{h:.4,c:'#ece0c8',rail:{h:1.6,c:'#9aa0a3',style:'bars'},gates:[{t:'gate',x:1.6,w:3,c:'#9aa0a3'}]},open:[{t:'open',x:0,w:4,h:2.3,c:'casa'}]}),
+  // the old carpenter's workshop: a flat-roofed shop with a fading mural, then a yard of
+  // timber in front of a gable shed with a blue door
+  L('N',554,564,{wall:'#d8c8a0',roof:'flat',fascia:'#8a7a64',eave:.3,open:[{t:'open',x:-2,w:3.6,h:2.6,c:'casa'},{t:'window',x:2.6,w:2.2,shutters:'#8a6a4a'}]}),
+  L('N',564,578,{wall:'#d8c8a0',roof:'gable',roofColor:T,setback:7,d:5,front:{h:.2,c:'#8a7a64'},open:[{t:'garage',x:0,w:3,c:'#2a6ab0'}]}),
   // ================= SOUTH SIDE =================
   // --- Marginal → João Cabrera: empty lots behind precast walls, a red sheet gate
   muro('S',8,22,'#b8b4aa',1.6),
@@ -167,6 +200,39 @@ export const LOTS:Lot[]=[
   L('S',366,374,{wall:'#ece8e2',roof:'gable',roofColor:T,open:[{t:'garage',x:1,w:3.6,c:'#a8b4c0'}]}),
   // a rough white wall, a beige house with a brick-pillared veranda behind red bars
   muro('S',374,382,'#ece8e2',2,{front:{h:2,c:'#ece8e2',gates:[{t:'gate',x:3,w:1.2,c:'#a8b4c0'}]}}),
+  // a long whitewashed wall over a speckled base with white railings, the white house above
+  L('S',396,409.6,{wall:'#ece4e0',roof:'hip',roofColor:T,setback:3,front:{h:1.6,c:'#c8c0b4',rail:{h:1.1,c:W,style:'bars'}},
+    open:[{t:'window',x:-4,w:1.4,y:1.6,grille:true},{t:'window',x:-1,w:2.2,y:1.6,shutters:W},{t:'window',x:3,w:1.4,y:1.6,grille:true}]}),
+  // --- Francisco Pereira de Souza → Joaquim Garcia
+  // the corner house with a brick-pillared veranda over a speckled base, white railings
+  L('S',419,428,{wall:'#ece8e2',roof:'hip',roofColor:T,setback:2,front:{h:1.6,c:'#c8c0b4',rail:{h:1,c:W,style:'bars'}},panels:[{x:-2,w:.6,c:'#b5603f'},{x:2,w:.6,c:'#b5603f'}],
+    open:[{t:'open',x:0,w:6,h:2.2,y:1.6,c:'casa'}]}),
+  // the stone-clad sobrado behind a wavy white wall, round topiary, ornamental balcony railings
+  L('S',428,444,{floors:2,wall:'#ece8e2',roof:'hip',roofColor:T,plinth:{h:2.8,c:'#c8b49a',stone:true},setback:2,front:{h:1.2,c:'#ece8e2'},
+    open:[{t:'window',x:-4,w:1.6,frame:'#3a2a24'},{t:'window',x:-1,w:1.6,frame:'#3a2a24'},{t:'glass',x:3.4,w:3,y:0,h:2.4,frame:'#2a2a2a'},{t:'window',x:-3,w:2.4,fl:1},{t:'window',x:3,w:2.4,fl:1}],
+    balcony:{x:0,w:14,fl:1,rail:'white'}}),
+  // sobrados over dark brown sheet gates, iron balconies
+  L('S',444,452,{floors:2,wall:'#e6e2dc',roof:'gable',roofColor:T,open:[{t:'gate',x:0,w:5,c:'#3a2a24'},{t:'window',x:-1.6,w:1.6,fl:1,frame:'#2a2a2a'},{t:'door',x:1.4,w:1,fl:1,c:'#3a2a24'}],balcony:{x:0,w:7,fl:1,rail:'iron'}}),
+  L('S',452,460,{floors:2,wall:'#d8c8a8',roof:'flat',parapet:true,open:[{t:'garage',x:-2,w:2.6,c:W},{t:'door',x:1.6,w:1,c:W}],balcony:{x:0,w:7,fl:1,rail:'white'}}),
+  // a green-speckled house under a tin awning, white garages
+  L('S',460,468,{floors:2,wall:'#8aa47a',upper:'#ece4d6',roof:'flat',parapet:true,open:[{t:'garage',x:0,w:4,c:W,awning:'#9aa0a3'}],balcony:{x:0,w:7,fl:1,rail:'white'}}),
+  // a cream sobrado over a dark red base: a barred garage with a Beetle, a stair up
+  L('S',468,478,{floors:2,wall:'#ece4d0',roof:'flat',parapet:true,plinth:{h:1.2,c:'#7a3a2a'},open:[{t:'gate',x:1,w:3,c:'#2a2a2a',awning:'#9aa0a3'},{t:'window',x:-1,w:1.6,fl:1,grille:true},{t:'window',x:2,w:1.6,fl:1,grille:true}]}),
+  L('S',478,486,{floors:2,wall:'#d8d0b0',roof:'hip',roofColor:T,plinth:{h:1.6,c:'#8a3a2a'},open:[{t:'garage',x:-1.6,w:2.6,c:'#a8443a'},{t:'open',x:1.6,w:3,h:2.2,y:1.6,fl:1,c:'casa'}]}),
+  // stone-clad sobrado with a dark glass balcony, a grey roll door
+  L('S',486,498,{floors:2,wall:'#ece8e2',roof:'flat',parapet:true,panels:[{x:0,w:12,stone:true,y0:0,y1:2.9}],open:[{t:'garage',x:0,w:5,c:'#a8a8a6'}],balcony:{x:0,w:10,fl:1,rail:'glass'}}),
+  // the brick-tile corner shop under its awning
+  L('S',498,510,{floors:2,wall:'#c9895a',roof:'flat',parapet:true,open:[{t:'open',x:-3,w:2.4,h:2.4,c:'casa',awning:'#9aa0a3'},{t:'window',x:1,w:1.6,grille:true},{t:'window',x:-1,w:2.4,fl:1},{t:'window',x:3,w:2.4,fl:1}],
+    balcony:{x:0,w:10,fl:1,rail:'iron'}}),
+  // --- Joaquim Garcia → Campos Salles (Auto Mais on its stretch)
+  // a brick-red wall in front of a small house, the green corner sobrado's yard wall
+  muro('S',540,548,'#a8503a',2.2,{behind:{w:6,d:7,at:4,roofColor:T,wall:'#e6d4b6'}}),
+  // a furniture workshop: grey ground floor, open bay, white above
+  L('S',548,556,{floors:2,wall:'#a8a8a6',upper:'#ece8e2',roof:'flat',parapet:true,open:[{t:'open',x:-1,w:4,h:3,c:'casa'},{t:'window',x:0,w:3,fl:1,grille:true}]}),
+  // lilac houses on purple-speckled bases, white louvred doors, white bars
+  L('S',556,562,{wall:'#e2d4e0',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#8a6a8a'},open:[{t:'window',x:-1.4,w:1.6,grille:true},{t:'door',x:1.4,w:1,c:W}]}),
+  L('S',562,572,{wall:'#e2d4e0',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#8a6a8a'},open:[{t:'window',x:-3,w:1.2,grille:true},{t:'window',x:0,w:2,grille:true},{t:'door',x:3.4,w:1,c:W}]}),
+  L('S',572,582,{wall:'#e2d4e0',roof:'gable',roofColor:'#5a4a40',fascia:'#5a4a40',plinth:{h:.9,c:'#8a6a8a'},open:[{t:'gate',x:-2,w:2.6,c:W},{t:'gate',x:1.6,w:2.4,c:'#2a2a2a'},{t:'window',x:4,w:1.2,grille:true}]}),
 ];
 
 export const TREES:Tree[]=[
@@ -177,5 +243,9 @@ export const TREES:Tree[]=[
 export const SPEC:StreetSpec={
   rua:RUA,cross:CROSS,surface:SURFACE,lots:LOTS,trees:TREES,crossHw:3.6,
   poles:{side:'S',start:12,every:34,transformers:[120,300]},
+  keepOut:[
+    {side:'S',s0:380,s1:396,why:'Charme Elegância (comercio/lojas.ts)'},
+    {side:'S',s0:519,s1:540,why:'Auto Mais Peças (comercio/lojas.ts)'},
+  ],
 };
 
