@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { makeTerrainMesh } from '../../src/assets/models/divinolandia/terreno.ts';
 import { makeStreets, makeWater } from '../../src/assets/models/divinolandia/rua.ts';
 import { waterLines } from '@/world/divinolandia/water.ts';
+import { STREETS } from '@/world/divinolandia/ruas/index.ts';
 import { addCasa, finalizeCasas, casaTop } from '../../src/assets/models/divinolandia/casa.ts';
 import { makeTrees, makeCoffee } from '../../src/assets/models/divinolandia/vegetacao.ts';
 import { makeSurface, type Surface } from '../../src/assets/models/divinolandia/praca.ts';
@@ -37,7 +38,8 @@ describe('Divinolândia relief matches the real town (SRTM)', () => {
     }
   });
   it('has the town: thousands of houses, named real streets', () => {
-    expect(divData.houses.length).toBeGreaterThan(2000);
+    // generated houses plus the lots of the surveyed streets (the bake clears generated houses off those)
+    expect(divData.houses.length + STREETS.reduce((n, st) => n + st.lots.length, 0)).toBeGreaterThan(2000);
     const names = new Set(divData.roads.map(r => r.n));
     for (const n of ['Rua XV de Novembro', 'Avenida Marginal do Rio do Peixe', 'Rua João Darcie']) expect(names.has(n)).toBe(true);
   });
