@@ -89,7 +89,9 @@ const rosario:Publico={id:'rosario',nome:'Praça Nossa Senhora do Rosário',orig
   const{r,g}=root(cen(RO));
   g.add(drape(RO,at,STREET_TOP,stoneM));                            // the cement paving of the square
   g.add(drape(inset(RO,1.2),at,STREET_TOP+.005,walkEdgeM));
-  kerb(g,at,[...RO,RO[0]],false,STREET_TOP,.16);
+  // (pub-rosario-e: the kerb round the east tip, by the palm bed, is painted yellow)
+  kerb(g,at,[RO[4],RO[5],RO[0],RO[1]],false,STREET_TOP,.16);
+  kerb(g,at,[RO[1],RO[2],RO[3],RO[4]],false,STREET_TOP,.16,matte({color:0xe0bf34}));
   // the round pavilion (tea room): mint-green parapet wall, posts, conical clay roof
   {const[x,z]=PAV,y=at(x,z)+STREET_TOP,R=6.2;
     g.add(drape(circle(x,z,R+.4,32),at,STREET_TOP+.02,stoneM));
