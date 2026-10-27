@@ -16,6 +16,7 @@ import {SPEC as WALTER_DARCIE} from './walter-darcie.ts';
 import {SPEC as CORONEL_JOSE_LEOPOLDINO} from './coronel-jose-leopoldino.ts';
 import {SPEC as BERNADINO_FRANCHI} from './bernadino-franchi.ts';
 import {SPEC as ESPIRITO_SANTO} from './espirito-santo.ts';
+import {SPEC as CAMPOS_SALLES} from './campos-salles.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
@@ -32,4 +33,5 @@ export const STREETS:StreetSpec[]=[
   CORONEL_JOSE_LEOPOLDINO,
   BERNADINO_FRANCHI,
   ESPIRITO_SANTO,
+  CAMPOS_SALLES,
 ];
