@@ -296,7 +296,7 @@ export const LOTS:Lot[]=[
   // (the corner lots at JAM face JAM: they are in jose-augusto-machado.ts, s ≥ 606)
   // east side (N), north → south: the beige corner house with dark stone plinth, a stone
   // panel and two windows with brown wooden shutters
-  L('N',568,581.5,{wall:'#dbcfb3',roof:'hip',roofColor:TD,fascia:'#a19b8f',eave:.7,plinth:{h:1.2,stone:true},
+  L('N',568.4,581.5,{wall:'#dbcfb3',roof:'hip',roofColor:TD,fascia:'#a19b8f',eave:.7,plinth:{h:1.2,stone:true},
     panels:[{x:-4.4,w:2.6,stone:true,y0:1.2,y1:2.9}],
     open:[{t:'window',x:-.4,w:2.3,h:1.1,y:1.4,shutters:'#5a2e22',frame:'#4a2a20'},{t:'window',x:3.6,w:2.9,h:1.1,y:1.4,shutters:'#5a2e22',frame:'#4a2a20'}]},'pedra'),
   // its flat-roofed annex: a white door in the wall, stone panel
@@ -428,7 +428,7 @@ export const LOTS:Lot[]=[
   L('S',773.5,781.6,{wall:'#c5dcc0',roof:'gable',roofColor:TD,fascia:'#4a4a48',panels:[{x:.8,w:1,stone:true}],
     open:[{t:'garage',x:-2,w:2.6,c:'#6a6c70'},{t:'window',x:2.8,w:1.6,grille:true,frame:'#1c1c1c'}]}),
   // nº 105: modern beige, a wood-clad panel, open carport behind black railings
-  L('S',781.6,790.5,{wall:'#d6d2ca',roof:'gable',roofColor:'#5a5a58',fascia:W,eave:.8,setback:1.5,panels:[{x:2.4,w:3,c:'#b98a5c'}],
+  L('S',781.6,790,{wall:'#d6d2ca',roof:'gable',roofColor:'#5a5a58',fascia:W,eave:.8,setback:1.5,panels:[{x:2.4,w:3,c:'#b98a5c'}],
     front:{h:.4,c:'#3a3a3a',rail:{h:1.4,c:'#2a2a2a',style:'bars'}},
     open:[{t:'open',x:-1.4,w:4,h:2.4,c:'casa'},{t:'window',x:2.8,w:2.2,frame:'#3a3a3a'}]}),
 
