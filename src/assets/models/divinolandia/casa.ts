@@ -4,7 +4,8 @@ import {DIVINO,AWNINGS} from '@/core/palette.ts';
 import {rebocoTexture,telhaTexture} from './texturas.ts';
 
 // Casa de Divinolândia — the interior-paulista town house: a limewashed masonry box
-// set right at the sidewalk, a clay-tile hip roof (or a flat slab hidden behind a
+// set right at the sidewalk (or, on most residential lots, set back behind a front wall
+// with its gates: the muro and portão of every Street View frame), a clay-tile hip roof (or a flat slab hidden behind a
 // "platibanda" parapet on the two-storey ones), a wooden door, steel-framed windows,
 // and in the centre the ground floor opens as a shop (steel roll-up door + a coloured
 // awning band). On a slope the wall simply runs down to the ground on the low side, as
@@ -24,12 +25,19 @@ const newBuf=():Buf=>({p:[],n:[],c:[],uv:[]});
 const CHUNK=200;
 const chunks=new Map<string,Bucket>();
 const col=new THREE.Color();
-const FAC=DIVINO.facades.map(h=>new THREE.Color(h)),TILE=DIVINO.roofTiles.map(h=>new THREE.Color(h));
+const TILE=DIVINO.roofTiles.map(h=>new THREE.Color(h));
 const SLAB=new THREE.Color(DIVINO.slab),FRAME=new THREE.Color(DIVINO.frame),SHUT=new THREE.Color(DIVINO.shutter);
 const GLASS=new THREE.Color('#395367'),GLASS_LIGHT=new THREE.Color('#728d9c');
 const WOOD=new THREE.Color('#6a4630'),SILL=new THREE.Color('#e9e4d8');
 const METAL=new THREE.Color('#64737a'),RIB=new THREE.Color('#879096'),TILE_EDGE=new THREE.Color('#713a2a');
 const AWN=AWNINGS.map(h=>new THREE.Color(h));
+// the walls of the 679 houses surveyed lot by lot from Street View (ruas/*.ts), clustered
+// (k-means, 20) and repeated by how often each occurs: the town's real mix of colours
+const SURVEYED:[string,number][]=[['#e9d8bd',78],['#ebe1d2',69],['#f2f0ea',54],['#a8a69e',45],['#cecfcb',45],['#eae6e0',45],['#bfb7ae',41],
+  ['#878e86',41],['#e3c4b3',36],['#f2f2f0',35],['#ded19c',33],['#be6b45',33],['#eeece7',29],['#f2f1ec',19],['#dc9d87',18],['#f1ebdd',14],
+  ['#4d83c2',13],['#283844',11],['#98473e',10],['#e5c767',10]];
+const WALLS:THREE.Color[]=SURVEYED.flatMap(([h,n])=>Array.from({length:Math.max(1,Math.round(n/5))},()=>new THREE.Color(h)));
+const GATES=['#3a3a3c','#f2f2f0','#64737a','#5a3a2a','#8a96a0','#2a2a2a'].map(h=>new THREE.Color(h));
 
 // Local frame of one house: x along the street (width w), z out of the façade (+z faces
 // the street), y up from the floor. T() maps local → world for yaw `rot`.
@@ -216,10 +224,39 @@ function drawFront(context:CasaContext):void{
   }
 }
 
-function writeCasa(bk:Bucket,s:CasaSpec):void{
-  const f:Frame={x:s.x,y:s.floor,z:s.z,c:Math.cos(s.rot),s:Math.sin(s.rot)};
-  const hw=s.w/2,hd=s.d/2,H=s.floors*FLOOR_H,wall=FAC[s.color%FAC.length];
-  const rnd=(k:number):number=>{const v=Math.sin(s.seed*12.9898+k*78.233)*43758.5453;return v-Math.floor(v);};
+// The front wall of a set-back house, on the old façade line (local z = hd), across the
+// whole lot: a plastered wall with a wide sheet-metal car gate and a narrow one (or a low
+// wall carrying vertical bars), the concrete yard behind it down to the recessed house.
+function writeMuro(bk:Bucket,f:Frame,s:CasaSpec,hw:number,hd:number,back:number,rnd:(k:number)=>number):void{
+  const low=s.base-s.floor,ground=-(s.step??0),wc=WALLS[Math.floor(rnd(43)*WALLS.length)],gc=GATES[Math.floor(rnd(44)*GATES.length)];
+  box(bk.trim,f,-hw,hw,ground+.01,ground+.06,back,hd,SLAB.clone().lerp(SILL,.35));          // the yard
+  const bars=rnd(45)<.3,top=ground+(bars?.75:1.8+rnd(46)*.5);
+  box(bk.wall,f,-hw,hw,low,top,hd-.18,hd,wc,SILL);
+  const ctx={bucket:bk,frame:f,spec:s,halfWidth:hw,halfDepth:hd,wall:wc,random:rnd} as CasaContext;
+  frontPanel(ctx,{x0:-hw,x1:hw,y0:low,y1:ground+.3,color:wc.clone().multiplyScalar(.72)});   // the dark plinth band
+  if(bars){                                                                                 // gradil: bars on the low wall
+    for(let x=-hw+.12;x<hw;x+=.24)frontPanel(ctx,{x0:x-.02,x1:x+.02,y0:top,y1:ground+1.95,color:gc,depth:-.09});
+    frontPanel(ctx,{x0:-hw,x1:hw,y0:ground+1.9,y1:ground+1.97,color:gc,depth:-.09});
+    return;
+  }
+  const side=rnd(47)<.5?1:-1,gw=Math.min(3.2,s.w*.42),gx=side*(hw-gw/2-.35);
+  frontPanel(ctx,{x0:gx-gw/2,x1:gx+gw/2,y0:ground+.02,y1:ground+2.15,color:gc});               // the car gate
+  for(let k=1;k<6;k++)frontPanel(ctx,{x0:gx-gw/2+.05,x1:gx+gw/2-.05,y0:ground+k*.36-.02,y1:ground+k*.36+.02,color:gc.clone().multiplyScalar(.8),depth:.01});
+  const px=-side*(hw-.9);
+  frontPanel(ctx,{x0:px-.5,x1:px+.5,y0:ground+.02,y1:ground+2.1,color:gc});                   // the pedestrian gate
+  frontPanel(ctx,{x0:px-.08,x1:px+.08,y0:ground+1.6,y1:ground+1.9,color:SILL,depth:.01});      // its mailbox / number
+}
+
+function writeCasa(bk:Bucket,s0:CasaSpec):void{
+  const rnd=(k:number):number=>{const v=Math.sin(s0.seed*12.9898+k*78.233)*43758.5453;return v-Math.floor(v);};
+  let s=s0,f:Frame={x:s.x,y:s.floor,z:s.z,c:Math.cos(s.rot),s:Math.sin(s.rot)};
+  // most residential lots: the house stands back behind a front wall and its yard
+  const SB=2.4+rnd(42)*1.4;
+  if(!s.shop&&s.d>9&&(s.step??0)<.45&&rnd(41)<.62){
+    writeMuro(bk,f,s,s.w/2,s.d/2,s.d/2-SB,rnd);
+    const[cx,,cz]=T(f,0,0,-SB/2);s={...s,x:cx,z:cz,d:s.d-SB,step:0};f={...f,x:cx,z:cz};
+  }
+  const hw=s.w/2,hd=s.d/2,H=s.floors*FLOOR_H,wall=WALLS[Math.floor(rnd(40)*WALLS.length)];
   // masonry box from the ground (base, may be below the floor on the low side) to the eaves/parapet
   box(bk.wall,f,-hw,hw,s.base-s.floor,H+(s.flat?.9:0),-hd,hd,wall,s.flat?SLAB:wall);
   if(s.flat){
@@ -273,6 +310,9 @@ function build():THREE.Group{
     {x:-3.5,z:0,w:8.5,d:12,rot:0,floor:.4,base:-.3,floors:2,color:3,flat:true,shop:2,seed:2},
     {x:5.5,z:0,w:9,d:12,rot:0,floor:.9,base:-.3,floors:1,color:6,flat:false,shop:0,seed:3},
     {x:14.5,z:0,w:8,d:12,rot:0,floor:1.4,base:-.3,floors:2,color:9,flat:false,shop:0,seed:4},
+    {x:23.5,z:0,w:9,d:12,rot:0,floor:0,base:-.3,floors:1,color:2,flat:false,shop:0,seed:7},
+    {x:33,z:0,w:9.5,d:12,rot:0,floor:0,base:-.3,floors:1,color:5,flat:false,shop:0,seed:11},
+    {x:43,z:0,w:9,d:12,rot:0,floor:0,base:-.3,floors:2,color:1,flat:true,shop:0,seed:13},
   ];
   const bk:Bucket={wall:newBuf(),roof:newBuf(),trim:newBuf()};
   for(const s of specs)writeCasa(bk,s);
