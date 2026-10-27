@@ -92,6 +92,7 @@ const jobs:[string,()=>Promise<THREE.Object3D>][]=[
   ['posto-passoni',async()=>{const m=await M('posto-passoni.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],
   ['posto-lurain',async()=>{const m=await M('posto-lurain.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],
   ['posto-taurus',async()=>{const m=await M('posto-taurus.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],
+  ['morro-da-torre',async()=>{const m=await M('morro-da-torre.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],
   ['posto-taurus-centro',async()=>{const m=await M('posto-taurus-centro.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],
   ['monumento-ciclista',async()=>{const m=await M('monumento-ciclista.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],
   ['entorno-ciclista',async()=>{const m=await M('entorno-ciclista.ts');return m.default.build({groundAt:ground(m.ORIGIN)});}],

@@ -33,6 +33,7 @@ import {makePostes,makePoleWires} from '../../../assets/models/divinolandia/post
 import Hospital,{HOSP_FOOT,HOSP_LOT} from '../../../assets/models/divinolandia/hospital-regional.ts';
 import HospitalAnexo,{ANNEX_FOOT,ANNEX_LOT} from '../../../assets/models/divinolandia/hospital-anexo.ts';
 import Torre from '../../../assets/models/divinolandia/torre-mirante.ts';
+import MorroDaTorre,{ORIGIN as MORRO_O,MORRO_FOOT} from '../../../assets/models/divinolandia/morro-da-torre.ts';
 import Placa from '../../../assets/models/divinolandia/placa.ts';
 import Predio from '../../../assets/models/divinolandia/predio-publico.ts';
 import Prefeitura,{PREF_FOOT} from '../../../assets/models/divinolandia/prefeitura.ts';
@@ -337,15 +338,13 @@ export function buildDivinolandia():void{
     for(const[x,z,bw,bd,rot,ht]of foot){const[wx,wz]=w([x,z]);addObb(wx,wz,bw,bd,rot,H(wx,wz)+ht);}
   }
 
-  // ---------- Morro da Torre: the tower + the mirante deck facing the town ----------
+  // ---------- Morro da Torre: the telecom compound, the masts and the mirante (morro-da-torre.ts) ----------
   {
-    const [tx,tz]=w(L.torre),th=yawTo(tx,tz,DIV_OX,DIV_OZ),y=H(tx,tz);
-    const t=Torre.build();t.position.set(tx,y,tz);t.rotation.y=th;placeStatic(t);
-    obbFromModel(tx,tz,th,0,0,5.6,5.6,y+80);
-    obbFromModel(tx,tz,th,-6.5,-5,4,3,y+3);
-    const sg=Placa.build({lines:['MIRANTE','MORRO DA TORRE · 1380 m'],bg:'#6b4a2a',w:4.6,h:1.5});
-    const sx=tx+Math.sin(th)*20+Math.cos(th)*-6,sz=tz+Math.cos(th)*20-Math.sin(th)*-6;
-    sg.position.set(sx,H(sx,sz),sz);sg.rotation.y=th;placeStatic(sg);
+    const[ox,oz]=w(MORRO_O),y0=H(ox,oz);
+    const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
+    at.grid=[(x,_z)=>(x+DIV_OX-nearGrid.x0)/nearGrid.cell,(_x,z)=>(z+DIV_OZ-nearGrid.z0)/nearGrid.cell];
+    const m=MorroDaTorre.build({groundAt:at});m.position.set(ox,y0,oz);placeStatic(m);
+    for(const[x,z,bw,bd,rot,ht]of MORRO_FOOT){const[wx,wz]=w([x,z]);addObb(wx,wz,bw,bd,rot,H(wx,wz)+ht);}
   }
 
   // ---------- welcome sign on the highway at the east entrance (by the Petrobras station) ----------
