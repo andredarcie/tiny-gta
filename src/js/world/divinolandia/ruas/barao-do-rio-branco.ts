@@ -259,7 +259,7 @@ export const LOTS:Lot[]=[
   // ======== Romeu Zanetti (413.8) → XV de Novembro (478.5) ========
   // east side (N), north → south: white chalet, steep dark gable with red bargeboards, set
   // back behind a white railing
-  L('N',432,447,{wall:'#ece6d6',roof:'gable',roofColor:'#6b3a2c',fascia:'#8a2f2a',eave:1,setback:5,
+  L('N',437,447,{wall:'#ece6d6',roof:'gable',roofColor:'#6b3a2c',fascia:'#8a2f2a',eave:1,setback:5,
     front:{h:.8,c:'#e4ddcc',rail:{h:1.1,style:'bars',c:'#f2f2ee'},gates:[{t:'gate',x:3,w:2.8,c:'#f2f2ee'}]},
     open:[{t:'window',x:-3.5,w:1.4,frame:W},{t:'window',x:-.8,w:2.2,frame:'#8a2f2a'},{t:'door',x:2.5,w:1,c:'#7a4a2a'}]},'cimento'),
   // a blank flat-roofed cream block with an ochre-brown base
