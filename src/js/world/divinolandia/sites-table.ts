@@ -60,6 +60,7 @@ export const DRAPED_LOTS={
   postoPassoni:  {x:1137.75,z:-142.75,face:0,w:48.5,d:26.5,name:'Posto Petrobras (Auto Posto Passoni)'},
   postoLurain:   {x:1280.5,z:-229,face:0,w:35,d:34,name:'Posto Lurain'},
   postoTaurus:   {x:55.5,z:-481.75,face:0,w:29,d:46.5,name:'Posto Taurus'},
+  postoTaurusCentro:{x:35.61,z:-86.58,face:2.9768,w:32,d:28.2,name:'Posto Taurus (Rua Romeu Zanetti)'},
   // the Monumento ao Ciclista and its half-moon square at the east entrance (monumento-ciclista.ts)
   monumentoCiclista:{x:1480.3,z:-171.5,face:0,w:24,d:16,name:'Monumento ao Ciclista'},
   // the west entrance on the Rua São Paulo (sitio-maconaria.ts): the masonic monument, the

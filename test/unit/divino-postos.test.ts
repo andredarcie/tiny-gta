@@ -11,6 +11,7 @@ import Triangulo, { ORIGIN as TRI_O, POSTO_FOOT as TRI_F } from '../../src/asset
 import Passoni, { ORIGIN as PAS_O, POSTO_FOOT as PAS_F } from '../../src/assets/models/divinolandia/posto-passoni.ts';
 import Lurain, { ORIGIN as LUR_O, POSTO_FOOT as LUR_F } from '../../src/assets/models/divinolandia/posto-lurain.ts';
 import Taurus, { ORIGIN as TAU_O, POSTO_FOOT as TAU_F } from '../../src/assets/models/divinolandia/posto-taurus.ts';
+import TaurusCentro, { ORIGIN as TC_O, POSTO_FOOT as TC_F } from '../../src/assets/models/divinolandia/posto-taurus-centro.ts';
 import Monumento, { ORIGIN as MON_O, MONUMENTO_FOOT as MON_F } from '../../src/assets/models/divinolandia/monumento-ciclista.ts';
 import { PLAY } from '@/world/divinolandia/data.ts';
 import Entorno, { ORIGIN as ENT_O, ENTORNO_FOOT as ENT_F } from '../../src/assets/models/divinolandia/entorno-ciclista.ts';
@@ -22,6 +23,7 @@ const STATIONS = [
   { lot: 'postoPassoni', model: Passoni, origin: PAS_O, foot: PAS_F },
   { lot: 'postoLurain', model: Lurain, origin: LUR_O, foot: LUR_F },
   { lot: 'postoTaurus', model: Taurus, origin: TAU_O, foot: TAU_F },
+  { lot: 'postoTaurusCentro', model: TaurusCentro, origin: TC_O, foot: TC_F },
   { lot: 'monumentoCiclista', model: Monumento, origin: MON_O, foot: MON_F },
 ] as const;
 const H = (x: number, z: number): number => divinoHeight(x + DIV_OX, z + DIV_OZ);

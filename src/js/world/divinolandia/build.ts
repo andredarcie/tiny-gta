@@ -47,6 +47,7 @@ import PostoTriangulo,{ORIGIN as TRI_O,POSTO_FOOT as TRI_FOOT} from '../../../as
 import PostoPassoni,{ORIGIN as PAS_O,POSTO_FOOT as PAS_FOOT} from '../../../assets/models/divinolandia/posto-passoni.ts';
 import PostoLurain,{ORIGIN as LUR_O,POSTO_FOOT as LUR_FOOT} from '../../../assets/models/divinolandia/posto-lurain.ts';
 import PostoTaurus,{ORIGIN as TAU_O,POSTO_FOOT as TAU_FOOT} from '../../../assets/models/divinolandia/posto-taurus.ts';
+import PostoTaurusCentro,{ORIGIN as TC_O,POSTO_FOOT as TC_FOOT} from '../../../assets/models/divinolandia/posto-taurus-centro.ts';
 import MonumentoCiclista,{ORIGIN as MON_O,MONUMENTO_FOOT as MON_FOOT} from '../../../assets/models/divinolandia/monumento-ciclista.ts';
 import EntornoCiclista,{ORIGIN as ENT_O,ENTORNO_FOOT as ENT_FOOT} from '../../../assets/models/divinolandia/entorno-ciclista.ts';
 import CristoRedentor,{ORIGIN as CRI_O,CRISTO_FOOT as CRI_FOOT} from '../../../assets/models/divinolandia/cristo-redentor.ts';
@@ -327,7 +328,7 @@ export function buildDivinolandia():void{
   // monumento-ciclista.ts, entorno-ciclista.ts, concessionaria-mahindra.ts) and the Cristo Redentor on the hill north of the
   // river (cristo-redentor.ts): each is built in town-local metres and stands on the
   // real slope of its lot (sites-table.ts DRAPED_LOTS) ----------
-  for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT],
+  for(const[model,origin,foot]of[[PostoTriangulo,TRI_O,TRI_FOOT],[PostoPassoni,PAS_O,PAS_FOOT],[PostoLurain,LUR_O,LUR_FOOT],[PostoTaurus,TAU_O,TAU_FOOT],[PostoTaurusCentro,TC_O,TC_FOOT],
     [MonumentoCiclista,MON_O,MON_FOOT],[EntornoCiclista,ENT_O,ENT_FOOT],[Mahindra,MAH_O,MAH_FOOT],[CristoRedentor,CRI_O,CRI_FOOT]] as const){
     const[ox,oz]=w(origin),y0=H(ox,oz);
     const at:GroundAt=(x:number,z:number):number=>H(x+DIV_OX,z+DIV_OZ)-y0;
