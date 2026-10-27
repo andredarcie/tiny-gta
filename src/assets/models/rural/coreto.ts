@@ -13,7 +13,7 @@ import {telhaTexture,ROOF_TILE_M} from '../divinolandia/texturas.ts';
 const whiteM=matte({color:0xf1eee7}),soffitM=matte({color:0xf4f2ec,emissive:0x3b3a37,side:THREE.DoubleSide});
 const ventM=matte({color:0x8f8a80}),floorM=matte({color:0xd9d2c4}),stepM=matte({color:0xc9c3b6});
 const latticeM=matte({color:0xf4f2ec,map:latticeTexture(),transparent:true,alphaTest:.5,side:THREE.DoubleSide});
-const roofM=matte({color:0xd99a74,map:telhaTexture(),side:THREE.DoubleSide}),finialM=matte({color:0xcfc6b6});
+const roofM=matte({color:0xc9a48c,map:telhaTexture(),side:THREE.DoubleSide}),finialM=matte({color:0xcfc6b6});
 
 const R=3.7;            // circumradius of the column octagon
 const BASE=1.3;         // floor level

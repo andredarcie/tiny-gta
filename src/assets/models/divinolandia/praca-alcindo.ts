@@ -107,7 +107,7 @@ function kiosk():THREE.Group{
   box(g,matte({color:0xb7b2a6}),5.6,.4,2.8,0,0,0);
   box(g,redM,5.4,2.4,2.6,0,.4,0);box(g,matte({color:0xd9d4c8}),5.6,.1,2.8,0,2.8,0);
   const ch=new THREE.Mesh(new THREE.CylinderGeometry(.12,.12,1.2,8),matte({color:0x8a8a88}));ch.position.set(-2,3.4,-.6);g.add(ch);
-  const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.6,.7),matte({map:kioskSign(),transparent:true}));sign.position.set(-.6,2.1,1.31);g.add(sign);
+  for(const sd of[1,-1]){const sign=new THREE.Mesh(new THREE.PlaneGeometry(3.6,.7),matte({map:kioskSign(),transparent:true}));sign.position.set(-.6,2.1,1.31*sd);if(sd<0)sign.rotation.y=Math.PI;g.add(sign);}
   return g;
 }
 let signTex:THREE.Texture|null=null;
@@ -155,6 +155,11 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
     [35,42,5],[45,37,4],[42,16,3.5],[-10,28,4,'ipe'],[46,-30,3.5],
   ];
   T.forEach(([u,v,r,k],i)=>put(g,Arvore.build({kind:k||'copa',r,seed:i+11}),at,u,v,i*.7));
+  // the bare red earth trodden under the big crowns (pm-front: the lawn gives out in their shade)
+  const earthM=matte({color:0x7e5238,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+  T.forEach(([u,v,r],i)=>{if(r<6)return;
+    const P:P2[]=[];for(let k=0;k<14;k++){const a=k/14*Math.PI*2,rr=r*(.45+.18*Math.sin(k*2.3+i));P.push([u+Math.cos(a)*rr,v+Math.sin(a)*rr*.8]);}
+    g.add(drape(P,at,.09,earthM,[],2));});
   // round shrubs in the lawns
   for(const[u,v]of[[-8,-14],[12,-13],[30,-20],[-28,24],[20,12],[34,15],[-12,9],[28,36],[-31,-12],[16,-28]] as P2[]){
     const s=new THREE.Mesh(leafMass(1+(u&1),.26,2),shrubM);s.scale.setScalar(.95);s.scale.y=.7;s.position.set(u,at(u,v)+.55,v);s.castShadow=true;g.add(s);}

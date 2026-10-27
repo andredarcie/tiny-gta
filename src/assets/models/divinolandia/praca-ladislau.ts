@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import {SQUARES} from '@/world/divinolandia/sites-table.ts';
 import {matte} from '../matte.ts';
 import {leafMat,leafMass} from './copa.ts';
-import {lawnM,walkEdgeM,stoneM,stepsM,soilM,drape,sidewalkRing,strip,kerb,put,STREET_TOP,type GroundAt,type P2} from './praca-chao.ts';
+import {lawnM,walkEdgeM,stoneM,stepsM,soilM,drape,circle,sidewalkRing,strip,kerb,put,STREET_TOP,type GroundAt,type P2} from './praca-chao.ts';
 import Banco from './banco-praca.ts';
 import Arvore from './arvore-praca.ts';
 import ArvoreRua from './arvore-rua.ts';
@@ -25,8 +25,8 @@ const W0=2.4;
 // the street in front of the church: from this block's east kerb to the Praça Dr. Alcindo's
 // west kerb (u 31.5 → 45.6 in this frame)
 const FRONT_ST=14.1;
-const hedgeM=leafMat(0x37542e),hydM=leafMat(0x8090c4);
-const marigoldM=leafMat(0xd0922e),fenceM=matte({color:0xf1efe9}),saintM=matte({color:0xf4f2ec});
+const hedgeM=leafMat(0x37542e),shrubLowM=leafMat(0x5a7a3a),hydM=leafMat(0x8090c4);
+const marigoldM=leafMat(0xd8b03a),fenceM=matte({color:0xf1efe9}),saintM=matte({color:0xf4f2ec});
 const poleM=matte({color:0x8d9296}),lampM=matte({color:0xf2efe2,emissive:0x5a4c2c});
 
 function box(g:THREE.Object3D,m:THREE.Material,w:number,h:number,d:number,x:number,y:number,z:number):THREE.Mesh{
@@ -46,6 +46,15 @@ function streetLamp():THREE.Group{
   const g=new THREE.Group();
   const p=new THREE.Mesh(new THREE.CylinderGeometry(.06,.09,4.2,8),poleM);p.position.y=2.1;g.add(p);
   box(g,poleM,.9,.06,.06,.42,4.15,0);box(g,lampM,.45,.12,.28,.8,4.02,0);
+  return g;
+}
+// the garden lamp of the Matriz (pm-front: a white post with two white globes on short arms)
+const globeM=matte({color:0xf6f4ee,emissive:0x6a6250}),whitePoleM=matte({color:0xeeece6});
+function globeLamp():THREE.Group{
+  const g=new THREE.Group();
+  const p=new THREE.Mesh(new THREE.CylinderGeometry(.05,.08,3.4,8),whitePoleM);p.position.y=1.7;g.add(p);
+  box(g,whitePoleM,.9,.05,.05,0,3.3,0);
+  for(const s of[-.45,.45]){const b=new THREE.Mesh(new THREE.SphereGeometry(.2,12,10),globeM);b.position.set(s,3.55,0);g.add(b);}
   return g;
 }
 function saint():THREE.Group{
@@ -79,9 +88,11 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
     put(g,Arvore.build({kind:k,r,seed:s}),at,u,v);
   // ---- the west lawn: Italian cypresses ringed with marigolds ----
   for(const v of[-8,1,10]){
-    put(g,Arvore.build({kind:'cipreste',h:8+(v%3),seed:Math.abs(v)}),at,-26,v);
-    for(let i=0;i<10;i++){const a=i/10*Math.PI*2,u=-26+Math.cos(a)*1.2,vv=v+Math.sin(a)*1.2;
-      const f=new THREE.Mesh(leafMass(1+i%3,.3,2),marigoldM);f.scale.setScalar(.3);f.position.set(u,at(u,vv)+.25,vv);g.add(f);}
+    const c=Arvore.build({kind:'cipreste',h:6.4+(Math.abs(v)%3)*.4,seed:Math.abs(v)});c.scale.set(.72,1,.72);put(g,c,at,-26,v);
+    // (pm-w: slim, a little twisted, in a low ring of yellow flowers on a soil bed)
+    g.add(drape(circle(-26,v,1.6,16),at,.1,soilM));
+    for(let i=0;i<14;i++){const a=i/14*Math.PI*2,u=-26+Math.cos(a)*1.25,vv=v+Math.sin(a)*1.25;
+      const f=new THREE.Mesh(leafMass(1+i%3,.3,2),marigoldM);f.scale.set(.32,.16,.32);f.position.set(u,at(u,vv)+.2,vv);g.add(f);}
   }
   // ---- south: hedge and hydrangeas along the aisle, then the grove ----
   {
@@ -91,6 +102,12 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
       const b=new THREE.Mesh(leafMass(2,.32,2),hydM);b.scale.setScalar(.48);b.position.set(u+.5,y(u)+.45,T.v1+1.1);g.add(b);
     }
     g.add(drape([[T.u0,T.v1+.3],[T.u1-5,T.v1+.3],[T.u1-5,T.v1+1.6],[T.u0,T.v1+1.6]],at,.1,soilM));
+    // (pm-s2: the beds south of the aisle are full of low leafy ground cover, with a few
+    // small palms against the church wall)
+    for(let u=T.u0+.5;u<T.u1-4;u+=1.6)for(const dv of[3.4,5]){
+      const c=new THREE.Mesh(leafMass(1+Math.round(u)%3,.3,2),shrubLowM);c.scale.set(.85,.38,.75);const vv=T.v1+dv+((u*7)%1)*.6;
+      c.position.set(u,at(u,vv)+.25,vv);g.add(c);}
+    for(const u of[T.u0+6,T.u0+15,T.u1-12]){const p=ArvoreRua.build({kind:'palmeira'});p.scale.setScalar(.6);put(g,p,at,u,T.v1+2.8);}
   }
   for(const[u,v,r,s]of[[-27,24,7,11],[-13,31,10,12],[5,31,11,13],[22,30,8,14],[-26,36,5,15],[27,22,4,16],[26,37,4.5,17],[-6,22,3,18]] as [number,number,number,number][])
     put(g,Arvore.build({kind:'copa',r,seed:s}),at,u,v,s);
@@ -101,9 +118,9 @@ function build(o:{groundAt?:GroundAt}={}):THREE.Group{
   // ---- benches and lamps ----
   for(const[u,v,ry]of[[-8,iv1-1.2,Math.PI],[3,iv1-1.2,Math.PI],[14,iv1-1.2,Math.PI],[-22,iv1-1.2,Math.PI],[iu0+1.2,-25,Math.PI/2],
     [iu0+1.2,24,Math.PI/2],[-9,-30,.5],[12,-30,-.5],[iu1-1.2,24,-Math.PI/2],[iu1-1.2,-26,-Math.PI/2]] as [number,number,number][])
-    put(g,Banco.build(),at,u,v,ry,.1);
+    put(g,Banco.build({bare:true}),at,u,v,ry,.1);
   for(const[u,v,ry]of[[iu0+.5,-14,0],[iu0+.5,18,0],[0,iv1+.3,-Math.PI/2],[18,iv1+.3,-Math.PI/2],[-14,iv0+.3,Math.PI/2],[14,iv0+.3,Math.PI/2],[iu1-.3,-18,Math.PI],[iu1-.3,24,Math.PI]] as [number,number,number][])
-    put(g,streetLamp(),at,u,v,ry,u<iu0||u>iu1||v<iv0||v>iv1?STREET_TOP:.12);   // on the sidewalk ring or the lawn
+    {const out=u<iu0||u>iu1||v<iv0||v>iv1;put(g,out?streetLamp():globeLamp(),at,u,v,ry,out?STREET_TOP:.12);}   // street lamps on the sidewalk ring, globe lamps in the garden
   return g;
 }
 export default {category:'Divinolândia',label:'Praça Prof. Ladislau (adro da Matriz)',build};

@@ -27,17 +27,26 @@ function build(o:{kind?:ArvorePracaKind;r?:number;h?:number;seed?:number}={}):TH
     const c=new THREE.Mesh(leafMass(4,.16,2,5),cypressM);c.scale.set(.75,h/2-.4,.75);c.position.y=h/2+.5;c.castShadow=true;g.add(c);
     return g;
   }
-  const h=o.h??Math.min(13,4.5+r*.95),base=Math.max(2.6,h-r*.95-1.2);
-  const trunkR=.18+r*.035,fork=new THREE.Vector3((rnd()-.5)*.6,base*.7,(rnd()-.5)*.6);
+  // The Street View frames of the squares show old shade trees with a short trunk (crown from
+  // ~2.5 m on young trees to ~4.5 m on the old giants), a deep rounded crown about as tall as it is wide, lumpy, its lower masses
+  // hanging out past the limbs: the leaf masses fill an ellipsoid, not a flat ring on top.
+  const base=Math.max(2.2,Math.min(5,1.8+r*.28)),h=o.h??Math.min(15,base+r*1.2);
+  const trunkR=.18+r*.035,fork=new THREE.Vector3((rnd()-.5)*.6,base*.85,(rnd()-.5)*.6);
   limb(g,new THREE.Vector3(0,0,0),fork,trunkR*1.25,trunkR);
   const mats=kind==='vinho'?[wineM]:kind==='ipe'?[ipeM,leafMs[1]]:leafMs;
-  const n=kind==='ipe'?4:Math.max(4,Math.round(r*.9));
-  // central mass + a ring of masses, each fed by a limb from the fork
-  const masses:[number,number,number,number][]=[[0,h-r*.42,0,r*.62]];
-  for(let i=0;i<n;i++){const a=i/n*Math.PI*2+rnd()*.6,d=r*(.48+rnd()*.2);masses.push([Math.cos(a)*d,h-r*.55+rnd()*r*.18,Math.sin(a)*d,r*(.42+rnd()*.14)]);}
+  const cy=(base+h)/2+.2,ry=(h-base)/2;                          // the crown ellipsoid: centre height, half height
+  const masses:[number,number,number,number][]=[[0,cy+ry*.25,0,r*.66]];
+  const n=kind==='ipe'?5:Math.max(6,Math.round(r*1.4));
+  for(let i=0;i<n;i++){
+    // spread over the ellipsoid: azimuth round the crown, elevation from just under the
+    // equator (the hanging lower masses) up to the shoulders
+    const a=i/n*Math.PI*2+rnd()*.8,e=-.35+rnd()*1.05,d=r*(.62+rnd()*.18)*Math.cos(e);
+    masses.push([Math.cos(a)*d,cy+Math.sin(e)*ry*.85,Math.sin(a)*d,r*(.36+rnd()*.16)]);
+  }
+  for(let i=0;i<Math.round(n/4);i++){const a=rnd()*Math.PI*2,d=r*.25*rnd();masses.push([Math.cos(a)*d,cy+ry*(.45+rnd()*.3),Math.sin(a)*d,r*(.4+rnd()*.12)]);}   // the top
   masses.forEach(([x,y,z,s],i)=>{
-    const m=new THREE.Mesh(blobGs[i%blobGs.length],mats[i%mats.length]);m.position.set(x,y,z);m.scale.set(s,s*.62,s);m.rotation.y=rnd()*3;m.castShadow=true;g.add(m);
-    if(i>0&&i%2===1)limb(g,fork,new THREE.Vector3(x*.7,y-s*.4,z*.7),trunkR*.7,trunkR*.35);
+    const m=new THREE.Mesh(blobGs[i%blobGs.length],mats[i%mats.length]);m.position.set(x,y,z);m.scale.set(s,s*(.78+rnd()*.14),s);m.rotation.y=rnd()*3;m.castShadow=true;g.add(m);
+    if(i>0&&i<=n&&i%3===1)limb(g,fork,new THREE.Vector3(x*.6,Math.max(fork.y+.6,y-s*.5),z*.6),trunkR*.7,trunkR*.35);
   });
   return g;
 }

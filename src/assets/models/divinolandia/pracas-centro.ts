@@ -45,7 +45,7 @@ function concBench(g:THREE.Group,at:GroundAt,x:number,z:number,ry:number,c='#9a9
   for(const s of[-.75,.75]){const l=new THREE.Mesh(new THREE.BoxGeometry(.18,.45,.45),flat(c));l.position.set(s,.22,0);b.add(l);}
   b.traverse(o=>{o.castShadow=true;});put(g,at,b,x,z,ry);
 }
-const bedM=leafMat(0x3f6a35),roseM=leafMat(0xc23a45),hydM=leafMat(0x8090c4),yellowM=leafMat(0xd9b42e);
+const bougM=leafMat(0xc23a8a),bedM=leafMat(0x3f6a35),roseM=leafMat(0xc23a45),hydM=leafMat(0x8090c4),yellowM=leafMat(0xd9b42e);
 function shrubs(g:THREE.Group,at:GroundAt,pts:P2[],m:THREE.Material[]):void{
   pts.forEach(([x,z],i)=>{const b=new THREE.Mesh(leafMass(1+i%3,.3,2),m[i%m.length]);b.scale.set(.6,.45,.6);put(g,at,b,x,z,0,STREET_TOP+.3);});
 }
@@ -57,7 +57,7 @@ const domBosco:Publico={id:'dombosco',nome:'Praça Dom Bosco',origin:cen(DB),foo
   const ring=inset(DB,2.2),bed=inset(DB,4.6);
   g.add(drape(DB,at,STREET_TOP,walkM,[ring]));                     // pink pavers round the edge
   g.add(drape(ring,at,STREET_TOP+.005,pathM,[inset(DB,2.8)]));      // the red paver stripe
-  g.add(drape(inset(DB,2.8),at,STREET_TOP,walkEdgeM,[bed]));        // the grey patterned walk
+  g.add(drape(inset(DB,2.8),at,STREET_TOP,stoneM,[bed]));           // the white calçada-portuguesa walk (pub-dombosco-n/-e)
   g.add(drape(bed,at,STREET_TOP+.02,lawnM));
   kerb(g,at,[...DB,DB[0]],false,STREET_TOP,.16);kerb(g,at,[...bed,bed[0]],false,STREET_TOP+.12,.12);
   // the round fountain at the west tip: a low white basin and its central bowl
@@ -68,8 +68,17 @@ const domBosco:Publico={id:'dombosco',nome:'Praça Dom Bosco',origin:cen(DB),foo
     const bowl=new THREE.Mesh(new THREE.CylinderGeometry(.9,.3,.3,16),flat('#eeece6'));bowl.position.set(x,y+1,z);g.add(bowl);}
   // lamps, benches, young trees and shrubs
   for(const[x,z]of[[-120,-52.5],[-108,-54.5],[-125,-46],[-131,-57.5]] as P2[])put(g,at,Poste.build(),x,z);
-  for(const[x,z,ry]of[[-116,-49.2,2.7],[-112,-55.6,0],[-122,-57.8,0]] as [number,number,number][])concBench(g,at,x,z,ry,'#a8a49c');
-  for(const[x,z,k]of[[-118,-55,'ipe'],[-110,-51,'reseda'],[-124,-50,'palmeira'],[-103,-55,'reseda']] as [number,number,'ipe'|'reseda'|'palmeira'][])tree(g,at,x,z,k,.8);
+  for(const[x,z,ry]of[[-116,-49.2,2.7],[-112,-55.6,0],[-122,-57.8,0]] as [number,number,number][])concBench(g,at,x,z,ry,'#a8a49c','#7a5a3e');   // wooden seat and back on concrete ends
+  for(const[x,z,k]of[[-118,-55,'ipe'],[-110,-51,'reseda'],[-124,-50,'copa'],[-103,-55,'reseda'],[-115,-51.5,'copa']] as [number,number,'ipe'|'reseda'|'copa'][])tree(g,at,x,z,k,.8);
+  // the rustic pergola of dark-stained timber on the north side, a pink bougainvillea up a post (pub-dombosco-n)
+  {const x0=-122,z0=-49,ry=-.18,wood=flat('#5a4232'),p=new THREE.Group();put(g,at,p,x0,z0,ry,STREET_TOP+.02);
+    for(const[u,v]of[[-1.8,-1.4],[1.8,-1.4],[-1.8,1.4],[1.8,1.4]] as P2[]){const m=new THREE.Mesh(new THREE.BoxGeometry(.2,2.6,.2),wood);m.position.set(u,1.3,v);m.castShadow=true;p.add(m);}
+    for(const v of[-1.4,1.4]){const m=new THREE.Mesh(new THREE.BoxGeometry(4.6,.18,.14),wood);m.position.set(0,2.65,v);p.add(m);}
+    for(let u=-2;u<=2.01;u+=.8){const m=new THREE.Mesh(new THREE.BoxGeometry(.1,.12,3.6),wood);m.position.set(u,2.8,0);m.castShadow=true;p.add(m);}
+    // the bougainvillea: a leafy bush at the post's foot, magenta bracts climbing it and spilling over the beams
+    {const b=new THREE.Mesh(leafMass(2,.3,2),bedM);b.scale.set(.9,.7,.9);b.position.set(2.1,.6,1.7);p.add(b);}
+    for(const[u,y,v,sc]of[[2.3,.9,1.6,.42],[1.9,1.5,1.6,.34],[2,2.2,1.5,.32],[1.5,2.95,1.3,.4],[.8,3,1.5,.34],[1.9,2.95,.6,.3]] as [number,number,number,number][]){
+      const b=new THREE.Mesh(leafMass(1+Math.round(u*3)%3,.34,2),bougM);b.scale.set(sc,sc*.7,sc);b.position.set(u,y,v);p.add(b);}}
   shrubs(g,at,[[-121,-50],[-114,-52],[-106,-54],[-126,-53]],[yellowM,bedM,roseM]);
   return r;}};
 

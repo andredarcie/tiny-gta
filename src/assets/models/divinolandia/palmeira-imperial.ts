@@ -11,6 +11,7 @@ import {canvasTex} from './posto-kit.ts';
 const trunkM=matte({color:0xb9b6ad,map:canvasTex(16,128,(x,w,h)=>{x.fillStyle='#ffffff';x.fillRect(0,0,w,h);
   for(let y=4;y<h;y+=9){x.fillStyle='rgba(90,85,75,.25)';x.fillRect(0,y,w,1);}})});
 const lime=matte({color:0xf4f3ee}),shaft=matte({color:0x5f8a3a});
+const jerivaM=matte({color:0x8e8a82}),bootM=matte({color:0x6e6248});
 let frond:THREE.Material|null=null;
 const frondM=():THREE.Material=>frond??=matte({side:THREE.DoubleSide,alphaTest:.5,map:canvasTex(64,256,(x,w,h)=>{
   x.clearRect(0,0,w,h);x.strokeStyle='#4f7a32';x.lineWidth=2.5;
@@ -31,14 +32,20 @@ function frondGeo(len:number,droop:number):THREE.BufferGeometry{
 }
 const geos=[frondGeo(4.2,.9),frondGeo(4,.55),frondGeo(3.4,.15)];
 
-function build(o:{h?:number;whitewash?:boolean;seed?:number}={}):THREE.Group{
-  const g=new THREE.Group(),h=o.h??12,s=o.seed??1,th=h-2.2;
+// jeriva = the jerivá (Syagrus romanzoffiana), the common palm of the town's squares and
+// gardens (Street View pub-rosario, pub-dombosco): a slender grey ringed trunk with no green
+// crownshaft, the old frond bases at its top, the same arching feathery fronds.
+function build(o:{h?:number;whitewash?:boolean;seed?:number;jeriva?:boolean}={}):THREE.Group{
+  const g=new THREE.Group(),j=!!o.jeriva,h=o.h??(j?8.5:12),s=o.seed??1,th=j?h-.6:h-2.2,k=j?.62:1;
   // trunk: slightly swollen in the lower third, then straight
-  const pts=[0,.18,.35,.6,1].map((t,i)=>new THREE.Vector2([.33,.36,.34,.27,.25][i],t*th));
-  const t=new THREE.Mesh(new THREE.LatheGeometry(pts,10),trunkM);t.castShadow=true;g.add(t);
-  if(o.whitewash){const w=new THREE.Mesh(new THREE.CylinderGeometry(.37,.35,1.4,10),lime);w.position.y=.7;g.add(w);}
-  const c=new THREE.Mesh(new THREE.CylinderGeometry(.24,.28,2.2,10),shaft);c.position.y=th+1.1;c.castShadow=true;g.add(c);
-  const tip=new THREE.Mesh(new THREE.ConeGeometry(.24,.8,8),shaft);tip.position.y=h+.4;g.add(tip);
+  const pts=[0,.18,.35,.6,1].map((t,i)=>new THREE.Vector2([.33,.36,.34,.27,.25][i]*k,t*th));
+  const t=new THREE.Mesh(new THREE.LatheGeometry(pts,10),j?jerivaM:trunkM);t.castShadow=true;g.add(t);
+  if(o.whitewash){const w=new THREE.Mesh(new THREE.CylinderGeometry(.37*k,.35*k,1.4,10),lime);w.position.y=.7;g.add(w);}
+  if(j){const b=new THREE.Mesh(new THREE.CylinderGeometry(.3,.18,.9,8),bootM);b.position.y=th+.2;g.add(b);}
+  else{
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(.24,.28,2.2,10),shaft);c.position.y=th+1.1;c.castShadow=true;g.add(c);
+    const tip=new THREE.Mesh(new THREE.ConeGeometry(.24,.8,8),shaft);tip.position.y=h+.4;g.add(tip);
+  }
   const m=frondM();
   for(const[tier,n]of[[0,7],[1,6],[2,4]] as [number,number][])for(let i=0;i<n;i++){
     const a=(i+tier*.4+s*.13)/n*Math.PI*2,f=new THREE.Mesh(geos[tier],m);
@@ -47,4 +54,4 @@ function build(o:{h?:number;whitewash?:boolean;seed?:number}={}):THREE.Group{
   return g;
 }
 
-export default {category:'Divinolândia',label:'Palmeira imperial',build,variants:[{label:'Caiada',opts:{whitewash:true}},{label:'Alta',opts:{h:16}}]};
+export default {category:'Divinolândia',label:'Palmeira imperial',build,variants:[{label:'Caiada',opts:{whitewash:true}},{label:'Alta',opts:{h:16}},{label:'Jerivá',opts:{jeriva:true}}]};
