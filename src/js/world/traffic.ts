@@ -32,10 +32,10 @@ interface TrafficCar{
 }
 
 export const traffic:TrafficCar[]=[];
-const POOL=8;                     // cars alive at once (each ~25 draws: the main cost)
+const POOL=16;                    // cars alive at once (each ~25 draws: the main cost; far ones are culled)
 const CAR_CULL2=140*140;          // drawn within this radius
-const RECYCLE_R=420;              // farther than this from the player → respawn nearer
-const SPAWN_MIN=170,SPAWN_MAX=380;// respawn ring around the player
+const RECYCLE_R=300;              // farther than this from the player → respawn nearer
+const SPAWN_MIN=145,SPAWN_MAX=260;// respawn ring: just beyond the draw radius, so cars drive into view
 const _push=new THREE.Vector3();
 const _mid=new THREE.Vector3();
 const _p:RoadPos={x:0,z:0,dx:0,dz:0};

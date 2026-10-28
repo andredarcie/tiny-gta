@@ -17,6 +17,7 @@ import {npcDefsByKind} from '@/core/npc-defs.ts';
 import {CITY_NEIGHBORHOODS,neighborhoodStreets,inNeighborhood} from '@/world/neighborhoods.ts';
 import type {Neighborhood} from '@/world/neighborhoods.ts';
 import {LaneRunner,randomRoadPoint,nearestRoad,edges,walkOff,type RoadPos} from '@/world/divinolandia/nav.ts';
+import {DIV_OX,DIV_OZ} from '@/world/divinolandia/data.ts';
 
 // ============================================================================
 // Pedestrians — the PERSISTENT town civilians with fixed identities (npcs.json).
@@ -37,6 +38,7 @@ export class Ped extends Npc{
   likesWeed!:boolean; // 30% of peds — wave the player over to buy weed when they carry the pack
   wantBuds!:number;   // how many buds this ped buys in one deal
   weedCdT!:number;    // cooldown after a deal before they will flag you down again
+  crowd=false;        // an anonymous townsperson of the crowd (recycled around the player)
   override aliveState():string{
     if(this.aiState==='weed')return 'Quer comprar erva';
     if(this.aiState==='idle')return 'Parado';
@@ -64,7 +66,7 @@ function sidewalkRunner(nh:Neighborhood,rnd:()=>number=Math.random,at?:{x:number
 }
 
 export const peds:Ped[]=[];
-const PED_CULL2=105*105; // perf: 130→105. Cada ped é um SkinnedMesh de ~7930 tris; cortar distantes economiza vértices/skinning (dots minúsculos além disso)
+const PED_CULL=105,PED_CULL2=PED_CULL*PED_CULL; // perf: 130→105. Cada ped é um SkinnedMesh de ~7930 tris; cortar distantes economiza vértices/skinning (dots minúsculos além disso)
 const bloodPuddles:THREE.Object3D[]=[];
 const _tgt=new THREE.Vector3();
 const _d=new THREE.Vector3();
@@ -152,6 +154,51 @@ for(const def of npcDefsByKind('civilian')){
   peds.push(p);
 }
 
+// The CROWD — anonymous townsfolk on top of the 23 named residents, who are spread over
+// four neighbourhoods and leave most streets empty. A small fixed pool walks the
+// sidewalks like any ped (panics, flees, dies, goes to hospital, buys weed) but has no
+// name and no lines of its own; one that ends up far from the player is moved, one per
+// frame, onto a sidewalk in a ring just beyond the draw radius, out of sight.
+const CROWD=16,CROWD_R=150,CROWD_MIN=PED_CULL+5,CROWD_MAX=145;
+const civDefs=npcDefsByKind('civilian');
+// the neighbourhood holding a world point, else the one whose box is nearest to it
+function nhAt(x:number,z:number):Neighborhood{
+  let best=CITY_NEIGHBORHOODS[0],bd=Infinity;
+  for(const nh of CITY_NEIGHBORHOODS){
+    if(inNeighborhood(nh,x,z))return nh;
+    const lx=x-DIV_OX,lz=z-DIV_OZ,dx=Math.max(nh.x0-lx,0,lx-nh.x1),dz=Math.max(nh.z0-lz,0,lz-nh.z1),d=dx*dx+dz*dz;
+    if(d<bd){bd=d;best=nh;}
+  }
+  return best;
+}
+// put a crowd ped on a sidewalk in the ring around the player
+function placeCrowd(p:Ped):void{
+  const pp=playerPos(),a=Math.random()*Math.PI*2,r=rand(CROWD_MIN,CROWD_MAX);
+  const at={x:pp.x+Math.sin(a)*r,z:pp.z+Math.cos(a)*r};
+  p.neighborhood=nhAt(at.x,at.z);
+  p.run=sidewalkRunner(p.neighborhood,Math.random,at);
+  const c=p.run.at(0,_carrot);
+  p.g.position.set(c.x,groundHeight(c.x,c.z),c.z);
+  p.aiState=p.baseState;p.panicT=0;
+}
+for(let i=0;i<CROWD&&civDefs.length;i++){
+  const def=civDefs[pedRng.irand(0,civDefs.length-1)],nh=CITY_NEIGHBORHOODS[0];
+  const run=sidewalkRunner(nh,pedRng.random);
+  const c=run.at(0,_carrot);
+  const g=makePed(shirtColors[pedRng.irand(0,shirtColors.length-1)]);
+  g.position.set(c.x,groundHeight(c.x,c.z),c.z);
+  const p=new Ped(g,{
+    kind:'ped',hp:NPC_HP_CIVILIAN,drop:[15,55],wanted:1,wantedMsg:'TIRO DISPARADO!',crime:'ped_shot',
+    punchToDown:3,showLabel:false,area:nh.name,
+    gender:pedRng.random()<.5?'M':'F',name:'Morador',likes:def.likes,personality:def.personality,dialogues:[],
+  });
+  p.crowd=true;p.run=run;
+  p.baseState=pedRng.random()<.15?'idle':'walk';p.aiState=p.baseState;
+  p.t=pedRng.rand(0,6);p.speed=pedRng.rand(1,1.8);p.panicT=0;p.neighborhood=nh;
+  p.likesWeed=def.likes.includes('smoke_weed');p.wantBuds=pedRng.irand(2,6);p.weedCdT=0;
+  peds.push(p);
+}
+
 // Stolen-car driver: reuse the ped farthest from the player (the pool is fixed),
 // place them stepping out of the car door and send them fleeing in panic.
 export function ejectDriver(x:number,z:number,heading:number){
@@ -175,7 +222,13 @@ export function updatePeds(dt:number){
   const pp=playerPos();
   const activeCur=cur;
   const danger=state.mode==='car'&&activeCur&&Math.abs(activeCur.speed)>6;
+  let moved=0;
   for(const p of peds){
+    // the crowd follows the player: one far crowd ped per frame is moved into the ring
+    if(p.crowd&&!moved&&!p.dead&&p.hospitalT<=0){
+      const fx=p.g.position.x-pp.x,fz=p.g.position.z-pp.z;
+      if(fx*fx+fz*fz>CROWD_R*CROWD_R){placeCrowd(p);moved=1;}
+    }
     // HOSPITAL: ped is recovering off-screen; count down then revive in neighborhood.
     if(p.hospitalT>0){
       p.hospitalT-=dt;
