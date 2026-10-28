@@ -296,8 +296,14 @@ export const shade=(c:string,f:number):string=>'#'+new THREE.Color(c).multiplySc
 
 // ---------------- railings ----------------
 // along x from a to b on the plane z, bottom y0, height h
-export function railing(k:Kit,a:number,b:number,y0:number,h:number,z:number,c:string,style:'lattice'|'bars'):void{
+export function railing(k:Kit,a:number,b:number,y0:number,h:number,z:number,c:string,style:'lattice'|'bars'|'arame'):void{
   const m=plain(c);
+  if(style==='arame'){                                   // square concrete posts every ~2.4 m and four strands of wire
+    for(let x=a;x<=b+1e-3;x+=Math.max(1.2,(b-a)/Math.max(1,Math.round((b-a)/2.4))))k.box(m,x-.06,x+.06,y0,y0+h,z-.06,z+.06);
+    const w=plain('#5a5a58');
+    for(let q=1;q<=4;q++){const y=y0+h*q/4.6;k.box(w,a,b,y-.006,y+.006,z-.006,z+.006);}
+    return;
+  }
   k.box(m,a,b,y0+h-.05,y0+h,z-.03,z+.03);k.box(m,a,b,y0+.02,y0+.07,z-.025,z+.025);
   for(let x=a;x<=b+1e-3;x+=Math.max(.6,(b-a)/Math.ceil((b-a)/1.8)))k.box(m,x-.035,x+.035,y0,y0+h,z-.035,z+.035); // posts
   if(style==='bars'){for(let x=a+.06;x<b;x+=.12)k.box(m,x-.012,x+.012,y0+.07,y0+h-.05,z-.012,z+.012);return;}

@@ -23,7 +23,7 @@ export type FachadaOpts={
   roof?:RoofKind;roofColor?:string;fascia?:string;eave?:number;parapet?:boolean;
   plinth?:{h:number;c?:string;stone?:boolean};
   setback?:number;
-  front?:{h:number;c?:string;style?:'plain'|'stone'|'panel'|'corrugated'|'hedge'|'lattice'|'bars';rail?:{h:number;c?:string;style:'lattice'|'bars'};gates?:Op[]};
+  front?:{h:number;c?:string;style?:'plain'|'stone'|'panel'|'corrugated'|'hedge'|'lattice'|'bars';rail?:{h:number;c?:string;style:'lattice'|'bars'|'arame'};gates?:Op[]};
   open?:Op[];
   panels?:{x:number;w:number;c?:string;stone?:boolean;y0?:number;y1?:number}[];
   balcony?:{x:number;w:number;fl:number;rail:'white'|'glass'|'iron';depth?:number};

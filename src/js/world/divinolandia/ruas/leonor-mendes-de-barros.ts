@@ -14,8 +14,8 @@
 import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 
 export const RUA='Rua Leonor Mendes de Barros';
-export const CROSS=[0,60,139.1,229,305.4,317.4,429.7,541.6,555.2,566.7];
-const SURFACE:Surface[]=[[0,566.7,'sett']];
+export const CROSS=[0,60,139.1,229,294.1,305.4,317.4,429.7];
+const SURFACE:Surface[]=[[0,429.7,'sett']];
 const T='#b0603f',W='#f1efe9';
 
 const L=(side:'N'|'S',s0:number,s1:number,f:Lot['f'],walk?:Lot['walk']):Lot=>{
@@ -186,5 +186,8 @@ export const SPEC:StreetSpec={
   rua:RUA,cross:CROSS,surface:SURFACE,lots:LOTS,trees:TREES,crossHw:3.6,
   settStreets:['Rua José Augusto Machado','Rua São Vicente de Paula','Rua Dom Alberto J. Gonçalves'],
   poles:{side:'S',start:12,every:34,transformers:[100,240]},
-  keepOut:[{side:'N',s0:229,s1:250,why:'Chiquinho Tintas (comercio/lojas.ts)'}],
+  keepOut:[{side:'N',s0:229,s1:250,why:'Chiquinho Tintas (comercio/lojas.ts)'},
+    // past the Mato Grosso this is one carriageway of a dual road: its north side is the other
+    // carriageway (leonor-mendes-de-barros-alta.ts), no sidewalk between them
+    {side:'N',s0:296,s1:430,why:'the other carriageway',walk:false}],
 };

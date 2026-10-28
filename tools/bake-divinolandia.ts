@@ -150,7 +150,9 @@ const inUrbanPoly=(p:P2):boolean=>urbanPolys.some(q=>pip(p,q));
 // stretch is surveyed as a street of its own, "…#2" (the part after '#' is never shown:
 // build.ts placeName), so the arc-length frame of the street below it stays as it was.
 const NAMED_WAYS:Record<number,string>={
-  820879184:'Rua Leonor Mendes de Barros#2',838422660:'Rua Leonor Mendes de Barros#2',
+  // (838422658: the 12 m link from the school's corner; left on the street below, it made
+  // its chain run back 126 m in a straight line over the dual carriageway)
+  838422658:'Rua Leonor Mendes de Barros#2',820879184:'Rua Leonor Mendes de Barros#2',838422660:'Rua Leonor Mendes de Barros#2',
   732002960:'Rua Leonor Mendes de Barros#2',1181053278:'Rua Leonor Mendes de Barros#2',
 };
 for(const e of osm.elements){

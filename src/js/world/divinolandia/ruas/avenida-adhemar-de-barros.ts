@@ -21,7 +21,7 @@ const L=(side:'N'|'S',s0:number,s1:number,f:Lot['f'],walk?:Lot['walk']):Lot=>{
 const muro=(side:'N'|'S',s0:number,s1:number,c:string,h:number,extra:Partial<Lot['f']>={}):Lot=>
   ({side,s0,s1,f:{wallOnly:true,wall:c,d:1,front:{h,c},...extra}});
 // timber posts and wire round a pasture or an overgrown plot
-const arame=(side:'N'|'S',s0:number,s1:number):Lot=>muro(side,s0,s1,'#8a6a4a',.1,{front:{h:.1,c:'#8a6a4a',rail:{h:1.2,c:'#8a6a4a',style:'lattice'}}});
+const arame=(side:'N'|'S',s0:number,s1:number):Lot=>muro(side,s0,s1,'#8a6a4a',.1,{front:{h:.1,c:'#8a6a4a',rail:{h:1.2,c:'#8a6a4a',style:'arame'}}});
 
 export const LOTS:Lot[]=[
   // ================= HOSPITAL SIDE (N) =================

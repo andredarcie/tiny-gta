@@ -23,9 +23,16 @@ export function makeSidewalks(strips:{pts:[number,number][];nx:number[];nz:numbe
         return{k:[x,hAt(x,z)+roadLift+KERB_H,z],o:[ox,hAt(ox,oz)+roadLift+KERB_H,oz],r:[x,hAt(x,z)+roadLift-.02,z]};
       });
       const[A,B]=q;
-      a.p.push(...A.k,...B.k,...B.o,...A.k,...B.o,...A.o);
-      for(const v of[A.k,B.k,B.o,A.k,B.o,A.o])a.uv.push(v[0],v[2]);           // planar world uv (1 tile = 1 m)
-      kerb.push(...A.r,...B.r,...B.k,...A.r,...B.k,...A.k);                    // kerb face (road side)
+      // every triangle wound counter-clockwise seen from above: with a DoubleSide material the
+      // shader turns a back face's normal down, and the strips on one side of a street (built
+      // in the other direction) came out dark
+      const up=(B.k[2]-A.k[2])*(B.o[0]-A.k[0])-(B.k[0]-A.k[0])*(B.o[2]-A.k[2])>0;
+      const tri=up?[A.k,B.k,B.o,A.k,B.o,A.o]:[A.k,B.o,B.k,A.k,A.o,B.o];
+      for(const v of tri){a.p.push(...v);a.uv.push(v[0],v[2]);}              // planar world uv (1 tile = 1 m)
+      // kerb face (road side), its front toward the road (away from the lots: -n)
+      const ex=B.r[0]-A.r[0],ey=B.r[1]-A.r[1],ez=B.r[2]-A.r[2],fx=B.k[0]-A.r[0],fy=B.k[1]-A.r[1],fz=B.k[2]-A.r[2];
+      const cx=ey*fz-ez*fy,cz=ex*fy-ey*fx,toRoad=cx*s.nx[i]+cz*s.nz[i]<0;
+      kerb.push(...(toRoad?[...A.r,...B.r,...B.k,...A.r,...B.k,...A.k]:[...A.r,...B.k,...B.r,...A.r,...A.k,...B.k]));
     }
   }
   const g=new THREE.Group();

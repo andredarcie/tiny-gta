@@ -31,9 +31,9 @@ export const LOTS:Lot[]=[
 
   // ================= PARK SIDE (N, east) =================
   // the park: grass and picnic tables behind timber posts and wire
-  muro('N',4,30,'#c8b490',.15,{front:{h:.15,c:'#a8805a',rail:{h:1.1,c:'#c8b490',style:'lattice'}}}),
+  muro('N',4,30,'#c8b490',.15,{front:{h:.15,c:'#a8805a',rail:{h:1.1,c:'#c8b490',style:'arame'}}}),
   // thick bush along a post-and-wire fence
-  muro('N',30,56,'#c8b490',.15,{front:{h:.15,c:'#a8805a',rail:{h:1.1,c:'#c8b490',style:'lattice'}}}),
+  muro('N',30,56,'#c8b490',.15,{front:{h:.15,c:'#a8805a',rail:{h:1.1,c:'#c8b490',style:'arame'}}}),
   // the SABESP plant: a tall white wall with blue piers and a blue mesh gate, low white sheds
   muro('N',56,64,'#ece8e2',2.6,{front:{h:2.6,c:'#ece8e2',gates:[{t:'gate',x:0,w:4.4,c:'#4a8ad0'}]},panels:[{x:-2.4,w:.5,c:'#4a8ad0'},{x:2.4,w:.5,c:'#4a8ad0'}]}),
   muro('N',64,90,'#ece8e2',2.6,{behind:{w:16,d:9,at:3,roof:'flat',roofColor:'#d8d8d4',wall:'#ece8e2'}}),
