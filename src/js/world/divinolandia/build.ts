@@ -135,7 +135,8 @@ export function buildDivinolandia():void{
     // (with white edge lines where there is no kerb), a dashed one on the collector streets,
     // none on the residential streets
     const main=r.k==='primary'||r.k==='primary_link'||r.k==='secondary';
-    const sidewalk=!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0;
+    // (the paver drives — the hospital's — carry their own kerbs: ruas/frente-hospital.ts)
+    const sidewalk=!SURVEYED.has(r.n)&&!!r.p&&!hex&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0;
     return{pts,hw:r.hw,paved:!!r.p,sett,hex,sidewalk,verge:!SURVEYED.has(r.n),
       centre:main?'double':r.k==='tertiary'?'dashed':undefined,edges:main&&!sidewalk};
   });

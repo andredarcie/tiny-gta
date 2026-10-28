@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import {DIVINO} from '@/core/palette.ts';
 import {Kit,P,plain,tile,holedWall,holeOf,fillOpening,dirt,type Op} from './kit-fachada.ts';
 import {ROOF_TILE_M} from './texturas.ts';
-import placa from './placa.ts';
-import arvore from './arvore-rua.ts';
 
 // Hospital Regional de Divinolândia — the old Sanatório Adhemar de Barros (finished in
 // 1945 for tuberculosis patients, run by the CONDERG consortium since 1987), rebuilt from
@@ -12,13 +10,15 @@ import arvore from './arvore-rua.ts';
 // meihIjfxKNEXbSPk1R6U3Q; images kept locally in docs/divinolandia/referencias-streetview/
 // hosp-*/), the 1950 scale model in the hospital lobby and the 1945/2005 photos:
 //   - the MAIN BLOCK, ~83 m long, five storeys under clay hipped roofs with white hip
-//     flashing: the north front is all "varandas de cura" (the open cure verandas of a TB
-//     sanatorium: a column grid, cream slab bands, parapets, French doors behind), the
-//     back is plain render with grey steel window grids. West wing 15 m deep with a
+//     flashing: the north front is the old "varandas de cura" of the TB sanatorium, closed
+//     in long ago (visitors' photos 2019–2025: yellow pilasters, grey infill with steel
+//     windows, the top storey glazed, red-tiled pent eaves), the back is plain render with
+//     grey steel window grids. West wing 15 m deep with a
 //     flat-fronted bay by the tower, east wing 13 m with the verandas wrapping its east end;
 //   - the ENTRANCE TOWER in the middle, one storey taller, with the stepped art-deco
-//     crown, corner pilasters, three window columns and the flat porch canopy on columns
-//     (the hospital's name on its fascia) over the steps and the glass doors;
+//     crown, corner pilasters, three window columns and the one-storey porch (square
+//     pillars, a tiled eave round a flat roof, steps with a yellow handrail, a ramp) over
+//     the glass doors;
 //   - behind the tower the stair PAVILION and the octagonal ROTUNDA;
 //   - the three-storey SOUTH-WEST WING at right angles to the back, the one-storey
 //     service wing with its metal roof to the south-east, and the brick boiler CHIMNEY
@@ -28,7 +28,7 @@ import arvore from './arvore-rua.ts';
 // line. HOSP_FOOT are its collision boxes [cx, cz, w, d, height]; HOSP_LOT is the centre
 // of its levelled lot (sites-table.ts `hospital`) in this frame; HOSP_DOOR_Z is the glass
 // entrance (the street door of the game's hospital room, models/city/hospital.ts).
-const ST=3.5,BASE=.6,VD=2.6;                    // storey height, raised ground floor, veranda depth
+const ST=3.5,BASE=.6;                           // storey height, raised ground floor
 const top=(n:number):number=>BASE+n*ST;         // wall head of an n-storey block
 const H5=top(5),H6=top(6);
 export const HOSP_DOOR_Z=8.5;
@@ -82,30 +82,42 @@ function grid(a:number,b:number,f0:number,f1:number,step=3.5,skip?:(x:number,f:n
   return ops;
 }
 
-// The cure verandas on a face kit, a..b along the face, column plane z=0, back wall at
-// z=-VD with a French door per bay and storey; `floors` storeys, open colonnade at ground.
+// The cure verandas as they are today (the visitors' photos, 2019–2025): long since closed
+// in. Bay by bay between yellow pilasters, each with its grey downpipe: the ground floor a
+// plain wall with a steel window per bay; storeys 1..floors-2 recessed panels of grey render
+// with one smaller steel window each; the top storey glazed across the bay in steel grids.
+// Yellow bands at every slab, and a red-tiled pent eave over the ground floor and over the
+// third storey. a..b along the face, face plane z=0, the infill set back to z=-RECESS.
+const RECESS=.35;
 function verandas(k:Kit,a:number,b:number,floors:number):void{
   const H=top(floors),n=Math.max(1,Math.round((b-a)/3.55)),s=(b-a)/n;
-  const ops:Op[]=[];
-  for(let f=0;f<floors;f++)for(let i=0;i<n;i++)
-    ops.push({t:'glass',x:a+s*(i+.5),w:1.5,h:2.35,y:top(f),frame:C.hospTrim});
-  wall(k,a,b,H,ops,-VD);
-  const w=wallM(),t=trimM();
-  k.box(baseM(),a,b,0,BASE,-VD,.3);                                   // veranda floor on the plinth
-  for(let f=1;f<floors;f++){
-    const y=top(f);
-    k.box(t,a,b,y-.24,y,-VD,.06);                                      // slab with its cream edge band
-    for(let i=0;i<n;i++){                                              // parapet between the columns
-      const x0=a+s*i+.28,x1=a+s*(i+1)-.28;
-      k.box(w,x0,x1,y,y+1,-.16,0);k.box(t,x0-.02,x1+.02,y+1,y+1.08,-.2,.04);
-    }
+  const w=wallM(),infill=plain('#c3bba9'),pipe=plain('#8f9497'),tm=tileM(),t=trimM();
+  const bay=(i:number):number=>a+s*(i+.5);
+  // ground floor: the front wall, a steel window per bay
+  const g0:Op[]=[];for(let i=0;i<n;i++)g0.push({t:'window',x:bay(i),w:1.7,h:1.5,y:BASE+.85,frame:C.hospFrame,st:'basculante'});
+  holedWall(k,w,a,b,BASE,top(1),0,g0.map(holeOf));for(const o of g0)fillOpening(k,o,0,w);
+  holedWall(k,baseM(),a,b,0,BASE,0,[]);dirt(k,a,b,0,.9,0);
+  // the closed-in storeys: a window per bay in the grey panels, the top storey glazed
+  const up:Op[]=[];
+  for(let f=1;f<floors;f++)for(let i=0;i<n;i++){
+    const x=bay(i);
+    if(f===floors-1)up.push({t:'window',x,w:s-.95,h:2.1,y:top(f)+.75,frame:C.hospFrame,st:'basculante'});
+    else up.push({t:'window',x:x+((i*7+f*3)%3-1)*.35,w:(i+f)%3?1.3:1.6,h:1.35,y:top(f)+1.05,frame:C.hospFrame,st:'basculante'});
   }
-  k.box(t,a,b,H-.5,H,-VD,.06);                                         // head beam under the eave
-  for(let i=0;i<=n;i++){                                               // the column grid
-    const x=a+s*i,hw=i===0||i===n?.32:.25;
-    k.box(w,Math.max(a,x-hw),Math.min(b,x+hw),0,H-.5,-.5,0);
+  holedWall(k,infill,a,b,top(1),H,-RECESS,up.map(holeOf));for(const o of up)fillOpening(k,o,-RECESS,infill);
+  for(let i=0;i<=n;i++){                                               // pilasters and downpipes
+    const x=a+s*i,hw=i===0||i===n?.32:.24;
+    k.box(w,Math.max(a,x-hw),Math.min(b,x+hw),top(1),H,-RECESS,.04);
+    if(i>0&&i<n)k.box(pipe,x+hw+.02,x+hw+.12,0,H-.1,.04,.14);
   }
-  for(const x of[a,b])k.box(w,Math.max(a,x-.3),Math.min(b,x+.3),0,H,-VD,-.5);  // closed ends
+  for(let f=1;f<=floors;f++){                                          // slab bands
+    const y=top(f);k.box(w,a,b,y-.28,y+.04,-RECESS,.22);k.box(t,a,b,y+.04,y+.08,-RECESS,.24);
+  }
+  for(const f of[1,3])if(f<floors){                                    // the tiled pent eaves
+    const y=top(f)+.1,zb=.22,zf=.95;
+    k.quad(tm,[a-.1,y-.4,zf],[b+.1,y-.4,zf],[b+.1,y,zb],[a-.1,y,zb]);
+    k.box(t,a-.1,b+.1,y-.48,y-.4,zf-.05,zf+.03);                        // its edge board
+  }
 }
 
 // hipped roof over x0..x1 × z0..z1 with its eave at y: slopes in `m` (uv along the eave,
@@ -148,15 +160,16 @@ export function hip(k:Kit,m:THREE.Material,x0:number,x1:number,z0:number,z1:numb
   return y+rise;
 }
 
-// the hospital's name on the porch fascia
-let nameTex:THREE.Texture|null=null;
-function nameTexture():THREE.Texture{
-  if(nameTex)return nameTex;
-  if(typeof document==='undefined')return nameTex=new THREE.Texture();
-  const c=document.createElement('canvas');c.width=1024;c.height=64;const x=c.getContext('2d')!;
-  x.fillStyle='#2f5466';x.font='700 40px "Barlow Condensed",monospace';x.textAlign='center';x.textBaseline='middle';
-  x.fillText('HOSPITAL REGIONAL DE DIVINOLÂNDIA',512,34);
-  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return nameTex=t;
+// the street number on the porch's pillar (R. Leonor Mendes de Barros, 626)
+let numTex:THREE.Texture|null=null;
+function numberTexture():THREE.Texture{
+  if(numTex)return numTex;
+  if(typeof document==='undefined')return numTex=new THREE.Texture();
+  const c=document.createElement('canvas');c.width=128;c.height=56;const x=c.getContext('2d')!;
+  x.fillStyle='#f4f1ea';x.fillRect(0,0,128,56);x.strokeStyle='#5a5a58';x.lineWidth=4;x.strokeRect(2,2,124,52);
+  x.fillStyle='#2b2b2b';x.font='700 38px "Barlow Condensed",monospace';x.textAlign='center';x.textBaseline='middle';
+  x.fillText('626',64,30);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return numTex=t;
 }
 
 function build():THREE.Group{
@@ -196,6 +209,8 @@ function build():THREE.Group{
     const w=wallM(),t=trimM();
     for(const x of[-5,5])f.k.box(w,x-.35,x+.35,0,H6+1.4,0,.3);          // corner pilasters
     for(let fl=1;fl<6;fl++)f.k.box(t,-4.65,4.65,top(fl)-.12,top(fl),0,.1); // floor lines
+    const ochre=plain('#d4a24c');                                         // the ochre panels under its windows
+    for(let fl=1;fl<6;fl++)for(const x of[-2.7,0,2.7])f.k.box(ochre,x-.62,x+.62,top(fl)+.08,top(fl)+.66,0,.03);
     // the stepped art-deco crown over the front
     f.k.box(w,-5,5,H6,H6+1,-.4,.05);f.k.box(t,-5.1,5.1,H6+1,H6+1.12,-.5,.12);
     f.k.box(w,-3.4,3.4,H6+1,H6+1.9,-.4,.05);f.k.box(t,-3.5,3.5,H6+1.9,H6+2,-.5,.12);
@@ -208,15 +223,46 @@ function build():THREE.Group{
       q.k.box(w,q.a,q.b,H6,H6+1,-.4,0);q.k.box(t,q.a-.05,q.b+.05,H6+1,H6+1.12,-.5,.06);
     }
     site.box(plain(C.hospSlab),-4.6,4.6,H6-.3,H6+.2,-7.6,8.1);         // flat roof slab
-    // porch: raised floor, three steps, the flat canopy on four columns, the name on it
-    site.box(baseM(),-4.6,4.6,0,BASE,HOSP_DOOR_Z,12.4);
-    for(let s=0;s<3;s++)site.box(plain('#'+C.stepTread.toString(16).padStart(6,'0')),-3.8,3.8,0,BASE-s*.2,12.4,12.4+(s+1)*.4);
-    site.box(t,-4.8,4.8,4.1,4.55,HOSP_DOOR_Z,13.3);
-    for(const x of[-4.1,-1.6,1.6,4.1]){
-      const col=new THREE.Mesh(new THREE.CylinderGeometry(.2,.24,4.1-BASE,10),t);col.position.set(x,BASE+(4.1-BASE)/2,12.75);col.castShadow=true;site.add(col);
+    // porch, as the visitors' photos show it today: a one-storey block in front of the tower,
+    // square pillars with moulded capitals carrying a deep beam, a tiled pent eave round the
+    // flat roof and its parapet; the steps down to the drive on the west half with a yellow
+    // handrail, the ramp along the façade to the east, concrete planters of red geraniums,
+    // the street number on the west pillar
+    const PZ=12,yel=plain('#e0b52a'),conc=plain('#a8a49b'),tread=plain('#'+C.stepTread.toString(16).padStart(6,'0'));
+    site.box(baseM(),-4.6,4.6,0,BASE,HOSP_DOOR_Z,PZ);
+    for(const[x,z]of[[-4.2,PZ-.35],[4.2,PZ-.35],[-4.2,HOSP_DOOR_Z+.6],[4.2,HOSP_DOOR_Z+.6]]){
+      site.box(w,x-.35,x+.35,BASE,3.3,z-.35,z+.35);                       // pillar
+      site.box(t,x-.45,x+.45,3.05,3.3,z-.45,z+.45);                       // capital
     }
-    const nm=new THREE.Mesh(new THREE.PlaneGeometry(9.4,.42),new THREE.MeshLambertMaterial({map:nameTexture(),transparent:true}));
-    nm.position.set(0,4.33,13.31);site.add(nm);
+    site.box(w,-4.75,4.75,3.3,3.8,HOSP_DOOR_Z,PZ+.1);                      // beam
+    site.box(t,-4.8,4.8,3.25,3.32,HOSP_DOOR_Z,PZ+.15);                     // its soffit band
+    hip(site,tileM(),-4.75,4.75,HOSP_DOOR_Z,PZ+.1,3.8,.45,.55,hipM(),C.hospTrim);
+    site.box(w,-4.1,4.1,3.8,4.75,HOSP_DOOR_Z,PZ-.55);                      // parapet over the flat roof
+    site.box(t,-4.2,4.2,4.75,4.85,HOSP_DOOR_Z,PZ-.45);
+    // steps: three treads down to the drive across the west half (+x)
+    for(let k=0;k<3;k++)site.box(tread,.2,4.6,0,BASE-k*.2,PZ,PZ+(k+1)*.38);
+    for(const x of[.35,2.4,4.45]){                                         // the yellow handrail
+      site.box(yel,x-.03,x+.03,0,1.05+BASE,PZ+.05,PZ+.11);site.box(yel,x-.03,x+.03,0,1.05,PZ+1.08,PZ+1.14);
+      const a=new THREE.Vector3(x,BASE+1.05,PZ+.08),b=new THREE.Vector3(x,1.05,PZ+1.11),r=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,a.distanceTo(b),6),yel);
+      r.position.copy(a).lerp(b,.5);r.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),b.clone().sub(a).normalize());site.add(r);
+    }
+    // the ramp along the façade to the east (-x): from the porch floor down to the ground over 7 m
+    {
+      const rg=new THREE.BufferGeometry(),x0=-4.6,x1=-11.6,z0=HOSP_DOOR_Z+.1,z1=HOSP_DOOR_Z+1.7;
+      const v=[x0,BASE,z0, x0,BASE,z1, x1,0,z1, x0,BASE,z0, x1,0,z1, x1,0,z0];
+      rg.setAttribute('position',new THREE.Float32BufferAttribute(v,3));rg.computeVertexNormals();
+      const rm=new THREE.Mesh(rg,baseM());rm.receiveShadow=true;site.add(rm);
+      site.box(yel,x1,x0,.9,.95,z1-.05,z1+.01);
+      for(let x=x1;x<=x0+.01;x+=1.75)site.box(yel,x-.03,x+.03,0,.95+BASE*(x-x1)/(x0-x1),z1-.05,z1+.01);
+    }
+    // planters of red geraniums at the porch's front and along the ramp
+    for(const[x,z]of[[-3.4,PZ+.4],[-1.6,PZ+.4],[-6.2,HOSP_DOOR_Z+2.3],[-8.6,HOSP_DOOR_Z+2.3]]){
+      site.box(conc,x-.55,x+.55,0,.5,z-.3,z+.3);
+      for(let i=0;i<4;i++){const f=new THREE.Mesh(new THREE.IcosahedronGeometry(.2,0),plain(i%2?'#3e6b2e':'#c2352d'));f.position.set(x-.4+i*.27,.6,z+(i%2?.08:-.06));site.add(f);}
+    }
+    // the street number on the west front pillar
+    const nm=new THREE.Mesh(new THREE.PlaneGeometry(.5,.22),new THREE.MeshLambertMaterial({map:numberTexture()}));
+    nm.position.set(4.2,2.4,PZ+.01);site.add(nm);
   }
   // ---------------- STAIR PAVILION + ROTUNDA behind the tower ----------------
   {
@@ -252,16 +298,10 @@ function build():THREE.Group{
     for(const s of['n','s','px','nx'] as Side[]){const q=side(kits,s,-18.5,-7.5,-52,-45);wall(q.k,q.a,q.b,4.4,grid(q.a,q.b,0,1,3.4,undefined,1.4,1.2));}
     hip(site,tileM(),-18.5,-7.5,-52,-45,4.4,2,.7,hipM(),C.hospTrim);
   }
-  // ---------------- forecourt: concrete apron from the porch out to the drive ----------------
-  site.box(plain('#bdb7aa'),-14,14,0,.05,HOSP_DOOR_Z,19);
-  site.box(plain('#a9a397'),-46,38,0,.02,7.5,9.5);                    // path along the verandas
+  // (the forecourt — the paver parking strip along the front, the drives and the garden
+  // square — is drawn with the street: js/world/divinolandia/ruas/frente-hospital.ts)
 
   for(const k of kits)g.add(k.finish());
-  // the name by the drive
-  const sign=placa.build({lines:['HOSPITAL REGIONAL','DE DIVINOLÂNDIA · CONDERG'],w:6,h:1.6,bg:'#f2f2ee',fg:'#2f5466',postH:1.2});
-  sign.position.set(-10,0,17.5);g.add(sign);
-  // the imperial palms of the entrance garden (2005 photo)
-  for(const[x,z]of[[-8,16],[8,16],[-24,12],[24,12],[38,13]]){const p=arvore.build({kind:'palmeira'});p.position.set(x,0,z);g.add(p);}
   g.userData.h=H6+3;
   return g;
 }
