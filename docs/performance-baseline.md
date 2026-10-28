@@ -212,3 +212,34 @@ before/after are pixel-for-pixel alike at these views. Remaining: ~126 shader
 programs compile on the first frame (`onFirstUse` ~3.3 s in a dev boot), 22 of them
 the vehicles' physical materials; the boot's town build still takes ~7 s in dev.
 Captures: `output/visual/perf-1028-antes/` and `perf-1028-final/` (soft shadows, as shipped).
+
+## Third round (2026-10-28): the scene graph walk
+
+A steady-state CPU profile at centro-street showed a quarter of the frame in
+`Object3D.updateMatrixWorld`: the renderer's per-frame pass recomputed the world matrix
+of every object in the scene — the static town, and the hidden ones (the off-map
+interiors, 300–400 objects each; the cars out of sight, ~70 each; LOD levels): ~10,500
+objects, 7,150 of them outside the static roots. The scene, flagging its own matrix as
+changed each frame, forced the recompute all the way down.
+
+1. `render-census.ts freezeStatic` (called by `trackStatic`): static roots compute their
+   matrices once, then their `updateMatrixWorld` is a no-op — even the forced pass skips
+   them.
+2. `engine.ts`: during the automatic per-frame pass a hidden branch only flags itself
+   (`matrixWorldNeedsUpdate`) and is skipped; it recomputes the moment it shows again.
+   Explicit calls (`updateMatrixWorld(true)` before baking/merging, `getWorldPosition`)
+   are untouched. The warmup's sliced upload, which hides the whole scene for a moment,
+   renders under `withFullMatrixPass()` so it doesn't flag every branch at once.
+
+`updateMatrixWorld` went from ~25% to ~3% of the CPU profile. Alternating A/B runs
+(two each, same machine, cold):
+
+| View | Without (median rAF) | With | ≈ FPS |
+|---|---:|---:|---:|
+| centro-street | 13.1 / 15.1 ms | 9.4 / 9.3 ms | 70 → 107 |
+| centro-elevated | 11.3 / 11.3 ms | 8.2 / 8.2 ms | 88 → 122 |
+| serra-distance | 10.1 / 10.3 ms | 8.0 / 7.6 ms | 98 → 128 |
+
+CPU frame (profiler) ~9.7 → ~7.0 ms. Note for tests: right after boot the warmup still
+uploads geometry and compiles the other shader variant for ~25 s; frames then can pass the
+50 ms step cap. `first-person.spec.ts` now measures speeds after `tg:warm-done`.

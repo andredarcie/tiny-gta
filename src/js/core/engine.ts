@@ -65,6 +65,33 @@ renderer.toneMappingExposure=1.25;
 
 export const scene=new THREE.Scene();
 scene.fog=new THREE.Fog(0xb9c7d3,120,430);
+// The renderer's per-frame scene.updateMatrixWorld() recomputes the world matrix of EVERY
+// object, hidden or not — and most of the scene is hidden at any moment: the off-map
+// interiors (300–400 objects each), the cars out of sight (~70 each), LOD levels. During
+// that automatic pass a hidden branch is skipped: it only flags itself, and recomputes the
+// moment it shows again (before it is drawn). Explicit calls — updateMatrixWorld(true) to
+// bake or merge, getWorldPosition — are untouched. Static town roots are frozen besides
+// (render-census.ts freezeStatic).
+// Code that hides most of the scene for a moment (the warmup's sliced upload) runs under
+// withFullMatrixPass(): there the skip would flag every branch and the next frame would
+// recompute the whole scene at once.
+let skipHidden=true;
+export function withFullMatrixPass(fn:()=>void):void{
+  const was=skipHidden;skipHidden=false;
+  try{fn();}finally{skipHidden=was;}
+}
+{
+  const base=THREE.Object3D.prototype.updateMatrixWorld;
+  let framePass=false;
+  THREE.Object3D.prototype.updateMatrixWorld=function(this:THREE.Object3D,force?:boolean){
+    if(framePass&&!this.visible){this.matrixWorldNeedsUpdate=true;return;}
+    base.call(this,force);
+  };
+  scene.updateMatrixWorld=function(this:THREE.Scene,force?:boolean){
+    framePass=skipHidden;
+    try{base.call(this,force);}finally{framePass=false;}
+  };
+}
 export const camera=new THREE.PerspectiveCamera(62,initialSize.w/initialSize.h,.1,2000);
 camera.position.set(0,60,120);
 // The camera is part of the scene graph so objects parented to it render — used by

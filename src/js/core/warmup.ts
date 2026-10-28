@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import {renderer,scene,camera,sceneTarget,otherSceneTarget,holdRendering} from '@/core/engine.ts';
+import {renderer,scene,camera,sceneTarget,otherSceneTarget,holdRendering,withFullMatrixPass} from '@/core/engine.ts';
 import {interiors} from '@/world/interior.ts';
 
 // GPU warmup, run in the BACKGROUND right after boot (startWarmup, at the bottom), so the
@@ -106,7 +106,8 @@ function renderOnly(batch: THREE.Object3D[]): void{
     let p:THREE.Object3D|null=m;while(p){p.visible=true;p=p.parent;}
   }
   const shadowWas=renderer.shadowMap.needsUpdate;renderer.shadowMap.needsUpdate=false;
-  try{renderer.render(scene,camera);}catch{}
+  // (the full matrix pass: see engine.ts — hiding the whole scene must not flag it all)
+  withFullMatrixPass(()=>{try{renderer.render(scene,camera);}catch{}});
   renderer.shadowMap.needsUpdate=shadowWas;
   for(const [m,c] of culled)m.frustumCulled=c;
   for(const [o,v] of saved)o.visible=v;

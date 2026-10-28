@@ -6,9 +6,25 @@ export const staticRenderGroups = Object.fromEntries(CATEGORIES.map(c => [c, []]
 
 // The category is typed: an unknown name used to compile and then crash the world build at
 // load (push on undefined) — the sheds went in as 'galpoes' and the game stopped loading.
+//
+// A tracked root is static scenery by definition, so it is also FROZEN here (freezeStatic).
 export function trackStatic<T extends THREE.Object3D>(category: StaticCategory, root: T): T {
   staticRenderGroups[category].push(root);
+  freezeStatic(root);
   return root;
+}
+
+// Freeze a static subtree: its world matrices are computed once (as children of an
+// identity parent — the scene) and the per-frame scene.updateMatrixWorld() — which the
+// scene FORCES down every branch, every frame — no longer walks into it. That walk over
+// the town's thousands of static objects was a quarter of the CPU frame. Visibility,
+// geometry and uniforms may still change; MOVING a frozen object needs refreezing.
+const noop = (): void => {};
+export function freezeStatic(root: THREE.Object3D): void {
+  root.traverse(o => { o.matrixAutoUpdate = false; o.updateMatrix(); });
+  root.updateMatrixWorld(true);
+  root.matrixWorldAutoUpdate = false;
+  root.updateMatrixWorld = noop;
 }
 
 // On-demand color-pass attribution. No simulation steps occur between renders.

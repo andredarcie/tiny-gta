@@ -19,11 +19,15 @@ async function measureSpeed(game: any, keys: string[]): Promise<number> {
 }
 
 test('first person on foot moves at DOOM speeds', async ({ game }) => {
+  test.setTimeout(150_000);
   const errors: string[] = [];
   game.page.on('pageerror', (e: Error) => { if (!/Pointer Lock/i.test(e.message)) errors.push(e.message); });
   const s0 = await game.snapshot();
   expect(s0.firstPerson).toBe(true);
   expect(s0.mode).toBe('foot');
+  // measure once the boot's background warmup (sliced GPU upload, shader variants) is over:
+  // its frames can exceed the 50 ms step cap, which drops movement and reads as low speed
+  await game.page.waitForFunction(() => performance.getEntriesByName('tg:warm-done').length > 0, null, { timeout: 90_000 });
 
   const run = await measureSpeed(game, ['Shift', 'w']);
   const walk = await measureSpeed(game, ['w']);
