@@ -202,13 +202,13 @@ textured materials that colour batching left alone. Median frame 29 ms, CPU rend
 | Surveyed street draws | 1,293 | 244 |
 | Submitted triangles | 2.34 M | 1.44 M |
 | Base streets (otherStatic) triangles | 417k | ~218k |
-| CPU render ms (profiler) | 20.3 | 8.0 |
-| Shadow-update frame ms | 34.5 | 10.2 |
-| Median rAF interval | 29.0 ms | 10.6 ms |
+| CPU render ms (profiler) | 20.3 | 9.1 |
+| Shadow-update frame ms | 34.5 | 11.2 |
+| Median rAF interval | 29.0 ms | 10.5 ms |
 | JS geometry arrays | 361 MB | 246 MB |
 
 The elevated view went 1,649 → 690 draws and 2.57 → 1.54 M triangles. Screenshots
 before/after are pixel-for-pixel alike at these views. Remaining: ~126 shader
 programs compile on the first frame (`onFirstUse` ~3.3 s in a dev boot), 22 of them
 the vehicles' physical materials; the boot's town build still takes ~7 s in dev.
-Captures: `output/visual/perf-1028-antes/` and `perf-1028-p9/`.
+Captures: `output/visual/perf-1028-antes/` and `perf-1028-final/` (soft shadows, as shipped).
