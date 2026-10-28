@@ -66,6 +66,7 @@ import {SITIO} from '../../../assets/models/divinolandia/sitio-maconaria.ts';
 import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeHilux} from '../../../assets/models/vehicles/hilux.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
+import {hospitalParked} from './ruas/frente-hospital.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
@@ -521,6 +522,12 @@ export function buildDivinolandia():void{
     parkOnGround(g,groundHeight,s.x,s.z,s.h);                // on its four wheels, on the drawn paving
     idleCars.push({g,heading:s.h,speed:0,name:p.k==='uno'?'UNO MILLE':p.k==='hilux'?'HILUX':'KOMBI',police:false});
   });
+  // ... and in the Hospital Regional's red-earth car park (ruas/frente-hospital.ts)
+  for(const p of hospitalParked()){
+    const g=p.k==='uno'?makeFiatUno(p.c):p.k==='hilux'?makeHilux(p.c):makeKombi();
+    parkOnGround(g,groundHeight,p.x,p.z,p.h);
+    idleCars.push({g,heading:p.h,speed:0,name:p.k==='uno'?'UNO MILLE':p.k==='hilux'?'HILUX':'KOMBI',police:false});
+  }
 
   // ---------- the player: in the Praça, facing the Matriz ----------
   const sx=px+(mx-px)*.35,sz=pz+(mz-pz)*.35+6;
