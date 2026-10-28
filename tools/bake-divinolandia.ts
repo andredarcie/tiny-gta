@@ -133,7 +133,7 @@ const r1=(v:number):number=>Math.round(v*10)/10;
 const HW:Record<string,number>={primary:4.6,primary_link:3.6,secondary:4.2,tertiary:4,residential:3.6,
   living_street:3,unclassified:3.3,service:2.6,track:2.2};
 const PAVED_SURF=new Set(['asphalt','paved','concrete','paving_stones','sett','cobblestone','concrete:plates']);
-type Road={id:number;k:string;name:string;hw:number;paved:boolean;pts:P2[];sf?:'asphalt'|'sett'};
+type Road={id:number;k:string;name:string;hw:number;paved:boolean;pts:P2[];sf?:'asphalt'|'sett'|'hex'};
 const roads:Road[]=[];
 // urban landuse polygons (houses only inside these, or near the paved town streets)
 const urbanPolys:P2[][]=[],noBuild:P2[][]=[];
@@ -155,6 +155,10 @@ const NAMED_WAYS:Record<number,string>={
   838422658:'Rua Leonor Mendes de Barros#2',820879184:'Rua Leonor Mendes de Barros#2',838422660:'Rua Leonor Mendes de Barros#2',
   732002960:'Rua Leonor Mendes de Barros#2',1181053278:'Rua Leonor Mendes de Barros#2',
 };
+// Surfaces OSM leaves untagged, from Street View: the Hospital Regional's entrance road through
+// the yellow gatehouse and its one-way loop to the porch are hexagonal concrete pavers (the
+// red-earth car park and the dirt track beside it, 1499496301, are really dirt)
+const SURFACE_WAYS:Record<number,'hex'>={536783866:'hex',1215144215:'hex',1215144212:'hex',1215144213:'hex',1215144214:'hex'};
 for(const e of osm.elements){
   const t=e.tags||{};
   if(!e.geometry||!(t.highway in HW))continue;
@@ -163,7 +167,8 @@ for(const e of osm.elements){
   const surf=t.surface;
   let paved=surf?PAVED_SURF.has(surf):['primary','primary_link','secondary','tertiary','residential','living_street'].includes(t.highway);
   if(!surf&&!paved)paved=inUrbanPoly(centroid(pts));
-  roads.push({id:e.id,k:t.highway,name:NAMED_WAYS[e.id]??t.name??'',hw:HW[t.highway],paved,pts});
+  const sf=SURFACE_WAYS[e.id];if(sf)paved=true;
+  roads.push({id:e.id,k:t.highway,name:NAMED_WAYS[e.id]??t.name??'',hw:HW[t.highway],paved,pts,...(sf?{sf}:{})});
 }
 // resample every 4 m with a smoothed elevation profile (bake-time road bed)
 type RS={x:number;z:number;h:number;hw:number};

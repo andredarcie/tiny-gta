@@ -18,7 +18,7 @@ import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 
 export const RUA='Rua Leonor Mendes de Barros#2';
 export const CROSS=[0,11.5,25.9,148.9,151.5,206.1,242.3,340.2];
-const SURFACE:Surface[]=[[0,340.2,'sett']];
+const SURFACE:Surface[]=[[0,149,'sett'],[149,340.2,'hex']];
 const T='#b0603f',W='#f1efe9';
 
 // (the sidewalks here are cement and hexagonal concrete pavers, not the town's ceramic tiles)

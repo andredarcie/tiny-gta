@@ -128,13 +128,14 @@ export function buildDivinolandia():void{
     // surveyed streets draw their own raised sidewalks, poles and lamps (ruas/build-rua.ts)
     // granite setts: tagged in OSM, or round the Matriz squares (every Street View panorama
     // there shows paralelepípedo; OSM does not tag it)
-    const sett=r.sf==='sett'||!!r.p&&Math.hypot(mid[0]-DIV_OX-45,mid[1]-DIV_OZ-5)<130;
+    const sett=r.sf==='sett'||r.sf!=='hex'&&!!r.p&&Math.hypot(mid[0]-DIV_OX-45,mid[1]-DIV_OZ-5)<130;
+    const hex=r.sf==='hex';             // hexagonal concrete pavers (bloquete)
     // road paint as Street View shows it: the double yellow line on the highways and avenues
     // (with white edge lines where there is no kerb), a dashed one on the collector streets,
     // none on the residential streets
     const main=r.k==='primary'||r.k==='primary_link'||r.k==='secondary';
     const sidewalk=!SURVEYED.has(r.n)&&!!r.p&&r.k!=='primary'&&r.k!=='primary_link'&&townAt(mid[0],mid[1])>0;
-    return{pts,hw:r.hw,paved:!!r.p,sett,sidewalk,verge:!SURVEYED.has(r.n),
+    return{pts,hw:r.hw,paved:!!r.p,sett,hex,sidewalk,verge:!SURVEYED.has(r.n),
       centre:main?'double':r.k==='tertiary'?'dashed':undefined,edges:main&&!sidewalk};
   });
   // zebra crossings at the junctions round the centre: a few metres back from the street crossing
@@ -143,7 +144,7 @@ export function buildDivinolandia():void{
     const owners=new Map<string,number[]>();
     lines.forEach((l,k)=>{for(const p of l.pts){const kk=key(p);const o=owners.get(kk)??[];if(!o.includes(k))o.push(k);owners.set(kk,o);}});
     lines.forEach((l,k)=>{
-      if(!l.paved||l.sett)return;
+      if(!l.paved||l.sett||l.hex)return;
       const S=[0];for(let i=1;i<l.pts.length;i++)S.push(S[i-1]+Math.hypot(l.pts[i][0]-l.pts[i-1][0],l.pts[i][1]-l.pts[i-1][1]));
       const junctions=l.pts.map((p,i)=>({i,o:owners.get(key(p))!})).filter(j=>j.o.length>1&&Math.hypot(l.pts[j.i][0]-DIV_OX-45,l.pts[j.i][1]-DIV_OZ-5)<420);
       const zebras:number[]=[];
@@ -170,7 +171,7 @@ export function buildDivinolandia():void{
     onWalk:(poly,lift)=>addSurfacePolygon(poly,lift),       // the sidewalks people walk (and park) on
   })));
   // ... and register the roadways as the surface wheels and feet rest on (world/surface-lift.ts)
-  for(const l of lines)addSurfaceStrip(l.pts,l.hw,l.sett?STREET_LIFT.sett+.012:l.paved?STREET_LIFT.paved:STREET_LIFT.dirt);
+  for(const l of lines)addSurfaceStrip(l.pts,l.hw,l.sett||l.hex?STREET_LIFT.sett+.012:l.paved?STREET_LIFT.paved:STREET_LIFT.dirt);
   // is (x,z) within `margin` of a street's drawn width (roadway + sidewalk)?
   const SC=24,streetHash=new Map<string,{ax:number;az:number;bx:number;bz:number;r:number}[]>();
   for(const l of lines)for(let i=1;i<l.pts.length;i++){

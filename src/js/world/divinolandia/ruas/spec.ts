@@ -15,7 +15,8 @@ import type {Paving} from '../../../../assets/models/divinolandia/calcada.ts';
 export type Side='N'|'S';
 export type Lot={side:Side;s0:number;s1:number;f:Omit<FachadaOpts,'w'>;walk?:Paving};
 export type Tree={side:Side;s:number;kind:ArvoreKind};
-export type Surface=[number,number,'asphalt'|'sett'];
+// 'hex': hexagonal concrete pavers (bloquete sextavado)
+export type Surface=[number,number,'asphalt'|'sett'|'hex'];
 
 export interface StreetSpec{
   rua:string;                 // OSM name, exactly as in the baked roads

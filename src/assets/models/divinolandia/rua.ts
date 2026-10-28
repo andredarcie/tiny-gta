@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import {matte} from '../matte.ts';
 import {DIVINO} from '@/core/palette.ts';
-import {settTexture,asfaltoTexture,terraTexture,calcadaRuaTexture,concretoTexture,acostamentoTexture,pinturaTexture,
+import {settTexture,sextavadoTexture,SEXT_W,SEXT_H,asfaltoTexture,terraTexture,calcadaRuaTexture,concretoTexture,acostamentoTexture,pinturaTexture,
   SETT_TILE_M,ROAD_TILE_U,ROAD_TILE_V,CONCRETO_TILE_M,GUTTER_LAT,GUTTER_W} from './texturas.ts';
 import {drapePolys,type DrapeGrid} from './terreno.ts';
 
@@ -31,6 +31,7 @@ const off=(n:number)=>({polygonOffset:true,polygonOffsetFactor:-n,polygonOffsetU
 export const asphaltMat=matte({map:asfaltoTexture(DIVINO.asphalt,DIVINO.kerb),...off(4)});
 export const dirtRoadMat=matte({map:terraTexture(DIVINO.dirtRoad,DIVINO.pasture),...off(3)});
 export const settMat=matte({map:settTexture(),...off(5)});
+export const hexMat=matte({map:sextavadoTexture('cinza'),...off(5)});
 export const sidewalkMat=matte({map:calcadaRuaTexture(),...off(2)});
 const kerbMat=matte({color:0xf2f0ea,map:concretoTexture(),side:THREE.DoubleSide});
 const yellowMat=matte({color:lift(DIVINO.paintYellow),map:pinturaTexture(),...off(7)});
@@ -45,6 +46,7 @@ const WALK_W=2.1,VERGE_W=1.4,VERGE_LIFT=.10;
 
 export type StreetLine={
   pts:[number,number][];hw:number;paved:boolean;sidewalk:boolean;sett?:boolean;
+  hex?:boolean;                // hexagonal concrete pavers (bloquete), drawn like the setts
   centre?:'double'|'dashed';   // yellow centre line
   edges?:boolean;              // white edge lines
   zebras?:number[];            // zebra crossings: distance along the line where each starts (3 m long)
@@ -170,7 +172,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
   const inOther=roadIndex(lines);
   type Buf={p:number[];uv:number[]};
   const buf=():Buf=>({p:[],uv:[]});
-  const B={asph:buf(),dirt:buf(),sett:buf(),walk:buf(),kerb:buf(),yellow:buf(),white:buf(),verge:buf()};
+  const B={asph:buf(),dirt:buf(),sett:buf(),hex:buf(),walk:buf(),kerb:buf(),yellow:buf(),white:buf(),verge:buf()};
   // draped ribbons follow the ground by themselves: resample only to round the bends
   const step=grid?6:3;
   const LW=STREET_LIFT.walk;
@@ -180,6 +182,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
     // apart, one always shows over the other
     const road:number[][]=[],dz=.002*(k%4);
     if(s.sett){bandM(F,-s.hw,s.hw,SETT_TILE_M,SETT_TILE_M,v0,road);lay(road,hAt,STREET_LIFT.sett+.006*(k%3),grid,B.sett.p,B.sett.uv);}
+    else if(s.hex){bandM(F,-s.hw,s.hw,SEXT_W,SEXT_H,v0,road);lay(road,hAt,STREET_LIFT.sett+.006*(k%3),grid,B.hex.p,B.hex.uv);}
     else if(s.paved){
       // the texture's lateral layout: a kerbed street's edge lands on the painted gutter, any
       // other road stops short of it (a few per cent of stretch across is invisible)
@@ -187,7 +190,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
       band(F,-s.hw,s.hw,-e/ROAD_TILE_U,e/ROAD_TILE_U,ROAD_TILE_V,v0,road);lay(road,hAt,STREET_LIFT.paved+dz,grid,B.asph.p,B.asph.uv);
     }
     else{bandM(F,-s.hw,s.hw,ROAD_TILE_U,ROAD_TILE_V,v0,road);lay(road,hAt,STREET_LIFT.dirt+dz,grid,B.dirt.p,B.dirt.uv);}
-    const roadTop=s.sett?STREET_LIFT.sett:s.paved?STREET_LIFT.paved:STREET_LIFT.dirt;
+    const roadTop=s.sett||s.hex?STREET_LIFT.sett:s.paved?STREET_LIFT.paved:STREET_LIFT.dirt;
     const Orig=frames(s.pts,Infinity);                  // the street's own vertices (pieces are cut from it)
     const pt=(q:number,o:number):P2=>{const a=at(Orig,q);return[a.x+a.nx*o,a.z+a.nz*o];};
     const clear=(q:number,o:number,m:number):boolean=>{const[x,z]=pt(q,o);return!inOther(x,z,k,m);};
@@ -218,7 +221,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
         }
       }
       // ---- the dusty verge of a road without sidewalks (not over another street)
-      else if(!s.sett&&s.verge!==false){
+      else if(!s.sett&&!s.hex&&s.verge!==false){
         const ok=(q:number):boolean=>clear(q,o(s.hw+VERGE_W*.5),.3)&&clear(q,o(s.hw+.1),.3)&&keep(...pt(q,o(s.hw+VERGE_W*.5)));
         for(const[a,b]of runs(len,ok,3,2)){
           const R=frames(sub(Orig,a,b),step),vg:number[][]=[];
@@ -227,7 +230,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
         }
       }
       // ---- white edge line
-      if(s.edges&&s.paved&&!s.sett){
+      if(s.edges&&s.paved&&!s.sett&&!s.hex){
         const ok=(q:number):boolean=>clear(q,o(s.hw-.35),.6);
         for(const[a,b]of runs(len,ok,1.5,2)){
           const R=frames(sub(Orig,a+.5,b-.5),step),ln:number[][]=[],[e0,e1]=lo(s.hw-.42,s.hw-.3);
@@ -236,7 +239,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
       }
     }
     // ---- yellow centre line: stops short of the streets crossing it
-    if(s.centre&&s.paved&&!s.sett){
+    if(s.centre&&s.paved&&!s.sett&&!s.hex){
       const ln:number[][]=[];
       for(const[a,b]of runs(len,q=>clear(q,0,1),1.5,2)){
         if(s.centre==='double'){
@@ -262,7 +265,7 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
     if(!b.p.length)return;
     const mesh=new THREE.Mesh(geo(b.p,b.uv),m);mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;mesh.renderOrder=order;g.add(mesh);
   };
-  add(B.sett,settMat);add(B.asph,asphaltMat);add(B.dirt,dirtRoadMat);add(B.walk,sidewalkMat);add(B.kerb,kerbMat);
+  add(B.sett,settMat);add(B.hex,hexMat);add(B.asph,asphaltMat);add(B.dirt,dirtRoadMat);add(B.walk,sidewalkMat);add(B.kerb,kerbMat);
   add(B.yellow,yellowMat);add(B.white,whiteMat);add(B.verge,vergeMat);
   return g;
 }
