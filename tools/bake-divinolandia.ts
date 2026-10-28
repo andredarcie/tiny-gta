@@ -144,6 +144,15 @@ for(const e of osm.elements){
      t.leisure||t.amenity||t.natural==='water'||t.man_made||t.building)noBuild.push(geomXZ(e));
 }
 const inUrbanPoly=(p:P2):boolean=>urbanPolys.some(q=>pip(p,q));
+// Ways OSM leaves unnamed (or misnames) whose real name Google Maps / Street View shows. The
+// Rua Leonor Mendes de Barros goes on past the E.E. Vicente Nasser up to the hospital's
+// avenue (OSM tags its first metres there "Rua Mato Grosso" and the rest has no name); that
+// stretch is surveyed as a street of its own, "…#2" (the part after '#' is never shown:
+// build.ts placeName), so the arc-length frame of the street below it stays as it was.
+const NAMED_WAYS:Record<number,string>={
+  820879184:'Rua Leonor Mendes de Barros#2',838422660:'Rua Leonor Mendes de Barros#2',
+  732002960:'Rua Leonor Mendes de Barros#2',1181053278:'Rua Leonor Mendes de Barros#2',
+};
 for(const e of osm.elements){
   const t=e.tags||{};
   if(!e.geometry||!(t.highway in HW))continue;
@@ -152,7 +161,7 @@ for(const e of osm.elements){
   const surf=t.surface;
   let paved=surf?PAVED_SURF.has(surf):['primary','primary_link','secondary','tertiary','residential','living_street'].includes(t.highway);
   if(!surf&&!paved)paved=inUrbanPoly(centroid(pts));
-  roads.push({id:e.id,k:t.highway,name:t.name||'',hw:HW[t.highway],paved,pts});
+  roads.push({id:e.id,k:t.highway,name:NAMED_WAYS[e.id]??t.name??'',hw:HW[t.highway],paved,pts});
 }
 // resample every 4 m with a smoothed elevation profile (bake-time road bed)
 type RS={x:number;z:number;h:number;hw:number};

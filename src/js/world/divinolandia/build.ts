@@ -744,7 +744,7 @@ function placeName(x:number,z:number):string{
     if(!bn)for(const wt of D.waters){if(wt.name!=='Rio do Peixe')continue;
       for(const q of wt.pts)if(Math.hypot(lx-q[0],lz-q[1])<45){bn='Beira do Rio · Rio do Peixe';break;}
       if(bn)break;}
-    if(bn)name=bn;
+    if(bn)name=bn.replace(/#.*$/,'');                      // (a street surveyed in two parts: bake NAMED_WAYS)
   }
   lastQ={x,z,name};
   return name;
