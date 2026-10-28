@@ -22,13 +22,16 @@ export const farTerrainMat=matte({vertexColors:true});
 // Smooth-ish value noise (cheap trig) for the land-cover patches.
 const vn=(x:number,z:number):number=>Math.sin(x*.0061+1.3)*Math.cos(z*.0053-.7)+.6*Math.sin(x*.0127-z*.0094+2.1)+.35*Math.sin(z*.021+x*.017);
 
-export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>number;skip?:{x0:number;x1:number;z0:number;z1:number};drop?:number;mat?:THREE.Material}={}):THREE.Mesh{
-  const {nx,nz,cell,h}=g,n=nx*nz;
-  const pos=new Float32Array(n*3),col=new Float32Array(n*3),uv=new Float32Array(n*2),tmp=new THREE.Color();
+// a finer relief over some cells (the river corridor, data.ts RIO_FINE): n×n heights per cell
+// (row-major, z then x) and a wetness 0..1 that darkens the ground toward wet earth and mud
+export type FineCells={n:number;at:(i:number,j:number)=>{h:Float32Array;wet:Float32Array}|null};
+type TerrainOpts={town?:(x:number,z:number)=>number;skip?:{x0:number;x1:number;z0:number;z1:number};drop?:number;mat?:THREE.Material;fine?:FineCells};
+// the ground's colour at every grid node (land cover, slope, town)
+function terrainColors(g:HeightGrid,opts:TerrainOpts):Float32Array{
+  const {nx,nz,cell,h}=g,col=new Float32Array(nx*nz*3),tmp=new THREE.Color();
   const gain=(opts.mat||terrainMat)===terrainMat?DETAIL_GAIN:1;
   for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){
-    const k=j*nx+i,x=g.x0+i*cell,z=g.z0+j*cell,y=h[k]-(opts.drop||0);
-    pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z;uv[k*2]=x/GROUND_TILE_M;uv[k*2+1]=z/GROUND_TILE_M;
+    const k=j*nx+i,x=g.x0+i*cell,z=g.z0+j*cell;
     const hl=h[j*nx+Math.max(0,i-1)],hr=h[j*nx+Math.min(nx-1,i+1)],hu=h[Math.max(0,j-1)*nx+i],hd=h[Math.min(nz-1,j+1)*nx+i];
     const slope=Math.hypot(hr-hl,hd-hu)/(2*cell);
     const v=vn(x,z);
@@ -44,10 +47,21 @@ export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>nu
     const jit=.94+.12*((Math.sin(i*12.9898+j*78.233)*43758.5453)%1+1)%1;
     col[k*3]=tmp.r*jit*gain;col[k*3+1]=tmp.g*jit*gain;col[k*3+2]=tmp.b*jit*gain;
   }
+  return col;
+}
+
+export function makeTerrainMesh(g:HeightGrid,opts:TerrainOpts={}):THREE.Mesh{
+  const {nx,nz,cell,h}=g,n=nx*nz;
+  const pos=new Float32Array(n*3),uv=new Float32Array(n*2),col=terrainColors(g,opts);
+  for(let j=0;j<nz;j++)for(let i=0;i<nx;i++){
+    const k=j*nx+i,x=g.x0+i*cell,z=g.z0+j*cell,y=h[k]-(opts.drop||0);
+    pos[k*3]=x;pos[k*3+1]=y;pos[k*3+2]=z;uv[k*2]=x/GROUND_TILE_M;uv[k*2+1]=z/GROUND_TILE_M;
+  }
   const idx:number[]=[];
   const sk=opts.skip;
   for(let j=0;j<nz-1;j++)for(let i=0;i<nx-1;i++){
     if(sk){const x=g.x0+(i+.5)*cell,z=g.z0+(j+.5)*cell;if(x>sk.x0&&x<sk.x1&&z>sk.z0&&z<sk.z1)continue;}
+    if(opts.fine?.at(i,j))continue;                                 // drawn by makeTerrainFine
     const a=j*nx+i,b=a+1,c=a+nx,d=c+1;
     idx.push(a,c,b,b,c,d);
   }
@@ -62,7 +76,54 @@ export function makeTerrainMesh(g:HeightGrid,opts:{town?:(x:number,z:number)=>nu
   return m;
 }
 
-export function makeTerrainTiles(g:HeightGrid,opts:Parameters<typeof makeTerrainMesh>[1]={},tileSize=384):THREE.Group{
+// The finer relief's cells (the river's bed and banks), one mesh per tile of `tileSize` m:
+// their colour is the coarse grid's, interpolated from the cell's four corners (so they meet
+// the cells around them without a seam), darkened toward wet earth and mud by the wetness.
+const MUD=C('#3f3326'),WET=C('#5b4a35');
+export function makeTerrainFine(g:HeightGrid,fine:FineCells,opts:TerrainOpts={},tileSize=384):THREE.Group{
+  const cols=terrainColors(g,opts);
+  const n=fine.n,m=n-1,sub=g.cell/m,gain=DETAIL_GAIN,tiles=Math.max(1,Math.round(tileSize/g.cell));
+  type B={pos:number[];col:number[];uv:number[];idx:number[];map:Map<number,number>};
+  const buckets=new Map<number,B>(),tmp=new THREE.Color(),c00=new THREE.Color(),c10=new THREE.Color(),c01=new THREE.Color(),c11=new THREE.Color();
+  const mud=MUD.clone().multiplyScalar(gain),wet=WET.clone().multiplyScalar(gain);
+  const nodeCol=(c:THREE.Color,k:number):THREE.Color=>c.setRGB(cols[k*3],cols[k*3+1],cols[k*3+2]);
+  for(let j=0;j<g.nz-1;j++)for(let i=0;i<g.nx-1;i++){
+    const f=fine.at(i,j);if(!f)continue;
+    const key=Math.floor(j/tiles)*1e5+Math.floor(i/tiles);
+    let b=buckets.get(key);if(!b){b={pos:[],col:[],uv:[],idx:[],map:new Map()};buckets.set(key,b);}
+    nodeCol(c00,j*g.nx+i);nodeCol(c10,j*g.nx+i+1);nodeCol(c01,(j+1)*g.nx+i);nodeCol(c11,(j+1)*g.nx+i+1);
+    const vid=(a:number,c:number):number=>{
+      const gk=(j*m+c)*(g.nx*m+1)+(i*m+a);                          // one vertex per fine lattice point
+      let v=b!.map.get(gk);if(v!==undefined)return v;
+      const x=g.x0+i*g.cell+a*sub,z=g.z0+j*g.cell+c*sub,u=a/m,w=c/m,y=f.h[c*n+a]-(opts.drop||0);
+      tmp.setRGB(
+        (c00.r*(1-u)+c10.r*u)*(1-w)+(c01.r*(1-u)+c11.r*u)*w,
+        (c00.g*(1-u)+c10.g*u)*(1-w)+(c01.g*(1-u)+c11.g*u)*w,
+        (c00.b*(1-u)+c10.b*u)*(1-w)+(c01.b*(1-u)+c11.b*u)*w);
+      const wt=f.wet[c*n+a];
+      if(wt>0)tmp.lerp(wet,Math.min(1,wt*1.6)).lerp(mud,Math.max(0,wt-.55)*2.2);
+      v=b!.pos.length/3;b!.map.set(gk,v);
+      b!.pos.push(x,y,z);b!.col.push(tmp.r,tmp.g,tmp.b);b!.uv.push(x/GROUND_TILE_M,z/GROUND_TILE_M);
+      return v;
+    };
+    for(let c=0;c<m;c++)for(let a=0;a<m;a++){
+      const p=vid(a,c),q=vid(a+1,c),r=vid(a,c+1),t=vid(a+1,c+1);
+      b.idx.push(p,r,q,q,r,t);                                       // the same b–c diagonals as the grid
+    }
+  }
+  const group=new THREE.Group();group.name='terrain-fine';
+  for(const b of buckets.values()){
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.Float32BufferAttribute(b.pos,3));
+    geo.setAttribute('color',new THREE.Float32BufferAttribute(b.col,3));
+    geo.setAttribute('uv',new THREE.Float32BufferAttribute(b.uv,2));
+    geo.setIndex(b.idx);geo.computeVertexNormals();geo.computeBoundingSphere();
+    const mesh=new THREE.Mesh(geo,opts.mat||terrainMat);mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;group.add(mesh);
+  }
+  return group;
+}
+
+export function makeTerrainTiles(g:HeightGrid,opts:TerrainOpts={},tileSize=384):THREE.Group{
   const source=makeTerrainMesh(g,opts),tiles=tileTerrainMesh(source,g,tileSize);
   source.geometry.dispose();
   return tiles;
@@ -75,7 +136,9 @@ export function makeTerrainTiles(g:HeightGrid,opts:Parameters<typeof makeTerrain
 // ground everywhere — no hill crest poking through a street, no gap under it. With the
 // grid's size (nx,nz nodes) the pieces past its edge are dropped: out there the ground is
 // the coarse far relief, drawn lower, and a draped strip would hang above it.
-export type DrapeGrid={x0:number;z0:number;cell:number;nx?:number;nz?:number};
+// `fine`: cells whose ground is a finer relief (the river corridor, data.ts RIO_FINE: n×n
+// nodes per cell, the same b–c diagonals) — pieces there are cut along that lattice too
+export type DrapeGrid={x0:number;z0:number;cell:number;nx?:number;nz?:number;fine?:{n:number;at:(i:number,j:number)=>boolean}};
 type DV=[number,number,number,number];                     // x, z, u, v (u,v: texture coords)
 function split(poly:DV[],f:(p:DV)=>number,k:number,lo:DV[][],hi:DV[]):void{
   const below:DV[]=[];
@@ -114,7 +177,16 @@ export function drapePolys(polys:number[][],grid:DrapeGrid,hAt:(x:number,z:numbe
   const fx=(p:DV):number=>(p[0]-grid.x0)/grid.cell,fz=(p:DV):number=>(p[1]-grid.z0)/grid.cell,fd=(p:DV):number=>fx(p)+fz(p);
   for(const flat of polys){
     const shape:DV[]=[];for(let k=0;k<flat.length;k+=4)shape.push([flat[k],flat[k+1],flat[k+2],flat[k+3]]);
-    for(const poly of cutBy(cutBy(cutBy([shape],fx),fz),fd)){
+    let pieces=cutBy(cutBy(cutBy([shape],fx),fz),fd);
+    const F=grid.fine;
+    if(F){
+      const m=F.n-1,gx=(p:DV):number=>fx(p)*m,gz=(p:DV):number=>fz(p)*m,gd=(p:DV):number=>gx(p)+gz(p);
+      pieces=pieces.flatMap(poly=>{
+        let cx=0,cz=0;for(const p of poly){cx+=fx(p);cz+=fz(p);}cx/=poly.length;cz/=poly.length;
+        return F.at(Math.floor(cx),Math.floor(cz))?cutBy(cutBy(cutBy([poly],gx),gz),gd):[poly];
+      });
+    }
+    for(const poly of pieces){
       if(grid.nx!==undefined&&grid.nz!==undefined){
         let cx=0,cz=0;for(const p of poly){cx+=fx(p);cz+=fz(p);}cx/=poly.length;cz/=poly.length;
         if(cx<0||cz<0||cx>grid.nx-1||cz>grid.nz-1)continue;

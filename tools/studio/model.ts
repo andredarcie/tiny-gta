@@ -40,9 +40,11 @@ async function streetRow():Promise<THREE.Object3D>{
     f.position.x=flip*((lot.s0+lot.s1)/2-(s0+s1)/2);g.add(f);}
   return g;
 }
-const mod=q.get('rua')?{}:(await MODELS[path]()) as Record<string,unknown>&{default?:{build:(o:Record<string,unknown>)=>THREE.Object3D}};
+// or a real stretch of the Rio do Peixe as the game builds it (&rio=<arc>&half=<m>)
+const rio=q.get('rio')?(await import('./rio-trecho.ts')).buildRio({s:+q.get('rio')!,half:+(q.get('half')||70)}):null;
+const mod=q.get('rua')||rio?{}:(await MODELS[path]()) as Record<string,unknown>&{default?:{build:(o:Record<string,unknown>)=>THREE.Object3D}};
 const list=q.get('list');
-const obj=q.get('rua')?await streetRow():list?(mod[list] as {build:(at:(x:number,z:number)=>number)=>THREE.Object3D}[])[+(q.get('i')||0)].build(()=>0):(mod as {default:{build:(o:Record<string,unknown>)=>THREE.Object3D}}).default.build(opts);
+const obj=rio?rio:q.get('rua')?await streetRow():list?(mod[list] as {build:(at:(x:number,z:number)=>number)=>THREE.Object3D}[])[+(q.get('i')||0)].build(()=>0):(mod as {default:{build:(o:Record<string,unknown>)=>THREE.Object3D}}).default.build(opts);
 obj.traverse(o=>{if((o as THREE.Mesh).isMesh){o.castShadow=true;o.receiveShadow=true;}});
 scene.add(obj);obj.updateMatrixWorld(true);
 const box=new THREE.Box3().setFromObject(obj),c=box.getCenter(new THREE.Vector3()),size=box.getSize(new THREE.Vector3());

@@ -24,9 +24,9 @@ function checkerTexture(repeat=6): THREE.CanvasTexture{
   return t;
 }
 
-function buildGate({color=0xff8a1e,finish=false}: {color?:number;finish?:boolean}={}): THREE.Group{
+function buildGate({color=0xff8a1e,finish=false,width=13}: {color?:number;finish?:boolean;width?:number}={}): THREE.Group{
   const g=new THREE.Group();
-  const W=13; // vão do pórtico (lancha é larga e rápida)
+  const W=width; // vão do pórtico: a largura do rio ali (boat-course.ts gateWidth)
   const paint=new THREE.MeshStandardMaterial({color,roughness:.45,metalness:.2});
   const darkM=new THREE.MeshStandardMaterial({color:0x14181e,roughness:.6,metalness:.3});
   const chromeM=new THREE.MeshStandardMaterial({color:0xd9dde4,roughness:.2,metalness:.9});
@@ -90,7 +90,7 @@ function buildGate({color=0xff8a1e,finish=false}: {color?:number;finish?:boolean
 }
 
 // boat-race.js usa makeBoatRaceGate({color,finish}); o grupo é orientado lá.
-export function makeBoatRaceGate(opts: {color?:number;finish?:boolean}): THREE.Group{return buildGate(opts);}
+export function makeBoatRaceGate(opts: {color?:number;finish?:boolean;width?:number}): THREE.Group{return buildGate(opts);}
 
 // Padrão de modelo: descriptor para o model-viewer (descoberta automática).
 export default {category:'Missões',label:'Pórtico da corrida de lanchas',

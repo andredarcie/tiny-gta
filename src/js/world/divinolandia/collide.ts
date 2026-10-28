@@ -9,16 +9,18 @@
 const PLAY={x0:0,x1:0,z0:0,z1:0};
 export function setPlayBounds(b:{x0:number;x1:number;z0:number;z1:number}):void{Object.assign(PLAY,b);}
 
-type Obb={x:number;z:number;hw:number;hd:number;c:number;s:number;h:number;tag?:string}; // h = top (world y)
-const CELL=24;
+type Obb={x:number;z:number;hw:number;hd:number;c:number;s:number;h:number;tag?:string;b?:number}; // h = top, b = underside (world y)
+const CELL=24,BODY_H=1.8;
 const grid=new Map<number,Obb[]>();
 const key=(i:number,j:number):number=>i*73856093^j*19349663;
 export const obbCount={n:0};
 
 // Register a box centred at (x,z), full size w×d, yaw `rot` (rotation of its local
-// +x axis toward +z, as the bake writes it), top at world y `top`.
-export function addObb(x:number,z:number,w:number,d:number,rot:number,top:number,tag?:string):void{
-  const o:Obb={x,z,hw:w/2,hd:d/2,c:Math.cos(rot),s:Math.sin(rot),h:top,tag:tag??addObb.tag};
+// +x axis toward +z, as the bake writes it), top at world y `top`. With `bottom`, the box
+// hangs above the ground (a bridge's rail): a body standing more than BODY_H below its
+// underside (a boat on the river under the deck) passes beneath it.
+export function addObb(x:number,z:number,w:number,d:number,rot:number,top:number,tag?:string,bottom?:number):void{
+  const o:Obb={x,z,hw:w/2,hd:d/2,c:Math.cos(rot),s:Math.sin(rot),h:top,tag:tag??addObb.tag,b:bottom};
   const r=Math.hypot(w,d)/2+2;                             // +2: bodies (r ≤ 1.4) query only their own cell
   for(let i=Math.floor((x-r)/CELL);i<=Math.floor((x+r)/CELL);i++)
     for(let j=Math.floor((z-r)/CELL);j<=Math.floor((z+r)/CELL);j++){
@@ -50,6 +52,7 @@ export function divinoCollide(p:{x:number;y:number;z:number},r:number):boolean{
   const arr=grid.get(key(Math.floor(p.x/CELL),Math.floor(p.z/CELL)));
   if(arr)for(const o of arr){
     if(p.y>o.h)continue;                                   // above the roof
+    if(o.b!==undefined&&p.y+BODY_H<o.b)continue;           // below a hanging box (under a bridge)
     const dx=p.x-o.x,dz=p.z-o.z;
     const lu=dx*o.c+dz*o.s,lv=-dx*o.s+dz*o.c;               // into the box frame
     const cu=lu<-o.hw?-o.hw:lu>o.hw?o.hw:lu,cv=lv<-o.hd?-o.hd:lv>o.hd?o.hd:lv;

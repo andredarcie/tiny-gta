@@ -24,15 +24,15 @@ const eucaTrunkG=new THREE.CylinderGeometry(.12,.2,9,6);eucaTrunkG.translate(0,4
 const eucaCrownG=leafMass(2,.3,2).clone();eucaCrownG.scale(1.4,3.2,1.4);eucaCrownG.translate(0,10.5,0);
 const coffeeG=leafMass(3,.18,1,6).clone();coffeeG.scale(4.6,.95,.8);coffeeG.translate(0,.85,0);
 
-type Inst={x:number;y:number;z:number;s:number;r:number};
-const CH=400;
-function chunked(list:Inst[]):Map<string,Inst[]>{
+export type Inst={x:number;y:number;z:number;s:number;r:number};
+export const CH=400;
+export function chunked(list:Inst[]):Map<string,Inst[]>{
   const m=new Map<string,Inst[]>();
   for(const t of list){const k=Math.round(t.x/CH)+'_'+Math.round(t.z/CH);let a=m.get(k);if(!a){a=[];m.set(k,a);}a.push(t);}
   return m;
 }
 const _m=new THREE.Matrix4(),_q=new THREE.Quaternion(),_s=new THREE.Vector3(),_p=new THREE.Vector3(),_up=new THREE.Vector3(0,1,0);
-function inst(geo:THREE.BufferGeometry,mat:THREE.Material,list:Inst[],shadow:boolean,colors?:THREE.Color[]):THREE.InstancedMesh{
+export function inst(geo:THREE.BufferGeometry,mat:THREE.Material,list:Inst[],shadow:boolean,colors?:THREE.Color[]):THREE.InstancedMesh{
   const im=new THREE.InstancedMesh(geo,mat,list.length);
   list.forEach((t,i)=>{_q.setFromAxisAngle(_up,t.r);_s.set(t.s,t.s,t.s);_p.set(t.x,t.y,t.z);im.setMatrixAt(i,_m.compose(_p,_q,_s));});
   if(colors){list.forEach((_,i)=>im.setColorAt(i,colors[i%colors.length]));if(im.instanceColor)im.instanceColor.needsUpdate=true;}

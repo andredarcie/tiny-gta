@@ -17,13 +17,16 @@ import {setDivinoTerrain} from '@/core/terrain.ts';
 import {player,playerCar,idleCars,cameraRig} from '@/actors/player.ts';
 import {message} from '@/ui/hud.ts';
 import {mergeStatic} from '../../../assets/models/props/prop-merge.ts';
-import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR} from './data.ts';
-import {addObb,setPlayBounds} from './collide.ts';
+import {divData as D,divinoHeight,nearGrid,farGrid,PLAY,DIV_OX,DIV_OZ,altitudeAt,SITE_FLOOR,RIO_FINE_CELLS,RIO_BRIDGES,RIO_DEPTH,RIO_BANK,rioNearest} from './data.ts';
+import {makeRiverBank} from '../../../assets/models/divinolandia/mata-ciliar.ts';
+import {riverBankSpots} from './rio-margem.ts';
+import Ponte,{RAIL_Z} from '../../../assets/models/divinolandia/ponte-rio.ts';
+import {addObb,obbsNear,setPlayBounds} from './collide.ts';
 import {parkOnGround} from '@/actors/vehicle-ground.ts';
 import {addSurfaceStrip,addSurfacePolygon} from '../surface-lift.ts';
 import {groundHeight} from '@/core/constants.ts';
 import {groundRange,fitBuilding,rect} from './ground-fit.ts';
-import {makeTerrainTiles,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
+import {makeTerrainTiles,makeTerrainFine,farTerrainMat} from '../../../assets/models/divinolandia/terreno.ts';
 import {enableTerrainLod,updateTerrainLod} from '../../../assets/models/divinolandia/terrain-tiles.ts';
 import {makeStreets,makeWater,STREET_LIFT,type StreetLine} from '../../../assets/models/divinolandia/rua.ts';
 import {addCasa,finalizeCasas,casaTop,EAVE,type CasaSpec} from '../../../assets/models/divinolandia/casa.ts';
@@ -66,7 +69,7 @@ import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
-import {waterLines} from './water.ts';
+import {waterLines,riverAt} from './water.ts';
 import {SITE_TABLE,ALL_LOTS,onSiteLot,siteLotPolygon,type LotId} from './sites-table.ts';
 import {LOJAS} from './comercio/lojas.ts';
 import {planLojas,type Placed} from './comercio/plan.ts';
@@ -108,7 +111,9 @@ export function buildDivinolandia():void{
   const townAt=(x:number,z:number):number=>{const i=Math.floor((x-tx0)/TC),j=Math.floor((z-tz0)/TC);return i<0||j<0||i>=tnx||j>=tnz?0:town[j*tnx+i];};
 
   // ---------- terrain: near (playable, 8 m) + far serras (48 m, hole under the near) ----------
-  scene.add(trackStatic('terrain',makeTerrainTiles(nearGrid,{town:townAt})));
+  scene.add(trackStatic('terrain',makeTerrainTiles(nearGrid,{town:townAt,fine:RIO_FINE_CELLS})));
+  // the Rio do Peixe's bed and banks: the corridor's finer relief (data.ts RIO_FINE)
+  scene.add(trackStatic('terrain',makeTerrainFine(nearGrid,RIO_FINE_CELLS,{town:townAt})));
   const nx1=nearGrid.x0+(nearGrid.nx-1)*nearGrid.cell,nz1=nearGrid.z0+(nearGrid.nz-1)*nearGrid.cell,m=farGrid.cell*1.5;
   farTerrain=makeTerrainTiles(farGrid,{skip:{x0:nearGrid.x0+m,x1:nx1-m,z0:nearGrid.z0+m,z1:nz1-m},drop:1.2,mat:farTerrainMat},768);
   enableTerrainLod(farTerrain,farGrid,{distance:1800,stride:4,maxError:3});
@@ -199,6 +204,15 @@ export function buildDivinolandia():void{
     addObb(x,z,3.6,3.6,0,H(x,z)+40);
   }
   scene.add(trackStatic('otherStatic',makeWater(waterLines)));
+  // ---------- the bridges over the Rio do Peixe (data.ts RIO_BRIDGES: deck, ramps) ----------
+  for(const b of RIO_BRIDGES){
+    const road=b.hw-3.4,len=2*b.L,mid=(b.y0+b.y1)/2,bed=riverAt(b.s).y-RIO_DEPTH;
+    const p=Ponte.build({len,road,depth:mid-bed+.6,style:/Rodovia/.test(b.name)?'balaustre':'tubo'});
+    p.position.set(b.cx,mid,b.cz);p.rotation.order='YXZ';p.rotation.y=Math.atan2(-b.uz,b.ux);p.rotation.z=Math.atan2(b.y1-b.y0,len);
+    placeStatic(p);
+    // its rails hang over the river: whatever is on the deck hits them, a boat passes beneath
+    for(const s of[-1,1]){const rz=RAIL_Z(road);addObb(b.cx-b.uz*s*rz,b.cz+b.ux*s*rz,len,.35,Math.atan2(b.uz,b.ux),mid+1.3,'ponte',mid-.7);}
+  }
 
   // ---------- plazas, greens, pitches, cemetery, schools ----------
   const ground=new THREE.Group();
@@ -469,16 +483,28 @@ export function buildDivinolandia():void{
   for(const pole of poles)addObb(pole.x,pole.z,.36,.36,0,pole.y+10.5);
 
   // ---------- vegetation ----------
+  // (the Rio do Peixe's channel and muddy banks were reshaped at load: nothing of the bake there)
+  const inRio=(lx:number,lz:number,m:number):boolean=>{const q=rioNearest(lx+DIV_OX,lz+DIV_OZ);return!!q&&q.d<q.w+RIO_BANK+m;};
   for(let i=0;i<D.trees.length;i+=3){
     if(onSiteLot(D.trees[i],D.trees[i+1],3))continue;
+    if(inRio(D.trees[i],D.trees[i+1],1))continue;
     if(inMatrizSquare(D.trees[i],D.trees[i+1]))continue;      // their trees are the surveyed ones
     if(onGalpao(D.trees[i],D.trees[i+1]))continue;
     const[x,z]=w([D.trees[i],D.trees[i+1]]);trees.push({x,y:H(x,z)-.1,z,s:D.trees[i+2],r:i});
   }
+  // the Rio do Peixe's banks (rio-margem.ts): clear of the streets, the bridges, the places and
+  // anything with a collision box
+  {
+    const free=(x:number,z:number,r:number):boolean=>!nearStreet(x,z,2)&&!onSiteLot(x-DIV_OX,z-DIV_OZ,2)&&!obbsNear(x,z,r).length&&
+      x>PLAY.x0&&x<PLAY.x1&&z>PLAY.z0&&z<PLAY.z1;
+    const{bank,trees:rt}=riverBankSpots(H,free);
+    trees.push(...rt);
+    for(const g of makeRiverBank(bank)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:520});}
+  }
   for(const g of makeTrees(trees)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:900});}
   const cof:{x:number;y:number;z:number;s:number;r:number}[]=[];
   for(let i=0;i<D.coffee.length;i+=3){
-    if(onSiteLot(D.coffee[i],D.coffee[i+1],3)||onGalpao(D.coffee[i],D.coffee[i+1]))continue;
+    if(onSiteLot(D.coffee[i],D.coffee[i+1],3)||onGalpao(D.coffee[i],D.coffee[i+1])||inRio(D.coffee[i],D.coffee[i+1],3))continue;
     const[x,z]=w([D.coffee[i],D.coffee[i+1]]);cof.push({x,y:H(x,z)-.15,z,s:1,r:D.coffee[i+2]});
   }
   for(const g of makeCoffee(cof)){scene.add(trackStatic('vegetation',g));cullGroups.push({g,r:650});}

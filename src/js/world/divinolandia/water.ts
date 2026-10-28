@@ -10,7 +10,7 @@
 // the water meets its banks instead of hovering over the channel, and a boat floating at
 // waterSurface() rides the water that is drawn — sloping gently down the valley, so the
 // boat race is a real descent of the Rio do Peixe.
-import {divData as D,DIV_OX,DIV_OZ,divinoHeight} from './data.ts';
+import {divData as D,DIV_OX,DIV_OZ,bedHeight,RIO,RIO_BANK,rioNearest} from './data.ts';
 
 // how far the search looks for a bank, and how far the drawn edge reaches under it
 const MAX_W={river:28,stream:16},TUCK=.7,STEP=.4;
@@ -58,7 +58,7 @@ function gather(x:number,z:number,y:number,r:number,line:number,i:number):{roads
 // little off it) out to the bank on each side. Returns the signed offsets of its edges
 // (left positive), or [0,0] where the ground is above the water — a road crossing it.
 function crossSection(x:number,z:number,y:number,nx:number,nz:number,max:number,seedR:number,line:number,i:number):[number,number]{
-  const g=(d:number):number=>divinoHeight(x+nx*d,z+nz*d);
+  const g=(d:number):number=>bedHeight(x+nx*d,z+nz*d);
   const near=gather(x,z,y,max+1,line,i);
   const{roads,others}=near;
   const dry=(d:number):boolean=>{
@@ -76,8 +76,11 @@ function crossSection(x:number,z:number,y:number,nx:number,nz:number,max:number,
   let seed=0,low=Infinity;
   for(let d=-seedR;d<=seedR;d+=STEP){const h=g(d);if(h<low-1e-6&&h<y&&!dry(d)){low=h;seed=d;}}
   if(low>=y)return[0,0];
+  // the main river's water is a bank to a stream's search (the stream ends in it)
+  const inRio=(d:number):boolean=>{const q=rioNearest(x+nx*d,z+nz*d);return!!q&&q.d<q.w+RIO_BANK*.5;};
   const edge=(dir:number):number=>{
     for(let d=seed+dir*STEP;Math.abs(d)<=max;d+=dir*STEP){
+      if(inRio(d))return d-dir*STEP;
       if(dry(d))return d-dir*STEP;
       if(g(d)>y)return d+dir*TUCK;
       if(Math.abs(d)>STEP&&closer(d))return d;
@@ -90,7 +93,13 @@ function crossSection(x:number,z:number,y:number,nx:number,nz:number,max:number,
 // every point as signed offsets along the left normal of the downstream direction:
 // wl = left edge, -wr = right edge (both on one side where the channel runs off the line)
 export interface WaterLine{river:boolean;pts:[number,number,number][];wl:number[];wr:number[]}
-export const waterLines:WaterLine[]=D.waters.map((w,line)=>{
+// The Rio do Peixe's main course is not searched on the terrain: data.ts carves it as a
+// continuous channel along its smoothed centre line (RIO), so its water is that line with
+// the channel's own width, drawn RIO_VIS m further into the banks (the terrain rises over
+// the water's edge there, so the shoreline is where the banks meet the surface).
+const RIO_VIS=1.6;
+const MAIN=D.waters.filter(w=>w.name==='Rio do Peixe').sort((a,b)=>b.pts.length-a.pts.length)[0];
+export const waterLines:WaterLine[]=D.waters.map((w,line)=>({w,line})).filter(o=>o.w!==MAIN).map(({w,line})=>{
   const river=w.hw>=4,max=river?MAX_W.river:MAX_W.stream,seedR=river?10:9;
   const src=w.pts.map(p=>[p[0]+DIV_OX,p[1]+DIV_OZ,p[2]] as [number,number,number]);
   const pts:[number,number,number][]=[],orig:number[]=[];
@@ -103,6 +112,8 @@ export const waterLines:WaterLine[]=D.waters.map((w,line)=>{
   pts.forEach((p,i)=>{
     const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
     const dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1;
+    const q=rioNearest(p[0],p[1]);
+    if(q&&q.d<q.w+RIO_BANK*.5){wl.push(0);wr.push(0);return;}
     const[l0,r0]=crossSection(p[0],p[1],p[2],-dz/l,dx/l,max,seedR,line,orig[i]);
     wl.push(l0);wr.push(-r0);
   });
@@ -130,6 +141,11 @@ export const waterLines:WaterLine[]=D.waters.map((w,line)=>{
   }
   return{river,pts,wl,wr};
 });
+if(RIO.x.length>1){
+  const pts:[number,number,number][]=[],wl:number[]=[];
+  for(let i=0;i<RIO.x.length;i++){pts.push([RIO.x[i],RIO.z[i],RIO.y[i]]);wl.push(RIO.w[i]+RIO_VIS);}
+  waterLines.push({river:true,pts,wl,wr:wl.slice()});
+}
 
 interface Seg{ax:number;az:number;ay:number;bx:number;bz:number;by:number;la:number;lb:number;ra:number;rb:number;river:boolean}
 const segs:Seg[]=[];
@@ -156,7 +172,7 @@ export interface WaterHit{d:number;y:number;hw:number;river:boolean}
 export function waterNear(x:number,z:number):WaterHit|null{
   const a=hash.get(hk(Math.floor(x/HC),Math.floor(z/HC)));
   if(!a)return null;
-  let best:WaterHit|null=null;
+  let best:WaterHit|null=null,bestRank=Infinity;
   for(const k of a){
     const s=segs[k],dx=s.bx-s.ax,dz=s.bz-s.az,l2=dx*dx+dz*dz||1;
     let t=((x-s.ax)*dx+(z-s.az)*dz)/l2;t=t<0?0:t>1?1:t;
@@ -164,31 +180,34 @@ export function waterNear(x:number,z:number):WaterHit|null{
     // there; past the segment's ends the point belongs to the next segment, not to this one
     // (the drawn water has no round caps)
     const L=Math.sqrt(l2),o=(dx*(z-s.az)-dz*(x-s.ax))/L,u=((x-s.ax)*dx+(z-s.az)*dz)/L,over=u<0?-u:u>L?u-L:0;
-    const wl=s.la+(s.lb-s.la)*t,wr=s.ra+(s.rb-s.ra)*t,hw=(wl+wr)/2,d=over>1e-6?hw+over:Math.abs(o-(wl-wr)/2);
-    if(!best||d-hw<best.d-best.hw)best={d,y:s.ay+(s.by-s.ay)*t,hw,river:s.river};
+    // (the river's segments get round ends: on the outside of a bend the drawn water — mitred at
+    // each vertex — covers a wedge that neither segment's straight band reaches; the river only
+    // ends at the map's edges, so no cap ever runs out over a road)
+    const wl=s.la+(s.lb-s.la)*t,wr=s.ra+(s.rb-s.ra)*t,hw=(wl+wr)/2,lat=Math.abs(o-(wl-wr)/2);
+    const d=over>1e-6?(s.river?Math.hypot(over,lat):hw+over):lat;
+    // inside the river's water the river wins (a stream ending in it does not)
+    const rank=d-hw-(s.river&&d<=hw?1e3:0);
+    if(!best||rank<bestRank){best={d,y:s.ay+(s.by-s.ay)*t,hw,river:s.river};bestRank=rank;}
   }
   return best;
 }
 // water surface height at (x,z), or null on dry land
 export function waterSurface(x:number,z:number):number|null{
   const w=waterNear(x,z);
-  return w&&w.d<=w.hw&&divinoHeight(x,z)<w.y?w.y:null;
+  return w&&w.d<=w.hw&&bedHeight(x,z)<w.y?w.y:null;
 }
 // deep enough to swim (and for a boat to float): the river, not the ankle-deep streams
 export function deepWater(x:number,z:number):boolean{
   const w=waterNear(x,z);
-  return!!w&&w.river&&w.d<=w.hw-.6&&w.y-divinoHeight(x,z)>.5;
+  return!!w&&w.river&&w.d<=w.hw-.6&&w.y-bedHeight(x,z)>.5;
 }
 
 // ---------------------------------------------------------------- the Rio do Peixe
-// its main course as one polyline, from upstream (south-east, past the town) to
-// downstream (north-west), with the arc length at each vertex — the boat race runs
-// along it and the moored boat waits on it
-const rio=D.waters.filter(w=>w.name==='Rio do Peixe').sort((a,b)=>b.pts.length-a.pts.length)[0]?.pts||[];
-const RX=rio.map(p=>p[0]+DIV_OX),RZ=rio.map(p=>p[1]+DIV_OZ),RY=rio.map(p=>p[2]);
-const RS:number[]=[0];
-for(let i=1;i<rio.length;i++)RS.push(RS[i-1]+Math.hypot(RX[i]-RX[i-1],RZ[i]-RZ[i-1]));
-export const RIVER_LEN=RS[RS.length-1]||0;
+// its main course as one polyline (data.ts RIO, smoothed), from upstream (south-east, past
+// the town) to downstream (north-west), with the arc length at each vertex — the boat race
+// runs along it and the moored boat waits on it
+const RX=RIO.x,RZ=RIO.z,RY=RIO.y,RS=RIO.s;
+export const RIVER_LEN=RIO.len;
 export const RIVER_HW=6;
 
 export interface RiverPt{x:number;z:number;y:number;dx:number;dz:number}

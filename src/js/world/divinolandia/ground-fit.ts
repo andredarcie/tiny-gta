@@ -13,7 +13,7 @@
 // polygon's corners, on grid nodes inside it, or where its edges cross the grid lines and
 // the cells' diagonals — all of which are enumerated. (Sampling a few points along the
 // walls, as before, missed the dips between them: those were the floating edges.)
-import {nearGrid,farGrid,inNearGrid,triH,type Grid} from './data.ts';
+import {nearGrid,farGrid,inNearGrid,divinoHeight,RIO_FINE_AT,RIO_FN,type Grid} from './data.ts';
 
 export type P2=[number,number];
 
@@ -28,13 +28,24 @@ function inside(px: number,pz: number,poly: P2[]): boolean{
   return c;
 }
 
+// does the box touch a cell of the river corridor's finer relief (data.ts RIO_FINE)?
+function touchesFine(x0: number,x1: number,z0: number,z1: number): boolean{
+  const g=nearGrid;
+  for(let j=Math.max(0,Math.floor((z0-g.z0)/g.cell));j<=Math.min(g.nz-2,Math.floor((z1-g.z0)/g.cell));j++)
+    for(let i=Math.max(0,Math.floor((x0-g.x0)/g.cell));i<=Math.min(g.nx-2,Math.floor((x1-g.x0)/g.cell));i++)
+      if(RIO_FINE_AT[j*(g.nx-1)+i]>=0)return true;
+  return false;
+}
+
 // Lowest and highest ground over a polygon (world coordinates).
 export function groundRange(poly: P2[]): {min: number;max: number}{
   let min=1e9,max=-1e9;
-  const take=(x: number,z: number)=>{const h=triH(gridOf(x,z),x,z);if(h<min)min=h;if(h>max)max=h;};
+  const take=(x: number,z: number)=>{const h=divinoHeight(x,z);if(h<min)min=h;if(h>max)max=h;};
   let gx0=1e9,gx1=-1e9,gz0=1e9,gz1=-1e9;
   for(const[x,z]of poly){take(x,z);gx0=Math.min(gx0,x);gx1=Math.max(gx1,x);gz0=Math.min(gz0,z);gz1=Math.max(gz1,z);}
-  const g=gridOf((gx0+gx1)/2,(gz0+gz1)/2);
+  const g0=gridOf((gx0+gx1)/2,(gz0+gz1)/2);
+  // along the river the ground is the corridor's 2 m triangles: enumerate on that lattice
+  const g=g0===nearGrid&&touchesFine(gx0,gx1,gz0,gz1)?{...g0,cell:g0.cell/(RIO_FN-1)}:g0;
   const u=(x: number)=>(x-g.x0)/g.cell,v=(z: number)=>(z-g.z0)/g.cell;
   // grid nodes inside
   for(let i=Math.ceil(u(gx0));i<=Math.floor(u(gx1));i++)for(let j=Math.ceil(v(gz0));j<=Math.floor(v(gz1));j++){
@@ -68,7 +79,7 @@ export interface Fit{floor: number;base: number;low: number;high: number;buried:
 //   maxBuried — at most this much of the uphill wall below ground (the floor rises if needed)
 export function fitBuilding(poly: P2[],front: P2,{lift=.15,maxBuried=2.4,footing=.5}: {lift?: number;maxBuried?: number;footing?: number}={}): Fit{
   const{min,max}=groundRange(poly);
-  const doorstep=triH(gridOf(front[0],front[1]),front[0],front[1]);
+  const doorstep=divinoHeight(front[0],front[1]);
   const floor=Math.max(doorstep,max-maxBuried)+lift;
   return{floor,base:min-footing,low:min,high:max,buried:Math.max(0,max-floor)};
 }

@@ -18,7 +18,8 @@ try{
   const errs:string[]=[];page.on('pageerror',e=>errs.push(e.message));page.on('console',c=>{if(c.type()==='error')errs.push(c.text());});
   // env LIST=<export>&I=<index>: one entry of a list of places (publicos.ts style) instead of the default model
   // env RUA=<OSM name> SIDE=N|S S0= S1=: a stretch of a surveyed street's lots in a row
-  const extra=process.env.RUA?`&rua=${encodeURIComponent(process.env.RUA)}&side=${process.env.SIDE??'N'}&s0=${process.env.S0??0}&s1=${process.env.S1??1e9}`
+  // env RIO=<arc> HALF=<m>: a real stretch of the Rio do Peixe (tools/studio/rio-trecho.ts)
+  const extra=process.env.RIO?`&rio=${process.env.RIO}&half=${process.env.HALF??70}`:process.env.RUA?`&rua=${encodeURIComponent(process.env.RUA)}&side=${process.env.SIDE??'N'}&s0=${process.env.S0??0}&s1=${process.env.S1??1e9}`
     :process.env.LIST?`&list=${process.env.LIST}&i=${process.env.I??0}`:'';
   await page.goto(`${BASE}/tools/studio/model.html?m=${encodeURIComponent(m)}&opts=${encodeURIComponent(optsS||'{}')}${extra}`);
   await page.waitForFunction(()=>(window as unknown as {__ready?:boolean}).__ready===true,null,{timeout:120000}).catch(()=>{throw new Error('studio did not load: '+errs.join(' | '));});

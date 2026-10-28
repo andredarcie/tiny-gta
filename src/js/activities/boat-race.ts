@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import {clamp,pick,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
+import {pick,rubberSpeed,separateRacers,diminishPrize,smoothPace} from '@/core/constants.ts';
 import {riverAt,riverArcAt,waterSurface,RIVER_LEN,BOAT_MOOR_S} from '@/world/divinolandia/water.ts';
+import {buildCourse,fitS,riverPt,type MineSpec,type Waypoint as BoatWaypoint,type Pt as RoutePoint} from '@/activities/boat-course.ts';
 import {REWARDS} from '@/core/minigame-rewards.ts';
 import {state,refs} from '@/core/state.ts';
 import {economy} from '@/core/economy.ts';
@@ -22,12 +23,6 @@ import {MiniGame,MiniGameId} from '@/activities/minigame.ts';
 import {markMiniGamePlayed} from '@/activities/minigame-intro.ts';
 import type {Racer,PrizeStreak,Blip} from '@/core/types.ts';
 
-// boia (x,z) na ordem do percurso (a última é a chegada)
-interface RoutePoint{x: number; z: number;}
-// waypoint dos rivais: boias (cp:true) + desvios laterais das minas (cp:false)
-interface BoatWaypoint{x: number; z: number; cp: boolean;}
-// posição de uma bomba aquática + o ponto de desvio lateral que os rivais usam
-interface MineSpec{leg: number; x: number; z: number; dx: number; dz: number;}
 // bomba 3D viva na cena durante a prova
 interface Mine{g: THREE.Group; x: number; z: number; bobT: number;}
 // explosão ativa de uma mina detonada
@@ -58,37 +53,25 @@ const game=new MiniGame({id:MiniGameId.BOAT_RACE,name:'Corrida de Lanchas'});
 const RACE_BUILD=' ◆ RIO';
 document.getElementById('buildver')?.insertAdjacentText('beforeend',RACE_BUILD);
 
-const CP_COUNT=7;       // boias do percurso (a última é a chegada)
-const CP_SPACING=190;   // river arc between buoys (m)
-const LEAD=70;          // da linha de largada até a 1ª boia
 const CP_AHEAD=0;       // boias visíveis além da atual (0 = SÓ a próxima boia que o jogador tem que pegar)
 const CP_RADIUS=12;     // raio pra contar a passagem na boia (lancha é rápida/larga)
 const NPC_COUNT=3;      // adversários
 const NPC_REACH=8;      // rivais precisam chegar PERTO da boia pra avançar
 const RIVAL_PACES=[0.82,0.90,0.96]; // per-rival pace, all <1 so a CLEAN run wins; the catch-up surge keeps trailing rivals dangerous if you slack (a sloppy run can still drop to 2nd/3rd).
 const SEP=6;            // distância mínima entre duas lanchas: separa quem encosta
-const MINE_MAX=3;       // só ALGUMAS bombas aquáticas por prova
 const MINE_HIT=3.4;     // raio de colisão da mina (lancha é larga): encostou, levou
-const MINE_DODGE=12;    // desvio lateral que os rivais fazem pra contornar a mina
 const HOP_V=7.5;        // impulso vertical do "pulo" ao bater numa mina
 const HOP_G=22;         // gravidade que traz a lancha de volta à água depois do pulo
-const LAT_AMP=2.6;       // slalom: how far a buoy sits off the river's centre line (channel half-width 6)
 const BOAT_FLOAT=.3;    // altura de flutuação da lancha acima da água (igual updateBoat)
 const ORANGE=0xff8a1e;
 const boatColors=[0x1fc4c4,0xffd24a,0xff2e88]; // rivais (a do jogador é coral)
 const surf=(x: number,z: number)=>waterSurface(x,z)??riverAt(riverArcAt(x,z).s).y; // water height at a point
-const SPAN=LEAD+(CP_COUNT-1)*CP_SPACING;
-
-// the river's centre point at arc s, pushed `off` metres to the right of the flow
-function riverPt(s: number,off=0): {x: number; z: number}{
-  const r=riverAt(s);
-  return{x:r.x-r.dz*off,z:r.z+r.dx*off};
-}
 
 // start (the first one right by the boat moored north of the centre, see player.ts)
 const start={x:0,z:0};
-const gate=makeBoatRaceGate({color:ORANGE}); // make* NÃO adiciona à cena
+let gate=makeBoatRaceGate({color:ORANGE}); // make* NÃO adiciona à cena
 scene.add(gate);
+let gateWidth=13;
 
 // marcador da largada: anel pulsante na superfície da água + facho (igual à
 // corrida de rua; a lancha estaciona dentro dele, sob o pórtico)
@@ -98,7 +81,6 @@ startMk.beacon.mount();
 scene.add(startMk.ring);
 
 let phase='idle';   // idle | countdown | racing
-let startS=0;       // river arc of the start line (the course runs downstream from it)
 let route: RoutePoint[]=[];       // [{x,z}] boias na ordem (a última é a chegada)
 let cpMarkers: CpMarker[]=[];   // marcadores 3D de cada boia
 let npcPath: BoatWaypoint[]=[];     // the rivals' waypoints: the river line, the buoys and the mine dodges
@@ -143,53 +125,16 @@ refs.startBoatRaceInteract=()=>{
   startRace();return true;
 };
 
-// Builds start/route/npcPath for a stretch of river starting at arc s0, downstream.
-// The buoys slalom across the channel (the first and the finish sit mid-river); the
-// rivals follow the river line every ~12 m (so they take its bends instead of cutting
-// over the banks), the buoys in order (cp:true) and a sidestep before each mine.
+// Lays out the course for a stretch of river from arc s0, downstream (boat-course.ts).
 function buildRoute(s0: number){
-  startS=s0;
-  const p0=riverPt(startS);start.x=p0.x;start.z=p0.z;
-  const flip=Math.random()<.5?1:-1;
-  const arcs: number[]=[];
-  route=[];
-  for(let k=0;k<CP_COUNT;k++){
-    const s=startS+LEAD+k*CP_SPACING;arcs.push(s);
-    const off=k>0&&k<CP_COUNT-1?flip*((k%2)?1:-1)*LAT_AMP*(.6+Math.random()*.4):0;
-    route.push(riverPt(s,off));
-  }
-  buildMineSpecs(arcs);
-  npcPath=[];
-  let k=0;
-  for(let s=startS+12;s<=arcs[arcs.length-1]+1e-6&&k<route.length;s+=12){
-    while(k<route.length&&arcs[k]<=s){
-      const m=mineSpecs.find(ms=>ms.leg===k);
-      if(m)npcPath.push({x:m.dx,z:m.dz,cp:false});
-      npcPath.push({x:route[k].x,z:route[k].z,cp:true});k++;
-    }
-    if(k<route.length){const p=riverPt(s);npcPath.push({x:p.x,z:p.z,cp:false});}
-  }
-  while(k<route.length){npcPath.push({x:route[k].x,z:route[k].z,cp:true});k++;}
-}
-
-// Water mines: a few, in the middle of interior legs, across the line the boats take;
-// everyone has to dodge. Also keeps the sidestep point the rivals use (the other half
-// of the channel).
-function buildMineSpecs(arcs: number[]){
-  mineSpecs=[];
-  const legs: number[]=[];
-  for(let k=2;k<CP_COUNT-1;k++)legs.push(k); // interior legs (route[k-1]→route[k])
-  for(let i=legs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[legs[i],legs[j]]=[legs[j],legs[i]];}
-  for(const k of legs.slice(0,Math.min(MINE_MAX,legs.length))){
-    const s=arcs[k-1]+(arcs[k]-arcs[k-1])*(.42+Math.random()*.16);
-    const side=Math.random()<.5?1:-1;
-    const m=riverPt(s,side*1.8),d=riverPt(s,-side*3.6);
-    mineSpecs.push({leg:k,x:m.x,z:m.z,dx:d.x,dz:d.z});
+  const c=buildCourse(s0);
+  start.x=c.start.x;start.z=c.start.z;
+  route=c.route;mineSpecs=c.mines;npcPath=c.npcPath;
+  if(Math.abs(c.gateWidth-gateWidth)>.3){                     // the gate spans the river there
+    scene.remove(gate);disposeGeometries(gate);
+    gateWidth=c.gateWidth;gate=makeBoatRaceGate({color:ORANGE,width:gateWidth});scene.add(gate);
   }
 }
-
-// keep the whole course on the river (the start no closer than LEAD to either end)
-const fitS=(s0: number)=>clamp(s0,40,RIVER_LEN-SPAN-40);
 
 // FIRST race: the start right by the moored boat, running downstream
 function prepareInitial(){buildRoute(fitS(BOAT_MOOR_S));}
@@ -223,7 +168,7 @@ function buildCpMarkers(){
     const p=route[i];
     if(i===route.length-1){
       // última boia: pórtico de chegada flutuante, virado pra quem chega
-      const finish=makeBoatRaceGate({color:ORANGE,finish:true});
+      const finish=makeBoatRaceGate({color:ORANGE,finish:true,width:gateWidth});
       const prev=route[i-1]||start;
       finish.position.set(p.x,surf(p.x,p.z),p.z);
       finish.rotation.y=Math.atan2(p.x-prev.x,p.z-prev.z);
@@ -325,7 +270,7 @@ function spawnRacers(h0: number){
   for(let i=0;i<NPC_COUNT;i++){
     const g=(makeBoat as (color: number)=>THREE.Group)(boatColors[i%boatColors.length]); // makeBoat já adiciona à cena
     seatCaptain(g,pick(shirtColors));
-    const lane=(i-1)*3;  // three abreast across the 12 m channel
+    const lane=(i-1)*Math.min(3,gateWidth/4.5);  // three abreast across the channel
     const gx=start.x+rx*lane+bx*(6+i*3),gz=start.z+rz*lane+bz*(6+i*3);
     g.position.set(gx,surf(gx,gz)+BOAT_FLOAT,gz);
     g.rotation.y=h0;

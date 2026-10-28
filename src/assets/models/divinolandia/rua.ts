@@ -278,28 +278,75 @@ const geo=(arr:number[],uv?:number[]):THREE.BufferGeometry=>{
 // Water ribbons (Rio do Peixe + streams): each point carries its own surface height and
 // how far the water reaches to its left (wl) and right (wr) before the bank rises over it
 // (world/divinolandia/water.ts finds those shorelines on the terrain).
-export const riverMat=matte({color:DIVINO.river,transparent:true,opacity:.88,side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+// The river's water (Divinolândia's Rio do Peixe runs muddy, ochre to brown — the Street
+// View panoramas from its bridges): a Phong surface whose fragment shader adds the flow —
+// two layers of ripples drifting downstream (uv.x = metres along the course / 8, uv.y = 0..1
+// across) that tilt the normal for the sun's glints and streak the colour — darker over
+// the deep middle, lighter and more opaque over the shallows, a thin line of foam at the
+// banks. uTime is advanced by the mesh itself (onBeforeRender), so no system has to drive it.
+const waterTime={value:0};
+export const riverMat=new THREE.MeshPhongMaterial({color:DIVINO.river,specular:0x2a2620,shininess:60,transparent:true,opacity:.9,
+  side:THREE.DoubleSide,polygonOffset:true,polygonOffsetFactor:-1,polygonOffsetUnits:-1});
+riverMat.onBeforeCompile=sh=>{
+  sh.uniforms.uTime=waterTime;
+  sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec2 vFlow;')
+    .replace('#include <begin_vertex>','#include <begin_vertex>\nvFlow=uv;');
+  sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
+uniform float uTime;varying vec2 vFlow;
+float rip(vec2 p){return sin(p.x*6.2+sin(p.y*9.0+p.x*1.7)*1.3)*.5+sin(p.x*13.1-p.y*7.3+1.9)*.25+sin(p.x*3.1+p.y*17.0+4.1)*.25;}`)
+    .replace('#include <color_fragment>',`#include <color_fragment>
+  float across=abs(vFlow.y*2.0-1.0);                         // 0 mid-stream, 1 at the banks
+  vec2 f1=vec2(vFlow.x-uTime*.11,vFlow.y*2.0),f2=vec2(vFlow.x*1.7-uTime*.07,vFlow.y*3.1+.37);
+  float r=rip(f1)*.6+rip(f2)*.4;
+  vec3 deep=vec3(.16,.11,.055),shallow=vec3(.28,.20,.11),foam=vec3(.62,.56,.44);
+  vec3 c=mix(deep,shallow,smoothstep(.35,1.0,across));
+  c*=.86+.22*r;                                               // streaks drifting with the flow
+  float edge=smoothstep(.86,.98,across)*(.55+.45*sin(vFlow.x*21.0-uTime*.9+vFlow.y*5.0));
+  c=mix(c,foam,clamp(edge,0.0,1.0)*.55);
+  diffuseColor.rgb=c;
+  diffuseColor.a*=mix(.86,.97,smoothstep(.5,1.0,across));`)
+    .replace('#include <normal_fragment_begin>',`#include <normal_fragment_begin>
+  {float e=.03;vec2 q=vec2(vFlow.x-uTime*.11,vFlow.y*2.0);
+   float dx=rip(q+vec2(e,0.))-rip(q-vec2(e,0.)),dz=rip(q+vec2(0.,e))-rip(q-vec2(0.,e));
+   normal=normalize(normal+vec3(dx,0.,dz)*.9*(1.0-smoothstep(.7,1.0,abs(vFlow.y*2.0-1.0))));}`)
+    // the sky in the water: more of it the flatter you look across (Fresnel); the fog's colour
+    // stands in for the sky's, so dusk and night water follow it
+    .replace('#include <opaque_fragment>',`{float ndv=abs(dot(normalize(vViewPosition),normal)),fres=pow(1.0-ndv,4.0);
+   #ifdef USE_FOG
+   vec3 sky=fogColor;
+   #else
+   vec3 sky=vec3(.70,.76,.82);
+   #endif
+   outgoingLight=mix(outgoingLight,sky*.8,clamp(fres*.5,0.0,.5));}
+#include <opaque_fragment>`);
+};
 export type WaterRibbon={pts:[number,number,number][];wl:number[];wr:number[]};
 export function makeWater(lines:WaterRibbon[]):THREE.Mesh{
-  const out:number[]=[];
+  const out:number[]=[],uv:number[]=[];
   for(const w of lines){
     const P=w.pts;if(P.length<2)continue;
     // per-vertex normals (mean of the two segments) so consecutive quads share their edges
-    const L:number[][]=[],R:number[][]=[];
+    const L:number[][]=[],R:number[][]=[],S:number[]=[0];
     for(let i=0;i<P.length;i++){
       const a=P[Math.max(0,i-1)],b=P[Math.min(P.length-1,i+1)],dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz)||1,nx=-dz/l,nz=dx/l;
       L.push([P[i][0]+nx*w.wl[i],P[i][2],P[i][1]+nz*w.wl[i]]);R.push([P[i][0]-nx*w.wr[i],P[i][2],P[i][1]-nz*w.wr[i]]);
+      if(i)S.push(S[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));
     }
     for(let i=1;i<P.length;i++){
       if(w.wl[i-1]+w.wr[i-1]+w.wl[i]+w.wr[i]<.01)continue;  // buried under a road here
-      const A=L[i-1],B=R[i-1],Cc=L[i],D=R[i];
-      out.push(...A,...B,...Cc,...B,...D,...Cc);
+      const A=L[i-1],B=R[i-1],Cc=L[i],D=R[i],u0=S[i-1]/8,u1=S[i]/8;
+      // wound counter-clockwise seen from above, so the front face (lit, and what the shader's
+      // sky reflection expects) is the one looking up
+      const up=(B[2]-A[2])*(Cc[0]-A[0])-(B[0]-A[0])*(Cc[2]-A[2])>0;
+      if(up){out.push(...A,...B,...Cc,...B,...D,...Cc);uv.push(u0,0,u0,1,u1,0,u0,1,u1,1,u1,0);}
+      else{out.push(...A,...Cc,...B,...B,...Cc,...D);uv.push(u0,0,u1,0,u0,1,u0,1,u1,0,u1,1);}
     }
   }
-  const g=geo(out);
+  const g=geo(out,uv);
   // face up regardless of travel direction: force +y normals
   const nrm=g.getAttribute('normal') as THREE.BufferAttribute;for(let i=0;i<nrm.count;i++)nrm.setXYZ(i,0,1,0);
   const m=new THREE.Mesh(g,riverMat);m.matrixAutoUpdate=false;m.renderOrder=1;
+  m.onBeforeRender=()=>{waterTime.value=performance.now()/1000;};
   return m;
 }
 
