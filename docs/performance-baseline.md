@@ -169,3 +169,46 @@ and the three-view Playwright capture passed. The sandbox prevented Vite's norma
 config bundler from reading an ancestor directory, so the production bundle was
 also checked with Vite's programmatic API using the same base, alias and chunk
 settings (`configFile:false`); its temporary script is in ignored `output/`.
+
+## Second round (2026-10-28)
+
+The lot-by-lot street survey (~40 surveyed streets, the hospital front) had pushed the
+street view to 1,740 draws: the surveyed streets alone made 1,293, of which 1,165 were
+textured materials that colour batching left alone. Median frame 29 ms, CPU render
+20 ms, a shadow-update frame 34 ms.
+
+1. **Textured colour batching** (`static-color-batch.ts`): a material whose only texture
+   is the diffuse `map` now batches too — the shader multiplies colour × vertex colour ×
+   texel, so every tint of one plaster/tile/louvre texture shares a draw. The batched
+   material is shared town-wide per signature, and signatures are cached per material
+   (stringifying them cost ~0.75 s of the boot).
+2. **Street blocks** (`build.ts`): surveyed-street pieces are merged per 200 m block of
+   the town instead of street by street.
+3. **Sign atlas** (`sign-atlas.ts`): façade signs and road boards are painted on shared
+   2048² pages instead of one canvas texture (and draw) each.
+4. **Detail LOD** (`world/detail-lod.ts`): after merging, triangles under 0.02 m² (two
+   thirds of a street's: frames, bars, slats, sills, ridge tiles) move to detail meshes
+   per 100 m cell, drawn only within 160 m of the camera (3D). The pieces share the
+   original vertex attributes — no extra memory.
+5. **Base streets in tiles** (`rua.ts makeStreets`): each paving was one mesh for the
+   whole town (~417k triangles sent whatever the view); now 384 m tiles.
+6. **Lighter vertices**: batched colours as normalised 16-bit (floats kept when a colour
+   is lifted past 1, as foliage is), normals as normalised bytes, and no UVs on
+   untextured batches. Geometry kept in JS memory 361 → 246 MB.
+
+| Metric (centro-street) | Before | After |
+|---|---:|---:|
+| Total draws | 1,740 | 721 |
+| Surveyed street draws | 1,293 | 244 |
+| Submitted triangles | 2.34 M | 1.44 M |
+| Base streets (otherStatic) triangles | 417k | ~218k |
+| CPU render ms (profiler) | 20.3 | 8.0 |
+| Shadow-update frame ms | 34.5 | 10.2 |
+| Median rAF interval | 29.0 ms | 10.6 ms |
+| JS geometry arrays | 361 MB | 246 MB |
+
+The elevated view went 1,649 → 690 draws and 2.57 → 1.54 M triangles. Screenshots
+before/after are pixel-for-pixel alike at these views. Remaining: ~126 shader
+programs compile on the first frame (`onFirstUse` ~3.3 s in a dev boot), 22 of them
+the vehicles' physical materials; the boot's town build still takes ~7 s in dev.
+Captures: `output/visual/perf-1028-antes/` and `perf-1028-p9/`.

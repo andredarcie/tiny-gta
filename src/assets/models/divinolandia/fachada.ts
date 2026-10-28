@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {leafMat,leafMass} from './copa.ts';
+import {atlasSign,mapToSlot} from './sign-atlas.ts';
 import {Kit,P,STONE,CORR,plain,holedWall,holeOf,fillOpening,wallX,wallZ,dirt,railing,roof,shade,setRoomBounds,
   meterBox,houseNumber,waterTank,dish,acUnit,solarHeater,FH,type Op,type RoofKind} from './kit-fachada.ts';
 
@@ -113,16 +114,20 @@ export function buildFachada(o:FachadaOpts):THREE.Group{
         k.box(plain('#c9ccce'),bx0,bx1,y+.98,y+1.03,z0+dp-.03,z0+dp+.03);}
       else railing(k,bx0,bx1,y,1.05,z0+dp-.05,rc,'bars');
     }
-    if(o.sign&&typeof document!=='undefined'){
-      const s=o.sign,c=document.createElement('canvas');c.width=512;c.height=Math.max(64,Math.round(512*s.h/s.w));
-      const x=c.getContext('2d')!;x.fillStyle=s.bg;x.fillRect(0,0,c.width,c.height);
-      x.strokeStyle=s.fg;x.lineWidth=4;x.strokeRect(6,6,c.width-12,c.height-12);
-      x.fillStyle=s.fg;x.textAlign='center';x.textBaseline='middle';
-      x.font=`700 ${Math.round(c.height*.42)}px "Barlow Condensed",monospace`;x.fillText(s.text,c.width/2,c.height/2,c.width-24);
-      const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;
-      const edge=plain('#d0d0d0');
-      const p=new THREE.Mesh(new THREE.BoxGeometry(s.w,s.h,.06),[edge,edge,edge,edge,new THREE.MeshLambertMaterial({map:t}),edge]);
-      p.position.set(s.x,s.y,z0+.06);k.add(p);
+    if(o.sign){
+      // painted on the shared sign atlas (sign-atlas.ts): one draw for every sign of a block
+      const s=o.sign,slot=atlasSign(512,Math.max(64,Math.round(512*s.h/s.w)),(x,cw,ch)=>{
+        x.fillStyle=s.bg;x.fillRect(0,0,cw,ch);
+        x.strokeStyle=s.fg;x.lineWidth=4;x.strokeRect(6,6,cw-12,ch-12);
+        x.fillStyle=s.fg;x.textAlign='center';x.textBaseline='middle';
+        x.font=`700 ${Math.round(ch*.42)}px "Barlow Condensed",monospace`;x.fillText(s.text,cw/2,ch/2,cw-24);
+      });
+      if(slot){
+        const edge=plain('#d0d0d0'),geo=new THREE.BoxGeometry(s.w,s.h,.06);
+        mapToSlot(geo,slot,16,4);                                         // the +z face
+        const p=new THREE.Mesh(geo,[edge,edge,edge,edge,slot.mat,edge]);
+        p.position.set(s.x,s.y,z0+.06);k.add(p);
+      }
     }
     const top=roof(k,o.roof||'hip',w,d,H,z0,{tile:o.roofColor,fascia:o.fascia,wall:o.wall,ov:o.eave,parapet:o.parapet});
     // services and clutter, deterministic per lot

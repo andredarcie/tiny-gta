@@ -67,6 +67,7 @@ import {makeFiatUno} from '../../../assets/models/vehicles/fiat-uno.ts';
 import {makeHilux} from '../../../assets/models/vehicles/hilux.ts';
 import {makeKombi} from '../../../assets/models/vehicles/kombi.ts';
 import {hospitalParked} from './ruas/frente-hospital.ts';
+import {splitDetail,updateDetailLod} from '../detail-lod.ts';
 import {buildSurveyedStreet} from './ruas/build-rua.ts';
 import {STREETS} from './ruas/index.ts';
 import {planRoadPoles} from './postes-rua.ts';
@@ -85,6 +86,7 @@ function placeStatic(obj:THREE.Object3D,category:StaticCategory='landmarks'):THR
   root.updateMatrixWorld(true);
   root.traverse(o=>{if(o!==root){o.matrixAutoUpdate=false;o.updateMatrix();}});
   mergeStatic(root,new Set(),{vertexColors:true});
+  splitDetail(root);                      // the fine detail drawn only near the camera (detail-lod.ts)
   root.matrixAutoUpdate=false;scene.add(trackStatic(category,root));
   return root;
 }
@@ -191,16 +193,29 @@ export function buildDivinolandia():void{
   // ---------- surveyed streets (lot by lot from Street View) ----------
   // the bake chained each one into a single polyline (ruas/spec.ts chainPieces), cut into
   // its surface pieces in order: concatenating them gives the arc-length frame of the spec
+  // The streets are merged by 200 m block of the town, not one by one: neighbouring
+  // streets share the same plaster, tile and paint, so a block draws in a few calls.
+  const STREET_BLOCK=200,streetBlocks=new Map<string,THREE.Group>();
+  const blockOf=(x:number,z:number):THREE.Group=>{
+    const k=Math.floor(x/STREET_BLOCK)+'_'+Math.floor(z/STREET_BLOCK);
+    let g=streetBlocks.get(k);if(!g){g=new THREE.Group();streetBlocks.set(k,g);}
+    return g;
+  };
+  const _bc=new THREE.Box3(),_bv=new THREE.Vector3();
   for(const spec of STREETS){
     const pts:[number,number][]=[];
     for(const r of D.roads)if(r.n===spec.rua)for(const p of r.pts){const q=w(p);const last=pts[pts.length-1];if(!last||Math.hypot(last[0]-q[0],last[1]-q[1])>.5)pts.push(q);}
     if(pts.length<2)continue;
-    const street=new THREE.Group();                          // all lots merged together (few draw calls)
-    const r=buildSurveyedStreet(spec,pts,D.roads.find(r=>r.n===spec.rua)!.hw,H,o=>{street.add(o);});
+    const r=buildSurveyedStreet(spec,pts,D.roads.find(r=>r.n===spec.rua)!.hw,H,o=>{
+      // each piece (a lot, a sidewalk run, a tree…) goes to the block of its centre
+      o.updateMatrixWorld(true);_bc.setFromObject(o);
+      if(_bc.isEmpty())_bv.copy(o.position);else _bc.getCenter(_bv);
+      blockOf(_bv.x,_bv.z).add(o);
+    });
     scene.add(trackStatic('surveyedStreets',r.wires));                                      // lines aren't merged with the meshes
     surveyedLots.push(...r.footprints);
-    placeStatic(street,'surveyedStreets');
   }
+  for(const g of streetBlocks.values())placeStatic(g,'surveyedStreets');
   // ---------- the cell towers of the centre (seen over the roofs from the street) ----------
   for(const p of D.landmarks.torresCelular){
     const[x,z]=w(p);const t=Torre.build({h:38,painted:false,mirante:false});t.position.set(x,H(x,z),z);placeStatic(t);
@@ -546,6 +561,7 @@ export function buildDivinolandia():void{
 // distance culling for the big batched groups (houses, woods, coffee)
 export function updateDivinolandia(px:number,pz:number):void{
   if(farTerrain)updateTerrainLod(farTerrain,camera.position);
+  updateDetailLod(camera.position);
   for(const{g,r}of cullGroups){const dx=g.userData.cx-px,dz=g.userData.cz-pz;g.visible=dx*dx+dz*dz<r*r;}
 }
 

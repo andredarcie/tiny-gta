@@ -261,9 +261,22 @@ export function makeStreets(lines:StreetLine[],hAt:HAt,grid?:DrapeGrid,opts:Stre
     }
   });
   const g=new THREE.Group();
+  // each surface is cut into TILE × TILE blocks by triangle (one mesh for the whole town
+  // sent all ~400k triangles to the GPU whatever the camera saw; a block outside the view
+  // is now culled whole)
+  const TILE=384;
   const add=(b:Buf,m:THREE.Material,order=0):void=>{
     if(!b.p.length)return;
-    const mesh=new THREE.Mesh(geo(b.p,b.uv),m);mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;mesh.renderOrder=order;g.add(mesh);
+    const tiles=new Map<string,Buf>(),hasUv=b.uv.length>0;
+    for(let i=0;i<b.p.length;i+=9){
+      const k=Math.floor((b.p[i]+b.p[i+3]+b.p[i+6])/3/TILE)+'_'+Math.floor((b.p[i+2]+b.p[i+5]+b.p[i+8])/3/TILE);
+      let t=tiles.get(k);if(!t){t=buf();tiles.set(k,t);}
+      for(let j=0;j<9;j++)t.p.push(b.p[i+j]);
+      if(hasUv)for(let j=0;j<6;j++)t.uv.push(b.uv[i/9*6+j]);
+    }
+    for(const t of tiles.values()){
+      const mesh=new THREE.Mesh(geo(t.p,t.uv),m);mesh.receiveShadow=true;mesh.matrixAutoUpdate=false;mesh.renderOrder=order;g.add(mesh);
+    }
   };
   add(B.sett,settMat);add(B.hex,hexMat);add(B.asph,asphaltMat);add(B.dirt,dirtRoadMat);add(B.walk,sidewalkMat);add(B.kerb,kerbMat);
   add(B.yellow,yellowMat);add(B.white,whiteMat);add(B.verge,vergeMat);
