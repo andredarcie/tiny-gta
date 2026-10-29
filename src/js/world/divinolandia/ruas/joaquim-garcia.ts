@@ -14,6 +14,8 @@
 import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 
 export const RUA='Rua Joaquim Garcia';
+// house nº 667 (west side), whose front garden with the capybara statue extras.ts places
+export const CAPIVARA_S0=50,CAPIVARA_S1=58;
 export const CROSS=[0,164.3,247.3,331.6,393.6,460.4,550.5,611.3];
 const SURFACE:Surface[]=[[0,331.6,'asphalt'],[331.6,611.3,'sett']];
 const T='#b0603f',W='#f1efe9';
@@ -154,9 +156,11 @@ export const LOTS:Lot[]=[
     open:[{t:'window',x:-1,w:1.2,frame:W},{t:'window',x:1.6,w:1.2,frame:W}]}),
   // roughcast grey-beige gable house with a barred carport
   L('S',42,50,{wall:'#b8b0a2',roof:'gable',roofColor:T,fascia:W,open:[{t:'gate',x:1,w:3,c:'#e8e8e6'},{t:'window',x:-2.4,w:1.6,grille:true,frame:W}]}),
-  // nº 887: roughcast taupe, a green recessed porch behind white bars
-  L('S',50,58,{wall:'#b8a898',roof:'gable',roofColor:T,fascia:W,setback:2,front:{h:.4,c:'#b8a898',rail:{h:1.2,c:W,style:'bars'}},
-    open:[{t:'open',x:1.4,w:2.6,h:2.3,c:'casa'},{t:'window',x:-1.8,w:1.8,grille:true,frame:W}]}),
+  // nº 667, across from the Objetivo: roughcast beige with a white scalloped fascia, the green
+  // recessed porch on the left, the barred window on the right, white bars in front. The
+  // capybara statue and the plants on its front are a model of their own (extras.ts)
+  L('S',CAPIVARA_S0,CAPIVARA_S1,{wall:'#b8a898',roof:'gable',roofColor:T,fascia:W,setback:2,front:{h:.4,c:'#b8a898',rail:{h:1.2,c:W,style:'bars'}},
+    open:[{t:'open',x:-1.4,w:2.6,h:2.3,c:'casa'},{t:'window',x:1.8,w:1.8,grille:true,frame:W}]}),
   // taupe house behind a taupe wall with a white gate
   L('S',58,66,{wall:'#c9b4a0',roof:'gable',roofColor:'#6a5a4a',setback:3,front:{h:1.6,c:'#c9b4a0',gates:[{t:'gate',x:3,w:2.4,c:W}]}}),
   // lime-green houses: grey garage doors, grilled windows

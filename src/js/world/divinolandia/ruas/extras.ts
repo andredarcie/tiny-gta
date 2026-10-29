@@ -6,6 +6,8 @@ import * as THREE from 'three';
 import CasaRosa,{ROSA_SOLIDS} from '../../../../assets/models/divinolandia/casa-rosa-esquina.ts';
 import {addObb} from '../collide.ts';
 import {RUA as JAM,ROSA_AT} from './jose-augusto-machado.ts';
+import JardimCapivara,{CAPIVARA_SOLIDS} from '../../../../assets/models/divinolandia/jardim-capivara.ts';
+import {RUA as JG,CAPIVARA_S0,CAPIVARA_S1} from './joaquim-garcia.ts';
 import {hospitalLeonor,hospitalAdhemar} from './extras-hospital.ts';
 import {hospitalFrente} from './frente-hospital.ts';
 import type {StreetSpec} from './spec.ts';
@@ -42,6 +44,13 @@ export const EXTRAS:Record<string,(ctx:ExtrasCtx)=>number>={
     const cx=f.x+nx*(hw+sidewalk)-f.ux*(crossHw+sidewalk),cz=f.z+nz*(hw+sidewalk)-f.uz*(crossHw+sidewalk);
     placeModel(ctx,CasaRosa.build(),cx,cz,Math.atan2(-f.uz,f.ux),ROSA_SOLIDS);   // model +x = east, +z = south
     return 1;
+  },
+  // nº 667: the capybara statue and the plants in front of the house, in the lot's own
+  // façade frame (same origin and heading build-rua.ts gives the lot)
+  [JG]:ctx=>{
+    const f=ctx.along((CAPIVARA_S0+CAPIVARA_S1)/2),[nx,nz]=ctx.normal(f,'S'),off=ctx.hw+ctx.sidewalk;
+    placeModel(ctx,JardimCapivara.build(),f.x+nx*off,f.z+nz*off,Math.atan2(-nx,-nz),CAPIVARA_SOLIDS);
+    return 0;
   },
   // the Hospital Regional's parking apron, fence and grounds, the park and the SABESP tanks;
   // and its front: the drives' square, the car park, the rock (frente-hospital.ts)
