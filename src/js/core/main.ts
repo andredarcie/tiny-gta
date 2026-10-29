@@ -105,6 +105,10 @@ declare global {
       carNear: (x: number, z: number) => {x: number; z: number} | null;
       explodeNear: (x: number, z: number) => boolean;
       cineShot: (shot: {a: CineKey; b?: CineKey; ms?: number; fov?: number; tod?: number} | null) => boolean;
+      film: (on: boolean) => boolean;
+      filmFrame: (cam: FilmCam, dt: number) => boolean;
+      filmKit: () => {THREE: typeof THREE; scene: THREE.Scene; camera: THREE.PerspectiveCamera; renderer: THREE.WebGLRenderer;
+        groundHeight: (x: number, z: number) => number; setTod: (t: number) => void; setRenderScale: (s: number) => void};
       enterCar: () => string;
       enterPrimaryCar: () => string;
       exitCar: () => string;
@@ -410,7 +414,7 @@ function step(dt: number){
   settleParkedVehicles();   // parked vehicles sit on their wheels on the drawn paving
   P.end();
 
-  P.begin('camera');updateCamera(dt);applyProfileView();applyCineShot();updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
+  P.begin('camera');updateCamera(dt);applyProfileView();applyCineShot();applyFilmCam();updateFarmView(dt);P.end(); // farm hands pose in view space after the camera moved
   updateNpcLabels(camera,playerPos()); // name tags follow each NPC's head (after camera moved)
   reconcileVehicleNpcs(); // car drivers / boat crew become named NPCs (and leave the census with their vehicle)
   P.begin('story');
@@ -423,7 +427,7 @@ function step(dt: number){
   mmAccum+=dt;
   if(mmAccum>=MM_INTERVAL){mmAccum=0;P.begin('minimap');drawMinimap();P.end();}
 
-  const pp=playerPos();
+  const pp=filmCam?filmPoint(filmCam.p):playerPos();
   P.begin('culling');
   updatePropCulling(pp.x,pp.z); // props pequenos: corte curto (LOD por tamanho)
   updateNatureCulling(pp.x,pp.z); // stylized-nature chunks (trees/rocks/grass): same size-LOD cut
@@ -458,8 +462,9 @@ function step(dt: number){
     if(c.g&&c.g.visible&&!_vFrustum.intersectsSphere(_vSphere.set(c.g.position,8)))c.g.visible=false;
   P.end();
   // the sun follows the player's height too (Divinolândia's ground is hundreds of metres up)
-  dlight.position.set(pp.x+sunDir.x*160,pp.y+sunDir.y*160,pp.z+sunDir.z*160);
-  dlight.target.position.set(pp.x,pp.y,pp.z);
+  const sp=filmCam?filmPoint(filmCam.t):pp;
+  dlight.position.set(sp.x+sunDir.x*160,sp.y+sunDir.y*160,sp.z+sunDir.z*160);
+  dlight.target.position.set(sp.x,sp.y,sp.z);
 
   P.begin('render');renderFrame(dt);P.end();
   // "Show NPCs" map overlay: while the world keeps simulating (map open + toggle on),
@@ -507,6 +512,23 @@ function applyCineShot(){
   camera.lookAt(mix(a.tx,b.tx),mix(groundHeight(a.tx,a.tz)+a.th,groundHeight(b.tx,b.tz)+b.th),mix(a.tz,b.tz));
   player.g.visible=false;
 }
+// Video: frame-exact filming (the documentary renderer, C:\repos\fotossintese). While
+// `filming`, the rAF loop stands still: each frame is stepped by exactly dt and drawn by
+// __test.filmFrame from an absolute camera pose in world metres (p = eye, t = target),
+// so a render is the same every time and never depends on how fast the machine is.
+// Streaming/culling follow the camera and the sun's shadow box follows what it looks at.
+type FilmCam={p:[number,number,number];t:[number,number,number];fov:number;roll?:number};
+let filming=false,filmCam:FilmCam|null=null;
+function applyFilmCam(){
+  if(!filmCam)return;
+  const {p,t,fov,roll}=filmCam;
+  if(camera.fov!==fov){camera.fov=fov;camera.updateProjectionMatrix();}
+  camera.position.set(p[0],p[1],p[2]);camera.up.set(0,1,0);camera.lookAt(t[0],t[1],t[2]);
+  if(roll)camera.rotateZ(roll);
+  player.g.visible=false;
+  for(const c of camera.children)c.visible=false; // the first-person hands and gun ride on the camera
+}
+const filmPoint=(q:[number,number,number])=>({x:q[0],y:groundHeight(q[0],q[2]),z:q[2]});
 type ProfileView={x:number;z:number;height:number;targetX:number;targetZ:number;targetHeight:number;fov:number};
 let profileView:ProfileView|null=null;
 let profileRestore:{scale:number;fov:number;tod:number}|null=null;
@@ -539,6 +561,9 @@ try{
 const WHEEL_TIMESCALE=.18; // roda de armas aberta: mundo em câmera lenta (estilo open-world)
 function frame(){
   requestAnimationFrame(frame);
+  // video: only __test.filmFrame moves the world; the loop just redraws that frame, so the
+  // page always has a fresh drawing to capture (the WebGL buffer isn't preserved)
+  if(filming){renderFrame(0);return;}
   P.frameStart(); // marca o início do frame pro profiler (limpa acumuladores)
   tickFps(); // antes dos early-returns: mede até pausado/tela de título
   const raw=clock.getDelta();
@@ -660,6 +685,21 @@ window.__test={
     applyCineShot();
     return true;
   },
+  // Video: frame-exact filming (see FilmCam). film(true) stops the rAF loop and the
+  // player's camera; each filmFrame then steps the world by dt and draws it from `cam`.
+  film:(on)=>{
+    filming=!!on;state.cine=filming;
+    if(!filming){filmCam=null;player.g.visible=true;}
+    return filming;
+  },
+  filmFrame:(cam,dt)=>{
+    filmCam=cam;
+    step(Math.min(Math.max(dt,0),.05));
+    return true;
+  },
+  // Video: what a renderer needs to add its own set pieces to the live scene, built with
+  // the game's own three.js (one THREE instance per page).
+  filmKit:()=>({THREE,scene,camera,renderer,groundHeight,setTod,setRenderScale}),
   enterCar:()=>{
     if(state.mode!=='foot')return state.mode;
     const f=nearestCar(1e9);                 // nearest car at any distance
