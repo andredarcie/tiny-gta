@@ -595,7 +595,8 @@ function cut(pts:P2[],a:number,b:number):P2[]{             // sub-polyline betwe
     if(spec){
       if(done.has(r.name))continue;done.add(r.name);
       const pts=chainPieces(roads.filter(q=>q.name===r.name).map(q=>q.pts));
-      for(const[a,b,sf]of spec.surface){const p=cut(pts,a,b);if(p.length>1)out.push({...r,pts:p,sf,paved:true});}
+      for(const[a,b,sf]of spec.surface){const p=cut(pts,a,b);if(p.length<2)continue;
+        if(sf==='dirt'){const{sf:_,...dirt}=r;out.push({...dirt,pts:p,paved:false});}else out.push({...r,pts:p,sf,paved:true});}
       continue;
     }
     if(SETT_STREETS.includes(r.name))r.sf='sett';
