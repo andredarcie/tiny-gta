@@ -42,7 +42,7 @@ export const LOTS:Lot[]=[
   // the cream gable house behind its cream wall, a galvanized gate beside it
   L('N',72,80,{wall:'#ece4d4',roof:'gable',roofColor:'#6a5a4a',setback:2,front:{h:1.8,c:'#e6dcc4',gates:[{t:'gate',x:-3,w:1.6,c:'#c8ccd0'}]},open:[{t:'window',x:-.4,w:1.4,shutters:'#a8b0b8'},{t:'window',x:2.2,w:1.6,frame:'#3a3a3a'}]}),
   // nº 71: the cream house with a grey iron gate and carport, a sago palm and an orange tree
-  L('N',80,85,{wall:'#ece8e0',roof:'hip',roofColor:T,setback:2,front:{h:1.4,c:'#ece8e0',gates:[{t:'gate',x:-1,w:2.6,c:'#8a8c8e'}]},open:[{t:'window',x:1.4,w:1.4,shutters:'#8a8c8e'}]}),
+  L('N',80,85,{wall:'#ece8e0',roof:'hip',roofColor:T,setback:1,front:{h:1.4,c:'#ece8e0',gates:[{t:'gate',x:-1,w:2.6,c:'#8a8c8e'}]},open:[{t:'window',x:1.4,w:1.4,shutters:'#8a8c8e'}]}),
   // ================= WEST SIDE (S) =================
   // the white corner wall with its wavy top, the grey-white house behind
   L('S',4,12,{wall:'#ecebe6',roof:'gable',roofColor:T,setback:3,front:{h:1.8,c:'#ecebe6'},open:[{t:'window',x:-1.6,w:1.2,shutters:'#3a3a3a'},{t:'window',x:1.6,w:1.2,shutters:'#3a3a3a'}]}),

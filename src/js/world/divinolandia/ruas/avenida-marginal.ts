@@ -46,23 +46,22 @@ export const LOTS:Lot[]=[
   tela(10,32),
   // the farmhouse well back in its yard: yellow, a hip roof of old tiles over a veranda on
   // white posts all along the front, a brown door, a hammock; a black tarp drying in the yard
-  {side:'S',s0:32,s1:57,f:{wall:'#e2c878',roof:'hip',roofColor:OLD,d:11,setback:13,plinth:{h:.4,c:'#b89a5a'},
+  {side:'S',s0:32,s1:56.5,f:{wall:'#e2c878',roof:'hip',roofColor:OLD,d:11,setback:13,plinth:{h:.4,c:'#b89a5a'},
     front:{h:.15,c:'#cfcac0',rail:{h:1.6,c:'#c8c8c8',style:'arame'},gates:[{t:'gate',x:8,w:3.4,c:W}]},
     open:[{t:'open',x:-4,w:14,h:2.4,c:'casa',awning:OLD},{t:'door',x:-1,w:1,c:'#7a4a2a'},{t:'window',x:-6,w:1.2,shutters:'#7a4a2a'},{t:'window',x:4,w:1.2,shutters:'#7a4a2a'}]}},
   tela(57,66),
   // the plank shed by the gate, a fibre-cement roof
   {side:'S',s0:66,s1:72,f:{wall:'#8a6a4a',roof:'flat',d:3,setback:.6,open:[{t:'door',x:1.6,w:1,c:'#6a4a32'}]}},
   // the horta: rows of greens under black shade cloth on wooden posts, behind the fence
-  tela(72,100,{behind:{w:24,d:9,at:2,roof:'flat',roofColor:'#2a2c2a',wall:'#3a3c3a'}}),
+  tela(72,94,{behind:{w:18,d:6,at:2,roof:'flat',roofColor:'#2a2c2a',wall:'#3a3c3a'}}),
   // ================= Treze de Maio → Cel. José Leopoldino: empty grass lots =================
   // the precast fence along the last lot, a red sheet gate in it
   placa(182,194,1.8,{front:{h:1.8,c:PRE,style:'panel',gates:[{t:'gate',x:3,w:2.4,c:'#a8392e'}]}}),
   // ================= Cel. José Leopoldino → Dom Antônio J. de Mello =================
-  // the pale corner wall, then the pink house behind its high pink wall with a tiled coping
-  muro(205.6,210,'#ecdcd4',2.4),
-  L(210.8,228,{wall:'#e8d4cc',roof:'hip',roofColor:T,setback:3,d:7,front:{h:2.2,c:'#e4cfc6'},open:[{t:'window',x:-3,w:1.6,frame:W},{t:'open',x:4,w:5,h:2.3,c:'casa',awning:T}]}),
+  // the pale corner wall (the pink corner house behind it is the Leopoldino's, N 13–28)
+  muro(205.6,208.8,'#ecdcd4',2.4),
   // the long beige wall on a green base, a white sobrado over it
-  muro(228,237,'#ecd6b8',2.6,{plinth:{h:.3,c:'#3a6a58'},behind:{w:7,d:8,at:3,floors:2,roof:'flat',roofColor:FIBRE,wall:'#ece8e2'}}),
+  muro(226.6,237,'#ecd6b8',2.6,{plinth:{h:.3,c:'#3a6a58'},behind:{w:7,d:8,at:3,floors:2,roof:'flat',roofColor:FIBRE,wall:'#ece8e2'}}),
   // nº 02: the brown plank double gate under a tiled hood, a rooftop terrace with a brown rail
   L(237,243,{wall:'#ecd4bc',roof:'flat',parapet:true,plinth:{h:.4,c:'#3a5aa0'},open:[{t:'gate',x:1.2,w:2.8,c:'#7a4a2a',awning:T}]}),
   // ================= Dom Antônio J. de Mello → Luis Bianchetti =================
@@ -85,9 +84,9 @@ export const LOTS:Lot[]=[
   // the beige wall with a brown garage under a tiled hood and a white gate
   L(372,382,{wall:'#ecdcc4',roof:'hip',roofColor:T,setback:3,front:{h:2,c:'#e2d4c0',gates:[{t:'gate',x:0,w:3,c:'#8a3a2a',awning:T},{t:'gate',x:-3.4,w:1.2,c:W}]}}),
   // the stained cream wall on a grey base, a sky-blue house behind it
-  L(382,392,{wall:'#8ab4d8',roof:'hip',roofColor:T,setback:3,front:{h:2,c:'#ddd4c0'},plinth:{h:.4,c:'#8a8c8e'},open:[{t:'window',x:-1,w:1.6,shutters:'#5a7aa0'}]}),
+  L(382,390.6,{wall:'#8ab4d8',roof:'hip',roofColor:T,setback:3,d:6,front:{h:2,c:'#ddd4c0'},plinth:{h:.4,c:'#8a8c8e'},open:[{t:'window',x:-1,w:1.6,shutters:'#5a7aa0'}]}),
   // the grey house right on the sidewalk, windows with brown grilles
-  L(392,404,{wall:'#a8aaa8',roof:'gableSide',roofColor:T,plinth:{h:.5,c:'#8a8a86'},open:[{t:'window',x:0,w:2.4,grille:true,frame:W},{t:'window',x:-4,w:1.2,grille:true,frame:W}]}),
+  L(393.4,404,{d:8,wall:'#a8aaa8',roof:'gableSide',roofColor:T,plinth:{h:.5,c:'#8a8a86'},open:[{t:'window',x:0,w:2.4,grille:true,frame:W},{t:'window',x:-4,w:1.2,grille:true,frame:W}]}),
   // the long grey textured wall, the brick houses behind it (they face the João Cabrera,
   // which runs close behind this stretch)
   L(404,415.6,{wall:'#a8583a',roof:'hip',roofColor:T,setback:4,d:7.5,front:{h:2.2,c:'#b8b8b4'},plinth:{h:.4,c:'#8a8a86'}}),
@@ -100,25 +99,25 @@ export const LOTS:Lot[]=[
   // the beige house with a white wave painted across it, a grilled window, a grey gate
   L(452,460,{floors:2,wall:'#b89a80',roof:'gableSide',roofColor:T,band:W,open:[{t:'window',x:-1.4,w:2.4,grille:true},{t:'garage',x:2.4,w:2.4,c:'#a8b0b8',awning:T}]}),
   // the block wall with a fibre-cement shed behind and a chain-link carport gate
-  muro(460,468,'#a49e94',2.4,{front:{h:2.4,c:'#a49e94',gates:[{t:'gate',x:-1.4,w:3.6,c:'#9aa0a0'}]},behind:{w:7,d:6,at:1,roof:'flat',roofColor:FIBRE,wall:'#a49e94'}}),
+  muro(460,466.6,'#a49e94',2.4,{front:{h:2.4,c:'#a49e94',gates:[{t:'gate',x:-1.4,w:3.6,c:'#9aa0a0'}]},behind:{w:6,d:4,at:1,roof:'flat',roofColor:FIBRE,wall:'#a49e94'}}),
   // exposed brick and block, a chain-link gate, the unfinished sobrado behind
-  L(468,476,{wall:'#ece8e2',roof:'gable',roofColor:T,floors:2,setback:5,front:{h:2.4,c:'#b86a4a',gates:[{t:'gate',x:0,w:3.6,c:'#9aa0a0'}]}}),
+  L(469.4,476,{wall:'#ece8e2',roof:'gable',roofColor:T,floors:2,setback:4,d:5,front:{h:2.4,c:'#b86a4a',gates:[{t:'gate',x:0,w:3.6,c:'#9aa0a0'}]}}),
   L(476,484,{wall:'#b86a4a',roof:'flat',floors:2,open:[{t:'garage',x:.4,w:3,c:'#b8bcc0'}]}),
   // the long cream speckled wall of a shed (a grey gate at its west end), trees in front
   muro(484,508,'#e2d8c0',2.6,{plinth:{h:.4,c:'#6a645a'},front:{h:2.6,c:'#e2d8c0',gates:[{t:'gate',x:9,w:2.4,c:'#a8b0b8'}]},behind:{w:20,d:10,at:1,roof:'flat',roofColor:FIBRE,wall:'#e2d8c0'}}),
   // the grey gate with an excavator painted on it, a rough concrete wall
   muro(508,516,'#b8b4aa',2.2,{front:{h:2.2,c:'#b8b4aa',gates:[{t:'gate',x:2.4,w:2.4,c:'#5a5c5e'}]}}),
   // MARF: the grey block shed with its banner behind a white block wall, open at the gate
-  L(522,548,{wall:'#a8acb0',roof:'gableSide',roofColor:FIBRE,setback:4,front:{h:1.8,c:'#ece8e2',gates:[{t:'gate',x:-5,w:4,c:'#4a4c4e'}]},
+  L(522,548,{wall:'#a8acb0',roof:'gableSide',roofColor:FIBRE,setback:2,front:{h:1.8,c:'#ece8e2',gates:[{t:'gate',x:-5,w:4,c:'#4a4c4e'}]},
     open:[{t:'open',x:-5,w:5,h:3,c:'geral',awning:FIBRE},{t:'open',x:8,w:4,h:3,c:'geral'}],sign:{text:'MARF',bg:'#2a8a3a',fg:W,x:-5,y:3.4,w:4,h:.9}}),
   // the brown sobrado and its garden behind a precast wall
-  L(548,556,{floors:2,wall:'#a87a5a',roof:'gable',roofColor:T,setback:4,front:{h:1.6,c:PRE,style:'panel'}}),
+  L(548,556,{floors:2,wall:'#a87a5a',roof:'gable',roofColor:T,setback:2,d:6,front:{h:1.6,c:PRE,style:'panel'}}),
   // the old peach house on the corner, a tile roof gone dark, brown shutters
-  L(556,566,{wall:'#e0b490',roof:'hip',roofColor:OLD,plinth:{h:.5,c:'#c89070'},open:[{t:'window',x:3,w:1.4,frame:'#2a3a2a'},{t:'window',x:-2,w:1.6,shutters:'#5a3a2a'}]}),
+  L(556,563.4,{d:8,wall:'#e0b490',roof:'hip',roofColor:OLD,plinth:{h:.5,c:'#c89070'},open:[{t:'window',x:2.4,w:1.4,frame:'#2a3a2a'},{t:'window',x:-2,w:1.6,shutters:'#5a3a2a'}]}),
   // ================= Espírito Santo → Orfeu Ermogenes Fornari =================
   // the long peach wall, its plaster peeling, a low planter at its foot; the pink house behind
-  L(667.2,679,{wall:'#e8b8a8',roof:'hip',roofColor:T,setback:3,d:7,front:{h:2,c:'#e6cbb8'},open:[{t:'window',x:-2,w:2.4,frame:W},{t:'window',x:3,w:1.2,frame:W}]}),
-  L(679,690,{wall:'#e8b8a8',roof:'hip',roofColor:T,setback:3,d:8,front:{h:2,c:'#e6cbb8'},open:[{t:'window',x:0,w:2.4,frame:W,awning:'#3a3c40'}]}),
+  // (the corner house is the Espírito Santo's, N 6–22)
+  L(681.6,690,{wall:'#e8b8a8',roof:'hip',roofColor:T,setback:3,d:7,front:{h:2,c:'#e6cbb8'},open:[{t:'window',x:0,w:2.2,frame:W,awning:'#3a3c40'}]}),
   // the blue building: a blue storey of windows, then exposed brick framed in blue with blue
   // doors and a blue roll door on the corner
   L(690,700,{floors:2,wall:'#3a78c8',roof:'flat',parapet:true,open:[{t:'window',x:-2,w:1.6,frame:W},{t:'window',x:1,w:1.6,frame:W},{t:'door',x:3,w:1,c:'#2a5aa8'}]}),
@@ -128,11 +127,12 @@ export const LOTS:Lot[]=[
   // the cream block warehouse, its end wall tarred dark brown
   L(721.8,745,{wall:'#ece0c4',roof:'gableSide',roofColor:ZINC,plinth:{h:.4,c:'#2a2420'}}),
   // the precast wall, a long cream shed with barred windows behind it (the borracharia)
-  placa(745,762,2,{behind:{w:15,d:8,at:3,roof:'gableSide',roofColor:FIBRE,wall:'#ece4d0'}}),
+  placa(745,759.5,2,{behind:{w:15,d:8,at:3,roof:'gableSide',roofColor:FIBRE,wall:'#ece4d0'}}),
   // ================= Francisco Pereira de Souza → Joaquim Garcia =================
-  // Mercearia do Pinguim: the mint-green shed with its name painted big in black
-  L(771,794,{wall:'#bcd8b0',roof:'gableSide',roofColor:FIBRE,plinth:{h:.3,c:'#8aa080'},open:[{t:'window',x:-2,w:1.2,grille:true},{t:'window',x:4,w:1.2,grille:true}],
-    sign:{text:'MERCEARIA DO PINGUIM',bg:'#bcd8b0',fg:'#1c1c1c',x:0,y:1.2,w:14,h:1.1}}),
+  // Mercearia do Pinguim: the mint-green shed with its name painted big in black (its corner
+  // is the Francisco Pereira de Souza's, N 5–15)
+  L(784.1,794,{d:9,wall:'#bcd8b0',roof:'gableSide',roofColor:FIBRE,plinth:{h:.3,c:'#8aa080'},open:[{t:'window',x:3,w:1.2,grille:true}],
+    sign:{text:'MERCEARIA DO PINGUIM',bg:'#bcd8b0',fg:'#1c1c1c',x:-.6,y:1.2,w:8,h:.8}}),
   // nº 878: the brick-tile clad sobrado, black doors, the upper floor still open
   L(794,803,{floors:2,wall:'#b8603a',upper:'#c8c4bc',roof:'flat',open:[{t:'door',x:2.4,w:2,c:'#1c1c1c'},{t:'door',x:.4,w:.9,c:'#1c1c1c'},{t:'window',x:-2.4,w:1.4,frame:'#2a2a2a'}],balcony:{x:0,w:9,fl:1,rail:'iron'}}),
   // a grey plank gate between brick pillars, the unfinished brick sobrado with a grey garage
@@ -145,16 +145,10 @@ export const LOTS:Lot[]=[
   // the white gable house with a brown shutter behind a precast wall
   L(834,844,{wall:'#ece8e2',roof:'gable',roofColor:FIBRE,setback:2,front:{h:1.8,c:PRE,style:'panel'},open:[{t:'window',x:1.6,w:2,grille:true},{t:'window',x:-2.6,w:2,shutters:'#7a3a2a'}]}),
   // two gates under tiled hoods, a cream plank one and a brown sheet one
-  L(844,852,{wall:'#ece8e2',roof:'gableSide',roofColor:T,setback:3,front:{h:2,c:'#e6dcbc',gates:[{t:'gate',x:1.6,w:3.4,c:'#e8dcc0',awning:T},{t:'gate',x:-2.4,w:2,c:'#7a3a2a',awning:T}]}}),
-  // the yellow-green gable house behind its wall, a cream gate under a tiled hood
-  L(852,860,{wall:'#d8dca0',roof:'gable',roofColor:T,fascia:W,setback:2,front:{h:1.8,c:'#d8dca0',gates:[{t:'gate',x:-2.6,w:2.4,c:'#e8dcc0',awning:T}]},open:[{t:'window',x:-.8,w:1.4,shutters:'#e8dcc0'},{t:'window',x:1.6,w:1.4,grille:true}]}),
-  // the grey gable house with white louvres behind a black iron railing, pots on the ledge
-  L(860,863.8,{wall:'#d8d4cc',roof:'gable',roofColor:FIBRE,fascia:W,setback:2,front:{h:.6,c:'#c8a890',rail:{h:1.2,c:'#2a2a2a',style:'bars'}},open:[{t:'window',x:0,w:1.4,shutters:W}]}),
+  L(844,849.7,{wall:'#ece8e2',roof:'gableSide',roofColor:T,setback:3,d:6,front:{h:2,c:'#e6dcbc',gates:[{t:'gate',x:.6,w:2.4,c:'#e8dcc0',awning:T},{t:'gate',x:-1.8,w:1.6,c:'#7a3a2a',awning:T}]}}),
+  // (s 850–866: the Joaquim Garcia's corner houses, S 5–21)
   // ================= Joaquim Garcia → Campos Salles: a row of small houses =================
-  // the green speckled corner house, a grey awning over its door
-  L(873,882,{wall:'#6a8a7a',roof:'gableSide',roofColor:OLD,plinth:{h:.4,c:'#e4c4b4'},open:[{t:'door',x:0,w:1,c:'#8a5a3a',awning:'#b8b8b8'},{t:'window',x:-3,w:.8,frame:'#e4c4b4'},{t:'window',x:2.6,w:.8,frame:'#e4c4b4'}]}),
-  // the green roughcast house under a fibre-cement lean-to
-  L(882,888,{wall:'#5a7a6a',roof:'gableSide',roofColor:FIBRE,open:[{t:'window',x:1,w:1.2,frame:'#e4c4b4'}]}),
+  // (s 873–886: the Joaquim Garcia's corner house, N 4–14)
   // nº 972: the pink house, an iron side gate and a white sheet door
   L(888,897,{wall:'#e4c4b4',roof:'gableSide',roofColor:T,open:[{t:'gate',x:2.6,w:1.4,c:'#3a3a3a'},{t:'door',x:-.2,w:1.4,c:W},{t:'window',x:-3,w:1.6,frame:W}]}),
   // nº 978: the pink house with grey louvres and a grilled door
@@ -166,16 +160,10 @@ export const LOTS:Lot[]=[
   // the cream house in a tangle of bougainvillea, a grey annex with a wooden gate
   L(920,930,{wall:'#ece8dc',roof:'gableSide',roofColor:OLD,setback:1.5,front:{h:.6,c:'#c8c4bc',gates:[{t:'gate',x:-3,w:1,c:'#a8703a'}]},open:[{t:'window',x:1.4,w:1.4,shutters:'#5a5a5a'}]}),
   // the aqua house with a grilled window
-  L(930,940,{wall:'#9ad4cc',roof:'gableSide',roofColor:OLD,open:[{t:'window',x:0,w:1.8,grille:true},{t:'gate',x:3.6,w:2,c:'#8a8c8e'}]}),
-  // the blue and turquoise houses, plants in pots by the doors
-  L(940,946,{wall:'#7ab0d8',roof:'gableSide',roofColor:FIBRE,open:[{t:'door',x:0,w:1,c:'#8a8c8e'}]}),
-  // nº 1012: the pale blue-grey corner house with a barred window
-  L(946,947.8,{wall:'#c8d4dc',roof:'gableSide',roofColor:OLD,open:[{t:'window',x:0,w:1,grille:true}]}),
+  L(930,933.7,{wall:'#9ad4cc',roof:'gableSide',roofColor:OLD,open:[{t:'window',x:0,w:1.6,grille:true}]}),
+  // (s 934–947: the Campos Salles's corner houses, S 6–22)
   // ================= Campos Salles → Bernadino Franchi =================
-  // the grey house under fibre-cement with grilled windows
-  L(957,962,{wall:'#c8c8c4',roof:'gableSide',roofColor:FIBRE,open:[{t:'window',x:0,w:1,grille:true}]}),
-  // the grey and beige house with a tile-set panel, a white sheet gate
-  L(962,971,{wall:'#c8c4bc',roof:'gable',roofColor:OLD,panels:[{x:-1,w:4,c:'#c8b490',y0:.6,y1:2.6}],open:[{t:'gate',x:3,w:2.6,c:W},{t:'window',x:-3,w:.8,grille:true}]}),
+  // (s 958–970: the Campos Salles's corner houses, N 6–22)
   // nº 1014: the grey house with a white band and white louvres
   L(971,980,{wall:'#8a8c8a',roof:'gableSide',roofColor:T,band:W,open:[{t:'window',x:0,w:1.8,shutters:W},{t:'gate',x:3.4,w:1.6,c:W}]}),
   // the white house behind two blue gates
@@ -191,10 +179,10 @@ export const LOTS:Lot[]=[
   // the pink house with a brown gate under a tiled carport
   L(1028,1034,{wall:'#e0c0c0',roof:'gableSide',roofColor:T,setback:1,front:{h:1,c:'#e0c0c0'},open:[{t:'garage',x:0,w:2.6,c:'#7a3a2a',awning:T}]}),
   // the yellow house, brown shutters, a barred door up three steps
-  L(1034,1042,{wall:'#e8d080',roof:'gableSide',roofColor:T,plinth:{h:.6,c:'#c89a5a'},open:[{t:'window',x:-2.4,w:1.6,shutters:'#7a4a2a'},{t:'window',x:1,w:1.6,grille:true},{t:'door',x:3.2,w:.9,c:'#7a4a2a',grille:true}]}),
+  L(1034,1041.1,{wall:'#e8d080',roof:'gableSide',roofColor:T,plinth:{h:.6,c:'#c89a5a'},open:[{t:'window',x:-2.4,w:1.6,shutters:'#7a4a2a'},{t:'window',x:1,w:1.6,grille:true},{t:'door',x:3,w:.9,c:'#7a4a2a',grille:true}]}),
   // ================= Bernadino Franchi → Rio de Janeiro =================
   // the brown speckled house: brown louvred shutters (its corner is Bernadino Franchi's)
-  L(1078,1086,{wall:'#8a7058',roof:'gableSide',roofColor:'#6a5a4a',plinth:{h:.5,c:'#6a5040'},open:[{t:'window',x:-1,w:2,shutters:'#7a4a2a'},{t:'window',x:2.6,w:1.2,grille:true}]}),
+  L(1080.3,1086,{wall:'#8a7058',roof:'gableSide',roofColor:'#6a5a4a',plinth:{h:.5,c:'#6a5040'},open:[{t:'window',x:-.8,w:2,shutters:'#7a4a2a'},{t:'window',x:1.8,w:1,grille:true}]}),
   // the brown speckled house behind a precast wall and a rust-red sheet gate
   L(1086,1094,{wall:'#8a7058',roof:'gableSide',roofColor:'#6a5a4a',setback:2,front:{h:2,c:PRE,style:'panel',gates:[{t:'gate',x:3,w:2,c:'#8a3a2a'}]},open:[{t:'window',x:-1,w:1.2,shutters:'#8aa0a8'}]}),
   L(1094,1099,{wall:'#ece8e2',roof:'flat',setback:4,front:{h:2.4,c:PRE,style:'panel',gates:[{t:'gate',x:0,w:3.6,c:'#8a3a2a'}]}}),
@@ -224,7 +212,7 @@ export const LOTS:Lot[]=[
   // a precast wall with a black sliding gate, the little house in the garden behind
   L(1222,1230,{wall:'#ece4d6',roof:'gable',roofColor:T,setback:5,d:6,front:{h:1.8,c:PRE,style:'panel',gates:[{t:'gate',x:1,w:4,c:'#2a2c2e'}]}}),
   // brown pillars and a black iron fence, a garden, the pepper tree
-  L(1230,1240,{wall:'#ece4d6',roof:'gableSide',roofColor:T,setback:6,d:6,front:{h:.4,c:'#a87a5a',rail:{h:1.5,c:'#2a2a2a',style:'bars'}}}),
+  L(1230,1240,{wall:'#ece4d6',roof:'gableSide',roofColor:T,setback:3,d:6,front:{h:.4,c:'#a87a5a',rail:{h:1.5,c:'#2a2a2a',style:'bars'}}}),
   // the grey sheet gate in a brown plastered wall, a block house behind
   L(1240,1248,{wall:'#a49e94',roof:'gable',roofColor:FIBRE,setback:4,d:6,front:{h:1.6,c:'#a87a5a',gates:[{t:'gate',x:1.6,w:3.2,c:'#b8bcc0'}]}}),
   // the black sheet gate by a brick pillar with a lamp, a grey gate beyond
@@ -298,7 +286,7 @@ const BANK=[6,24,44,232,244,256,268,278,288,300,312,324,336,348,360,372,388,398,
 export const TREES:Tree[]=[
   ...BANK.map(s=>({side:'N' as const,s,kind:'ficus' as const})),
   {side:'N',s:250,kind:'palmeira'},
-  {side:'S',s:102,kind:'ficus'},{side:'S',s:106,kind:'palmeira'},{side:'S',s:110,kind:'palmeira'},
+  {side:'S',s:96,kind:'ficus'},
   {side:'S',s:390,kind:'palmeira'},{side:'S',s:402,kind:'palmeira'},{side:'S',s:414,kind:'palmeira'},
   {side:'S',s:486,kind:'ficus'},{side:'S',s:498,kind:'ficus'},{side:'S',s:506,kind:'ficus'},
   {side:'S',s:512,kind:'palmeira'},{side:'S',s:518,kind:'ficus'},
