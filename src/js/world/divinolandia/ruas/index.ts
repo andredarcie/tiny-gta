@@ -25,6 +25,7 @@ import {SPEC as JOAQUIM_LOURENCO_PIRES} from './joaquim-lourenco-pires.ts';
 import {SPEC as LOURIVAL_PISCINA} from './lourival-medeiros-piscina.ts';
 import {SPEC as GOIAS} from './goias.ts';
 import {SPEC as DOM_ANTONIO} from './dom-antonio-j-de-mello.ts';
+import {SPEC as MANOEL_PEREIRA} from './manoel-pereira-de-souza.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
@@ -50,4 +51,5 @@ export const STREETS:StreetSpec[]=[
   LOURIVAL_PISCINA,
   GOIAS,
   DOM_ANTONIO,
+  MANOEL_PEREIRA,
 ];
