@@ -22,6 +22,7 @@ import {SPEC as AV_ADHEMAR} from './avenida-adhemar-de-barros.ts';
 import {SPEC as LEONOR_ALTA} from './leonor-mendes-de-barros-alta.ts';
 import {SPEC as MARGINAL} from './avenida-marginal.ts';
 import {SPEC as JOAQUIM_LOURENCO_PIRES} from './joaquim-lourenco-pires.ts';
+import {SPEC as LOURIVAL_PISCINA} from './lourival-medeiros-piscina.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
@@ -44,4 +45,5 @@ export const STREETS:StreetSpec[]=[
   LEONOR_ALTA,
   MARGINAL,
   JOAQUIM_LOURENCO_PIRES,
+  LOURIVAL_PISCINA,
 ];

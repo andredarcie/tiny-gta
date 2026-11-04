@@ -274,8 +274,10 @@ export const LOTS:Lot[]=[
   L(1674,1682,{wall:'#ecdcc4',roof:'gable',roofColor:T,setback:3,front:{h:2.2,c:'#9a948a',gates:[{t:'gate',x:-.6,w:3.4,c:'#a8883a',awning:'#4a9a8a'}]}}),
   // ochre and grey gates between speckled pillars, the house behind
   L(1682,1690,{wall:'#ecdcc4',roof:'gable',roofColor:T,setback:3,front:{h:2.2,c:'#ece4d6',gates:[{t:'gate',x:2.4,w:2,c:'#a8883a'},{t:'gate',x:-.4,w:1.2,c:'#b8bcc0'},{t:'gate',x:-2.6,w:2.4,c:'#b8bcc0'}]}}),
-  // the peach corner house behind a peach wall with a tile coping, brown shutters, a brown gate
-  L(1690,1705,{wall:'#ecc0a4',roof:'hip',roofColor:T,setback:2,front:{h:1.6,c:'#ecc4a8',gates:[{t:'gate',x:-5.4,w:2.4,c:'#a8883a'}]},open:[{t:'window',x:-1.6,w:1.6,shutters:'#8a6a3a'},{t:'window',x:2.6,w:1.6,shutters:'#8a6a3a'}]}),
+  // the peach wall with a tile coping and a brown gate beside the corner house (nº 657 fronts the
+  // Lourival Medeiros: it is a lot of ruas/lourival-medeiros-piscina.ts, its side wall stands
+  // along here, 1693–1705)
+  muro(1690,1693,'#ecc4a8',1.8,{front:{h:1.8,c:'#ecc4a8',gates:[{t:'gate',x:0,w:2.2,c:'#a8883a'}]}}),
 ];
 
 // the mango trees (fícus model) all along the river bank, thicker in the middle stretch;
@@ -302,5 +304,6 @@ export const SPEC:StreetSpec={
     {side:'S',s0:574,s1:660,why:'Posto Taurus and Bilica Pneus (their own models)'},
     {side:'S',s0:1368,s1:1458,why:'the long cream building and the checkered-flag workshop (galpoes.ts)'},
     {side:'S',s0:1596,s1:1672,why:'the yard of the Salão de Eventos Beira Rio and the prison (game site)'},
+    {side:'S',s0:1693,s1:1705,why:'the side of the corner house nº 657, a lot of the Lourival Medeiros (lourival-medeiros-piscina.ts)'},
   ],
 };

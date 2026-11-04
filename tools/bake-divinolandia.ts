@@ -159,6 +159,12 @@ const NAMED_WAYS:Record<number,string>={
 // the yellow gatehouse and its one-way loop to the porch are hexagonal concrete pavers (the
 // red-earth car park and the dirt track beside it, 1499496301, are really dirt)
 const SURFACE_WAYS:Record<number,'hex'>={536783866:'hex',1215144215:'hex',1215144212:'hex',1215144213:'hex',1215144214:'hex'};
+// Stretches of one OSM way surveyed as a street of their own (the same '#' trick, for a way that
+// runs on past the surveyed stretch): [first vertex, last vertex, name]. The way is cut at those
+// vertices (junction nodes, so the street graph stays joined); the rest keeps its own name.
+// Lourival Medeiros from the Tv. Luiz de Marco to the Avenida Marginal, by the bridge over the
+// Rio do Peixe: across from the Piscina Municipal and the PM post, and on to the river.
+const SPLIT_WAYS:Record<number,[number,number,string][]>={732002990:[[4,6,'Rua Lourival Medeiros#2']]};
 for(const e of osm.elements){
   const t=e.tags||{};
   if(!e.geometry||!(t.highway in HW))continue;
@@ -168,7 +174,15 @@ for(const e of osm.elements){
   let paved=surf?PAVED_SURF.has(surf):['primary','primary_link','secondary','tertiary','residential','living_street'].includes(t.highway);
   if(!surf&&!paved)paved=inUrbanPoly(centroid(pts));
   const sf=SURFACE_WAYS[e.id];if(sf)paved=true;
-  roads.push({id:e.id,k:t.highway,name:NAMED_WAYS[e.id]??t.name??'',hw:HW[t.highway],paved,pts,...(sf?{sf}:{})});
+  const base={id:e.id,k:t.highway,name:NAMED_WAYS[e.id]??t.name??'',hw:HW[t.highway],paved,...(sf?{sf}:{})};
+  const cuts=SPLIT_WAYS[e.id];
+  if(!cuts){roads.push({...base,pts});continue;}
+  let from=0;
+  for(const[a,b,name]of cuts){
+    if(a>from)roads.push({...base,pts:pts.slice(from,a+1)});
+    roads.push({...base,name,pts:pts.slice(a,b+1)});from=b;
+  }
+  if(from<pts.length-1)roads.push({...base,pts:pts.slice(from)});
 }
 // resample every 4 m with a smoothed elevation profile (bake-time road bed)
 type RS={x:number;z:number;h:number;hw:number};
@@ -392,11 +406,17 @@ const landmarkKeep:[number,number,number][]=[
 // OSM gives a stretch of the street to another way — the Rua Sete de Setembro along the Praça
 // Dr. Alcindo — the chain bridges it, so the houses of that other way stay off the lots too)
 const surveyedPts=[...SURVEYED.values()].map(sp=>{const rs=roads.filter(r=>r.name===sp.rua);
-  return{pts:chainPieces(rs.map(r=>r.pts)),band:(rs[0]?.hw??3.6)+2.6+Math.max(...sp.lots.map(l=>(l.f.d??12)+(l.f.setback??0)))};}).filter(s=>s.pts.length>1);
+  return{pts:chainPieces(rs.map(r=>r.pts)),band:(rs[0]?.hw??3.6)+2.6+Math.max(...sp.lots.map(l=>(l.f.d??12)+(l.f.setback??0))),
+    // a stretch cut off a longer way (SPLIT_WAYS) ends mid-block: its band stops square at the
+    // ends (no round cap eating the neighbours' houses on the street that goes on)
+    square:Object.values(SPLIT_WAYS).some(c=>c.some(([,,n])=>n===sp.rua))};}).filter(s=>s.pts.length>1);
 // within the street's lot band (m = 0) — or within m of its centreline
 function nearSurveyed(x:number,z:number,m=0):boolean{
-  for(const{pts,band}of surveyedPts)for(let i=1;i<pts.length;i++)
-    if(segDist(x,z,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1])[0]<(m||band))return true;
+  for(const{pts,band,square}of surveyedPts)for(let i=1;i<pts.length;i++){
+    const[d,t]=segDist(x,z,pts[i-1][0],pts[i-1][1],pts[i][0],pts[i][1]);
+    if(!m&&square&&((i===1&&t===0)||(i===pts.length-1&&t===1)))continue;
+    if(d<(m||band))return true;
+  }
   return false;
 }
 const townStreet=new Set(['residential','tertiary','secondary','primary','living_street','unclassified']);
