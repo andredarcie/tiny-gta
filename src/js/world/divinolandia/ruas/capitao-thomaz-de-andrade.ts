@@ -13,7 +13,7 @@ import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 export const RUA='Rua Capitão Thomaz de Andrade';
 export const CROSS=[0,64.4,141.8,268.7];
 const SURFACE:Surface[]=[[0,64.4,'sett'],[64.4,268.7,'asphalt']];
-const T='#b0603f',W='#f1efe9',TAUPE='#8a7a6e',GREY='#a8acb4',STONE_C='#c8a878';
+const T='#b0603f',W='#f1efe9',TAUPE='#8a7a6e',GREY='#a8acb4';
 
 const L=(side:'N'|'S',s0:number,s1:number,f:Lot['f'],walk?:Lot['walk']):Lot=>{
   const set=f.setback??0,d=Math.min(f.d??12,12-set);

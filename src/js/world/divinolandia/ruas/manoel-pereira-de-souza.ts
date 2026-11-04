@@ -16,7 +16,7 @@ import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 export const RUA='Rua Manoel Pereira de Souza';
 export const CROSS=[0,31.5,81.6,133,182.2,339.1,469.9,545.5,626.5,693];
 const SURFACE:Surface[]=[[0,320,'dirt'],[320,693,'asphalt']];
-const T='#b0603f',W='#f1efe9',PRE='#cfcbc2',SPECK='#8e8e8a',CREME='#ece2c8';
+const T='#b0603f',W='#f1efe9',PRE='#cfcbc2',SPECK='#8e8e8a';
 
 const L=(side:'N'|'S',s0:number,s1:number,f:Lot['f'],walk?:Lot['walk']):Lot=>{
   const set=f.setback??0,d=Math.min(f.d??12,12-set);

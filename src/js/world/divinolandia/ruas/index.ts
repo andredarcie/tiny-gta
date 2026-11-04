@@ -32,6 +32,7 @@ import {SPEC as JOAO_CABRERA} from './joao-cabrera.ts';
 import {SPEC as DOM_ALBERTO} from './dom-alberto-j-goncalves.ts';
 import {SPEC as MARIO_MANDONI} from './mario-mandoni.ts';
 import {SPEC as CAPITAO_THOMAZ} from './capitao-thomaz-de-andrade.ts';
+import {SPEC as JOAO_CABRAL} from './joao-cabral-de-medeiros.ts';
 
 export const STREETS:StreetSpec[]=[
   JOSE_AUGUSTO_MACHADO,
@@ -64,4 +65,5 @@ export const STREETS:StreetSpec[]=[
   DOM_ALBERTO,
   MARIO_MANDONI,
   CAPITAO_THOMAZ,
+  JOAO_CABRAL,
 ];

@@ -15,7 +15,7 @@ import type {Lot,Tree,Surface,StreetSpec} from './spec.ts';
 export const RUA='Rua São Vicente de Paula';
 export const CROSS=[0,115.9,187.8,288,380.6];
 const SURFACE:Surface[]=[[0,380.6,'sett']];
-const T='#b0603f',W='#f1efe9',SPECK='#8e8e8a',RUST='#8a3a2a',ROUGH='#a8907a';
+const T='#b0603f',W='#f1efe9',RUST='#8a3a2a';
 
 const L=(side:'N'|'S',s0:number,s1:number,f:Lot['f'],walk?:Lot['walk']):Lot=>{
   const set=f.setback??0,d=Math.min(f.d??12,12-set);
