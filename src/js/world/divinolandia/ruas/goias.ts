@@ -176,11 +176,11 @@ export const LOTS:Lot[]=[
   // the bare brick wall with a timber gate, the grey sheet garage door of the next house
   L('S',266,275,{wall:'#c0b8ac',roof:'hip',roofColor:T,setback:2,front:{h:2.2,c:'#b86a48',gates:[{t:'gate',x:3,w:2.6,c:'#7a6a5a'},{t:'gate',x:-1.6,w:3,c:'#a8acb0'}]}}),
   // the bare brick wall with a white grille door and a brown one, the grey house behind
-  L('S',275,285,{wall:'#d8d4cc',roof:'hip',roofColor:'#6a6a6a',setback:2.5,front:{h:2,c:'#b86a48',gates:[{t:'gate',x:2.2,w:1.2,c:W},{t:'gate',x:.4,w:1.2,c:'#6a2a1a'}]}}),
+  L('S',275,285,{wall:'#d8d4cc',roof:'hip',roofColor:'#6a6a6a',setback:2.5,d:5,front:{h:2,c:'#b86a48',gates:[{t:'gate',x:2.2,w:1.2,c:W},{t:'gate',x:.4,w:1.2,c:'#6a2a1a'}]}}),
   // the bare brick wall with a grey iron gate, the corrugated-roof house behind
-  L('S',285,290,{wall:'#ecebe6',roof:'gableSide',roofColor:'#9a9a98',setback:3,front:{h:1.8,c:'#b86a48',gates:[{t:'gate',x:.2,w:3,c:'#8a8c8e'}]}}),
+  L('S',285,290,{wall:'#ecebe6',roof:'gableSide',roofColor:'#9a9a98',setback:3,d:4,front:{h:1.8,c:'#b86a48',gates:[{t:'gate',x:.2,w:3,c:'#8a8c8e'}]}}),
   // the white corner house with its dark green garage door
-  L('S',290,293.6,{wall:'#f0eee8',roof:'gable',roofColor:T,open:[{t:'garage',x:0,w:3,c:'#3a4a44'}]}),
+  L('S',290,293.6,{wall:'#f0eee8',roof:'gable',roofColor:T,d:7,open:[{t:'garage',x:0,w:3,c:'#3a4a44'}]}),
 ];
 
 export const TREES:Tree[]=[

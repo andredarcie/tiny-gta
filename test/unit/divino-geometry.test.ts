@@ -111,7 +111,8 @@ describe('generated houses keep to their lots', () => {
       }
       if (ms / 99 < .15 && gm / 99 < .15 && zone / 99 < .5) ghosts.push(`${x},${z}`);
     }
-    expect(D.houses.length).toBeGreaterThan(1400);   // (surveyed streets carry their own lots instead)
+    // (surveyed streets carry their own lots instead: each survey trades generated houses for lots)
+    expect(D.houses.length + STREETS.reduce((n, sp) => n + sp.lots.length, 0)).toBeGreaterThan(2900);
     expect(ghosts).toEqual([]);
   });
   it('keep the door within a short flight of steps of the sidewalk', () => {
